@@ -52,8 +52,8 @@ const HINTS = [
 ];
 const HINTS_BY_LEVEL = {
   0: [[["j", "k"], "step"], [["enter"], "open core"], [["v"], "switch view"]],
-  1: [[["j", "k"], "step"], [["J", "K"], "core"], [["enter"], "read page"], [["esc"], "overview"], [["v"], "view"]],
-  2: [[["j", "k"], "next / back"], [["a"], "looks good →"], [["f"], "flag"], [["c"], "comment"], [["e"], "more context"], [["p"], "park a thought"], [["esc"], "zoom out"]],
+  1: [[["j", "k"], "step"], [["a"], "looks good →"], [["c"], "comment"], [["e"], "open / more"], [["enter"], "read page"], [["esc"], "overview"]],
+  2: [[["j", "k"], "next / back"], [["a"], "looks good →"], [["f"], "flag"], [["c"], "comment"], [["e"], "open / more"], [["p"], "park a thought"], [["esc"], "zoom out"]],
 };
 function renderKeys() {
   const mode = app.settings.hints;
@@ -85,7 +85,7 @@ export function help() {
       ${r("u", "un-mark")}
       ${r("f", "flag to come back to")}
       ${r("c", "comment (click a line first, or it picks one)")}
-      ${r("e", "more context")}
+      ${r("e", "open collapsed code, then more context")}
       ${r("p", "park a thought: jot what's in your head, shown when you return")}
       ${r("enter esc", "zoom in / out: overview → core → page")}
       ${r("v", "switch view: Flow, Outline, Lens")}
