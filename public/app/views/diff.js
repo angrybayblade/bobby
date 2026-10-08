@@ -66,6 +66,7 @@ export default {
         let f = files.get(path);
         if (!f) files.set(path, (f = { path, band: pl.band, order: app.index.walkPos.get(pid), sections: [], changed: false }));
         f.changed ||= node.kind === "change";
+        if (Math.abs(BANDS.indexOf(pl.band) - 2) < Math.abs(BANDS.indexOf(f.band) - 2)) f.band = pl.band; // column of its most central code
         const line = node.kind === "change" ? Math.min(...app.hunksOf(pid).map((h) => h.newStart)) : node.location.line;
         f.sections.push({ pid, line });
         fileOf.set(pid, f);
