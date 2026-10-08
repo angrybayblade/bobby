@@ -1,0 +1,21 @@
+#!/bin/sh
+# Enforces the "incremental" rule (the staged snapshot builds) and nudges the "micro" rule (size).
+set -e
+root=$(git rev-parse --show-toplevel)
+
+# Incremental: check exactly what's staged, not the working tree.
+snap=$(mktemp -d)
+trap 'rm -rf "$snap"' EXIT
+git checkout-index -a --prefix="$snap/"
+[ -d "$root/node_modules" ] && ln -s "$root/node_modules" "$snap/node_modules"
+if ! (cd "$snap" && sh "$root/scripts/check.sh"); then
+  echo "✗ staged snapshot fails scripts/check.sh: every commit must build (COMMITS.md §2)" >&2
+  exit 1
+fi
+
+# Micro: warn, don't block, on large commits. Lockfiles and snapshots don't count.
+changed=$(git diff --cached --numstat -- . ':(exclude)bun.lock' ':(exclude)*.snap' | awk '{ s += $1 + $2 } END { print s + 0 }')
+if [ "$changed" -gt 400 ]; then
+  echo "⚠ $changed changed lines staged. Is this one logical change? (COMMITS.md §1)" >&2
+fi
+exit 0
