@@ -49,6 +49,17 @@ Switch with `v` or the header toggle. Focus, progress and comments are shared, s
 
 Each view has three zoom levels (`enter` / `esc`): **Overview** → **Core** → **Page**.
 
+At **Core** level only the focused node shows its code; every other node stays title and why. A node reads top to bottom:
+
+```
+title
+why it matters
+comments        your drafts + existing GitHub review comments on these lines (if any)
+code changes    modified → diff · only added / only removed / untouched → collapsed until opened
+```
+
+Click a comment to jump to its line. `e` opens collapsed code, then adds context.
+
 ## Focus aids
 
 - **One signal colour.** Amber means "you are here" or "needs you"; everything else is warm neutral. Changed code is drawn ● and untouched code ○ (by shape, not hue).
@@ -58,7 +69,7 @@ Each view has three zoom levels (`enter` / `esc`): **Overview** → **Core** →
 - **Settings (`,`).** Warm dark or light theme, reading font (Sans, Atkinson Hyperlegible, Serif, Mono), size, word spacing, motion, and an opt-in break reminder.
 - **Calm diffs.** Muted line tints, word-level highlights, and no code ligatures.
 
-Keys: `j/k` step · `J/K` core · `a` looks good → next · `f` flag · `n` next unreviewed · `c` comment · `e` more context · `p` park · `v` view · `s` submit · `?` help.
+Keys: `j/k` step · `J/K` core · `a` looks good → next · `f` flag · `n` next unreviewed · `c` comment · `e` open / more context · `p` park · `v` view · `s` submit · `?` help.
 
 ## How it works
 
@@ -69,6 +80,6 @@ Keys: `j/k` step · `J/K` core · `a` looks good → next · `f` flag · `n` nex
    - unchanged definitions that added lines rely on (upstream).
 4. **Claude.** Headless `claude -p` with a JSON schema groups the units into cores, picks the relevant refs, writes one-line "why"s and marks risk. It can only use ids from step 3. The static tree is usable straight away; when Claude's tree is ready, a pill appears and `R` switches to it without moving you.
 5. **Graph.** Everything is packed into a `prfocus.review-graph/v1` document, which is the only thing views read.
-6. **State.** Progress is stored per hunk content hash in `~/.prfocus/state`, so after a force-push only new or changed hunks come back. Comments are drafts until you submit. They're posted as one GitHub review, and comments on untouched code go into the review summary.
+6. **State.** Progress is stored per hunk content hash in `~/.prfocus/state`, so after a force-push only new or changed hunks come back. Existing inline review comments are fetched with the PR and shown next to your drafts. Comments are drafts until you submit. They're posted as one GitHub review, and comments on untouched code go into the review summary.
 
 Set `PRFOCUS_MODEL` to choose the Claude model.
