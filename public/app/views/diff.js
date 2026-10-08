@@ -36,6 +36,22 @@ const CSS = `
 .dv svg.edges path { fill: none; stroke: var(--muted); stroke-width: 2; }
 .dv svg.edges marker path { fill: var(--muted); stroke: none; }
 .dv .elbl { position: absolute; z-index: 4; font: 11.5px var(--font-ui); color: var(--muted); background: var(--bg); border: 1px solid var(--line-soft); padding: 1px 7px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, -50%); pointer-events: none; }
+.dv .dfocus { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(180px, 260px) minmax(0, 1fr) minmax(180px, 260px); gap: 22px; padding: 18px 22px; background: var(--bg); z-index: 5; }
+.dv .dfocus[hidden] { display: none; }
+.dv .dfocus .big { position: relative; transform: none; width: auto; height: auto; min-height: 0; }
+.dv .dfocus .big .fvh { cursor: default; }
+.dv .dfocus .page-only { overflow: auto; }
+.dv .rail { display: flex; flex-direction: column; gap: 8px; overflow: auto; padding-top: 4px; }
+.dv .rail h4 { margin: 0 0 4px; font: 600 10.5px var(--font-ui); letter-spacing: .09em; text-transform: uppercase; color: var(--faint); }
+.dv .rail.up { align-items: stretch; text-align: right; }
+.dv .rc { text-align: left; border: 1px solid var(--line); border-radius: 10px; padding: 8px 11px; background: var(--surface); }
+.dv .rc:hover { border-color: var(--muted); }
+.dv .rc.context { border-style: dashed; }
+.dv .rc .t { display: flex; gap: 7px; align-items: center; font: 500 12.5px var(--font-code); }
+.dv .rc .t span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dv .rc .f { font: 11.5px var(--font-code); color: var(--faint); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dv .rc .l { font: 11.5px var(--font-ui); color: var(--muted); margin-top: 3px; }
+.dv .rail .none { color: var(--faint); font-size: 13px; }
 .dv .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--faint); }
 `;
 
@@ -47,12 +63,17 @@ export default {
   hint: "A diff viewer per file; edges follow what you're reading",
   mount(el, app) {
     injectCss("diff", CSS);
-    el.innerHTML = `<div class="dv"><div class="stage"><div class="world"></div></div></div>`;
+    el.innerHTML = `<div class="dv"><div class="stage"><div class="world"></div></div>
+      <div class="dfocus" hidden><nav class="rail up"></nav><div class="fv big"></div><nav class="rail down"></nav></div></div>`;
     const root = el.firstElementChild, stage = root.querySelector(".stage"), world = root.querySelector(".world");
+    const dfocus = root.querySelector(".dfocus"), big = dfocus.querySelector(".big");
+    const railUp = dfocus.querySelector(".rail.up"), railDown = dfocus.querySelector(".rail.down");
+    let bigPath = null; // file shown in focus mode
     let M = null; // model: files, relations, lookups
     const views = new Map(); // path → { el, body, f, x, y, h }
     const placedBy = new Map(); // path → {x, y} set by dragging
     let cam = { tx: 0, ty: 0, s: 1 }, pan = { x: 0, y: 0 };
+    let quietUntil = 0; // our own scrolling (j/k, opening a file) must not be read back as the reader moving
     let selfFocus = false; // focus change came from scrolling a viewer: don't move the camera or the scroll
 
     // ---- model: one file per path, sections = canonical placements of the nodes in that file.
@@ -94,10 +115,11 @@ export default {
       for (const s of f.sections) { const x = app.stat(s.pid); a += x.a; d += x.d; }
       return f.changed ? `<span style="color:var(--ok)">+${a}</span> <span style="color:var(--risk)">−${d}</span>` : "untouched";
     }
-    function header(f) {
+    function header(f, exit = false) {
       const dir = f.path.includes("/") ? f.path.slice(0, f.path.lastIndexOf("/") + 1) : "";
       return `<i class="glyph ${f.changed ? "change" : "context"}"></i><span class="p">${esc(dir)}<b>${esc(f.path.split("/").pop())}</b></span><span class="st">${stat(f)}</span>`
-        + `<button class="max" data-max="${esc(f.path)}" title="Focus on this file (or double-click the header)">⤢</button>`;
+        + (exit ? `<button class="max" data-exit="1" title="Back to all files (esc)">⤡</button>`
+          : `<button class="max" data-max="${esc(f.path)}" title="Focus on this file (or double-click the header)">⤢</button>`);
     }
 
     // ---- build: render every viewer, measure, then lay out in band columns.
@@ -151,22 +173,29 @@ export default {
       const act = activeFile();
       for (const v of views.values()) v.el.classList.toggle("active", v.f === act);
       const cur = M?.canon(app.focus);
-      for (const s of world.querySelectorAll(".sec")) {
+      for (const s of root.querySelectorAll(".sec")) {
         s.classList.toggle("cur", s.dataset.pid === cur);
         s.classList.toggle("done", app.isReviewed(s.dataset.pid));
       }
-      const v = act && views.get(act.path);
-      if (v) app.pageEl = v.body; // c / e act on the file you're in
+      const body = readingBody();
+      if (body) app.pageEl = body; // c / e act on the file you're in
+    }
+    function readingBody() {
+      if (app.level === 2) return big.querySelector(".fvb");
+      const act = activeFile();
+      return act && views.get(act.path)?.body;
     }
     // j/k: bring the focused section to the top of its viewer
     function reveal(smooth) {
-      const act = activeFile(), cur = M.canon(app.focus);
-      const v = act && views.get(act.path);
-      const sec = v?.body.querySelector(`.sec[data-pid="${cur}"]`);
-      if (sec) v.body.scrollTo({ top: sec.offsetTop - 6, behavior: smooth ? "smooth" : "auto" });
+      const body = readingBody(), cur = M.canon(app.focus);
+      const sec = body?.querySelector(`.sec[data-pid="${cur}"]`);
+      if (!sec) return;
+      quietUntil = Date.now() + (smooth ? 700 : 200);
+      body.scrollTo({ top: sec.offsetTop - 6, behavior: smooth ? "smooth" : "auto" });
     }
     // Scrolling a viewer: the section under its top third becomes the focus.
     function readFocus(v) {
+      if (Date.now() < quietUntil) return;
       const line = v.body.getBoundingClientRect().top + v.body.clientHeight / 3;
       let pick = null;
       for (const s of v.body.querySelectorAll(".sec")) { if (s.getBoundingClientRect().top <= line) pick = s; else break; }
@@ -242,6 +271,62 @@ export default {
     let raf = 0;
     const redraw = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(draw); };
 
+    // ---- focus mode (level 2): one file fills the stage; what its visible sections relate to sits in rails.
+    function showFocus(reason) {
+      const act = activeFile();
+      if (!act) { // end of walk or low-signal: the shared page
+        bigPath = null;
+        railUp.innerHTML = railDown.innerHTML = "";
+        big.className = "fv big page-only";
+        app.renderPage(big, app.focus);
+        return;
+      }
+      if (act.path !== bigPath || reason === "comments" || reason === "graph" || reason === "settings") {
+        const fresh = act.path !== bigPath;
+        const top = big.querySelector(".fvb")?.scrollTop ?? 0;
+        bigPath = act.path;
+        big.className = `fv big ${act.changed ? "" : "context"}`;
+        big.innerHTML = `<div class="fvh">${header(act, true)}</div><div class="fvb"></div>`;
+        app.renderFile(big.querySelector(".fvb"), act.sections.map((s) => s.pid));
+        restyle();
+        if (fresh) reveal(false); else big.querySelector(".fvb").scrollTop = top;
+      }
+      rails();
+    }
+    function rails() {
+      const body = big.querySelector(".fvb");
+      if (!body || !bigPath) return;
+      const ls = visible({ body }).flatMap((pid) => (M.rel.get(pid) ?? []).map((r) => ({ from: pid, ...r })));
+      const card = (l) => {
+        const pl = app.get(l.pid).pl, node = app.nodeOf(l.pid), f = M.fileOf.get(l.pid);
+        const same = f.path === bigPath;
+        return `<button class="rc ${node.kind}" data-rel="${l.pid}"><div class="t"><i class="glyph ${pl.band === "core" ? "core" : node.kind}"></i><span>${esc(pl.title)}</span>${app.isReviewed(l.pid) ? `<span class="status">✓</span>` : ""}</div>
+          <div class="f">${same ? "in this file" : esc(f.path)}</div>${l.label ? `<div class="l">${esc(l.label)}</div>` : ""}</button>`;
+      };
+      const side = (dir) => { const seen = new Set(); return ls.filter((l) => l.dir === dir && !seen.has(l.pid) && seen.add(l.pid)); };
+      const up = side("up"), down = side("down");
+      railUp.innerHTML = `<h4>relies on</h4>${up.map(card).join("") || `<div class="none">nothing in view relies on other code</div>`}`;
+      railDown.innerHTML = `<h4>affects</h4>${down.map(card).join("") || `<div class="none">nothing in view affects other code</div>`}`;
+    }
+    dfocus.addEventListener("click", (ev) => {
+      const t = ev.target.closest("[data-rel],[data-exit]");
+      if (!t) return;
+      if (t.dataset.exit) return app.setLevel(1);
+      app.setFocus(t.dataset.rel); // same file: scrolls there; another file: swaps it in
+    });
+    dfocus.addEventListener("scroll", (ev) => {
+      if (!ev.target.matches?.(".big .fvb")) return;
+      clearTimeout(big._t);
+      big._t = setTimeout(() => { readFocus({ body: ev.target }); rails(); }, 90);
+    }, true);
+    function openFocus(path) {
+      const v = views.get(path);
+      if (!v) return;
+      const pid = visible(v)[0] ?? v.f.sections[0].pid;
+      if (M.canon(app.focus) !== pid && M.fileOf.get(M.canon(app.focus)) !== v.f) app.setFocus(pid);
+      app.setLevel(2);
+    }
+
     // ---- camera
     function bounds(list) {
       const xs = list.flatMap((v) => [v.x, v.x + W]), ys = list.flatMap((v) => [v.y, v.y + v.h]);
@@ -262,7 +347,20 @@ export default {
     function apply() { world.style.transform = `translate(${cam.tx + pan.x}px, ${cam.ty + pan.y}px) scale(${cam.s})`; }
 
     function update(reason) {
-      if (reason === "mount" || reason === "graph" || reason === "settings") { build(); restyle(); reveal(false); followKey = ""; follow(); redraw(); return void requestAnimationFrame(frame); }
+      dfocus.hidden = app.level !== 2;
+      if (reason === "mount" || reason === "graph" || reason === "settings") {
+        build(); bigPath = null;
+        if (app.level === 2) showFocus(reason);
+        restyle(); reveal(false); followKey = ""; follow(); redraw();
+        return void requestAnimationFrame(frame);
+      }
+      if (app.level === 2) {
+        showFocus(reason);
+        restyle();
+        if (reason === "focus" && !selfFocus) reveal(true);
+        return;
+      }
+      if (reason === "level") { bigPath = null; reveal(false); followKey = ""; setTimeout(follow, 50); }
       if (reason === "comments") { for (const v of views.values()) { const t = v.body.scrollTop; app.renderFile(v.body, v.f.sections.map((s) => s.pid)); v.body.scrollTop = t; } }
       restyle();
       if (reason === "focus" && !selfFocus) { reveal(true); frame(); setTimeout(follow, 350); } // after the smooth scroll settles
@@ -284,6 +382,15 @@ export default {
       }
     });
     let drag = null, moved = false;
+    // The header is the handle: double-click it (or press ⤢) to focus on the file.
+    stage.addEventListener("click", (ev) => {
+      const b = ev.target.closest("[data-max]");
+      if (b) openFocus(b.dataset.max);
+    });
+    stage.addEventListener("dblclick", (ev) => {
+      const h = ev.target.closest(".fvh");
+      if (h && !ev.target.closest(".max")) openFocus(h.parentElement.dataset.file);
+    });
     stage.addEventListener("pointerdown", (ev) => {
       if (ev.target.closest(".fv")) return;
       drag = { x: ev.clientX, y: ev.clientY, p: { ...pan } }; moved = false;
@@ -296,7 +403,9 @@ export default {
       pan = { x: drag.p.x + dx, y: drag.p.y + dy };
       apply();
     };
-    const onUp = () => { drag = null; root.classList.remove("dragging"); };
+    const onUp = () => {
+      drag = null; root.classList.remove("dragging");
+    };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     stage.addEventListener("wheel", (ev) => {
