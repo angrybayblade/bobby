@@ -1,5 +1,5 @@
 import { DONE, api, createApp } from "./core.js";
-import { expandAll, renderNode, renderPage, startComment } from "./code.js";
+import { expandAll, renderFile, renderNode, renderPage, startComment } from "./code.js";
 import * as chrome from "./chrome.js";
 import views from "./views/index.js";
 
@@ -9,6 +9,8 @@ app.claudeReady = graph.generator.tree === "claude";
 app.renderPage = (el, pid) => { app.pageEl = el; renderPage(app, el, pid ?? app.focus); };
 // The focused card's body: comments + code, without the title block the card already shows.
 app.renderNode = (el, pid) => { app.pageEl = el; renderNode(app, el, pid ?? app.focus, { head: false }); };
+// A whole file (sections = placement ids in file order) for file-level views.
+app.renderFile = (el, pids) => renderFile(app, el, pids);
 
 // ---- settings → document
 const FONTS = {
