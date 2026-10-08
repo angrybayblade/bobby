@@ -1,12 +1,13 @@
 #!/usr/bin/env bun
 import { parseArgs } from "node:util";
 import { readFileSync, writeFileSync } from "node:fs";
-import { git, preparePr, reviewComments, run } from "./git.ts";
+import { fetchPr, git, resolvePr, reviewComments, run } from "./git.ts";
 import { parseDiff } from "./diff.ts";
-import { analyze, heuristicTree } from "./analyze.ts";
+import { analyze, heuristicTree, type Analysis } from "./analyze.ts";
 import { claudeTree } from "./llm.ts";
-import { buildGraph, GRAPH_SCHEMA, type ReviewGraph } from "./graph.ts";
-import { loadCachedTree, loadState, saveCachedTree } from "./state.ts";
+import { buildGraph, GRAPH_SCHEMA, VERSION, type ReviewGraph } from "./graph.ts";
+import { loadCachedGraphs, loadCachedTree, loadState, saveCachedGraphs, saveCachedTree } from "./state.ts";
+import type { FileDiff, PrInfo } from "./types.ts";
 import { startServer, type Session } from "./server.ts";
 
 const { values, positionals } = parseArgs({
@@ -32,7 +33,7 @@ const USAGE = `prfocus: review a PR one focused page at a time
   --repo <dir>   local clone (default: cwd, else auto-clone to ~/.prfocus/repos)
   --port <n>     UI port (default 4173)
   --no-llm       static analysis only; skip Claude
-  --refresh      ignore the cached Claude tree for this commit
+  --refresh      rebuild everything for this commit (ignore cached graphs and Claude tree)
   --no-open      don't open the browser`;
 
 const [cmd, arg] = ["extract", "open"].includes(positionals[0]) ? [positionals[0], positionals[1]] : ["review", positionals[0]];
@@ -48,28 +49,53 @@ if (cmd === "open") {
   await serve({ cwd: values.repo ?? null, staticGraph: graph, state: loadState({ ...graph.pr }), llm: "off" });
 } else {
   const t0 = Date.now();
+  const secs = () => `${((Date.now() - t0) / 1000).toFixed(1)}s`;
   log("▸ fetching PR…");
-  const { pr, cwd } = await preparePr(arg, values.repo);
-  log(`  #${pr.number} ${pr.title}`);
+  const resolved = await resolvePr(arg, values.repo);
+  const { cwd } = resolved;
+  const key = { owner: resolved.owner, repo: resolved.repo, number: resolved.meta.number, headSha: resolved.meta.headRefOid };
+  log(`  #${key.number} ${resolved.meta.title}`);
 
-  log("▸ diffing & tracing references…");
-  const files = parseDiff(await git(cwd, ["diff", "--no-color", "--no-ext-diff", "-M", "-U3", pr.baseSha, pr.headSha]));
-  const analysis = await analyze(cwd, pr, files);
-  const hunks = files.reduce((n, f) => n + f.hunks.length, 0);
-  log(`  ${files.length} files · ${hunks} hunks · ${analysis.units.length} units · ${analysis.refs.length} untouched refs (${((Date.now() - t0) / 1000).toFixed(1)}s)`);
-
-  const discussion = await reviewComments(pr);
+  // Same head commit as last time → reuse the built graphs. Comments still change, so they're always re-read.
+  const hit = values.refresh ? null : loadCachedGraphs(key);
+  const cached = hit?.static.generator.version === VERSION ? hit : null;
+  const discussion = await reviewComments(key);
   if (discussion.length) log(`  ${discussion.length} existing review comment(s)`);
 
-  const cached = values.refresh ? null : loadCachedTree(pr);
-  const staticGraph = await buildGraph(cwd, pr, files, analysis, heuristicTree(pr, analysis, files), discussion);
-  const claudeGraph = cached?.source === "claude" ? await buildGraph(cwd, pr, files, analysis, cached, discussion) : undefined;
+  // Fetch + diff + analysis, only when something needs it (a new head, or Claude's tree still missing).
+  let built: Promise<{ pr: PrInfo; files: FileDiff[]; analysis: Analysis }> | null = null;
+  const extract = () => (built ??= (async () => {
+    const pr = await fetchPr(resolved);
+    log("▸ diffing & tracing references…");
+    const files = parseDiff(await git(cwd, ["diff", "--no-color", "--no-ext-diff", "-M", "-U3", pr.baseSha, pr.headSha]));
+    const analysis = await analyze(cwd, pr, files);
+    const hunks = files.reduce((n, f) => n + f.hunks.length, 0);
+    log(`  ${files.length} files · ${hunks} hunks · ${analysis.units.length} units · ${analysis.refs.length} untouched refs (${secs()})`);
+    return { pr, files, analysis };
+  })());
+
+  let staticGraph: ReviewGraph, claudeGraph: ReviewGraph | undefined;
+  if (cached) {
+    log(`  ✓ unchanged since last time (${key.headSha.slice(0, 7)}), using cached graphs (${secs()})`);
+    staticGraph = { ...cached.static, discussion };
+    claudeGraph = cached.claude && { ...cached.claude, discussion };
+  } else {
+    const { pr, files, analysis } = await extract();
+    staticGraph = await buildGraph(cwd, pr, files, analysis, heuristicTree(pr, analysis, files), discussion);
+    const tree = values.refresh ? null : loadCachedTree(pr);
+    claudeGraph = tree?.source === "claude" ? await buildGraph(cwd, pr, files, analysis, tree, discussion) : undefined;
+    saveCachedGraphs(key, { static: staticGraph, claude: claudeGraph });
+  }
+  const pr: PrInfo = { ...staticGraph.pr };
   const wantLlm = !values["no-llm"] && !claudeGraph;
 
   const claude = async () => {
+    const { pr, files, analysis } = await extract();
     const tree = await claudeTree(pr, analysis, files);
     saveCachedTree(pr, tree);
-    return buildGraph(cwd, pr, files, analysis, tree, discussion);
+    const g = await buildGraph(cwd, pr, files, analysis, tree, discussion);
+    saveCachedGraphs(key, { static: staticGraph, claude: g });
+    return g;
   };
 
   if (cmd === "extract") {

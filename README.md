@@ -24,7 +24,7 @@ Requirements: `gh` (logged in), `git`, `bun`, and the `claude` CLI for the smart
 |---|---|
 | `--repo <dir>` | Local clone to use. Default: the current directory, otherwise an auto-clone into `~/.prfocus/repos`. |
 | `--no-llm` | Static-analysis tree only. |
-| `--refresh` | Rebuild the tree even if one is cached for this commit. |
+| `--refresh` | Rebuild everything for this commit, ignoring the cached graphs and Claude tree. |
 | `--port <n>` | UI port (default 4173). |
 
 ## Commands
@@ -74,6 +74,7 @@ Keys: `j/k` step · `J/K` core · `a` looks good → next · `f` flag · `n` nex
 
 ## How it works
 
+0. **Cache.** Built graphs are cached per head commit in `~/.prfocus/cache`. Reopening a PR that hasn't been pushed to skips steps 1–5 and only re-reads review comments.
 1. **Fetch.** `refs/pull/N/head` and the base branch are fetched. The diff is computed locally against the merge-base, so GitHub's patch truncation doesn't apply.
 2. **Units.** Hunks are grouped by file and enclosing symbol. Lockfiles, generated files and whitespace-only hunks are moved to a single "low-signal" page.
 3. **Static edges.** `git grep` at the head commit finds:

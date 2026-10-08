@@ -46,8 +46,13 @@ async function remoteFor(cwd: string, owner: string, repo: string): Promise<stri
   return null;
 }
 
-/** Finds (or clones) a local checkout of the PR's repo and fetches base + head commits. */
-export async function preparePr(arg: string, repoDir?: string): Promise<{ pr: PrInfo; cwd: string }> {
+export interface ResolvedPr {
+  cwd: string; remote: string; owner: string; repo: string;
+  meta: { number: number; title: string; body: string; url: string; author?: { login: string }; baseRefName: string; baseRefOid: string; headRefOid: string };
+}
+
+/** Reads the PR's metadata and finds (or clones) a local checkout. Doesn't fetch, so it's cheap enough to run on every launch. */
+export async function resolvePr(arg: string, repoDir?: string): Promise<ResolvedPr> {
   const parsed = parsePrArg(arg);
   let cwd = repoDir ?? process.cwd();
 
@@ -67,7 +72,11 @@ export async function preparePr(arg: string, repoDir?: string): Promise<{ pr: Pr
     remote = (await remoteFor(cwd, owner, repo)) ?? "origin";
   }
   if (!remote) throw new Error(`No remote in ${cwd} points at ${owner}/${repo}`);
+  return { cwd, remote, owner, repo, meta };
+}
 
+/** Fetches base + head commits and pins the diff range. */
+export async function fetchPr({ cwd, remote, owner, repo, meta }: ResolvedPr): Promise<PrInfo> {
   const ns = `refs/prfocus/${meta.number}`;
   await git(cwd, [
     "fetch", "--quiet", "--no-tags", remote,
@@ -80,11 +89,8 @@ export async function preparePr(arg: string, repoDir?: string): Promise<{ pr: Pr
   const baseSha = (await git(cwd, ["merge-base", baseTip, headSha])).trim();
 
   return {
-    cwd,
-    pr: {
-      owner, repo, number: meta.number, title: meta.title, body: meta.body ?? "",
-      url: meta.url, author: meta.author?.login ?? "", baseSha, headSha,
-    },
+    owner, repo, number: meta.number, title: meta.title, body: meta.body ?? "",
+    url: meta.url, author: meta.author?.login ?? "", baseSha, headSha,
   };
 }
 

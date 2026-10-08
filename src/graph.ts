@@ -9,7 +9,7 @@ import type { Band, ChangeTree, DiffLine, FileDiff, PrInfo, TreeNode } from "./t
 import { BANDS } from "./types.ts";
 
 export const GRAPH_SCHEMA = "prfocus.review-graph/v1" as const;
-const VERSION = "0.2.0";
+export const VERSION = "0.2.0"; // bump when extraction output changes: cached graphs from other versions are rebuilt
 const SNIPPET_RADIUS = 10;
 
 export interface ReviewGraph {
