@@ -43,6 +43,8 @@ const CSS = `
 .outline .step b { font: 600 calc(var(--size) * .95) var(--font-code); }
 .outline .step p { grid-column: 2; margin: 0; font: var(--size)/1.6 var(--font-prose); color: var(--muted); max-width: 65ch; }
 .outline .step.done b { color: var(--faint); }
+.outline .step .nbody { grid-column: 2; margin-top: 10px; cursor: auto; min-width: 0; }
+.outline .step .nbody .code { margin-bottom: 10px; }
 .outline .story .bandh { font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--faint); margin: 22px 0 4px 10px; }
 `;
 const MAX_BAND = 5;
@@ -123,7 +125,7 @@ export default {
       return `<div class="story"><div class="eyebrow">Core ${loc.ci + 1} of ${app.graph.cores.length}</div><h1>${esc(c.title)}</h1><p class="lede">${esc(c.summary)}</p>
         ${BANDS.filter((b) => c.bands[b].length).map((b) => `<div class="bandh">${BAND_TEXT[b]}</div>` + c.bands[b].map((pl) => {
           const node = app.nodeOf(pl.id);
-          return `<div class="step ${pl.id === app.focus ? "cur" : ""} ${app.isReviewed(pl.id) ? "done" : ""}" data-open="${pl.id}"><i class="glyph ${b === "core" ? "core" : node.kind}"></i><b>${esc(pl.title)}${app.isReviewed(pl.id) ? " ✓" : ""}${pl.repeatOf ? " ↺" : ""}</b><p>${esc(pl.why)}</p></div>`;
+          return `<div class="step ${pl.id === app.focus ? "cur" : ""} ${app.isReviewed(pl.id) ? "done" : ""}" data-open="${pl.id}"><i class="glyph ${b === "core" ? "core" : node.kind}"></i><b>${esc(pl.title)}${app.isReviewed(pl.id) ? " ✓" : ""}${pl.repeatOf ? " ↺" : ""}</b><p>${esc(pl.why)}</p>${pl.id === app.focus ? `<div class="nbody"></div>` : ""}</div>`;
         }).join("")).join("")}</div>`;
     }
 
@@ -135,17 +137,20 @@ export default {
         if (key !== lastDoc) doc.scrollTop = 0;
       } else {
         app.pageEl = null;
+        const top = doc.scrollTop;
         doc.innerHTML = app.level === 0 || app.focus === DONE || app.focus === LOW ? overviewDoc() : coreDoc();
+        const body = doc.querySelector(".step.cur .nbody"); // only the focused step shows its comments + code
+        if (body) app.renderNode(body, app.focus);
         if (key !== lastDoc) doc.scrollTop = 0;
-        doc.querySelector(".step.cur")?.scrollIntoView({ block: "nearest" });
+        if (reason === "marks" || reason === "comments") doc.scrollTop = top;
+        else doc.querySelector(".step.cur")?.scrollIntoView({ block: "start", behavior: "smooth" });
       }
       lastDoc = key;
-      void reason;
     }
 
     el.addEventListener("click", (ev) => {
       const t = ev.target.closest("[data-go],[data-core],[data-expand],[data-open]");
-      if (!t || ev.target.closest(".page")) return;
+      if (!t || ev.target.closest(".node")) return;
       const ds = t.dataset;
       if (ds.expand) { expanded.add(ds.expand); return update("expand"); }
       if (ds.core) { const first = app.index.walk.find((p) => app.get(p)?.core.id === ds.core && !app.isReviewed(p)) ?? app.index.walk.find((p) => app.get(p)?.core.id === ds.core); return app.setFocus(first, { level: 1 }); }
