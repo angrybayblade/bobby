@@ -26,7 +26,8 @@ PR ─┬─ files ── hunks                        (the raw diff)
     │              └─ placements (node + title + why + risk)
     ├─ edges                                 (placement → placement, within a core)
     ├─ walk                                  (placement ids in review order)
-    └─ lowSignal                             (hunk ids to collapse)
+    ├─ lowSignal                             (hunk ids to collapse)
+    └─ discussion?                           (existing review comments, by path + line + side)
 ```
 
 ### Node vs. placement
@@ -58,6 +59,10 @@ An untouched upstream node can attach to a changed upstream node, and an untouch
 ### Walk
 
 `walk` is the canonical traversal: cores in order, and within each core the bands in the order above, with repeats left out. Views may present it differently, but "next" and "previous" always follow `walk`. That way, switching views never changes what comes next.
+
+### Discussion
+
+`discussion` is optional. It holds inline review comments already on the PR, so a reviewer sees what others said before writing. Each one is anchored like a GitHub review comment: `path`, `line` and `side` (`RIGHT` for the new file, `LEFT` for the old one). Comments whose line no longer exists in the diff are left out. Adding it didn't change the version: v1 consumers that don't know the field ignore it.
 
 ## Stability rules (for review state)
 

@@ -40,7 +40,8 @@
     "cores": { "type": "array", "items": { "$ref": "#/$defs/core" }, "description": "Ordered: foundational changes first." },
     "edges": { "type": "array", "items": { "$ref": "#/$defs/edge" } },
     "walk": { "type": "array", "items": { "type": "string" }, "description": "Placement ids in review order; repeats excluded." },
-    "lowSignal": { "type": "array", "items": { "type": "string" }, "description": "Hunk ids collapsed by default (lockfiles, generated, whitespace)." }
+    "lowSignal": { "type": "array", "items": { "type": "string" }, "description": "Hunk ids collapsed by default (lockfiles, generated, whitespace)." },
+    "discussion": { "type": "array", "items": { "$ref": "#/$defs/discussion" }, "description": "Optional. Existing inline review comments, anchored to current diff lines." }
   },
   "$defs": {
     "band": { "enum": ["upUnchanged", "upChanged", "core", "downChanged", "downUnchanged"] },
@@ -159,6 +160,21 @@
         "from": { "type": "string", "description": "Upstream-side placement id." },
         "to": { "type": "string", "description": "Downstream-side placement id." },
         "label": { "type": "string" }
+      }
+    },
+    "discussion": {
+      "type": "object",
+      "required": ["id", "path", "line", "side", "author", "body", "url", "createdAt"],
+      "properties": {
+        "id": { "type": "string" },
+        "path": { "type": "string" },
+        "line": { "type": "integer", "description": "Line in the new file (RIGHT) or old file (LEFT)." },
+        "side": { "enum": ["LEFT", "RIGHT"] },
+        "author": { "type": "string" },
+        "body": { "type": "string", "description": "Markdown, as written." },
+        "url": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "replyTo": { "type": "string", "description": "Id of the comment this replies to." }
       }
     }
   }
