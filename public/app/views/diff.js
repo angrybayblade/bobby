@@ -1,5 +1,7 @@
 // Diff: one diff viewer per file on a canvas, columns by band (relies on ← core → affects).
 // Scrolling a viewer moves your focus to the section you're reading; j/k scrolls the viewer for you.
+// Only what you're reading gets edges: sections visible in the active viewer connect to related
+// sections in other files, and those viewers scroll so the other end is in view.
 import { BANDS, esc } from "../core.js";
 import { injectCss } from "./flow.js";
 
@@ -10,17 +12,17 @@ const CSS = `
 .dv .world { position: absolute; left: 0; top: 0; transform-origin: 0 0; transition: transform var(--dur) var(--ease); }
 .dv.dragging .world, .dv .world.still { transition: none; }
 .dv .bhead { position: absolute; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
-.dv .fv { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); transition: transform var(--dur) var(--ease), opacity var(--dur); }
+.dv .fv { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); z-index: 2; transition: transform var(--dur) var(--ease), opacity var(--dur); }
 .dv.dragging .fv, .dv .fv.held { transition: none; }
 .dv .fv.context { border-style: dashed; }
-.dv .fv.active { border: 2px solid var(--signal); box-shadow: 0 0 0 6px var(--signal-soft), var(--shadow); z-index: 2; }
+.dv .fv.active { border: 2px solid var(--signal); box-shadow: 0 0 0 6px var(--signal-soft), var(--shadow); z-index: 3; }
 .dv .fvh { display: flex; gap: 10px; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--line-soft); font: 12.5px var(--font-code); color: var(--muted); cursor: grab; user-select: none; background: var(--raised); }
 .dv .fvh b { color: var(--text); font-weight: 600; }
 .dv .fvh .p { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dv .fvh .st { white-space: nowrap; }
 .dv .fvh .max { width: 26px; height: 22px; border-radius: 6px; color: var(--muted); font-size: 14px; line-height: 1; }
 .dv .fvh .max:hover { background: var(--bg); color: var(--text); }
-.dv .fvb { overflow: auto; overscroll-behavior: contain; cursor: auto; flex: 1; min-height: 0; }
+.dv .fvb { position: relative; overflow: auto; overscroll-behavior: contain; cursor: auto; flex: 1; min-height: 0; }
 .dv .sec { padding: 10px 12px 2px; border-bottom: 1px solid var(--line-soft); }
 .dv .sec:last-child { border-bottom: 0; }
 .dv .sec.cur { box-shadow: inset 3px 0 0 var(--signal); }
@@ -29,6 +31,11 @@ const CSS = `
 .dv .sec.done .sech span:first-of-type { color: var(--faint); }
 .dv .sec .code { margin-bottom: 10px; }
 .dv .sec .notes { margin-bottom: 10px; }
+.dv .sec.rel { box-shadow: inset 3px 0 0 var(--muted); }
+.dv svg.edges { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; z-index: 1; } /* under the viewers: edges live in the gaps */
+.dv svg.edges path { fill: none; stroke: var(--muted); stroke-width: 2; }
+.dv svg.edges marker path { fill: var(--muted); stroke: none; }
+.dv .elbl { position: absolute; z-index: 4; font: 11.5px var(--font-ui); color: var(--muted); background: var(--bg); border: 1px solid var(--line-soft); padding: 1px 7px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, -50%); pointer-events: none; }
 .dv .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--faint); }
 `;
 
@@ -65,7 +72,19 @@ export default {
       }
       for (const f of files.values()) f.sections.sort((a, b) => a.line - b.line);
       const canon = (pid) => first.get(app.get(pid)?.pl.node);
-      return { files: [...files.values()], fileOf, canon };
+      // Relations between sections, across cores, deduped. dir is from the section's point of view.
+      const rel = new Map();
+      const add = (a, b, dir, label) => {
+        const list = rel.get(a) ?? rel.set(a, []).get(a);
+        if (!list.some((r) => r.pid === b && r.dir === dir)) list.push({ pid: b, dir, label });
+      };
+      for (const e of app.graph.edges) {
+        const a = canon(e.from), b = canon(e.to);
+        if (!a || !b || a === b) continue;
+        add(a, b, "down", e.label);
+        add(b, a, "up", e.label);
+      }
+      return { files: [...files.values()], fileOf, canon, rel };
     }
     const activeFile = () => M?.fileOf.get(M.canon(app.focus) ?? "");
 
@@ -83,7 +102,7 @@ export default {
     // ---- build: render every viewer, measure, then lay out in band columns.
     function build() {
       const keep = new Map([...views].map(([p, v]) => [p, v.body.scrollTop]));
-      world.innerHTML = "";
+      world.innerHTML = `<svg class="edges"><defs><marker id="dv-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs><g></g></svg>`;
       views.clear();
       M = model();
       if (!M.files.length) { world.innerHTML = `<div class="empty">Nothing to show</div>`; return; }
@@ -154,6 +173,74 @@ export default {
       if (pick && pick.dataset.pid !== M.canon(app.focus)) { selfFocus = true; app.setFocus(pick.dataset.pid); selfFocus = false; }
     }
 
+    // ---- edges: only from the sections visible in the active viewer
+    const secEl = (v, pid) => v.body.querySelector(`.sec[data-pid="${pid}"]`);
+    function visible(v) {
+      const top = v.body.scrollTop, bot = top + v.body.clientHeight;
+      const seen = (s) => Math.min(bot, s.offsetTop + s.offsetHeight) - Math.max(top, s.offsetTop) >= 28; // a sliver at the edge doesn't count
+      return [...v.body.querySelectorAll(".sec")].filter(seen).map((s) => s.dataset.pid);
+    }
+    // World y of a section's heading, pinned to the viewer's edge when scrolled out of view.
+    function anchorY(v, pid) {
+      const s = secEl(v, pid);
+      const y = v.body.offsetTop + s.offsetTop - v.body.scrollTop + Math.min(16, s.offsetHeight / 2);
+      return v.y + Math.max(v.body.offsetTop + 10, Math.min(v.h - 10, y));
+    }
+    function links() {
+      const act = activeFile(), v = act && views.get(act.path);
+      if (!v || app.level === 2) return [];
+      return visible(v).flatMap((pid) => (M.rel.get(pid) ?? []).map((r) => ({ from: pid, ...r, to: views.get(M.fileOf.get(r.pid)?.path) })))
+        .filter((l, i, all) => l.to // same-file relations loop out of the viewer's right edge
+          && !(l.dir === "up" && all.some((m) => m.dir === "down" && m.from === l.pid && m.pid === l.from))); // both ends visible: draw once
+    }
+    function draw() {
+      const svg = world.querySelector("svg.edges g");
+      if (!svg) return;
+      world.querySelectorAll(".elbl").forEach((n) => n.remove());
+      const act = activeFile(), v = act && views.get(act.path);
+      const ls = links();
+      const relSet = new Set(ls.map((l) => l.pid));
+      for (const s of world.querySelectorAll(".sec")) s.classList.toggle("rel", relSet.has(s.dataset.pid));
+      svg.innerHTML = ls.map((l) => {
+        const o = l.to, y1 = anchorY(v, l.from), y2 = anchorY(o, l.pid);
+        let x1, x2, d;
+        if (Math.abs(o.x - v.x) < W / 2) { // same column: loop out to the right
+          x1 = v.x + W; x2 = o.x + W;
+          const bx = Math.max(x1, x2) + 70;
+          d = `M${x1},${y1} C${bx},${y1} ${bx},${y2} ${x2},${y2}`;
+        } else {
+          [x1, x2] = o.x > v.x ? [v.x + W, o.x] : [v.x, o.x + W];
+          const mx = (x1 + x2) / 2;
+          d = `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`;
+        }
+        if (l.label) {
+          const n = document.createElement("div");
+          n.className = "elbl"; n.textContent = l.label;
+          n.style.left = `${(x1 + x2) / 2 + (Math.abs(o.x - v.x) < W / 2 ? 52 : 0)}px`; n.style.top = `${(y1 + y2) / 2}px`;
+          world.appendChild(n);
+        }
+        // Arrows point downstream: into the other file when it's affected, into yours when it's relied on.
+        return `<path d="${d}" ${l.dir === "down" ? `marker-end="url(#dv-arrow)"` : `marker-start="url(#dv-arrow)"`}/>`;
+      }).join("");
+    }
+    // Bring the other end of every edge into view in its own viewer.
+    let followKey = "";
+    function follow() {
+      const ls = links();
+      const key = ls.map((l) => l.pid).join(",");
+      if (key === followKey) return;
+      followKey = key;
+      const done = new Set();
+      for (const l of ls) {
+        if (done.has(l.to) || l.to.f === activeFile()) continue; // never scroll the file you're reading
+        done.add(l.to);
+        if (visible(l.to).includes(l.pid)) continue;
+        l.to.body.scrollTo({ top: secEl(l.to, l.pid).offsetTop - 6, behavior: "smooth" });
+      }
+    }
+    let raf = 0;
+    const redraw = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(draw); };
+
     // ---- camera
     function bounds(list) {
       const xs = list.flatMap((v) => [v.x, v.x + W]), ys = list.flatMap((v) => [v.y, v.y + v.h]);
@@ -174,18 +261,19 @@ export default {
     function apply() { world.style.transform = `translate(${cam.tx + pan.x}px, ${cam.ty + pan.y}px) scale(${cam.s})`; }
 
     function update(reason) {
-      if (reason === "mount" || reason === "graph" || reason === "settings") { build(); restyle(); reveal(false); return void requestAnimationFrame(frame); }
+      if (reason === "mount" || reason === "graph" || reason === "settings") { build(); restyle(); reveal(false); followKey = ""; follow(); redraw(); return void requestAnimationFrame(frame); }
       if (reason === "comments") { for (const v of views.values()) { const t = v.body.scrollTop; app.renderFile(v.body, v.f.sections.map((s) => s.pid)); v.body.scrollTop = t; } }
       restyle();
-      if (reason === "focus" && !selfFocus) { reveal(true); frame(); }
-      if (reason === "level") frame();
-      if (reason === "resize") frame();
+      if (reason === "focus" && !selfFocus) { reveal(true); frame(); setTimeout(follow, 350); } // after the smooth scroll settles
+      if (reason === "level" || reason === "resize") frame();
+      redraw();
     }
 
     // ---- interaction: scroll inside a viewer reads focus; drag or wheel on the background pans.
     stage.addEventListener("scroll", (ev) => {
       const v = views.get(ev.target.closest?.(".fv")?.dataset.file);
-      if (v && v.f === activeFile()) { clearTimeout(v._t); v._t = setTimeout(() => readFocus(v), 90); }
+      redraw();
+      if (v && v.f === activeFile()) { clearTimeout(v._t); v._t = setTimeout(() => { readFocus(v); follow(); }, 90); }
     }, true);
     stage.addEventListener("pointerdown", (ev) => {
       const fv = ev.target.closest(".fv");
