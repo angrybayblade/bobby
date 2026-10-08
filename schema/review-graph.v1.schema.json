@@ -1,0 +1,165 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://prfocus.dev/schema/review-graph.v1.schema.json",
+  "title": "prfocus review-graph v1",
+  "description": "A pull request decomposed into core changes, each surrounded by the code it relies on and the code it affects. Produced by extractors, consumed by views.",
+  "type": "object",
+  "required": ["schema", "generatedAt", "generator", "pr", "intent", "files", "hunks", "nodes", "cores", "edges", "walk", "lowSignal"],
+  "properties": {
+    "schema": { "const": "prfocus.review-graph/v1" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "generator": {
+      "type": "object",
+      "required": ["name", "version", "tree"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "tree": { "enum": ["static", "claude"], "description": "How cores and placements were chosen." }
+      }
+    },
+    "pr": {
+      "type": "object",
+      "required": ["provider", "owner", "repo", "number", "url", "title", "body", "author", "baseSha", "headSha"],
+      "properties": {
+        "provider": { "const": "github" },
+        "owner": { "type": "string" },
+        "repo": { "type": "string" },
+        "number": { "type": "integer" },
+        "url": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "author": { "type": "string" },
+        "baseSha": { "type": "string", "description": "Merge-base the diff was computed against." },
+        "headSha": { "type": "string" }
+      }
+    },
+    "intent": { "type": "string", "description": "One sentence: what the PR does." },
+    "files": { "type": "array", "items": { "$ref": "#/$defs/file" } },
+    "hunks": { "type": "array", "items": { "$ref": "#/$defs/hunk" } },
+    "nodes": { "type": "array", "items": { "$ref": "#/$defs/node" } },
+    "cores": { "type": "array", "items": { "$ref": "#/$defs/core" }, "description": "Ordered: foundational changes first." },
+    "edges": { "type": "array", "items": { "$ref": "#/$defs/edge" } },
+    "walk": { "type": "array", "items": { "type": "string" }, "description": "Placement ids in review order; repeats excluded." },
+    "lowSignal": { "type": "array", "items": { "type": "string" }, "description": "Hunk ids collapsed by default (lockfiles, generated, whitespace)." }
+  },
+  "$defs": {
+    "band": { "enum": ["upUnchanged", "upChanged", "core", "downChanged", "downUnchanged"] },
+    "file": {
+      "type": "object",
+      "required": ["path", "oldPath", "status", "binary", "additions", "deletions"],
+      "properties": {
+        "path": { "type": "string" },
+        "oldPath": { "type": "string" },
+        "status": { "enum": ["added", "deleted", "modified", "renamed"] },
+        "binary": { "type": "boolean" },
+        "additions": { "type": "integer" },
+        "deletions": { "type": "integer" },
+        "lowSignal": { "type": "string" }
+      }
+    },
+    "hunk": {
+      "type": "object",
+      "required": ["id", "file", "header", "context", "oldStart", "newStart", "hash", "lines"],
+      "properties": {
+        "id": { "type": "string" },
+        "file": { "type": "string" },
+        "header": { "type": "string" },
+        "context": { "type": "string", "description": "Enclosing function/class as reported by git." },
+        "oldStart": { "type": "integer" },
+        "newStart": { "type": "integer" },
+        "hash": { "type": "string", "description": "Content hash; stable across pushes when the hunk is unchanged. Review marks key on this." },
+        "lines": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["t", "o", "n", "s"],
+            "properties": {
+              "t": { "enum": [" ", "+", "-"] },
+              "o": { "type": ["integer", "null"] },
+              "n": { "type": ["integer", "null"] },
+              "s": { "type": "string" }
+            }
+          }
+        },
+        "lowSignal": { "type": "string" }
+      }
+    },
+    "node": {
+      "oneOf": [
+        {
+          "type": "object",
+          "description": "Code changed by the PR: one or more hunks touching the same symbol.",
+          "required": ["id", "kind", "name", "file", "symbols", "hunkIds"],
+          "properties": {
+            "id": { "type": "string", "pattern": "^chg:" },
+            "kind": { "const": "change" },
+            "name": { "type": "string" },
+            "file": { "type": "string" },
+            "symbols": { "type": "array", "items": { "type": "string" } },
+            "hunkIds": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        {
+          "type": "object",
+          "description": "Code the PR does not touch but that matters to a change.",
+          "required": ["id", "kind", "name", "symbol", "location", "snippet"],
+          "properties": {
+            "id": { "type": "string", "pattern": "^ctx:" },
+            "kind": { "const": "context" },
+            "name": { "type": "string" },
+            "symbol": { "type": "string" },
+            "location": {
+              "type": "object",
+              "required": ["path", "line"],
+              "properties": { "path": { "type": "string" }, "line": { "type": "integer" } }
+            },
+            "snippet": {
+              "type": "object",
+              "required": ["start", "lines"],
+              "properties": { "start": { "type": "integer" }, "lines": { "type": "array", "items": { "type": "string" } } }
+            }
+          }
+        }
+      ]
+    },
+    "placement": {
+      "type": "object",
+      "description": "A node placed in a core's band, with the reason it is there.",
+      "required": ["id", "node", "band", "title", "why"],
+      "properties": {
+        "id": { "type": "string" },
+        "node": { "type": "string" },
+        "band": { "$ref": "#/$defs/band" },
+        "title": { "type": "string" },
+        "why": { "type": "string" },
+        "risk": { "enum": ["high", "med", "low"] },
+        "repeatOf": { "type": "string", "description": "Placement id where this node is shown in full." }
+      }
+    },
+    "core": {
+      "type": "object",
+      "required": ["id", "title", "summary", "bands"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "summary": { "type": "string" },
+        "bands": {
+          "type": "object",
+          "required": ["upUnchanged", "upChanged", "core", "downChanged", "downUnchanged"],
+          "additionalProperties": false,
+          "patternProperties": { "^(upUnchanged|upChanged|core|downChanged|downUnchanged)$": { "type": "array", "items": { "$ref": "#/$defs/placement" } } }
+        }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "required": ["core", "from", "to"],
+      "properties": {
+        "core": { "type": "string" },
+        "from": { "type": "string", "description": "Upstream-side placement id." },
+        "to": { "type": "string", "description": "Downstream-side placement id." },
+        "label": { "type": "string" }
+      }
+    }
+  }
+}
