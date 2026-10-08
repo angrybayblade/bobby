@@ -24,6 +24,12 @@ const CSS = `
 .flow .card.focus { border: 2px solid var(--signal); background: var(--surface); box-shadow: 0 0 0 6px var(--signal-soft), var(--shadow); padding: 12px 16px; z-index: 2; }
 .flow .card.focus .t { font-size: 15px; font-weight: 600; }
 .flow .card.focus .w { font-size: 14px; color: var(--text); -webkit-line-clamp: 4; }
+.flow .card.withbody { cursor: default; z-index: 3; transition: transform var(--dur) var(--ease), opacity var(--dur); } /* no width/height easing: it is measured */
+.flow .card.withbody .t { cursor: zoom-in; }
+.flow .card.withbody .w { display: block; }
+.flow .card .nbody { margin-top: 8px; max-height: 560px; overflow: auto; overscroll-behavior: contain; cursor: auto; }
+.flow .card .nbody .code { margin-bottom: 10px; }
+.flow .card .nbody .notes { margin-bottom: 10px; }
 .flow .card.done { opacity: .5; }
 .flow .card.done.focus { opacity: 1; }
 .flow .card.rep { opacity: .45; border-style: dotted; }
@@ -43,6 +49,7 @@ const CSS = `
 
 const PITCH = 320, PAD = 40, GAP_Y = 12, CORE_GAP = 80, HEAD = 46, MAX_BAND = 4;
 const SIZES = { focus: [290, 172], near: [250, 100], far: [230, 38], agg: [230, 34] };
+const BODY_W = 720; // focused card when it shows its code (core level only)
 const BAND_HEAD = { upUnchanged: "relies on · untouched", upChanged: "relies on · changed", core: "core change", downChanged: "affects · changed", downUnchanged: "affects · untouched" };
 
 export default {
@@ -57,16 +64,22 @@ export default {
     const els = new Map(); // key → element (reused so moves animate)
     const expanded = new Set(); // "coreId:band" opened by the user
     let pan = { x: 0, y: 0 }, lastPagePid = null;
+    let bodyH = 420; // last measured height of the focused card with its code
+    const withBody = () => (app.level === 1 && app.get(app.focus) ? app.focus : null);
 
     function layout() {
       const focusLoc = app.get(app.focus);
+      const body = withBody();
       const items = [], heads = [], labels = [];
-      let y = 0;
+      let y = 0, width = 5 * PITCH;
       const lowY = () => y;
       app.graph.cores.forEach((c) => {
         const current = focusLoc?.core === c && app.level > 0;
         const nb = current ? app.neighbours(app.focus) : { up: [], down: [] };
         const near = new Set([...nb.up.map((e) => e.from), ...nb.down.map((e) => e.to)]);
+        // The column holding a code-bearing focus card widens; the others keep their pitch.
+        const colW = BANDS.map((b) => (current && body && focusLoc.pl.band === b ? BODY_W + 70 : PITCH));
+        const colX = colW.map((_, i) => colW.slice(0, i).reduce((a, w) => a + w, 0));
         const cols = BANDS.map((b) => {
           const list = c.bands[b];
           const keep = (pl) => !current || pl.id === app.focus || near.has(pl.id);
@@ -80,27 +93,30 @@ export default {
           }
           const cards = shown.map((pl) => {
             const size = !current ? "far" : pl.id === app.focus ? "focus" : near.has(pl.id) ? "near" : "far";
+            if (size === "focus" && body) return { kind: "pl", pl, size, body: true, w: BODY_W, h: bodyH, current };
             return { kind: "pl", pl, size, w: SIZES[size][0], h: SIZES[size][1], current };
           });
           if (folded) cards.push({ kind: "agg", key: `${c.id}:${b}`, n: folded, size: "agg", w: SIZES.agg[0], h: SIZES.agg[1], current });
           return cards;
         });
         const colH = cols.map((cs) => cs.reduce((s, x) => s + x.h, 0) + Math.max(0, cs.length - 1) * GAP_Y);
-        const bodyH = Math.max(...colH, 40);
+        const colsH = Math.max(...colH, 40);
         heads.push({ c, x: 0, y, current });
-        if (current) BANDS.forEach((b, i) => heads.push({ band: b, x: i * PITCH, y: y + 26, current: true }));
+        if (current) BANDS.forEach((b, i) => heads.push({ band: b, x: colX[i], y: y + 26, current: true }));
         const top = y + HEAD + (current ? 18 : 0);
         cols.forEach((cs, i) => {
-          let cy = top + (bodyH - colH[i]) / 2;
+          let cy = top + (colsH - colH[i]) / 2;
           for (const it of cs) {
-            it.x = i * PITCH + (PITCH - 50 - it.w) / 2 + (i === 2 ? 0 : i < 2 ? 20 : -20);
+            it.x = colX[i] + (colW[i] - 50 - it.w) / 2 + (i === 2 ? 0 : i < 2 ? 20 : -20);
             it.y = cy;
             cy += it.h + GAP_Y;
             items.push(it);
           }
         });
-        c._box = { x: -20, y, w: 5 * PITCH, h: bodyH + HEAD + (current ? 18 : 0) + 10 };
-        y = top + bodyH + CORE_GAP;
+        const coreW = colW.reduce((a, w) => a + w, 0);
+        width = Math.max(width, coreW);
+        c._box = { x: -20, y, w: coreW, h: colsH + HEAD + (current ? 18 : 0) + 10 };
+        y = top + colsH + CORE_GAP;
       });
       if (app.graph.lowSignal.length) {
         const sel = app.focus === LOW;
@@ -118,7 +134,7 @@ export default {
         edges.push({ e, a, b, hot, dim: !a.current, rep: !!(app.get(e.from).pl.repeatOf || app.get(e.to).pl.repeatOf) });
         if (hot && e.label) labels.push({ key: `${e.from}>${e.to}`, text: e.label, x: (a.x + a.w + b.x) / 2, y: (a.y + a.h / 2 + b.y + b.h / 2) / 2 });
       }
-      return { items, heads, edges, labels, height: y, width: 5 * PITCH };
+      return { items, heads, edges, labels, height: y, width };
     }
 
     function card(it) {
@@ -135,8 +151,9 @@ export default {
         else { const { a, d } = app.stat(pl.id); meta = `${node.file} · +${a} −${d}`; }
       }
       const html = `<div class="t"><i class="glyph ${glyph}"></i><span>${esc(pl.title)}</span>${status}</div>`
-        + (size === "focus" || size === "near" ? `<div class="w">${esc(pl.why)}</div><div class="m">${esc(meta)}</div>` : "");
-      const cls = [node.kind, pl.band === "core" ? "core" : "", size === "focus" ? "focus" : "", done ? "done" : "", pl.repeatOf ? "rep" : "", !current && app.level > 0 ? "other" : ""].join(" ");
+        + (size === "focus" || size === "near" ? `<div class="w">${esc(pl.why)}</div>${it.body ? "" : `<div class="m">${esc(meta)}</div>`}` : "")
+        + (it.body ? `<div class="nbody"></div>` : "");
+      const cls = [it.body ? "withbody" : "", node.kind, pl.band === "core" ? "core" : "", size === "focus" ? "focus" : "", done ? "done" : "", pl.repeatOf ? "rep" : "", !current && app.level > 0 ? "other" : ""].join(" ");
       return { cls, html, data: { go: pl.id }, title: pl.why };
     }
 
@@ -146,7 +163,7 @@ export default {
       n.className = cls;
       if (n._html !== html) { n.innerHTML = html; n._html = html; }
       n.style.transform = `translate(${x}px, ${y}px)`;
-      if (w != null) { n.style.width = `${w}px`; n.style.height = `${h}px`; }
+      if (w != null) { n.style.width = `${w}px`; n.style.height = h == null ? "auto" : `${h}px`; }
       for (const k of Object.keys(n.dataset)) delete n.dataset[k];
       Object.assign(n.dataset, data);
       n.title = title;
@@ -160,20 +177,24 @@ export default {
       const loc = app.get(app.focus);
       const top = app.level === 0 ? intentEl.offsetHeight + 30 : 0;
       if (app.level === 0 || !loc) box = { x: -20, y: -10, w: L.width, h: L.height };
-      else if (app.level === 1) box = loc.core._box;
+      else if (app.level === 1 && !withBody()) box = loc.core._box;
       else {
-        // Page mode: the focus and its neighbours, as a rail above the code.
+        // Page mode (a rail above the code), or a code-bearing focus card: frame the focus and its neighbours.
         const nb = app.neighbours(app.focus);
         const ids = new Set([app.focus, ...nb.up.map((e) => e.from), ...nb.down.map((e) => e.to)]);
         const its = L.items.filter((i) => i.kind === "pl" && ids.has(i.pl.id));
         const xs = its.flatMap((i) => [i.x, i.x + i.w]), ys = its.flatMap((i) => [i.y, i.y + i.h]);
         box = its.length ? { x: Math.min(...xs) - 20, y: Math.min(...ys) - 16, w: Math.max(...xs) - Math.min(...xs) + 40, h: Math.max(...ys) - Math.min(...ys) + 32 } : loc.core._box;
-        maxScale = 0.9; minScale = 0.3;
+        if (app.level === 2) { maxScale = 0.9; minScale = 0.3; } else { maxScale = 1; minScale = 0.6; }
       }
       let s = Math.min(maxScale, (sw - PAD * 2) / box.w, (sh - PAD * 2) / box.h);
       s = Math.max(minScale, s);
       if (top) s = Math.max(minScale, Math.min(s, (sh - top - PAD) / box.h));
       let tx = sw / 2 - (box.x + box.w / 2) * s, ty = top + (sh - top) / 2 - (box.y + box.h / 2) * s;
+      if (app.level === 1 && focusItem?.body) {
+        if (box.w * s > sw - PAD * 2) tx = sw / 2 - (focusItem.x + focusItem.w / 2) * s; // too wide: the code wins the centre
+        if (box.h * s > sh - PAD * 2) ty = PAD - focusItem.y * s;
+      }
       if (app.level === 0 && box.h * s > sh - top - PAD) {
         ty = top - box.y * s; // too tall to fit: start under the intent, keep the current core in view
         const cur = loc?.core._box ?? (focusItem && { y: focusItem.y, h: focusItem.h });
@@ -187,25 +208,20 @@ export default {
       const paged = app.level === 2;
       root.classList.toggle("paged", paged);
       pane.hidden = !paged;
-      const L = layout();
-      for (const n of els.values()) n._seen = false;
+      let L = layout();
 
       intentEl.innerHTML = `<small>What this PR does</small>${esc(app.graph.intent)}`;
       intentEl.style.opacity = app.level === 0 ? 1 : 0;
 
-      for (const h of L.heads) {
-        if (h.band) { place(`bh:${h.band}`, "bhead", BAND_HEAD[h.band], h.x + 20, h.y, null, null); continue; }
-        const items = app.index.walk.filter((p) => app.get(p)?.core === h.c);
-        const done = items.filter((p) => app.isReviewed(p)).length;
-        place(`ch:${h.c.id}`, `chead ${app.level > 0 && !h.current ? "other" : ""}`, `${app.graph.cores.indexOf(h.c) + 1} · ${esc(h.c.title)} <small>${done}/${items.length}${h.current || app.level === 0 ? ` · ${esc(h.c.summary)}` : ""}</small>`, h.x, h.y, null, null, { core: h.c.id });
-      }
-      for (const it of L.items) {
-        const c = card(it);
-        const key = it.kind === "pl" ? it.pl.id : it.kind === "agg" ? `agg:${it.key}` : "low";
-        place(key, `card ${c.cls}`, c.html, it.x, it.y, it.w, it.h, c.data, c.title);
-      }
-      for (const l of L.labels) place(`lbl:${l.key}`, "lbl", esc(l.text), l.x - 40, l.y - 11, null, null);
-      for (const [k, n] of els) if (!n._seen) { n.remove(); els.delete(k); }
+      placeAll(L);
+      // The code-bearing card sizes itself; re-lay out around its real height in the same frame.
+      const body = L.items.find((i) => i.body);
+      if (body) {
+        const n = els.get(body.pl.id);
+        if (reason !== "measure") app.renderNode(n.querySelector(".nbody"), app.focus);
+        observe(n);
+        if (Math.abs(n.offsetHeight - bodyH) > 2) { bodyH = n.offsetHeight; L = layout(); placeAll(L); }
+      } else observe(null);
 
       svg.setAttribute("width", L.width); svg.setAttribute("height", L.height);
       svg.innerHTML = L.edges.map(({ a, b, hot, dim, rep }) => {
@@ -226,9 +242,36 @@ export default {
       if (!paged) lastPagePid = null;
     }
 
+    // Composer, folding and context expansion change the card's height without an app event.
+    let watched = null;
+    const ro = new ResizeObserver(() => { if (watched && Math.abs(watched.offsetHeight - bodyH) > 2) update("measure"); });
+    function observe(n) {
+      if (n === watched) return;
+      if (watched) ro.unobserve(watched);
+      watched = n;
+      if (n) ro.observe(n);
+    }
+
+    function placeAll(L) {
+      for (const n of els.values()) n._seen = false;
+      for (const h of L.heads) {
+        if (h.band) { place(`bh:${h.band}`, "bhead", BAND_HEAD[h.band], h.x + 20, h.y, null, null); continue; }
+        const items = app.index.walk.filter((p) => app.get(p)?.core === h.c);
+        const done = items.filter((p) => app.isReviewed(p)).length;
+        place(`ch:${h.c.id}`, `chead ${app.level > 0 && !h.current ? "other" : ""}`, `${app.graph.cores.indexOf(h.c) + 1} · ${esc(h.c.title)} <small>${done}/${items.length}${h.current || app.level === 0 ? ` · ${esc(h.c.summary)}` : ""}</small>`, h.x, h.y, null, null, { core: h.c.id });
+      }
+      for (const it of L.items) {
+        const c = card(it);
+        const key = it.kind === "pl" ? it.pl.id : it.kind === "agg" ? `agg:${it.key}` : "low";
+        place(key, `card ${c.cls}`, c.html, it.x, it.y, it.w, it.body ? null : it.h, c.data, c.title);
+      }
+      for (const l of L.labels) place(`lbl:${l.key}`, "lbl", esc(l.text), l.x - 40, l.y - 11, null, null);
+      for (const [k, n] of els) if (!n._seen) { n.remove(); els.delete(k); }
+    }
+
     // ---- interaction
     world.addEventListener("click", (ev) => {
-      if (moved) return;
+      if (moved || ev.target.closest(".nbody")) return;
       const t = ev.target.closest("[data-go],[data-expand],[data-core]");
       if (!t) return;
       if (t.dataset.expand) { expanded.add(t.dataset.expand); return update("expand"); }
@@ -238,7 +281,7 @@ export default {
       else app.setFocus(go, { level: app.level === 0 ? 1 : app.level });
     });
     let drag = null, moved = false;
-    stage.addEventListener("pointerdown", (ev) => { if (app.level === 2) return; drag = { x: ev.clientX, y: ev.clientY, p: { ...pan } }; moved = false; });
+    stage.addEventListener("pointerdown", (ev) => { if (app.level === 2 || ev.target.closest(".nbody")) return; drag = { x: ev.clientX, y: ev.clientY, p: { ...pan } }; moved = false; });
     window.addEventListener("pointermove", (ev) => {
       if (!drag) return;
       const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
@@ -249,7 +292,7 @@ export default {
     });
     window.addEventListener("pointerup", () => { drag = null; root.classList.remove("dragging"); setTimeout(() => (moved = false)); });
     stage.addEventListener("wheel", (ev) => {
-      if (app.level === 2) return;
+      if (app.level === 2 || ev.target.closest(".nbody")) return; // let the code scroll
       ev.preventDefault();
       pan = { x: pan.x - ev.deltaX, y: pan.y - ev.deltaY };
       root.classList.add("dragging");
@@ -258,7 +301,7 @@ export default {
     }, { passive: false });
 
     update("mount");
-    return { update, destroy() {} };
+    return { update, destroy() { ro.disconnect(); } };
   },
 };
 
