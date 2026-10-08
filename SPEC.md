@@ -98,7 +98,7 @@ export default {
 - the data: `graph`, `index` (lookups), `focus` (placement id) and `level` (0 overview · 1 core · 2 page);
 - navigation: `setFocus(id)` and `setLevel(n)`;
 - review state: `isReviewed(id)` and `isFlagged(id)`;
-- `renderPage(el, placementId)`, which renders the shared code page with comments, context expansion and word-level diff, so a view only decides what goes around the code;
+- `renderPage(el, placementId)`, which renders the shared code page (title, why, comments, code) with context expansion, folding and word-level diff, and `renderNode(el, placementId)`, which renders just comments and code for a card that already shows the title and why;
 - `settings`.
 
 Register the view in `public/app/views/index.js`.
