@@ -2,5 +2,6 @@
 import flow from "./flow.js";
 import outline from "./outline.js";
 import lens from "./lens.js";
+import diff from "./diff.js";
 
-export default [flow, outline, lens];
+export default [flow, outline, lens, diff];
