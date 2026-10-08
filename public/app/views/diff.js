@@ -36,6 +36,8 @@ const CSS = `
 .dv svg.edges path { fill: none; stroke: var(--muted); stroke-width: 2; }
 .dv svg.edges marker path { fill: var(--muted); stroke: none; }
 .dv .elbl { position: absolute; z-index: 4; font: 11.5px var(--font-ui); color: var(--muted); background: var(--bg); border: 1px solid var(--line-soft); padding: 1px 7px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, -50%); pointer-events: none; }
+.dv .fvh:active { cursor: grabbing; }
+.dv .fv.held { box-shadow: 0 12px 40px rgba(0,0,0,.25); }
 .dv .dfocus { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(180px, 260px) minmax(0, 1fr) minmax(180px, 260px); gap: 22px; padding: 18px 22px; background: var(--bg); z-index: 5; }
 .dv .dfocus[hidden] { display: none; }
 .dv .dfocus .big { position: relative; transform: none; width: auto; height: auto; min-height: 0; }
@@ -381,8 +383,14 @@ export default {
         if (v.f !== activeFile()) readFocus(v);
       }
     });
-    let drag = null, moved = false;
-    // The header is the handle: double-click it (or press ⤢) to focus on the file.
+    let drag = null, moved = false, held = null;
+    // The header is the handle: drag to move a viewer, double-click (or ⤢) to focus on it.
+    stage.addEventListener("pointerdown", (ev) => {
+      const h = ev.target.closest(".fvh");
+      if (!h || ev.target.closest(".max")) return;
+      const v = views.get(h.parentElement.dataset.file);
+      held = { v, x: ev.clientX, y: ev.clientY, ox: v.x, oy: v.y, moved: false };
+    });
     stage.addEventListener("click", (ev) => {
       const b = ev.target.closest("[data-max]");
       if (b) openFocus(b.dataset.max);
@@ -396,6 +404,18 @@ export default {
       drag = { x: ev.clientX, y: ev.clientY, p: { ...pan } }; moved = false;
     });
     const onMove = (ev) => {
+      if (held) {
+        const dx = (ev.clientX - held.x) / cam.s, dy = (ev.clientY - held.y) / cam.s;
+        if (!held.moved && Math.hypot(dx, dy) < 4) return;
+        held.moved = true;
+        const v = held.v;
+        v.el.classList.add("held");
+        v.x = held.ox + dx; v.y = held.oy + dy;
+        v.el.style.transform = `translate(${v.x}px, ${v.y}px)`;
+        placedBy.set(v.f.path, { x: v.x, y: v.y });
+        redraw();
+        return;
+      }
       if (!drag) return;
       const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
       if (!moved && Math.hypot(dx, dy) < 4) return;
@@ -404,6 +424,7 @@ export default {
       apply();
     };
     const onUp = () => {
+      if (held) { held.v.el.classList.remove("held"); held = null; }
       drag = null; root.classList.remove("dragging");
     };
     window.addEventListener("pointermove", onMove);
