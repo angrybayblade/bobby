@@ -52,7 +52,7 @@ export function createApp({ graph, session }) {
     llm: session.llm,
     focus: null,
     level: 0,
-    page: { exp: {}, sel: null, composing: null }, // transient code-page state
+    page: { exp: {}, open: new Set(), sel: null, composing: null }, // transient code-page state; open = unfolded blocks
 
     on(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     emit(reason) { for (const fn of listeners) fn(reason); },
@@ -109,7 +109,7 @@ export function createApp({ graph, session }) {
       pid = app.canonical(pid);
       const changed = pid !== app.focus;
       app.focus = pid;
-      app.page = { exp: app.page.exp, sel: null, composing: null };
+      app.page = { exp: app.page.exp, open: app.page.open, sel: null, composing: null };
       if (level !== undefined && level !== app.level) { app.level = level; app.emit("level"); }
       if (changed) {
         app.emit("focus");

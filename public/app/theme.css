@@ -150,6 +150,10 @@ kbd {
 .code .fh b { color: var(--text); font-weight: 600; }
 .code .fh .ctx { color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 .code .fh .st { white-space: nowrap; }
+.code.folded .fh { width: 100%; text-align: left; border-bottom: 0; }
+.code.folded .fh:hover { color: var(--text); background: var(--raised); }
+.code .fold-t { margin-left: 10px; font: 12px var(--font-code); color: var(--faint); }
+.code .fold-t:hover { color: var(--text); }
 .code .more { display: block; width: 100%; text-align: left; padding: 4px 14px; font: 12px var(--font-code); color: var(--faint); background: var(--bg); }
 .code .more:hover { color: var(--text); }
 .lines { font: var(--code-size)/1.65 var(--font-code); overflow-x: auto; word-spacing: 0; font-variant-ligatures: none; } /* "=>" must look like "=>" in a review */

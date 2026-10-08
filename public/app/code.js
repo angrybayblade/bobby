@@ -166,7 +166,31 @@ function fileHead(path, extra = "", stat = "") {
   return `<div class="fh"><span>${esc(dir)}<b>${esc(path.split("/").pop())}</b>${extra}</span><span class="ctx"></span>${stat}</div>`;
 }
 
+// ---- folding: pure additions/removals and untouched snippets start collapsed; a mixed diff is always open.
+const statusByGraph = new WeakMap();
+function fileStatus(app, path) {
+  let m = statusByGraph.get(app.graph);
+  if (!m) statusByGraph.set(app.graph, (m = new Map(app.graph.files.map((f) => [f.path, f.status]))));
+  return m.get(path);
+}
+function foldLabel(app, h) {
+  let a = 0, d = 0; for (const l of h.lines) l.t === "+" ? a++ : l.t === "-" ? d++ : 0;
+  if (a && d) return null;
+  const st = fileStatus(app, h.file);
+  if (st === "added") return `new file · +${a}`;
+  if (st === "deleted") return `deleted file · −${d}`;
+  return a ? `${a} line${a > 1 ? "s" : ""} added` : d ? `${d} line${d > 1 ? "s" : ""} removed` : null;
+}
+const folded = (app, id) => !app.page.open.has(id);
+function foldedBox(id, path, label) {
+  const dir = path.includes("/") ? path.slice(0, path.lastIndexOf("/") + 1) : "";
+  return `<div class="code folded"><button class="fh" data-fold="${esc(id)}"><span>▸ ${esc(dir)}<b>${esc(path.split("/").pop())}</b></span><span class="ctx"></span><span class="st">${esc(label)} · show</span></button></div>`;
+}
+const hideBtn = (id) => `<button class="fold-t" data-fold="${esc(id)}">hide</button>`;
+
 function hunkBox(app, h, rerender) {
+  const fold = foldLabel(app, h);
+  if (fold && folded(app, h.id)) return foldedBox(h.id, h.file, fold);
   const e = app.page.exp[h.id] ?? { above: 0, below: 0 };
   const file = e.above || e.below ? fileLines(app, h.file, rerender) : null;
   const target = { path: h.file, inDiff: true };
@@ -182,7 +206,7 @@ function hunkBox(app, h, rerender) {
   let a = 0, d = 0; for (const l of h.lines) l.t === "+" ? a++ : l.t === "-" ? d++ : 0;
   const canExpand = app.caps.files;
   return `<div class="code">
-    ${fileHead(h.file, h.context ? ` <span style="color:var(--faint)">· ${esc(h.context)}</span>` : "", `<span class="st"><span style="color:var(--ok)">+${a}</span> <span style="color:var(--risk)">−${d}</span></span>`)}
+    ${fileHead(h.file, h.context ? ` <span style="color:var(--faint)">· ${esc(h.context)}</span>` : "", `<span class="st"><span style="color:var(--ok)">+${a}</span> <span style="color:var(--risk)">−${d}</span>${fold ? hideBtn(h.id) : ""}</span>`)}
     ${canExpand && h.newStart > 1 ? `<button class="more" data-exp="${h.id}:above">⋯ more above</button>` : ""}
     <div class="lines">${ctxRows(Math.max(1, h.newStart - e.above), h.newStart - 1, h.oldStart - h.newStart)}${h.lines.map((l, i) => row(app, l, html[i], target)).join("")}${ctxRows(lastN + 1, lastN + e.below, lastO - lastN)}</div>
     ${canExpand ? `<button class="more" data-exp="${h.id}:below">⋯ more below</button>` : ""}
@@ -193,6 +217,7 @@ function contextBox(app, node, rerender) {
   const { path, line } = node.location;
   const key = `ctx:${path}:${line}`;
   const r = app.page.exp[key] ?? { start: Math.max(1, line - 6), end: line + 6 };
+  if (folded(app, key)) return foldedBox(key, `${path}:${line}`, `untouched · ${r.end - r.start + 1} lines`);
   const snip = node.snippet;
   const inSnippet = r.start >= snip.start && r.end < snip.start + snip.lines.length;
   const file = inSnippet ? null : fileLines(app, path, rerender);
@@ -204,7 +229,7 @@ function contextBox(app, node, rerender) {
   const target = { path, inDiff: false, hi: line };
   const canMore = app.caps.files || lo > snip.start || hi < snip.start + snip.lines.length - 1;
   return `<div class="code">
-    ${fileHead(path, `<span style="color:var(--faint)">:${line} · not changed in this PR</span>`)}
+    ${fileHead(path, `<span style="color:var(--faint)">:${line} · not changed in this PR</span>`, `<span class="st">${hideBtn(key)}</span>`)}
     ${canMore && lo > 1 ? `<button class="more" data-exp="${esc(key)}:above">⋯ more above</button>` : ""}
     <div class="lines">${nums.map((n, i) => row(app, { t: " ", o: null, n }, html[i], target)).join("")}</div>
     ${canMore ? `<button class="more" data-exp="${esc(key)}:below">⋯ more below</button>` : ""}
@@ -276,13 +301,17 @@ function bind(app, el, rerender) {
   el.dataset.bound = "1";
   el.addEventListener("click", (ev) => {
     if (ev.target.closest("a")) return;
-    const t = ev.target.closest("[data-exp],[data-del],[data-low],[data-go],[data-jump],.ln[data-key]");
+    const t = ev.target.closest("[data-exp],[data-del],[data-low],[data-go],[data-jump],[data-fold],.ln[data-key]");
     if (!t || !el.contains(t)) return;
     const again = () => bound.get(el)();
     const ds = t.dataset;
     if (ds.go) app.setFocus(ds.go);
-    else if (ds.jump) {
-      const ln = el.querySelector(`.ln[data-key="${CSS.escape(ds.jump)}"]`);
+    else if (ds.fold) {
+      app.page.open.has(ds.fold) ? app.page.open.delete(ds.fold) : app.page.open.add(ds.fold);
+      again();
+    } else if (ds.jump) {
+      let ln = el.querySelector(`.ln[data-key="${CSS.escape(ds.jump)}"]`);
+      if (!ln) { unfoldAll(app); again(); ln = el.querySelector(`.ln[data-key="${CSS.escape(ds.jump)}"]`); }
       if (!ln) return;
       el.querySelectorAll(".ln.sel").forEach((x) => x.classList.remove("sel"));
       ln.classList.add("sel");
@@ -335,6 +364,7 @@ async function saveComment(app, text) {
 /** `c` key: comment on the selected line, else the most relevant line on the page. */
 export function startComment(app, el) {
   if (!app.page.sel) {
+    if (!el.querySelector(".ln[data-key]") && unfoldAll(app)) bound.get(el)?.(); // nothing to point at while collapsed
     const rows = [...el.querySelectorAll(".ln[data-key]")];
     const pick = rows.find((r) => r.classList.contains("target")) ?? rows.find((r) => r.classList.contains("add") || r.classList.contains("del")) ?? rows[0];
     if (!pick) return;
@@ -344,12 +374,27 @@ export function startComment(app, el) {
   bound.get(el)?.();
 }
 
-/** `e` key: more context around everything on the page. */
+function foldIds(app, pid) {
+  const node = app.nodeOf(pid);
+  if (!node) return [];
+  if (node.kind === "context") return [`ctx:${node.location.path}:${node.location.line}`];
+  return app.hunksOf(pid).filter((h) => foldLabel(app, h)).map((h) => h.id);
+}
+/** Opens every collapsed block of the focused node; returns false if nothing was collapsed. */
+function unfoldAll(app) {
+  const ids = foldIds(app, app.focus).filter((id) => folded(app, id));
+  for (const id of ids) app.page.open.add(id);
+  return ids.length > 0;
+}
+
+/** `e` key: open what's collapsed, then more context around everything. */
 export function expandAll(app, el) {
   const pid = app.focus;
   const node = app.nodeOf(pid);
   if (!node) return;
-  if (node.kind === "context") {
+  if (unfoldAll(app)) {
+    // opened collapsed blocks; that's this press
+  } else if (node.kind === "context") {
     const id = `ctx:${node.location.path}:${node.location.line}`;
     const r = (app.page.exp[id] ??= { start: Math.max(1, node.location.line - 6), end: node.location.line + 6 });
     r.start = Math.max(1, r.start - 10); r.end += 10;
