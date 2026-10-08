@@ -7,6 +7,7 @@ const CSS = `
 .flow .stage { position: relative; overflow: hidden; transition: height var(--dur) var(--ease); height: 100%; cursor: grab; }
 .flow .world { position: absolute; left: 0; top: 0; transform-origin: 0 0; transition: transform var(--dur) var(--ease); }
 .flow.dragging .world { transition: none; }
+.flow.dragging { user-select: none; }
 .flow svg.edges { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
 .flow svg path { fill: none; stroke: var(--line); stroke-width: 1.5; transition: d var(--dur) var(--ease), stroke var(--dur); }
 .flow svg path.hot { stroke: var(--muted); stroke-width: 2; }
@@ -281,7 +282,11 @@ export default {
       else app.setFocus(go, { level: app.level === 0 ? 1 : app.level });
     });
     let drag = null, moved = false;
-    stage.addEventListener("pointerdown", (ev) => { if (app.level === 2 || ev.target.closest(".nbody")) return; drag = { x: ev.clientX, y: ev.clientY, p: { ...pan } }; moved = false; });
+    stage.addEventListener("pointerdown", (ev) => {
+      if (app.level === 2 || ev.target.closest(".nbody")) return; // code in a card stays selectable
+      if (ev.pointerType === "mouse") ev.preventDefault(); // a press-and-drag pans; it must not start a text selection
+      drag = { x: ev.clientX, y: ev.clientY, p: { ...pan } }; moved = false;
+    });
     window.addEventListener("pointermove", (ev) => {
       if (!drag) return;
       const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;

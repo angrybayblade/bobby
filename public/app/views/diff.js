@@ -9,6 +9,7 @@ const CSS = `
 .dv { position: absolute; inset: 0; }
 .dv .stage { position: absolute; inset: 0; overflow: hidden; cursor: grab; touch-action: pan-x pan-y; } /* two-finger gestures are ours */
 .dv.dragging .stage { cursor: grabbing; }
+.dv.dragging { user-select: none; }
 .dv .world { position: absolute; left: 0; top: 0; transform-origin: 0 0; transition: transform var(--dur) var(--ease); }
 .dv.dragging .world, .dv .world.still { transition: none; }
 .dv .bhead { position: absolute; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
@@ -396,6 +397,7 @@ export default {
     stage.addEventListener("pointerdown", (ev) => {
       const h = ev.target.closest(".fvh");
       if (!h || ev.target.closest(".max")) return;
+      if (ev.pointerType === "mouse") ev.preventDefault(); // dragging a viewer must not select text
       const v = views.get(h.parentElement.dataset.file);
       held = { v, x: ev.clientX, y: ev.clientY, ox: v.x, oy: v.y, moved: false };
     });
@@ -408,7 +410,8 @@ export default {
       if (h && !ev.target.closest(".max")) openFocus(h.parentElement.dataset.file);
     });
     stage.addEventListener("pointerdown", (ev) => {
-      if (ev.target.closest(".fv")) return;
+      if (ev.target.closest(".fv")) return; // inside a viewer: code stays selectable
+      if (ev.pointerType === "mouse") ev.preventDefault(); // a press-and-drag pans; it must not start a text selection
       drag = { x: ev.clientX, y: ev.clientY, p: { ...pan } }; moved = false;
     });
     const onMove = (ev) => {
