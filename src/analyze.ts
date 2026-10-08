@@ -182,3 +182,96 @@ export const refNode = (r: CodeRef, band: Band, why: string, risk?: TreeNode["ri
   id: "", band, title: label?.trim() || `${r.symbol} · ${r.path.split("/").pop()}:${r.line}`, why, risk,
   ref: { path: r.path, line: r.line, start: Math.max(1, r.line - SNIPPET_RADIUS), end: r.line + SNIPPET_RADIUS },
 });
+
+const unitTitle = (u: Unit) => u.symbols[0];
+
+/** Deterministic tree from the static analysis. Shown instantly; Claude's version replaces it when ready. */
+export function heuristicTree(pr: PrInfo, a: Analysis, files: FileDiff[]): ChangeTree {
+  const unitById = new Map(a.units.map((u) => [u.id, u]));
+  const ups = new Map<string, typeof a.edges>();
+  const downs = new Map<string, typeof a.edges>();
+  for (const e of a.edges) {
+    (ups.get(e.to) ?? ups.set(e.to, []).get(e.to)!).push(e);
+    (downs.get(e.from) ?? downs.set(e.from, []).get(e.from)!).push(e);
+  }
+  const refsFor = (uid: string, dir: "up" | "down") => a.refs.filter((r) => r.forUnit === uid && r.dir === dir);
+  const weight = (u: Unit) => (downs.get(u.id)?.length ?? 0) * 3 + refsFor(u.id, "down").length;
+  const order = [...a.units].sort((x, y) => {
+    const xs = ups.has(x.id) ? 1 : 0, ys = ups.has(y.id) ? 1 : 0;
+    return xs - ys || weight(y) - weight(x);
+  });
+
+  const placed = new Set<string>();
+  const cores: Core[] = [];
+  for (const u of order) {
+    if (placed.has(u.id)) continue;
+    placed.add(u.id);
+    const bands = emptyBands();
+    bands.core.push({ id: "", band: "core", title: unitTitle(u), why: `Changed in ${u.file}`, unitIds: [u.id] });
+    const members = [u];
+    for (const e of ups.get(u.id) ?? []) {
+      const up = unitById.get(e.from)!;
+      bands.upChanged.push({ id: "", band: "upChanged", title: unitTitle(up), why: `Defines \`${e.symbol}\`, which the core change uses`, unitIds: [up.id] });
+      if (!placed.has(up.id)) { placed.add(up.id); members.push(up); }
+    }
+    for (const e of downs.get(u.id) ?? []) {
+      const down = unitById.get(e.to)!;
+      bands.downChanged.push({ id: "", band: "downChanged", title: unitTitle(down), why: `Uses \`${e.symbol}\` and was changed too`, unitIds: [down.id] });
+      if (!placed.has(down.id)) { placed.add(down.id); members.push(down); }
+    }
+    for (const m of members) {
+      for (const r of refsFor(m.id, "up").slice(0, m === u ? 4 : 2))
+        bands.upUnchanged.push(refNode(r, "upUnchanged", `Existing \`${r.symbol}\`, relied on by ${unitTitle(m)}`));
+      for (const r of refsFor(m.id, "down").slice(0, m === u ? 6 : 3))
+        bands.downUnchanged.push(refNode(r, "downUnchanged", `Unchanged caller of \`${r.symbol}\`; check it still holds`, "med"));
+    }
+    cores.push({ id: "", title: unitTitle(u), summary: `${u.file} · ${u.hunkIds.length} hunk(s)`, bands });
+  }
+  return finalize({ source: "heuristic", intent: pr.title, cores, noiseHunkIds: [] }, a, files);
+}
+
+export const emptyBands = (): Record<Band, TreeNode[]> => ({ upUnchanged: [], upChanged: [], core: [], downChanged: [], downUnchanged: [] });
+
+/** Assigns ids, marks repeats as "seen", appends anything not yet covered so no hunk is ever skipped. */
+export function finalize(tree: ChangeTree, a: Analysis, files: FileDiff[]): ChangeTree {
+  const shownUnits = new Set<string>();
+  const shownRefs = new Map<string, string>();
+  const unitShownAt = new Map<string, string>();
+  let n = 0;
+  tree.cores.forEach((c, ci) => {
+    c.id = `c${ci + 1}`;
+    for (const band of BANDS) {
+      const seen = new Set<string>();
+      c.bands[band] = c.bands[band].filter((node) => {
+        const key = node.ref ? `${node.ref.path}:${node.ref.line}` : (node.unitIds ?? []).join(",");
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      for (const node of c.bands[band]) {
+        node.id = `n${++n}`;
+        if (node.unitIds) {
+          const fresh = node.unitIds.filter((u) => !shownUnits.has(u));
+          if (!fresh.length) node.seenIn = unitShownAt.get(node.unitIds[0]);
+          for (const u of fresh) { shownUnits.add(u); unitShownAt.set(u, node.id); }
+        } else if (node.ref) {
+          const key = `${node.ref.path}:${node.ref.line}`;
+          if (shownRefs.has(key)) node.seenIn = shownRefs.get(key);
+          else shownRefs.set(key, node.id);
+        }
+      }
+    }
+  });
+
+  const leftovers = a.units.filter((u) => !shownUnits.has(u.id));
+  const byFile = new Map<string, Unit[]>();
+  for (const u of leftovers) (byFile.get(u.file) ?? byFile.set(u.file, []).get(u.file)!).push(u);
+  for (const [file, us] of byFile) {
+    const bands = emptyBands();
+    for (const u of us) bands.core.push({ id: `n${++n}`, band: "core", title: unitTitle(u), why: `Other change in ${file}`, unitIds: [u.id] });
+    tree.cores.push({ id: `c${tree.cores.length + 1}`, title: file.split("/").pop()!, summary: `Remaining changes in ${file}`, bands });
+  }
+
+  tree.noiseHunkIds = files.flatMap((f) => f.hunks.filter((h) => h.noise).map((h) => h.id));
+  return tree;
+}
