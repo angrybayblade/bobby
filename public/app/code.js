@@ -188,8 +188,11 @@ function foldedBox(id, path, label) {
 }
 const hideBtn = (id) => `<button class="fold-t" data-fold="${esc(id)}">hide</button>`;
 
-function hunkBox(app, h, rerender) {
-  const fold = foldLabel(app, h);
+// opts.whole: inside a whole-file viewer, so nothing folds and the header names lines, not the file.
+const lineHead = (label, extra = "", stat = "") => `<div class="fh"><span><b>${esc(label)}</b>${extra}</span><span class="ctx"></span>${stat}</div>`;
+
+function hunkBox(app, h, rerender, opts = {}) {
+  const fold = opts.whole ? null : foldLabel(app, h);
   if (fold && folded(app, h.id)) return foldedBox(h.id, h.file, fold);
   const e = app.page.exp[h.id] ?? { above: 0, below: 0 };
   const file = e.above || e.below ? fileLines(app, h.file, rerender) : null;
@@ -205,19 +208,22 @@ function hunkBox(app, h, rerender) {
   const html = hunkHtml(h);
   let a = 0, d = 0; for (const l of h.lines) l.t === "+" ? a++ : l.t === "-" ? d++ : 0;
   const canExpand = app.caps.files;
+  const ctx = h.context ? ` <span style="color:var(--faint)">· ${esc(h.context)}</span>` : "";
+  const stat = `<span class="st"><span style="color:var(--ok)">+${a}</span> <span style="color:var(--risk)">−${d}</span>${fold ? hideBtn(h.id) : ""}</span>`;
+  const head = opts.whole ? lineHead(`L${h.newStart}`, ctx, stat) : fileHead(h.file, ctx, stat);
   return `<div class="code">
-    ${fileHead(h.file, h.context ? ` <span style="color:var(--faint)">· ${esc(h.context)}</span>` : "", `<span class="st"><span style="color:var(--ok)">+${a}</span> <span style="color:var(--risk)">−${d}</span>${fold ? hideBtn(h.id) : ""}</span>`)}
+    ${head}
     ${canExpand && h.newStart > 1 ? `<button class="more" data-exp="${h.id}:above">⋯ more above</button>` : ""}
     <div class="lines">${ctxRows(Math.max(1, h.newStart - e.above), h.newStart - 1, h.oldStart - h.newStart)}${h.lines.map((l, i) => row(app, l, html[i], target)).join("")}${ctxRows(lastN + 1, lastN + e.below, lastO - lastN)}</div>
     ${canExpand ? `<button class="more" data-exp="${h.id}:below">⋯ more below</button>` : ""}
   </div>`;
 }
 
-function contextBox(app, node, rerender) {
+function contextBox(app, node, rerender, opts = {}) {
   const { path, line } = node.location;
   const key = `ctx:${path}:${line}`;
   const r = app.page.exp[key] ?? { start: Math.max(1, line - 6), end: line + 6 };
-  if (folded(app, key)) return foldedBox(key, `${path}:${line}`, `untouched · ${r.end - r.start + 1} lines`);
+  if (!opts.whole && folded(app, key)) return foldedBox(key, `${path}:${line}`, `untouched · ${r.end - r.start + 1} lines`);
   const snip = node.snippet;
   const inSnippet = r.start >= snip.start && r.end < snip.start + snip.lines.length;
   const file = inSnippet ? null : fileLines(app, path, rerender);
@@ -229,7 +235,9 @@ function contextBox(app, node, rerender) {
   const target = { path, inDiff: false, hi: line };
   const canMore = app.caps.files || lo > snip.start || hi < snip.start + snip.lines.length - 1;
   return `<div class="code">
-    ${fileHead(path, `<span style="color:var(--faint)">:${line} · not changed in this PR</span>`, `<span class="st">${hideBtn(key)}</span>`)}
+    ${opts.whole
+      ? lineHead(`L${line}`, ` <span style="color:var(--faint)">· not changed in this PR</span>`)
+      : fileHead(path, `<span style="color:var(--faint)">:${line} · not changed in this PR</span>`, `<span class="st">${hideBtn(key)}</span>`)}
     ${canMore && lo > 1 ? `<button class="more" data-exp="${esc(key)}:above">⋯ more above</button>` : ""}
     <div class="lines">${nums.map((n, i) => row(app, { t: " ", o: null, n }, html[i], target)).join("")}</div>
     ${canMore ? `<button class="more" data-exp="${esc(key)}:below">⋯ more below</button>` : ""}
@@ -292,6 +300,22 @@ export function renderNode(app, el, pid, { head = true } = {}) {
   if (ta) ta.focus({ preventScroll: !head });
 }
 export const renderPage = (app, el, pid) => renderNode(app, el, pid);
+
+/** A whole file for file-level viewers: one section per node in file order, each with its comments, nothing collapsed. */
+export function renderFile(app, el, pids) {
+  const rerender = () => renderFile(app, el, pids);
+  bind(app, el, rerender);
+  const opts = { whole: true };
+  el.innerHTML = `<div class="node file">${pids.map((pid) => {
+    const { pl } = app.get(pid), node = app.nodeOf(pid), done = app.isReviewed(pid);
+    const code = node.kind === "change" ? app.hunksOf(pid).map((h) => hunkBox(app, h, rerender, opts)).join("") : contextBox(app, node, rerender, opts);
+    return `<section class="sec ${pid === app.focus ? "cur" : ""} ${done ? "done" : ""}" data-pid="${pid}">
+      <div class="sech"><i class="glyph ${pl.band === "core" ? "core" : node.kind}"></i><span>${esc(pl.title)}</span>${pl.risk === "high" ? `<i class="riskdot"></i>` : ""}${app.isFlagged(pid) ? `<span class="status flag">⚑</span>` : ""}${done ? `<span class="status">✓</span>` : ""}</div>
+      ${notesHtml(app, pid)}${code}</section>`;
+  }).join("")}</div>`;
+  const ta = el.querySelector("textarea[data-composer]");
+  if (ta) ta.focus({ preventScroll: true });
+}
 
 // One delegated listener per container.
 const bound = new WeakMap();
