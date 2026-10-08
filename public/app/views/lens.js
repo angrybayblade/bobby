@@ -7,6 +7,11 @@ const CSS = `
 .lens { position: absolute; inset: 0; display: grid; grid-template-rows: 1fr; }
 .lens.paged { grid-template-rows: auto 1fr; }
 .lens .ring { position: relative; display: grid; grid-template-columns: 1fr minmax(320px, 420px) 1fr; gap: 0 90px; align-items: center; padding: 30px 40px 20px; min-height: 0; }
+.lens .ring.wide { grid-template-columns: minmax(200px, 1fr) minmax(480px, 760px) minmax(200px, 1fr); gap: 0 60px; align-items: start; }
+.lens .ring.wide .side { margin-top: 40px; }
+.lens .focus .nbody { margin-top: 12px; max-height: calc(100vh - 330px); overflow: auto; overscroll-behavior: contain; cursor: auto; }
+.lens .focus .nbody .code { margin-bottom: 10px; }
+.lens .focus .nbody .notes { margin-bottom: 10px; }
 .lens.paged .ring { padding: 14px 40px 12px; gap: 0 60px; border-bottom: 1px solid var(--line); }
 .lens .side { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .lens .side.left { align-items: flex-end; }
@@ -98,10 +103,11 @@ export default {
         const tgt = app.canonical(p.id);
         return `<i class="${p.band === "core" ? "core" : n.kind} ${p.id === app.focus ? "cur" : ""} ${app.isReviewed(tgt) ? "done" : ""}" data-go="${tgt}" title="${esc(BAND_TEXT[p.band])}: ${esc(p.title)}"></i>`;
       }).join("") + (bi < 4 && list.length ? `<span class="sep"></span>` : "")).join("");
-      return `<div class="ring">
+      const body = app.level === 1; // the focus shows its comments + code; neighbours stay title + why
+      return `<div class="ring ${body ? "wide" : ""}">
         <div class="side left ${slide}"><h4>relies on</h4>${left}</div>
         <div class="center ${slide}"><h4>${esc(BAND_TEXT[pl.band])} · core ${ci + 1}/${app.graph.cores.length}</h4>
-          <div class="focus ${node.kind}" data-open="1"><div class="t"><i class="glyph ${pl.band === "core" ? "core" : node.kind}"></i>${esc(pl.title)}${app.isReviewed(pl.id) ? " ✓" : ""}</div><div class="w">${esc(pl.why)}</div><div class="m">${esc(meta)}</div></div></div>
+          <div class="focus ${node.kind}" data-open="1"><div class="t"><i class="glyph ${pl.band === "core" ? "core" : node.kind}"></i>${esc(pl.title)}${app.isReviewed(pl.id) ? " ✓" : ""}</div><div class="w">${esc(pl.why)}</div>${body ? `<div class="nbody"></div>` : `<div class="m">${esc(meta)}</div>`}</div></div>
         <div class="side right ${slide}"><h4>affects</h4>${right}</div>
         <div class="orbit"><span class="lab">${esc(core.title)}</span>${orbit}</div>
         <svg></svg>
@@ -152,17 +158,22 @@ export default {
       prevSides = { left: nb.up.map((e) => e.from), right: nb.down.map((e) => e.to) };
       prevFocus = app.focus;
       const keepScroll = reason === "marks" || reason === "comments";
-      const oldPane = root.querySelector(".pane");
+      const oldPane = root.querySelector(".pane, .nbody");
       const scroll = keepScroll && oldPane ? oldPane.scrollTop : 0;
       root.innerHTML = ring(slide) + (paged ? `<div class="pane"></div>` : "");
-      if (paged) { const pane = root.querySelector(".pane"); app.renderPage(pane, app.focus); pane.scrollTop = scroll; }
-      else app.pageEl = null;
+      const codeEl = root.querySelector(".pane, .nbody");
+      if (paged) app.renderPage(codeEl, app.focus);
+      else app.renderNode(codeEl, app.focus);
+      codeEl.scrollTop = scroll;
+      ro.disconnect();
+      ro.observe(root.querySelector(".focus")); // folding/composing resizes the card: redraw the connectors
       requestAnimationFrame(wire);
       if (slide) setTimeout(wire, 340);
     }
 
+    const ro = new ResizeObserver(() => requestAnimationFrame(wire));
     root.addEventListener("click", (ev) => {
-      if (ev.target.closest(".page")) return;
+      if (ev.target.closest(".node")) return;
       const t = ev.target.closest("[data-go],[data-core],[data-open]");
       if (!t) return;
       if (t.dataset.core) { const first = app.index.walk.find((p) => app.get(p)?.core.id === t.dataset.core && !app.isReviewed(p)) ?? app.index.walk.find((p) => app.get(p)?.core.id === t.dataset.core); return app.setFocus(first, { level: 1 }); }
@@ -171,6 +182,6 @@ export default {
     });
 
     update("mount");
-    return { update: (r) => (r === "resize" ? wire() : update(r)), destroy() {} };
+    return { update: (r) => (r === "resize" ? wire() : update(r)), destroy() { ro.disconnect(); } };
   },
 };
