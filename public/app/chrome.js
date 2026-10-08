@@ -1,0 +1,211 @@
+// Everything around the view: header, where-am-I bar, key hints, overlays, toasts, settings.
+import { BAND_TEXT, DONE, LEVELS, LOW, api, esc } from "./core.js";
+
+const $ = (q) => document.querySelector(q);
+let app, views;
+
+export function init(a, viewList) {
+  app = a; views = viewList;
+  for (const r of ["focus", "level", "marks", "graph", "settings", "comments", "llm"]) app.on((why) => why === r && render());
+  render();
+  document.addEventListener("click", onClick);
+  startTimebox();
+}
+
+export function render() {
+  renderTop(); renderWhere(); renderKeys();
+}
+
+function renderTop() {
+  const { done, total, mins } = app.progress();
+  const pct = total ? Math.round((done / total) * 100) : 100;
+  const g = app.graph;
+  const llm = app.llm === "pending" ? `<span class="pill pulse" title="The static tree is usable now">Claude is organising…</span>`
+    : app.claudeReady && g.generator.tree !== "claude" ? `<button class="pill signal" data-act="switch-tree">Smarter tree ready · R</button>` : "";
+  const drafts = app.state.comments.length;
+  $("#top").innerHTML = `
+    <div class="brand">pr<b>focus</b></div>
+    <a class="prtitle" href="${esc(g.pr.url)}" target="_blank" rel="noopener">#${g.pr.number} ${esc(g.pr.title)}</a>
+    ${llm}
+    <div class="prog" title="${done} of ${total} pages reviewed"><div class="bar"><i style="width:${pct}%"></i></div>${done}/${total}${mins && done < total ? ` · ~${mins}m` : ""}</div>
+    <div class="seg" role="group" aria-label="View">${views.map((v) => `<button data-view="${v.id}" aria-pressed="${app.viewId === v.id}" title="${esc(v.hint)} (v)">${esc(v.name)}</button>`).join("")}</div>
+    ${drafts ? `<button class="pill signal" data-act="submit">${drafts} draft${drafts > 1 ? "s" : ""} · S</button>` : ""}
+    <button class="iconbtn" data-act="settings" title="Settings (,)" aria-label="Settings">${GEAR}</button>`;
+}
+
+function renderWhere() {
+  const pid = app.focus;
+  const loc = app.get(pid);
+  const crumbs = [`<button data-level="0" class="${app.level === 0 ? "here" : ""}">${esc(app.graph.pr.repo)} #${app.graph.pr.number}</button>`];
+  if (loc) {
+    crumbs.push(`<button data-level="1" class="${app.level === 1 ? "here" : ""}">${loc.ci + 1} · ${esc(loc.core.title)}</button>`);
+    crumbs.push(`<button data-level="2" class="${app.level === 2 ? "here" : ""}"><i class="glyph ${loc.pl.band === "core" ? "core" : app.nodeOf(pid).kind}" style="margin-right:6px"></i>${esc(loc.pl.title)}</button>`);
+  } else if (pid === LOW) crumbs.push(`<button data-level="2" class="here">Low-signal changes</button>`);
+  else if (pid === DONE) crumbs.push(`<button class="here">End</button>`);
+  const note = app.state.note ? `<button data-act="note" title="Your parked thought (p)" style="color:var(--signal)">📌 ${esc(app.state.note.slice(0, 48))}${app.state.note.length > 48 ? "…" : ""}</button>` : "";
+  $("#where").innerHTML = `${crumbs.join(`<span class="sep">›</span>`)}${note}
+    <span class="levels" title="Zoom: ${LEVELS[app.level]} (enter / esc)">${LEVELS.map((_, i) => `<i class="${i <= app.level ? "on" : ""}"></i>`).join("")}<span style="margin-left:6px">${LEVELS[app.level]}</span></span>`;
+}
+
+const HINTS = [
+  [["j", "k"], "next / back"], [["enter"], "zoom in"], [["v"], "switch view"], [["?"], "all keys"],
+];
+const HINTS_BY_LEVEL = {
+  0: [[["j", "k"], "step"], [["enter"], "open core"], [["v"], "switch view"]],
+  1: [[["j", "k"], "step"], [["J", "K"], "core"], [["enter"], "read page"], [["esc"], "overview"], [["v"], "view"]],
+  2: [[["j", "k"], "next / back"], [["a"], "looks good →"], [["f"], "flag"], [["c"], "comment"], [["e"], "more context"], [["p"], "park a thought"], [["esc"], "zoom out"]],
+};
+function renderKeys() {
+  const mode = app.settings.hints;
+  const uses = app.settings.hintUses ?? {};
+  const list = (HINTS_BY_LEVEL[app.level] ?? HINTS).filter(([ks]) => mode === "always" || (mode === "fade" && ks.some((k) => (uses[k] ?? 0) < 5)));
+  $("#keys").innerHTML = mode === "never" ? `<span><kbd>?</kbd> keys</span>`
+    : [...list, [["?"], "all keys"]].map(([ks, label]) => `<span>${ks.map((k) => `<kbd>${k}</kbd>`).join(" ")} ${label}</span>`).join("");
+}
+
+// ---------------------------------------------------------------- overlays
+export const isOpen = () => !$("#overlay").hidden;
+function open(html, cls = "") {
+  const o = $("#overlay");
+  o.innerHTML = `<div class="modal ${cls}" role="dialog" aria-modal="true">${html}</div>`;
+  o.hidden = false;
+  (o.querySelector("textarea") ?? o.querySelector(".btn.primary"))?.focus();
+}
+export function close() { $("#overlay").hidden = true; }
+
+export function help() {
+  const r = (k, d) => `<tr><td>${k.split(" ").map((x) => `<kbd>${x}</kbd>`).join(" ")}</td><td>${d}</td></tr>`;
+  open(`<h2>How the walk works</h2>
+    <p>Each core change comes with its surroundings, in this order: <b>untouched code it relies on</b> → <b>changed code it relies on</b> → <b>the core</b> → <b>changed code it affects</b> → <b>untouched code it affects</b>. Solid dots ● are changed code, hollow ○ are untouched, and ◆ is the core.</p>
+    <table>
+      ${r("j k", "next / previous page (arrows and space work too)")}
+      ${r("J K", "next / previous core")}
+      ${r("n", "next unreviewed")}
+      ${r("a", "looks good: mark reviewed and move on")}
+      ${r("u", "un-mark")}
+      ${r("f", "flag to come back to")}
+      ${r("c", "comment (click a line first, or it picks one)")}
+      ${r("e", "more context")}
+      ${r("p", "park a thought: jot what's in your head, shown when you return")}
+      ${r("enter esc", "zoom in / out: overview → core → page")}
+      ${r("v", "switch view: Flow, Outline, Lens")}
+      ${r("s", "submit review")}
+      ${r(",", "settings")}
+    </table>
+    <div class="row"><button class="btn primary" data-act="close">Got it</button></div>`);
+}
+
+const SETTINGS = [
+  ["theme", "Theme", [["system", "System"], ["dark", "Warm dark"], ["light", "Warm light"]]],
+  ["font", "Reading font", [["sans", "Sans"], ["hyper", "Hyperlegible"], ["serif", "Serif"], ["mono", "Mono"]]],
+  ["size", "Text size", [[14, "14"], [15, "15"], [16, "16"], [18, "18"]]],
+  ["spacing", "Word spacing", [["normal", "Normal"], ["wide", "Wide"], ["wider", "Wider"]]],
+  ["motion", "Motion", [["system", "System"], ["on", "On"], ["off", "Off"]]],
+  ["hints", "Key hints", [["fade", "Fade when learned"], ["always", "Always"], ["never", "Hidden"]]],
+  ["timebox", "Break reminder", [[0, "Off"], [15, "15m"], [25, "25m"], [45, "45m"]]],
+];
+export function settings() {
+  open(`<h2>Settings</h2><p>Changes apply immediately and are remembered.</p>
+    ${SETTINGS.map(([key, label, opts]) => `<div class="setting"><label>${label}</label><div class="seg">${opts.map(([v, t]) =>
+      `<button data-set="${key}" data-val="${v}" aria-pressed="${String(app.settings[key]) === String(v)}">${t}</button>`).join("")}</div></div>`).join("")}
+    <div class="row"><button class="btn primary" data-act="close">Done</button></div>`);
+}
+
+export function submit(msg) {
+  const cs = app.state.comments;
+  open(`<h2>Submit review</h2>
+    <p>${cs.length ? `${cs.length} draft comment(s) will be posted together.` : "No draft comments."}</p>
+    <textarea id="rbody" placeholder="Summary (optional for Approve)"></textarea>
+    <div style="font-size:13px;color:var(--muted);margin-top:10px">${cs.map((c) => `· <code>${esc(c.path)}:${c.line}</code> ${esc(c.body.slice(0, 70))}${c.inDiff ? "" : " <i>(goes in summary)</i>"}`).join("<br>")}</div>
+    <div class="row">
+      <button class="btn primary" data-submit="COMMENT">Comment</button>
+      <button class="btn" data-submit="APPROVE">Approve</button>
+      <button class="btn" data-submit="REQUEST_CHANGES">Request changes</button>
+      <button class="btn" data-act="close" style="margin-left:auto">Cancel</button>
+    </div>${msg ? `<div class="err">${esc(msg)}</div>` : ""}`);
+}
+async function doSubmit(event) {
+  const r = await api("/api/submit", { event, body: $("#rbody").value });
+  if (!r.ok) return submit(r.error);
+  app.state.comments = [];
+  app.emit("comments");
+  open(`<h2>Review posted ✓</h2><p><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url)}</a></p><div class="row"><button class="btn primary" data-act="close">Close</button></div>`);
+}
+
+export function park() {
+  open(`<h2>Park a thought</h2>
+    <p>What's in your head right now? It'll be waiting for you when you come back.</p>
+    <textarea id="note" placeholder="e.g. check whether normalizeRetryOptions copies the array before mutating">${esc(app.state.note ?? "")}</textarea>
+    <div class="row"><button class="btn primary" data-act="save-note">Park it</button>${app.state.note ? `<button class="btn" data-act="clear-note">Clear</button>` : ""}<button class="btn" data-act="close" style="margin-left:auto">Cancel</button></div>`);
+}
+function saveNote(note) {
+  app.state.note = note;
+  api("/api/note", { note });
+  close();
+  renderWhere();
+}
+
+/** Shown on load when there's progress to return to: cheap re-entry after an interruption. */
+export function reentry() {
+  const loc = app.get(app.focus);
+  const { done, total } = app.progress();
+  const flagged = app.index.walk.filter((p) => p !== DONE && app.isFlagged(p)).length;
+  const ago = app.state.lastSeenAt ? timeAgo(new Date(app.state.lastSeenAt)) : "";
+  open(`<h2>Welcome back</h2>
+    <p>${done} of ${total} reviewed${flagged ? ` · ${flagged} flagged` : ""}${app.state.comments.length ? ` · ${app.state.comments.length} draft comment(s)` : ""}${ago ? ` · last here ${ago}` : ""}</p>
+    ${loc ? `<div class="where"><span style="color:var(--muted);font-size:13px">You were in core ${loc.ci + 1}, <b style="display:inline;font-family:inherit">${esc(loc.core.title)}</b>, on ${esc(BAND_TEXT[loc.pl.band].toLowerCase())}:</span><b>${esc(loc.pl.title)}</b></div>` : ""}
+    ${app.state.note ? `<div class="parked">📌 ${esc(app.state.note)}</div>` : ""}
+    <div class="row"><button class="btn primary" data-act="close">Continue <kbd style="margin-left:6px">enter</kbd></button><button class="btn" data-act="overview">See the overview first</button></div>`, "reentry");
+}
+
+function timeAgo(d) {
+  const m = Math.round((Date.now() - d) / 60000);
+  return m < 2 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`;
+}
+
+// ---------------------------------------------------------------- toast
+export function toast(html, ms = 0) {
+  const t = $("#toast");
+  t.innerHTML = `${html}<button class="x" data-act="toast-close" aria-label="Dismiss">✕</button>`;
+  t.hidden = false;
+  clearTimeout(toast._t);
+  if (ms) toast._t = setTimeout(() => (t.hidden = true), ms);
+}
+
+// Counts active minutes (tab visible + recent input); nudges once per period, never blocks.
+function startTimebox() {
+  let active = 0, last = Date.now();
+  for (const ev of ["keydown", "pointerdown", "wheel"]) document.addEventListener(ev, () => (last = Date.now()), { passive: true });
+  setInterval(() => {
+    const box = Number(app.settings.timebox);
+    if (!box || document.hidden || Date.now() - last > 120000) return;
+    active += 1 / 6;
+    if (active >= box) {
+      active = 0;
+      const { done } = app.progress();
+      toast(`<span>${box} min in, ${done} pages reviewed. A good moment for a break; your place is saved.</span>`);
+    }
+  }, 10000);
+}
+
+// ---------------------------------------------------------------- clicks
+function onClick(ev) {
+  const t = ev.target.closest("[data-act],[data-view],[data-level],[data-set],[data-submit]");
+  if (!t) { if (ev.target.id === "overlay") close(); return; }
+  const ds = t.dataset;
+  if (ds.view) app.switchView(ds.view);
+  else if (ds.level) app.setLevel(Number(ds.level));
+  else if (ds.set) { const v = /^\d+$/.test(ds.val) ? Number(ds.val) : ds.val; app.saveSettings({ [ds.set]: v }); settings(); }
+  else if (ds.submit) doSubmit(ds.submit);
+  else ({
+    close, settings, submit,
+    note: park,
+    overview: () => { close(); app.setLevel(0); },
+    "switch-tree": () => app.switchTree(),
+    "save-note": () => saveNote($("#note").value.trim()),
+    "clear-note": () => saveNote(""),
+    "toast-close": () => ($("#toast").hidden = true),
+  })[ds.act]?.();
+}
+
+const GEAR = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
