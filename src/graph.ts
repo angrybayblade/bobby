@@ -30,6 +30,14 @@ export interface ReviewGraph {
   edges: GEdge[];
   walk: string[];
   lowSignal: string[];
+  discussion?: GDiscussion[];
+}
+
+/** An existing inline review comment on GitHub, anchored to a line of the diff. */
+export interface GDiscussion {
+  id: string; path: string; line: number; side: "LEFT" | "RIGHT";
+  author: string; body: string; url: string; createdAt: string;
+  replyTo?: string;
 }
 
 export interface GFile {
@@ -77,7 +85,7 @@ export interface GEdge {
 const changeId = (file: string, symbol: string) => `chg:${file}#${symbol}`;
 const contextId = (path: string, line: number) => `ctx:${path}:${line}`;
 
-export async function buildGraph(cwd: string | null, pr: PrInfo, files: FileDiff[], a: Analysis, tree: ChangeTree): Promise<ReviewGraph> {
+export async function buildGraph(cwd: string | null, pr: PrInfo, files: FileDiff[], a: Analysis, tree: ChangeTree, discussion: GDiscussion[] = []): Promise<ReviewGraph> {
   const nodes = new Map<string, GNode>();
   const unitNode = new Map<string, string>(); // unit id → node id
 
@@ -156,6 +164,7 @@ export async function buildGraph(cwd: string | null, pr: PrInfo, files: FileDiff
     edges,
     walk,
     lowSignal: tree.noiseHunkIds,
+    ...(discussion.length ? { discussion } : {}),
   };
 }
 

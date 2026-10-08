@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { parseArgs } from "node:util";
 import { readFileSync, writeFileSync } from "node:fs";
-import { git, preparePr, run } from "./git.ts";
+import { git, preparePr, reviewComments, run } from "./git.ts";
 import { parseDiff } from "./diff.ts";
 import { analyze, heuristicTree } from "./analyze.ts";
 import { claudeTree } from "./llm.ts";
@@ -58,15 +58,18 @@ if (cmd === "open") {
   const hunks = files.reduce((n, f) => n + f.hunks.length, 0);
   log(`  ${files.length} files · ${hunks} hunks · ${analysis.units.length} units · ${analysis.refs.length} untouched refs (${((Date.now() - t0) / 1000).toFixed(1)}s)`);
 
+  const discussion = await reviewComments(pr);
+  if (discussion.length) log(`  ${discussion.length} existing review comment(s)`);
+
   const cached = values.refresh ? null : loadCachedTree(pr);
-  const staticGraph = await buildGraph(cwd, pr, files, analysis, heuristicTree(pr, analysis, files));
-  const claudeGraph = cached?.source === "claude" ? await buildGraph(cwd, pr, files, analysis, cached) : undefined;
+  const staticGraph = await buildGraph(cwd, pr, files, analysis, heuristicTree(pr, analysis, files), discussion);
+  const claudeGraph = cached?.source === "claude" ? await buildGraph(cwd, pr, files, analysis, cached, discussion) : undefined;
   const wantLlm = !values["no-llm"] && !claudeGraph;
 
   const claude = async () => {
     const tree = await claudeTree(pr, analysis, files);
     saveCachedTree(pr, tree);
-    return buildGraph(cwd, pr, files, analysis, tree);
+    return buildGraph(cwd, pr, files, analysis, tree, discussion);
   };
 
   if (cmd === "extract") {
