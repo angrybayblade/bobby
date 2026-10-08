@@ -46,7 +46,7 @@ Switch with `v` or the header toggle. Focus, progress and comments are shared, s
 | **Flow** | Left→right node-link canvas: relies on ← core → affects. Nodes are sized by relevance to your focus, long bands fold into "+N", edges are labelled, and the camera glides between zoom levels. | Seeing the shape of the change |
 | **Outline** | A document-like rail (walk order, indentation shows depth) beside a reading pane: the PR story, the core's story, or the code. | Big PRs, reading-first |
 | **Lens** | The focus sits dead centre with its direct neighbours left and right; everything else is hidden. | Maximum focus |
-| **Diff** | One scrollable diff viewer per file, in columns by band. Only the sections you're reading get edges, and related files scroll to meet them. Drag a viewer by its header; double-click it (or ⤢) to focus on that file, with what it relies on and affects in side rails. | Reading real diffs without losing the thread |
+| **Diff** | One scrollable diff viewer per file, in columns by band. Only the sections you're reading get edges, and related files scroll to meet them. Pinch to zoom and two-finger drag to pan (trackpad or touchscreen); over a viewer, two-finger scroll on a trackpad scrolls its code. Drag a viewer by its header; double-click it (or ⤢) to focus on that file, with what it relies on and affects in side rails. | Reading real diffs without losing the thread |
 
 Each view has three zoom levels (`enter` / `esc`): **Overview** → **Core** → **Page**. In Diff they are: all files → the file you're reading → that file in focus mode.
 

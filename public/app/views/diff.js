@@ -7,7 +7,7 @@ import { injectCss } from "./flow.js";
 
 const CSS = `
 .dv { position: absolute; inset: 0; }
-.dv .stage { position: absolute; inset: 0; overflow: hidden; cursor: grab; }
+.dv .stage { position: absolute; inset: 0; overflow: hidden; cursor: grab; touch-action: pan-x pan-y; } /* two-finger gestures are ours */
 .dv.dragging .stage { cursor: grabbing; }
 .dv .world { position: absolute; left: 0; top: 0; transform-origin: 0 0; transition: transform var(--dur) var(--ease); }
 .dv.dragging .world, .dv .world.still { transition: none; }
@@ -347,6 +347,14 @@ export default {
       apply();
     }
     function apply() { world.style.transform = `translate(${cam.tx + pan.x}px, ${cam.ty + pan.y}px) scale(${cam.s})`; }
+    // Zoom by k around a point on the stage, keeping whatever is under it in place.
+    function zoomAt(k, px, py) {
+      const s = Math.max(0.15, Math.min(2, cam.s * k));
+      const wx = (px - cam.tx - pan.x) / cam.s, wy = (py - cam.ty - pan.y) / cam.s;
+      cam = { s, tx: px - wx * s - pan.x, ty: py - wy * s - pan.y };
+      apply();
+    }
+    const still = () => { world.classList.add("still"); clearTimeout(stage._w); stage._w = setTimeout(() => world.classList.remove("still"), 120); };
 
     function update(reason) {
       dfocus.hidden = app.level !== 2;
@@ -429,13 +437,44 @@ export default {
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+    // Trackpad: pinch arrives as ctrl+wheel (Chrome, Firefox) and zooms anywhere; two-finger scroll pans
+    // the background but scrolls the code when over a viewer.
     stage.addEventListener("wheel", (ev) => {
+      const r = stage.getBoundingClientRect();
+      if (ev.ctrlKey) {
+        ev.preventDefault(); still();
+        return zoomAt(Math.exp(-ev.deltaY * 0.01), ev.clientX - r.left, ev.clientY - r.top);
+      }
       if (ev.target.closest(".fvb")) return; // the code scrolls itself
-      ev.preventDefault();
+      ev.preventDefault(); still();
       pan = { x: pan.x - ev.deltaX, y: pan.y - ev.deltaY };
-      world.classList.add("still"); apply();
-      clearTimeout(stage._w); stage._w = setTimeout(() => world.classList.remove("still"), 120);
+      apply();
     }, { passive: false });
+    // Safari's trackpad pinch
+    let gScale = 1;
+    stage.addEventListener("gesturestart", (ev) => { ev.preventDefault(); gScale = 1; });
+    stage.addEventListener("gesturechange", (ev) => {
+      ev.preventDefault(); still();
+      const r = stage.getBoundingClientRect();
+      zoomAt(ev.scale / gScale, ev.clientX - r.left, ev.clientY - r.top);
+      gScale = ev.scale;
+    });
+    // Touchscreen: two fingers pan (midpoint moves) and zoom (spread changes), even over code.
+    let touch = null;
+    const two = (ev) => {
+      const r = stage.getBoundingClientRect(), [a, b] = ev.touches;
+      return { x: (a.clientX + b.clientX) / 2 - r.left, y: (a.clientY + b.clientY) / 2 - r.top, d: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) };
+    };
+    stage.addEventListener("touchstart", (ev) => { if (ev.touches.length === 2) { ev.preventDefault(); touch = two(ev); drag = null; } }, { passive: false });
+    stage.addEventListener("touchmove", (ev) => {
+      if (!touch || ev.touches.length !== 2) return;
+      ev.preventDefault(); still();
+      const t = two(ev);
+      pan = { x: pan.x + t.x - touch.x, y: pan.y + t.y - touch.y };
+      zoomAt(t.d / touch.d, t.x, t.y);
+      touch = t;
+    }, { passive: false });
+    stage.addEventListener("touchend", (ev) => { if (ev.touches.length < 2) touch = null; });
 
     update("mount");
     return { update, destroy() { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); } };
