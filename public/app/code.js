@@ -1,4 +1,5 @@
-// The code page every view shows at level 2: why it matters, then the code.
+// A node, laid out top to bottom: title, why it matters, the comments on it, then its code.
+// Views show it as the level-2 page, or as the body of the focused card (no title block).
 import { BAND_TEXT, DONE, LOW, api, esc } from "./core.js";
 
 const EXT = {
@@ -115,12 +116,49 @@ function row(app, { t, o, n }, html, target) {
   const line = t === "-" ? o : n;
   const key = `${target.path}|${side}|${line}`;
   const cls = t === "+" ? "add" : t === "-" ? "del" : t === "x" ? "exp" : "ctx";
-  const comments = app.state.comments.filter((c) => c.path === target.path && c.side === side && c.line === line);
+  const at = (c) => c.path === target.path && c.side === side && c.line === line;
+  const count = app.state.comments.filter(at).length + (app.graph.discussion ?? []).filter(at).length;
   const composing = app.page.composing?.key === key;
-  return `<div class="ln ${cls}${app.page.sel?.key === key ? " sel" : ""}${target.hi === n && t !== "-" ? " target" : ""}" data-key="${esc(key)}" data-path="${esc(target.path)}" data-line="${line}" data-side="${side}" data-indiff="${target.inDiff && t !== "x" ? 1 : 0}">
-    <span class="bar"></span><span class="no">${o ?? ""}</span><span class="no">${n ?? ""}</span><span class="sg">${t === "+" ? "+" : t === "-" ? "−" : ""}</span><code>${html}</code></div>`
-    + comments.map((c) => `<div class="cmt"><button class="x" data-del="${c.id}" title="Delete draft">✕</button>${esc(c.body)}${c.inDiff ? "" : `<div class="note">Outside the diff, so this goes into the review summary.</div>`}</div>`).join("")
+  return `<div class="ln ${cls}${count ? " hasc" : ""}${app.page.sel?.key === key ? " sel" : ""}${target.hi === n && t !== "-" ? " target" : ""}" data-key="${esc(key)}" data-path="${esc(target.path)}" data-line="${line}" data-side="${side}" data-indiff="${target.inDiff && t !== "x" ? 1 : 0}">
+    <span class="bar"></span><span class="no">${o ?? ""}</span><span class="no">${n ?? ""}</span><span class="sg">${t === "+" ? "+" : t === "-" ? "−" : ""}</span><code${count ? ` data-cn="${count}"` : ""}>${html}</code></div>`
     + (composing ? `<div class="cmt"><textarea data-composer placeholder="Draft a comment.  ⌘/Ctrl+Enter to save · Esc to cancel"></textarea></div>` : "");
+}
+
+// ---- comments: your drafts plus existing GitHub discussion on the lines this node shows.
+function spans(app, pid) {
+  const node = app.nodeOf(pid);
+  if (!node) return [];
+  if (node.kind === "context") {
+    const { path, line } = node.location, sn = node.snippet, r = app.page.exp[`ctx:${path}:${line}`];
+    return [{ path, side: "RIGHT", lo: Math.min(sn.start, r?.start ?? sn.start), hi: Math.max(sn.start + sn.lines.length - 1, r?.end ?? 0) }];
+  }
+  return app.hunksOf(pid).flatMap((h) => {
+    const e = app.page.exp[h.id] ?? { above: 0, below: 0 };
+    const nNew = h.lines.filter((l) => l.t !== "-").length, nOld = h.lines.filter((l) => l.t !== "+").length;
+    return [
+      { path: h.file, side: "RIGHT", lo: h.newStart - e.above, hi: h.newStart + nNew - 1 + e.below },
+      { path: h.file, side: "LEFT", lo: h.oldStart, hi: h.oldStart + nOld - 1 },
+    ];
+  });
+}
+export function nodeComments(app, pid) {
+  const sp = spans(app, pid);
+  const hit = (c) => sp.some((s) => s.path === c.path && s.side === c.side && c.line >= s.lo && c.line <= s.hi);
+  return [...(app.graph.discussion ?? []).filter(hit), ...app.state.comments.filter(hit)]
+    .sort((a, b) => a.path.localeCompare(b.path) || a.line - b.line || !!b.url - !!a.url || String(a.createdAt).localeCompare(String(b.createdAt)));
+}
+function notesHtml(app, pid) {
+  const list = nodeComments(app, pid);
+  if (!list.length) return "";
+  return `<section class="notes"><h4>Comments · ${list.length}</h4>${list.map((c) => {
+    const key = esc(`${c.path}|${c.side}|${c.line}`);
+    const where = `${c.side === "LEFT" ? "old " : ""}L${c.line}`;
+    if (c.url) {
+      const link = /^https:\/\//.test(c.url) ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">${where} ↗</a>` : where;
+      return `<div class="note gh${c.replyTo ? " reply" : ""}" data-jump="${key}"><div class="who">@${esc(c.author)} · ${link}</div><div class="body">${esc(c.body)}</div></div>`;
+    }
+    return `<div class="note draft" data-jump="${key}"><div class="who">You · draft · ${where}<button class="x" data-del="${c.id}" title="Delete draft">✕</button></div><div class="body">${esc(c.body)}</div>${c.inDiff ? "" : `<div class="hint">Outside the diff, so this goes into the review summary.</div>`}</div>`;
+  }).join("")}</section>`;
 }
 
 function fileHead(path, extra = "", stat = "") {
@@ -199,13 +237,17 @@ function donePage(app) {
   </div>`;
 }
 
-export function renderPage(app, el, pid) {
-  const rerender = () => renderPage(app, el, pid);
+/** head: false renders only comments + code, for a card that already shows the title and why. */
+export function renderNode(app, el, pid, { head = true } = {}) {
+  const rerender = () => renderNode(app, el, pid, { head });
   bind(app, el, rerender);
   let body;
   if (pid === DONE) body = donePage(app);
   else if (pid === LOW) body = lowPage(app);
-  else {
+  else if (!head) {
+    const node = app.nodeOf(pid);
+    body = notesHtml(app, pid) + (node.kind === "change" ? app.hunksOf(pid).map((h) => hunkBox(app, h, rerender)).join("") : contextBox(app, node, rerender));
+  } else {
     const { pl } = app.get(pid);
     const node = app.nodeOf(pid);
     const badges = [
@@ -217,12 +259,14 @@ export function renderPage(app, el, pid) {
     body = `<div class="band"><i class="glyph ${glyph}"></i>${BAND_TEXT[pl.band]}</div>
       <h1>${esc(pl.title)}${badges ? `<span class="badges">${badges}</span>` : ""}</h1>
       <p class="why">${esc(pl.why)}</p>
+      ${notesHtml(app, pid)}
       ${node.kind === "change" ? app.hunksOf(pid).map((h) => hunkBox(app, h, rerender)).join("") : contextBox(app, node, rerender)}`;
   }
-  el.innerHTML = `<div class="page">${body}</div>`;
+  el.innerHTML = `<div class="node ${head ? "page" : "body"}">${body}</div>`;
   const ta = el.querySelector("textarea[data-composer]");
-  if (ta) ta.focus();
+  if (ta) ta.focus({ preventScroll: !head });
 }
+export const renderPage = (app, el, pid) => renderNode(app, el, pid);
 
 // One delegated listener per container.
 const bound = new WeakMap();
@@ -231,12 +275,20 @@ function bind(app, el, rerender) {
   if (el.dataset.bound) return;
   el.dataset.bound = "1";
   el.addEventListener("click", (ev) => {
-    const t = ev.target.closest("[data-exp],[data-del],[data-low],[data-go],.ln[data-key]");
-    if (!t) return;
+    if (ev.target.closest("a")) return;
+    const t = ev.target.closest("[data-exp],[data-del],[data-low],[data-go],[data-jump],.ln[data-key]");
+    if (!t || !el.contains(t)) return;
     const again = () => bound.get(el)();
     const ds = t.dataset;
     if (ds.go) app.setFocus(ds.go);
-    else if (ds.exp) {
+    else if (ds.jump) {
+      const ln = el.querySelector(`.ln[data-key="${CSS.escape(ds.jump)}"]`);
+      if (!ln) return;
+      el.querySelectorAll(".ln.sel").forEach((x) => x.classList.remove("sel"));
+      ln.classList.add("sel");
+      app.page.sel = { ...ln.dataset };
+      ln.scrollIntoView({ block: "center", behavior: "smooth" });
+    } else if (ds.exp) {
       const i = ds.exp.lastIndexOf(":"), id = ds.exp.slice(0, i), dir = ds.exp.slice(i + 1);
       if (id.startsWith("ctx:")) {
         const line = Number(id.slice(id.lastIndexOf(":") + 1));

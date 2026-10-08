@@ -166,9 +166,19 @@ kbd {
 .ln:hover .no { color: var(--muted); }
 mark.wa { background: var(--add-word); color: inherit; border-radius: 3px; }
 mark.wd { background: var(--del-word); color: inherit; border-radius: 3px; }
+.ln.hasc code::after { content: "  ◂ " attr(data-cn); color: var(--signal); font: 600 11px var(--font-ui); }
+.notes { margin: 0 0 18px; display: flex; flex-direction: column; gap: 8px; max-width: 80ch; }
+.notes h4 { margin: 0; font: 600 11px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.note { padding: 9px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); cursor: pointer; }
+.note:hover { border-color: var(--muted); }
+.note.draft { border-left: 3px solid var(--signal); }
+.note.reply { margin-left: 22px; }
+.note .who { display: flex; gap: 6px; align-items: baseline; font: 12px var(--font-ui); color: var(--faint); }
+.note .who a { color: var(--muted); }
+.note .x { margin-left: auto; color: var(--faint); }
+.note .body { font: var(--size)/1.5 var(--font-prose); white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 2px; }
+.note .hint { font-size: 12px; color: var(--faint); margin-top: 4px; }
 .cmt { margin: 6px 16px 10px 110px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); font: var(--size)/1.5 var(--font-prose); max-width: 70ch; }
-.cmt .x { float: right; color: var(--faint); }
-.cmt .note { font-size: 12px; color: var(--faint); margin-top: 4px; }
 .cmt textarea { width: 100%; min-height: 72px; border: 0; outline: 0; resize: vertical; background: none; color: inherit; font: inherit; }
 
 .hljs-keyword, .hljs-built_in, .hljs-literal { color: var(--hl-kw); }
