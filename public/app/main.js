@@ -1,5 +1,5 @@
 import { DONE, api, createApp } from "./core.js";
-import { expandAll, renderPage, startComment } from "./code.js";
+import { expandAll, renderNode, renderPage, startComment } from "./code.js";
 import * as chrome from "./chrome.js";
 import views from "./views/index.js";
 
@@ -7,6 +7,8 @@ const [graph, session] = await Promise.all([api("/api/graph"), api("/api/session
 const app = createApp({ graph, session });
 app.claudeReady = graph.generator.tree === "claude";
 app.renderPage = (el, pid) => { app.pageEl = el; renderPage(app, el, pid ?? app.focus); };
+// The focused card's body: comments + code, without the title block the card already shows.
+app.renderNode = (el, pid) => { app.pageEl = el; renderNode(app, el, pid ?? app.focus, { head: false }); };
 
 // ---- settings → document
 const FONTS = {
@@ -88,7 +90,7 @@ document.addEventListener("keydown", (ev) => {
   }
   const k = ev.key;
   if (current?.keys?.[k]) { ev.preventDefault(); current.keys[k](); return; }
-  const page = () => app.pageEl && app.level === 2;
+  const page = () => app.pageEl?.isConnected; // the focused node's code is on screen (page or card)
   const act = {
     j: () => app.step(1), ArrowDown: () => app.step(1), ArrowRight: () => app.step(1), " ": () => app.step(1),
     k: () => app.step(-1), ArrowUp: () => app.step(-1), ArrowLeft: () => app.step(-1),
@@ -97,7 +99,7 @@ document.addEventListener("keydown", (ev) => {
     a: () => { app.mark(app.focus, "reviewed"); app.nextUnreviewed(); },
     u: () => app.mark(app.focus, null),
     f: () => app.mark(app.focus, app.isFlagged(app.focus) ? null : "flagged"),
-    c: () => { if (app.level < 2) app.setLevel(2); setTimeout(() => app.pageEl && startComment(app, app.pageEl)); },
+    c: () => { if (page()) return startComment(app, app.pageEl); app.setLevel(2); setTimeout(() => page() && startComment(app, app.pageEl)); },
     e: () => page() && expandAll(app, app.pageEl),
     Enter: () => app.setLevel(app.level + 1), "+": () => app.setLevel(app.level + 1), "=": () => app.setLevel(app.level + 1),
     Escape: () => app.setLevel(app.level - 1), "-": () => app.setLevel(app.level - 1), _: () => app.setLevel(app.level - 1),
