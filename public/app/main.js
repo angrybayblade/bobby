@@ -1,0 +1,111 @@
+import { DONE, api, createApp } from "./core.js";
+import { expandAll, renderPage, startComment } from "./code.js";
+import * as chrome from "./chrome.js";
+import views from "./views/index.js";
+
+const [graph, session] = await Promise.all([api("/api/graph"), api("/api/session")]);
+const app = createApp({ graph, session });
+app.claudeReady = graph.generator.tree === "claude";
+app.renderPage = (el, pid) => { app.pageEl = el; renderPage(app, el, pid ?? app.focus); };
+
+// ---- settings → document
+const FONTS = {
+  sans: `"Inter", -apple-system, BlinkMacSystemFont, sans-serif`,
+  hyper: `"Atkinson Hyperlegible", "Inter", sans-serif`,
+  serif: `"Literata", Georgia, serif`,
+  mono: `"JetBrains Mono", ui-monospace, monospace`,
+};
+const media = (q) => window.matchMedia(q).matches;
+function applySettings() {
+  const s = app.settings, root = document.documentElement;
+  root.dataset.theme = s.theme === "system" ? (media("(prefers-color-scheme: light)") ? "light" : "dark") : s.theme;
+  root.dataset.motion = s.motion === "system" ? (media("(prefers-reduced-motion: reduce)") ? "off" : "on") : s.motion;
+  root.style.setProperty("--font-prose", FONTS[s.font] ?? FONTS.sans);
+  root.style.setProperty("--size", `${s.size}px`);
+  root.style.setProperty("--code-size", `${Math.round(s.size * 0.87)}px`);
+  root.style.setProperty("--word-spacing", { normal: "0", wide: ".08em", wider: ".16em" }[s.spacing] ?? "0");
+}
+applySettings();
+app.on((why) => why === "settings" && applySettings());
+
+// ---- views
+const el = document.getElementById("view");
+let current = null, currentId = null;
+function mount(id) {
+  const view = views.find((v) => v.id === id) ?? views[0];
+  current?.destroy?.();
+  el.innerHTML = "";
+  el.className = `view-${view.id}`;
+  currentId = app.viewId = view.id;
+  current = view.mount(el, app);
+}
+app.switchView = (id) => {
+  if (id === currentId) return;
+  mount(id);
+  app.saveSettings({ view: id });
+};
+app.on((why) => why !== "settings" && current?.update?.(why));
+app.on((why) => why === "settings" && current?.update?.("settings"));
+window.addEventListener("resize", () => current?.update?.("resize"));
+
+// ---- Claude tree: never swap under the user; offer it.
+app.switchTree = async () => {
+  if (!app.claudeReady || app.graph.generator.tree === "claude") return;
+  app.replaceGraph(await api("/api/graph"));
+  chrome.toast("Switched to Claude's tree. You're on the same code.", 4000);
+};
+async function poll() {
+  const s = await api("/api/status");
+  app.llm = s.llm;
+  if (s.claudeReady && !app.claudeReady) {
+    app.claudeReady = true;
+    chrome.toast(`<span>Claude's tree is ready. <kbd>R</kbd> switches; you keep your place.</span>`);
+  }
+  app.emit("llm");
+  if (s.llm === "pending") setTimeout(poll, 4000);
+}
+if (app.llm === "pending") poll();
+
+// ---- start: resume where you were, else the first unreviewed page
+const lastNode = session.state.lastNodeId;
+const resume = lastNode && [...app.index.placement.values()].find((x) => x.pl.node === lastNode && !x.pl.repeatOf)?.pl.id;
+app.focus = resume ?? app.index.walk.find((p) => p !== DONE && !app.isReviewed(p)) ?? app.index.walk[0];
+app.level = resume ? 2 : 0;
+const hash = new URLSearchParams(location.hash.slice(1)); // deep links for testing: #view=lens&level=1&p=5
+if (hash.has("level")) app.level = Number(hash.get("level"));
+if (hash.has("p")) app.focus = app.index.walk[Number(hash.get("p")) - 1] ?? app.focus;
+mount(hash.get("view") ?? app.settings.view);
+chrome.init(app, views);
+if (resume && !hash.has("p") && (app.progress().done > 0 || session.state.note)) chrome.reentry();
+
+// ---- keys
+const typing = (t) => t.matches?.("input, textarea, [contenteditable]");
+document.addEventListener("keydown", (ev) => {
+  if (typing(ev.target) || ev.metaKey || ev.ctrlKey || ev.altKey) return;
+  if (chrome.isOpen()) {
+    if (ev.key === "Escape" || ev.key === "Enter") { ev.preventDefault(); chrome.close(); }
+    return;
+  }
+  const k = ev.key;
+  if (current?.keys?.[k]) { ev.preventDefault(); current.keys[k](); return; }
+  const page = () => app.pageEl && app.level === 2;
+  const act = {
+    j: () => app.step(1), ArrowDown: () => app.step(1), ArrowRight: () => app.step(1), " ": () => app.step(1),
+    k: () => app.step(-1), ArrowUp: () => app.step(-1), ArrowLeft: () => app.step(-1),
+    J: () => app.stepCore(1), K: () => app.stepCore(-1),
+    n: () => app.nextUnreviewed(),
+    a: () => { app.mark(app.focus, "reviewed"); app.nextUnreviewed(); },
+    u: () => app.mark(app.focus, null),
+    f: () => app.mark(app.focus, app.isFlagged(app.focus) ? null : "flagged"),
+    c: () => { if (app.level < 2) app.setLevel(2); setTimeout(() => app.pageEl && startComment(app, app.pageEl)); },
+    e: () => page() && expandAll(app, app.pageEl),
+    Enter: () => app.setLevel(app.level + 1), "+": () => app.setLevel(app.level + 1), "=": () => app.setLevel(app.level + 1),
+    Escape: () => app.setLevel(app.level - 1), "-": () => app.setLevel(app.level - 1), _: () => app.setLevel(app.level - 1),
+    v: () => app.switchView(views[(views.findIndex((v) => v.id === currentId) + 1) % views.length].id),
+    s: () => chrome.submit(), "?": () => chrome.help(), ",": () => chrome.settings(), p: () => chrome.park(),
+    R: () => app.switchTree(),
+  }[k];
+  if (act) { ev.preventDefault(); app.useKey(k === "Enter" ? "enter" : k === "Escape" ? "esc" : k); act(); }
+});
+
+window.prfocus = app; // handy for debugging and tests
