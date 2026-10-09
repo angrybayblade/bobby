@@ -648,24 +648,20 @@ export default {
     stage.addEventListener("touchend", (ev) => { if (ev.touches.length < 2) touch = null; });
 
     update("mount");
-    // Arrows move around the canvas: ← → to the neighbouring band column (relies on ← core → affects),
-    // ↑ ↓ to the previous or next file in the same column. You land on the file's first section.
+    // Arrows follow the graph: → to a file this one leads into, ← to one that leads into it (the nearest,
+    // or failing that the nearest in the next column); ↑ ↓ to the file above or below in the same column.
     function moveFile(dc, dr) {
       const act = activeFile();
-      const ci = columns.findIndex((col) => col.includes(act));
+      const ci = columns.findIndex((col) => col?.includes(act));
       if (ci < 0) return;
+      const at = views.get(act.path), dist = (f) => { const v = views.get(f.path); return Math.abs(v.x - at.x) * 4 + Math.abs(v.y - at.y); };
+      const nearest = (list) => [...list].sort((a, b) => dist(a) - dist(b))[0];
       let to;
       if (dr) {
         const col = [...columns[ci]].sort((a, b) => views.get(a.path).y - views.get(b.path).y); // as laid out, after any dragging
         to = col[col.indexOf(act) + dr];
       } else {
-        const col = columns[ci + dc];
-        if (!col) return;
-        // Prefer a file the one you're reading relates to; otherwise the one nearest in height.
-        const linked = new Set(act.sections.flatMap((s) => (M.rel.get(s.pid) ?? []).map((r) => M.fileOf.get(r.pid))));
-        const y = views.get(act.path).y;
-        const near = (f) => Math.abs(views.get(f.path).y - y);
-        to = col.filter((f) => linked.has(f)).sort((a, b) => near(a) - near(b))[0] ?? [...col].sort((a, b) => near(a) - near(b))[0];
+        to = nearest(fileLinks[dc > 0 ? "next" : "prev"].get(act) ?? []) ?? (columns[ci + dc] && nearest(columns[ci + dc]));
       }
       if (to) app.setFocus(to.sections[0].pid);
     }

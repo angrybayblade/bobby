@@ -129,7 +129,7 @@ export function help() {
     <p>Each core change comes with its surroundings, in this order: <b>untouched code it relies on</b> → <b>changed code it relies on</b> → <b>the core</b> → <b>changed code it affects</b> → <b>untouched code it affects</b>. Solid dots ● are changed code, hollow ○ are untouched, and ◆ is the core.</p>
     <table>
       ${r("j k", "next / previous page (space too; arrows too, except in Diff)")}
-      ${r("← → ↑ ↓", "in Diff: ← → neighbouring column (relies on ← core → affects), ↑ ↓ previous / next file in it")}
+      ${r("← → ↑ ↓", "in Diff: → / ← follow edges to a file this one leads into / comes from, ↑ ↓ the file above / below")}
       ${r("J K", "next / previous core")}
       ${r("n", "next unreviewed")}
       ${r("a", "looks good: mark reviewed and move on")}
