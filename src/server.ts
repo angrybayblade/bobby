@@ -18,7 +18,7 @@ const json = (v: unknown, status = 200) => Response.json(v, { status });
 
 export function startServer(s: Session, port: number) {
   const pr = () => s.staticGraph.pr;
-  const persist = () => saveState({ owner: pr().owner, repo: pr().repo, number: pr().number }, s.state);
+  const persist = () => saveState({ owner: pr().owner, repo: pr().repo, number: pr().number, branch: pr().branch }, s.state);
 
   return Bun.serve({
     port,
