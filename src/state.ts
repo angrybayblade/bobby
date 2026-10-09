@@ -5,8 +5,9 @@ import type { ReviewGraph } from "./graph.ts";
 import type { ChangeTree, PrInfo, ReviewState } from "./types.ts";
 
 const ROOT = join(homedir(), ".prfocus");
-type PrKey = Pick<PrInfo, "owner" | "repo" | "number">;
-const slug = (pr: PrKey) => `${pr.owner}_${pr.repo}_${pr.number}`;
+type PrKey = Pick<PrInfo, "owner" | "repo" | "number" | "branch">;
+// A local review is keyed by its branch, so each branch keeps its own progress.
+const slug = (pr: PrKey) => (pr.branch ? `${pr.owner}_${pr.repo}_branch_${pr.branch.replace(/[^\w.-]+/g, "-")}` : `${pr.owner}_${pr.repo}_${pr.number}`);
 
 function readJson<T>(path: string): T | null {
   try { return existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : null; } catch { return null; }
@@ -23,15 +24,18 @@ export function loadState(pr: PrKey & { headSha: string }): ReviewState {
 }
 export const saveState = (pr: PrKey, s: ReviewState) => writeJson(join(ROOT, "state", `${slug(pr)}.json`), s);
 
-const treePath = (pr: PrInfo) => join(ROOT, "cache", `${slug(pr)}_${pr.headSha.slice(0, 12)}.json`);
+// A local review's diff also depends on the base it's compared with, so that's part of its cache key.
+const rev = (pr: { headSha: string; baseSha?: string; branch?: string }) => pr.headSha.slice(0, 12) + (pr.branch && pr.baseSha ? `_${pr.baseSha.slice(0, 7)}` : "");
+const treePath = (pr: PrInfo) => join(ROOT, "cache", `${slug(pr)}_${rev(pr)}.json`);
 export const loadCachedTree = (pr: PrInfo) => readJson<ChangeTree>(treePath(pr));
 export const saveCachedTree = (pr: PrInfo, t: ChangeTree) => writeJson(treePath(pr), t);
 
 /** Built graphs per head commit, so reopening an unchanged PR skips fetching, diffing and analysis. */
 export interface CachedGraphs { static: ReviewGraph; claude?: ReviewGraph }
-const graphPath = (pr: PrKey & { headSha: string }) => join(ROOT, "cache", `${slug(pr)}_${pr.headSha.slice(0, 12)}.graphs.json`);
-export const loadCachedGraphs = (pr: PrKey & { headSha: string }) => readJson<CachedGraphs>(graphPath(pr));
-export const saveCachedGraphs = (pr: PrKey & { headSha: string }, g: CachedGraphs) => writeJson(graphPath(pr), g);
+type GraphKey = PrKey & { headSha: string; baseSha?: string };
+const graphPath = (pr: GraphKey) => join(ROOT, "cache", `${slug(pr)}_${rev(pr)}.graphs.json`);
+export const loadCachedGraphs = (pr: GraphKey) => readJson<CachedGraphs>(graphPath(pr));
+export const saveCachedGraphs = (pr: GraphKey, g: CachedGraphs) => writeJson(graphPath(pr), g);
 
 /** UI preferences; free-form so views can add their own keys. */
 const settingsPath = join(ROOT, "settings.json");
