@@ -17,7 +17,8 @@ export interface ReviewGraph {
   generatedAt: string;
   generator: { name: string; version: string; tree: "static" | "claude" };
   pr: {
-    provider: "github";
+    provider: "github" | "local";
+    branch?: string; baseRef?: string;
     owner: string; repo: string; number: number; url: string;
     title: string; body: string; author: string;
     baseSha: string; headSha: string;
@@ -150,7 +151,7 @@ export async function buildGraph(cwd: string | null, pr: PrInfo, files: FileDiff
     generatedAt: new Date().toISOString(),
     generator: { name: "prfocus", version: VERSION, tree: tree.source === "claude" ? "claude" : "static" },
     pr: {
-      provider: "github", owner: pr.owner, repo: pr.repo, number: pr.number, url: pr.url,
+      provider: pr.provider ?? "github", ...(pr.branch ? { branch: pr.branch, baseRef: pr.baseRef } : {}), owner: pr.owner, repo: pr.repo, number: pr.number, url: pr.url,
       title: pr.title, body: pr.body, author: pr.author, baseSha: pr.baseSha, headSha: pr.headSha,
     },
     intent: tree.intent,

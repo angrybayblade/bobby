@@ -30,6 +30,10 @@ PR ─┬─ files ── hunks                        (the raw diff)
     └─ discussion?                           (existing review comments, by path + line + side)
 ```
 
+### Local reviews
+
+`pr.provider` is `"github"` for a pull request, or `"local"` for a branch reviewed in its repo without one. A local graph has `number: 0`, an empty `url`, plus `branch` and `baseRef` (what it's compared with); `headSha` may be a tree id when it includes uncommitted changes. v1 consumers that only expect `"github"` should treat any other provider as having no PR page to link to.
+
 ### Node vs. placement
 
 A **node** is a piece of code. A **placement** is that node put in a core's band, with a reason (`why`).

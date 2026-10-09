@@ -21,7 +21,9 @@
       "type": "object",
       "required": ["provider", "owner", "repo", "number", "url", "title", "body", "author", "baseSha", "headSha"],
       "properties": {
-        "provider": { "const": "github" },
+        "provider": { "enum": ["github", "local"], "description": "local: a branch reviewed in its repo with no PR; number is 0 and url is empty." },
+        "branch": { "type": "string", "description": "local only: the branch under review." },
+        "baseRef": { "type": "string", "description": "local only: the branch it's compared against." },
         "owner": { "type": "string" },
         "repo": { "type": "string" },
         "number": { "type": "integer" },
