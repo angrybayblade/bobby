@@ -44,7 +44,7 @@ A canvas with one scrollable diff viewer per file, arranged in columns by band (
 
 | Weight | Which viewers | Looks |
 |---|---|---|
-| Focus | The viewer you're in, plus the files its edges reach | Full strength and lifted. Yours has the amber border. |
+| Focus | The viewer you're in, plus the files its edges reach | Full strength and lifted. Yours has a slightly stronger border. |
 | Semi-focus | Other changed files | 60% |
 | Background | Untouched files (relied on or affected) | 30% |
 
