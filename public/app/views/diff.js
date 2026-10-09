@@ -17,6 +17,14 @@ const CSS = `
 .dv .fv { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); z-index: 2; transition: transform var(--dur) var(--ease), opacity var(--dur); }
 .dv.dragging .fv, .dv .fv.held { transition: none; }
 .dv .fv.context { border-style: dashed; }
+/* Weight: what you're in and what it reaches (w-focus) > other changed files (w-semi) > untouched files (w-none).
+   Until you're in a viewer, only untouched files sit back. */
+.dv .fv.w-none { opacity: .5; box-shadow: none; }
+.dv.engaged .fv.w-semi { opacity: .6; box-shadow: none; }
+.dv.engaged .fv.w-none { opacity: .3; }
+.dv .fv.w-none:hover, .dv.engaged .fv.w-semi:hover { opacity: .9; }
+.dv .fv.w-focus { box-shadow: var(--shadow), 0 2px 12px rgba(0,0,0,.2); z-index: 3; }
+.dv .fv.w-focus:not(.active) { border-color: var(--muted); }
 .dv .fv.active { border: 2px solid var(--signal); box-shadow: 0 0 0 6px var(--signal-soft), var(--shadow); z-index: 3; }
 .dv .fvh { display: flex; gap: 10px; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--line-soft); font: 12.5px var(--font-code); color: var(--muted); cursor: grab; user-select: none; background: var(--raised); }
 .dv .fvh b { color: var(--text); font-weight: 600; }
@@ -309,6 +317,11 @@ export default {
       const rel = new Set(ls.map((l) => l.pid));
       for (const pid of new Set([...relShown, ...rel])) for (const s of world.querySelectorAll(`.sec[data-pid="${pid}"]`)) s.classList.toggle("rel", rel.has(pid));
       relShown = rel;
+      const near = new Set(engaged && v ? [v, ...ls.map((l) => l.to)] : []);
+      for (const o of views.values()) {
+        const w = near.has(o) ? "focus" : o.f.changed ? "semi" : "none";
+        if (o.w !== w) { o.el.classList.remove(`w-${o.w}`); o.el.classList.add(`w-${(o.w = w)}`); }
+      }
       const keep = new Set(), entering = [];
       for (const s of shapes) {
         keep.add(s.key);
