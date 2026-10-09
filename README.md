@@ -1,8 +1,8 @@
-# prfocus
+# focus-bobby
 
-Review a GitHub PR one focused page at a time.
+A tool to help me not loose focus while reviewing PRs
 
-prfocus turns a PR into a forest of **core changes**. Around each core change it places the code it relies on and the code it affects:
+[](img/bobby.png)
 
 ```
 untouched code it relies on → changed code it relies on → CORE CHANGE → changed code it affects → untouched code it affects
@@ -46,7 +46,7 @@ Switch with `v` or the header toggle. Focus, progress and comments are shared, s
 | **Flow** | Left→right node-link canvas: relies on ← core → affects. Nodes are sized by relevance to your focus, long bands fold into "+N", edges are labelled, and the camera glides between zoom levels. | Seeing the shape of the change |
 | **Outline** | A document-like rail (walk order, indentation shows depth) beside a reading pane: the PR story, the core's story, or the code. | Big PRs, reading-first |
 | **Lens** | The focus sits dead centre with its direct neighbours left and right; everything else is hidden. | Maximum focus |
-| **Diff** | One scrollable diff viewer per file, in columns by band. Only the sections you're reading get edges, and related files scroll to meet them. Pinch to zoom and two-finger drag to pan (trackpad or touchscreen); over a viewer, two-finger scroll on a trackpad scrolls its code. Drag a viewer by its header; double-click it (or ⤢) to focus on that file, with what it relies on and affects in side rails. | Reading real diffs without losing the thread |
+| **Diff** | One scrollable diff viewer per file, in columns by band. The sections you're reading get full edges, and related files scroll to meet them. Every other relationship is a faint background line; ones scrolled out of view merge into a thicker line (hover for the count). Pinch to zoom and two-finger drag to pan (trackpad or touchscreen); over a viewer, two-finger scroll on a trackpad scrolls its code. Drag a viewer by its header; double-click it (or ⤢) to focus on that file, with what it relies on and affects in side rails. | Reading real diffs without losing the thread |
 
 Each view has three zoom levels (`enter` / `esc`): **Overview** → **Core** → **Page**. In Diff they are: all files → the file you're reading → that file in focus mode.
 
@@ -67,7 +67,7 @@ Click a comment to jump to its line. `e` opens collapsed code, then adds context
 - **Re-entry card.** When you come back, it shows where you were, your progress, and your parked thought.
 - **Park a thought (`p`).** Jot down what's in your head before you get pulled away.
 - **Key hints fade** after you've used a key a few times.
-- **Settings (`,`).** Warm dark or light theme, reading font (Sans, Atkinson Hyperlegible, Serif, Mono), size, word spacing, motion, and an opt-in break reminder.
+- **Settings (`,`).** Warm dark or light theme, reading font (Sans, Atkinson Hyperlegible, Serif, Mono), size, word spacing, motion, Diff's background edges, and an opt-in break reminder.
 - **Calm diffs.** Muted line tints, word-level highlights, and no code ligatures.
 
 Keys: `j/k` step · `J/K` core · `a` looks good → next · `f` flag · `n` next unreviewed · `c` comment · `e` open / more context · `p` park · `v` view · `s` submit · `?` help.
