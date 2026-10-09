@@ -6,7 +6,7 @@ import { resolveLocal } from "./local.ts";
 import { parseDiff } from "./diff.ts";
 import { analyze, heuristicTree, type Analysis } from "./analyze.ts";
 import { claudeTree } from "./llm.ts";
-import { buildGraph, GRAPH_SCHEMA, VERSION, type ReviewGraph } from "./graph.ts";
+import { buildGraph, GRAPH_SCHEMA, LEGACY_SCHEMAS, VERSION, type ReviewGraph } from "./graph.ts";
 import { loadCachedGraphs, loadCachedTree, loadState, saveCachedGraphs, saveCachedTree } from "./state.ts";
 import type { FileDiff, PrInfo } from "./types.ts";
 import { startServer, type Session } from "./server.ts";
@@ -57,7 +57,7 @@ const log = (m: string) => (cmd === "extract" && !values.out ? console.error(m) 
 
 if (cmd === "open") {
   const graph = JSON.parse(readFileSync(arg, "utf8")) as ReviewGraph;
-  if (graph.schema !== GRAPH_SCHEMA) throw new Error(`Unsupported graph schema: ${graph.schema}`);
+  if (graph.schema !== GRAPH_SCHEMA && !LEGACY_SCHEMAS.includes(graph.schema)) throw new Error(`Unsupported graph schema: ${graph.schema}`);
   await serve({ cwd: values.repo ?? null, staticGraph: graph, state: loadState({ ...graph.pr }), llm: "off" });
 } else {
   const t0 = Date.now();

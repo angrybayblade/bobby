@@ -1,6 +1,6 @@
 # Review graph v1
 
-`prfocus.review-graph/v1` is the contract between **extracting** a PR and **viewing** it.
+`bobby.review-graph/v1` is the contract between **extracting** a PR and **viewing** it. Graphs written under the tool's old name, `prfocus.review-graph/v1`, are the same format and still open.
 
 - Extractors turn a PR into a graph. This repo ships one: git and static analysis, refined by Claude.
 - Views render a graph. This repo ships four: Flow, Outline, Lens and Diff.
@@ -9,8 +9,8 @@
 The machine-readable schema is in [`schema/review-graph.v1.schema.json`](schema/review-graph.v1.schema.json).
 
 ```sh
-prfocus extract <pr> -o pr.json     # produce a graph
-prfocus open pr.json                # view any graph, wherever it came from
+bobby extract <pr> -o pr.json     # produce a graph
+bobby open pr.json                # view any graph, wherever it came from
 ```
 
 ## Model

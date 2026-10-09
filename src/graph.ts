@@ -1,5 +1,5 @@
 /**
- * prfocus review-graph v1: the contract between extraction and views.
+ * Focus Bobby's review graph v1: the contract between extraction and views.
  * Extractors (this repo's static + Claude pipeline, or anything else) emit a ReviewGraph;
  * views only ever read a ReviewGraph. See SPEC.md and schema/review-graph.v1.schema.json.
  */
@@ -8,8 +8,9 @@ import type { Analysis } from "./analyze.ts";
 import type { Band, ChangeTree, DiffLine, FileDiff, PrInfo, TreeNode } from "./types.ts";
 import { BANDS } from "./types.ts";
 
-export const GRAPH_SCHEMA = "prfocus.review-graph/v1" as const;
-export const VERSION = "0.3.0"; // bump when extraction output changes: cached graphs from other versions are rebuilt
+export const GRAPH_SCHEMA = "bobby.review-graph/v1" as const;
+export const LEGACY_SCHEMAS = ["prfocus.review-graph/v1"]; // the same contract under its old name; still opens
+export const VERSION = "0.4.0"; // bump when extraction output changes: cached graphs from other versions are rebuilt
 const SNIPPET_RADIUS = 10;
 
 export interface ReviewGraph {
@@ -149,7 +150,7 @@ export async function buildGraph(cwd: string | null, pr: PrInfo, files: FileDiff
   return {
     schema: GRAPH_SCHEMA,
     generatedAt: new Date().toISOString(),
-    generator: { name: "prfocus", version: VERSION, tree: tree.source === "claude" ? "claude" : "static" },
+    generator: { name: "focus-bobby", version: VERSION, tree: tree.source === "claude" ? "claude" : "static" },
     pr: {
       provider: pr.provider ?? "github", ...(pr.branch ? { branch: pr.branch, baseRef: pr.baseRef } : {}), owner: pr.owner, repo: pr.repo, number: pr.number, url: pr.url,
       title: pr.title, body: pr.body, author: pr.author, baseSha: pr.baseSha, headSha: pr.headSha,

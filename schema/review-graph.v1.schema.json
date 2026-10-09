@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://prfocus.dev/schema/review-graph.v1.schema.json",
-  "title": "prfocus review-graph v1",
+  "$id": "https://github.com/angrybayblade/focus-bobby/schema/review-graph.v1.schema.json",
+  "title": "Focus Bobby review graph v1",
   "description": "A pull request decomposed into core changes, each surrounded by the code it relies on and the code it affects. Produced by extractors, consumed by views.",
   "type": "object",
   "required": ["schema", "generatedAt", "generator", "pr", "intent", "files", "hunks", "nodes", "cores", "edges", "walk", "lowSignal"],
   "properties": {
-    "schema": { "const": "prfocus.review-graph/v1" },
+    "schema": { "enum": ["bobby.review-graph/v1", "prfocus.review-graph/v1"], "description": "prfocus.review-graph/v1 is the same contract under its old name." },
     "generatedAt": { "type": "string", "format": "date-time" },
     "generator": {
       "type": "object",
