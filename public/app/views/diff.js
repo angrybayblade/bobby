@@ -27,8 +27,8 @@ const CSS = `
 .dv .fv.w-focus:not(.active) { border-color: var(--muted); }
 .dv .fv.active { border: 2px solid var(--signal); box-shadow: 0 0 0 6px var(--signal-soft), var(--shadow); z-index: 3; }
 .dv .fvh { display: flex; gap: 10px; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--line-soft); font: 12.5px var(--font-code); color: var(--muted); cursor: grab; user-select: none; background: var(--raised); }
-.dv .fvh b { color: var(--text); font-weight: 600; }
-.dv .fvh .p { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dv .fvh b { font-weight: 600; }
+.dv .fvh .p { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dv .fvh .st { white-space: nowrap; }
 .dv .fvh .max { width: 26px; height: 22px; border-radius: 6px; color: var(--muted); font-size: 14px; line-height: 1; }
 .dv .fvh .max:hover { background: var(--bg); color: var(--text); }
