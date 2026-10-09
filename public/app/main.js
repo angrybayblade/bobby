@@ -108,7 +108,7 @@ document.addEventListener("keydown", (ev) => {
     Enter: () => app.setLevel(app.level + 1), "+": () => app.setLevel(app.level + 1), "=": () => app.setLevel(app.level + 1),
     Escape: () => app.setLevel(app.level - 1), "-": () => app.setLevel(app.level - 1), _: () => app.setLevel(app.level - 1),
     v: () => app.switchView(views[(views.findIndex((v) => v.id === currentId) + 1) % views.length].id),
-    s: () => chrome.submit(), "?": () => chrome.help(), ",": () => chrome.settings(), p: () => chrome.park(),
+    s: () => chrome.submit(), "?": () => chrome.help(), ",": () => chrome.settings(), p: () => chrome.park(), M: () => chrome.notes(),
     R: () => app.switchTree(),
   }[k];
   if (act) { ev.preventDefault(); app.useKey(k === "Enter" ? "enter" : k === "Escape" ? "esc" : k); act(); }

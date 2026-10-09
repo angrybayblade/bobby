@@ -9,6 +9,9 @@ export function init(a, viewList) {
   for (const r of ["focus", "level", "marks", "graph", "settings", "comments", "llm"]) app.on((why) => why === r && render());
   render();
   document.addEventListener("click", onClick);
+  $("#overlay").addEventListener("keydown", (ev) => {
+    if (ev.target.id === "gnote" && ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); addGlobalNote(); }
+  });
   startTimebox();
 }
 
@@ -30,6 +33,7 @@ function renderTop() {
     <div class="prog" title="${done} of ${total} pages reviewed"><div class="bar"><i style="width:${pct}%"></i></div>${done}/${total}${mins && done < total ? ` · ~${mins}m` : ""}</div>
     <div class="seg" role="group" aria-label="View">${views.map((v) => `<button data-view="${v.id}" aria-pressed="${app.viewId === v.id}" title="${esc(v.hint)} (v)">${esc(v.name)}</button>`).join("")}</div>
     ${drafts ? `<button class="pill signal" data-act="submit">${drafts} draft${drafts > 1 ? "s" : ""} · S</button>` : ""}
+    <button class="pill" data-act="notes" title="Your private notes (M). Never posted to GitHub.">✎ Notes${app.state.notes.length ? ` · ${app.state.notes.length}` : ""}</button>
     <button class="iconbtn" data-act="settings" title="Settings (,)" aria-label="Settings">${GEAR}</button>`;
 }
 
@@ -86,6 +90,7 @@ export function help() {
       ${r("f", "flag to come back to")}
       ${r("c", "comment (click a line first, or it picks one)")}
       ${r("m", "private note on a line: only you see it, never posted")}
+      ${r("M", "your notes: on the whole PR, plus a list of all of them")}
       ${r("e", "open collapsed code, then more context")}
       ${r("p", "park a thought: jot what's in your head, shown when you return")}
       ${r("enter esc", "zoom in / out: overview → core → page")}
@@ -116,7 +121,7 @@ export function settings() {
 export function submit(msg) {
   const cs = app.state.comments;
   open(`<h2>Submit review</h2>
-    <p>${cs.length ? `${cs.length} draft comment(s) will be posted together.` : "No draft comments."}</p>
+    <p>${cs.length ? `${cs.length} draft comment(s) will be posted together.` : "No draft comments."}${app.state.notes.length ? ` Your ${app.state.notes.length} private note(s) stay here and aren't posted.` : ""}</p>
     <textarea id="rbody" placeholder="Summary (optional for Approve)"></textarea>
     <div style="font-size:13px;color:var(--muted);margin-top:10px">${cs.map((c) => `· <code>${esc(c.path)}:${c.line}</code> ${esc(c.body.slice(0, 70))}${c.inDiff ? "" : " <i>(goes in summary)</i>"}`).join("<br>")}</div>
     <div class="row">
@@ -132,6 +137,27 @@ async function doSubmit(event) {
   app.state.comments = [];
   app.emit("comments");
   open(`<h2>Review posted ✓</h2><p><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url)}</a></p><div class="row"><button class="btn primary" data-act="close">Close</button></div>`);
+}
+
+/** Private notes: ones on the whole PR can be written here; every note is listed and jumps to its code. */
+export function notes() {
+  const all = app.state.notes;
+  const del = (n) => `<button class="x" data-gdel="${n.id}" title="Delete note">✕</button>`;
+  const global = all.filter((n) => !n.path);
+  const onCode = all.filter((n) => n.path).sort((a, b) => a.path.localeCompare(b.path) || (a.line ?? 0) - (b.line ?? 0));
+  open(`<h2>Your notes</h2>
+    <p>Private: only you see these. They're never posted to GitHub.</p>
+    <h4 class="nh">On this PR</h4>
+    ${global.map((n) => `<div class="note mine"><div class="who">${timeAgo(new Date(n.createdAt))}${del(n)}</div><div class="body">${esc(n.body)}</div></div>`).join("")}
+    <textarea id="gnote" placeholder="A note about the whole PR.  ⌘/Ctrl+Enter to add"></textarea>
+    <div class="row"><button class="btn primary" data-act="add-note">Add note</button><button class="btn" data-act="close" style="margin-left:auto">Done</button></div>
+    ${onCode.length ? `<h4 class="nh">On code</h4>${onCode.map((n) => `<div class="note mine" data-gonote="${n.id}"><div class="who"><code>${esc(n.path.split("/").pop())}${n.line ? `:${n.line}` : ""}</code>${n.line ? "" : " · whole file"}${del(n)}</div><div class="body">${esc(n.body)}</div></div>`).join("")}` : ""}`, "notes");
+}
+async function addGlobalNote() {
+  const t = $("#gnote"), body = t?.value.trim();
+  if (!body) return;
+  await app.addNote({ body });
+  notes();
 }
 
 export function park() {
@@ -192,15 +218,22 @@ function startTimebox() {
 
 // ---------------------------------------------------------------- clicks
 function onClick(ev) {
-  const t = ev.target.closest("[data-act],[data-view],[data-level],[data-set],[data-submit]");
+  const t = ev.target.closest("[data-act],[data-view],[data-level],[data-set],[data-submit],[data-gdel],[data-gonote]");
   if (!t) { if (ev.target.id === "overlay") close(); return; }
   const ds = t.dataset;
   if (ds.view) app.switchView(ds.view);
   else if (ds.level) app.setLevel(Number(ds.level));
   else if (ds.set) { const v = /^\d+$/.test(ds.val) ? Number(ds.val) : ds.val; app.saveSettings({ [ds.set]: v }); settings(); }
   else if (ds.submit) doSubmit(ds.submit);
+  else if (ds.gdel) { app.deleteNote(ds.gdel); notes(); }
+  else if (ds.gonote) {
+    const n = app.state.notes.find((x) => x.id === ds.gonote), pid = n && app.pidAt(n.path, n.line);
+    close();
+    if (pid) app.setFocus(pid, { level: 2 });
+  }
   else ({
-    close, settings, submit,
+    close, settings, submit, notes,
+    "add-note": () => addGlobalNote(),
     note: park,
     overview: () => { close(); app.setLevel(0); },
     "switch-tree": () => app.switchTree(),
