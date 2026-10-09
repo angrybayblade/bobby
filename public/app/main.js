@@ -74,7 +74,7 @@ if (app.llm === "pending") poll();
 // ---- start: resume where you were, else the first unreviewed page
 const lastNode = session.state.lastNodeId;
 const resume = lastNode && [...app.index.placement.values()].find((x) => x.pl.node === lastNode && !x.pl.repeatOf)?.pl.id;
-// First time on this PR: start at the easiest entry point, the change with the fewest links to other code.
+// First time on this PR: start at the easiest entry point, the core with the least around it.
 const entry = resume ? null : app.entryPoint();
 app.focus = resume ?? entry?.pid ?? app.index.walk.find((p) => p !== DONE && !app.isReviewed(p)) ?? app.index.walk[0];
 app.level = resume ? (session.state.lastLevel ?? 2) : entry ? 1 : 0;
@@ -85,8 +85,8 @@ mount(hash.get("view") ?? app.settings.view);
 chrome.init(app, views);
 if (resume && !hash.has("p") && (app.progress().done > 0 || session.state.note)) chrome.reentry();
 else if (entry && !hash.has("p")) {
-  const why = entry.links === 0 ? "it doesn't depend on or affect other changes" : `it has the fewest links to other code (${entry.links})`;
-  chrome.toast(`<span>Starting with <b>${esc(app.get(entry.pid).pl.title)}</b>: ${why}. <kbd>esc</kbd> for the overview.</span>`, 7000);
+  const deps = entry.deps === 1 ? "1 thing" : `${entry.deps} things`;
+  chrome.toast(`<span>Starting with core ${app.get(entry.pid).ci + 1}, <b>${esc(app.get(entry.pid).core.title)}</b>: the core with the least around it (${deps} it relies on or affects). <kbd>esc</kbd> for the overview.</span>`, 7000);
 }
 
 // ---- keys

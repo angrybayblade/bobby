@@ -173,24 +173,22 @@ export function createApp({ graph, session }) {
       app.setFocus(first);
     },
     /**
-     * Where to start a PR you haven't opened before: the unreviewed changed code with the fewest links to
-     * other code (edges in or out, across every core it appears in), then the smallest change, then walk order.
+     * Where to start a PR you haven't opened before: the core with the fewest up- and downstream pages
+     * (its dependencies), then the fewest changed lines. Cores linked to nothing are only used if every
+     * core is like that, so you start somewhere small but central. Returns that core's first unreviewed page.
      */
     entryPoint() {
-      const degree = new Map();
-      for (const e of graph.edges) for (const pid of [e.from, e.to]) {
-        const n = app.nodeOf(pid)?.id;
-        if (n) degree.set(n, (degree.get(n) ?? 0) + 1);
-      }
-      const size = (pid) => { const { a, d } = app.stat(pid); return a + d; };
-      const open = app.index.walk.filter((p) => app.get(p) && !app.isReviewed(p));
-      const pool = open.some((p) => app.nodeOf(p).kind === "change") ? open.filter((p) => app.nodeOf(p).kind === "change") : open;
-      let best = null, bestKey = null;
-      for (const pid of pool) {
-        const key = [degree.get(app.nodeOf(pid).id) ?? 0, size(pid)];
-        if (!best || key[0] < bestKey[0] || (key[0] === bestKey[0] && key[1] < bestKey[1])) { best = pid; bestKey = key; }
-      }
-      return best && { pid: best, links: bestKey[0] };
+      const cores = graph.cores.map((c, ci) => {
+        const pages = app.index.walk.filter((p) => app.get(p)?.ci === ci && !app.isReviewed(p));
+        const deps = BANDS.filter((b) => b !== "core").reduce((n, b) => n + c.bands[b].length, 0);
+        const size = app.corePlacements(c).reduce((n, pl) => { const { a, d } = app.stat(pl.id); return n + a + d; }, 0);
+        return { c, pages, deps, size };
+      }).filter((x) => x.pages.length);
+      const linked = cores.filter((x) => x.deps > 0);
+      const pool = linked.length ? linked : cores;
+      pool.sort((x, y) => x.deps - y.deps || x.size - y.size);
+      const best = pool[0];
+      return best && { pid: best.pages[0], deps: best.deps };
     },
     nextUnreviewed() {
       const w = app.index.walk, i = app.index.walkPos.get(app.focus) ?? -1;
