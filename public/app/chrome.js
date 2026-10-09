@@ -160,6 +160,7 @@ const SETTINGS = [
   ["timebox", "Break reminder", [[0, "Off"], [15, "15m"], [25, "25m"], [45, "45m"]]],
   ["rabbit", "Rabbit-hole nudge", [[0, "Off"], [8, "8m"], [12, "12m"], [20, "20m"]]],
   ["drift", "Drift prompt", [["on", "On"], ["off", "Off"]]],
+  ["prComments", "PR comments", [["hide", "Hidden, show per page"], ["show", "Always shown"]]],
 ];
 export function settings() {
   open(`<h2>Settings</h2><p>Changes apply immediately and are remembered.</p>

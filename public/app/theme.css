@@ -175,6 +175,8 @@ mark.wa { background: var(--add-word); color: inherit; border-radius: 2px; }
 mark.wd { background: var(--del-word); color: inherit; border-radius: 2px; }
 .ln.hasc code::after { content: "  ◂ " attr(data-cn); color: var(--signal); font: 600 11px var(--font-ui); }
 .notes { margin: 0 0 18px; display: flex; flex-direction: column; gap: 8px; max-width: 80ch; }
+.ghtoggle { align-self: flex-start; font: 12px var(--font-ui); color: var(--muted); padding: 3px 10px; border: 1px solid var(--line-soft); border-radius: 3px; }
+.ghtoggle:hover { color: var(--text); border-color: var(--muted); }
 .notes h4 { margin: 0; font: 600 11px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
 .note { padding: 9px 14px; border: 1px solid var(--line); border-radius: 5px; background: var(--bg); cursor: pointer; }
 .note:hover { border-color: var(--muted); }

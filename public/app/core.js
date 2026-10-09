@@ -23,6 +23,7 @@ export const DEFAULT_SETTINGS = {
   edges: "all", // all | focus: Diff draws background edges, or only the focused ones
   rabbit: 12, // minutes on one page before offering to flag it and move on; 0 = off
   drift: "on", // on | off: after 90s idle on a page, offer to park a thought
+  prComments: "hide", // hide | show: other reviewers' comments, behind a per-page toggle when hidden
   hintUses: {},
 };
 

@@ -156,10 +156,16 @@ export function nodeComments(app, pid) {
   return [...(app.graph.discussion ?? []).filter(hit), ...app.state.comments.filter(hit), ...notes]
     .sort((a, b) => a.path.localeCompare(b.path) || a.line - b.line || !!b.url - !!a.url || String(a.createdAt).localeCompare(String(b.createdAt)));
 }
+// Other reviewers' comments start hidden behind a toggle (settings.prComments), so the code comes first.
 function notesHtml(app, pid) {
-  const list = nodeComments(app, pid);
-  if (!list.length) return "";
-  return `<section class="notes"><h4>${list.some((c) => c.private) ? "Comments & notes" : "Comments"} · ${list.length}</h4>${list.map((c) => {
+  const all = nodeComments(app, pid), gh = all.filter((c) => c.url).length;
+  const shown = app.settings.prComments === "show" || app.page.open.has(`gh:${pid}`);
+  const list = shown ? all : all.filter((c) => !c.url);
+  if (!all.length) return "";
+  const toggle = gh && app.settings.prComments !== "show"
+    ? `<button class="ghtoggle" data-ghshow="${pid}">${shown ? "Hide" : "Show"} ${gh} comment${gh > 1 ? "s" : ""} from the PR</button>` : "";
+  if (!list.length) return `<section class="notes">${toggle}</section>`;
+  return `<section class="notes"><h4>${list.some((c) => c.private) ? "Comments & notes" : "Comments"} · ${list.length}</h4>${toggle}${list.map((c) => {
     const key = esc(`${c.path}|${c.side}|${c.line}`);
     const where = `${c.side === "LEFT" ? "old " : ""}L${c.line}`;
     if (c.private) return privateNote(c, where, key);
@@ -357,7 +363,7 @@ function bind(app, el, rerender) {
   el.dataset.bound = "1";
   el.addEventListener("click", (ev) => {
     if (ev.target.closest("a")) return;
-    const t = ev.target.closest("[data-ckind],[data-delnote],[data-viewed],[data-exp],[data-del],[data-low],[data-go],[data-jump],[data-fold],.ln[data-key]");
+    const t = ev.target.closest("[data-ghshow],[data-ckind],[data-delnote],[data-viewed],[data-exp],[data-del],[data-low],[data-go],[data-jump],[data-fold],.ln[data-key]");
     if (!t || !el.contains(t)) return;
     const again = () => bound.get(el)();
     const ds = t.dataset;
@@ -367,6 +373,7 @@ function bind(app, el, rerender) {
       return again();
     }
     if (ds.delnote) { app.deleteNote(ds.delnote); return again(); }
+    if (ds.ghshow) { const k = `gh:${ds.ghshow}`; app.page.open.has(k) ? app.page.open.delete(k) : app.page.open.add(k); return again(); }
     if (ds.viewed) return app.mark(ds.viewed, app.isReviewed(ds.viewed) ? null : "reviewed"); // views restyle .sec.done
     if (ds.go) app.setFocus(ds.go);
     else if (ds.fold) {

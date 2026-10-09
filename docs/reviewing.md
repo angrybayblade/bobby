@@ -88,7 +88,7 @@ Marks are stored by the **content** of each hunk, not its position. After a forc
 2. Write your comment. `cmd/ctrl+enter` saves it as a **draft**, and `esc` cancels.
 3. Drafts show on their page and in a **"N drafts · S"** pill in the header. Delete one with its ✕.
 
-**Existing review comments** on the PR are shown next to your drafts, on the lines they're anchored to. Click a comment to jump to its line.
+**Existing review comments** on the PR are hidden by default, so the code comes first. A page with some shows **Show N comments from the PR**; click it to see them next to your drafts, on the lines they're anchored to, and click a comment to jump to its line. Lines with comments still carry a ◂ marker. To always show them, set **PR comments** to "Always shown" in settings. Your own drafts and private notes are always shown.
 
 Comments on **untouched code** can't be inline on GitHub. They're kept as drafts and go into the review summary under "Notes on code this PR doesn't touch".
 
