@@ -1,10 +1,11 @@
-// Diff: one diff viewer per file on a canvas, columns by band (relies on ← core → affects).
+// Diff: one diff viewer per file on a canvas, laid out as a graph: each file right of the files it relies on.
 // Scrolling a viewer moves your focus to the section you're reading; j/k scrolls the viewer for you.
 // What you're reading gets full edges: sections visible in the active viewer connect to related
 // sections in other files, and those viewers scroll so the other end is in view. Every other
 // relationship is a faint background line; ones whose ends are scrolled away merge into one.
 import { BANDS, esc } from "../core.js";
 import { injectCss } from "./flow.js";
+import { layered } from "./layered.js";
 
 const CSS = `
 .dv { position: absolute; inset: 0; }
@@ -29,6 +30,8 @@ const CSS = `
 .dv .fvh b { font-weight: 600; }
 .dv .fvh .p { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dv .fvh .st { white-space: nowrap; }
+.dv .fvh .band { font: 500 10.5px var(--font-ui); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); white-space: nowrap; padding: 1px 7px; border: 1px solid var(--line-soft); border-radius: 3px; }
+.dv .fvh .band.core { color: var(--text); border-color: var(--muted); }
 .dv .fvh .max { width: 26px; height: 22px; border-radius: 3px; color: var(--muted); font-size: 14px; line-height: 1; }
 .dv .fvh .max:hover { background: var(--bg); color: var(--text); }
 /* Header tooltips: quick, below the button, right-aligned so they stay inside the viewer. */
@@ -78,6 +81,7 @@ const CSS = `
 .dv .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--faint); }
 `;
 
+const BAND_LABEL = { upUnchanged: "relies on · untouched", upChanged: "relies on · changed", core: "core", downChanged: "affects · changed", downUnchanged: "affects · untouched" };
 const W = 840, MAX_H = 460, GX = 200, GY = 64, TOP = 34;
 
 export default {
@@ -146,14 +150,14 @@ export default {
     }
     function header(f, exit = false) {
       const dir = f.path.includes("/") ? f.path.slice(0, f.path.lastIndexOf("/") + 1) : "";
-      return `<i class="glyph ${f.changed ? "change" : "context"}"></i><span class="p">${esc(dir)}<b>${esc(f.path.split("/").pop())}</b></span><span class="st">${stat(f)}</span>`
+      return `<i class="glyph ${f.changed ? "change" : "context"}"></i><span class="p">${esc(dir)}<b>${esc(f.path.split("/").pop())}</b></span><span class="band ${f.band}">${BAND_LABEL[f.band]}</span><span class="st">${stat(f)}</span>`
         + `<button class="max vwf" data-fviewed="${esc(f.path)}" aria-label="Mark file viewed" data-tip="Mark whole file viewed · local only" data-tip-on="Unmark file viewed">✓</button>`
         + `<button class="max" data-fnote="${esc(f.path)}" aria-label="Note on this file" data-tip="Private note on this file · only you see it">✎</button>`
         + (exit ? `<button class="max" data-exit="1" aria-label="Back to all files" data-tip="Back to all files · esc">⤡</button>`
           : `<button class="max" data-max="${esc(f.path)}" aria-label="Expand this file" data-tip="Expand to full screen · or double-click the header">⤢</button>`);
     }
 
-    // ---- build: render every viewer, measure, then lay out in band columns.
+    // ---- build: render every viewer, measure, then lay out as a graph.
     function build() {
       const keep = new Map([...views].map(([p, v]) => [p, v.body.scrollTop]));
       world.innerHTML = `<svg class="edges"><defs><marker id="dv-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs><g class="bg"></g><g class="fg"></g></svg>`;
@@ -175,30 +179,48 @@ export default {
       for (const [p, top] of keep) if (views.has(p)) views.get(p).body.scrollTop = top;
     }
 
-    let columns = []; // files per band column, left to right, each top to bottom
+    // Files are laid out as a graph: each one a column right of the files that lead into it, so a chain
+    // a → b → c reads left to right even inside one band. The band is a label on the file, not a column.
+    let columns = [], fileLinks = { prev: new Map(), next: new Map() };
     function layout() {
       for (const el of world.querySelectorAll(".bhead")) el.remove();
-      const cols = BANDS.map((b) => M.files.filter((f) => f.band === b).sort((a, b2) => a.order - b2.order)).filter((c) => c.length);
-      columns = cols;
-      cols.forEach((col, ci) => {
-        const x = ci * (W + GX);
+      const prev = new Map(M.files.map((f) => [f, new Set()])), next = new Map(M.files.map((f) => [f, new Set()]));
+      for (const { a, b } of M.pairs) {
+        const fa = M.fileOf.get(a), fb = M.fileOf.get(b);
+        if (fa !== fb) { next.get(fa).add(fb); prev.get(fb).add(fa); }
+      }
+      fileLinks = { prev, next };
+      const files = [...M.files].sort((a, b) => BANDS.indexOf(a.band) - BANDS.indexOf(b.band) || a.order - b.order);
+      for (const f of files) {
+        const v = views.get(f.path);
+        v.el.style.height = "";
+        v.h = Math.min(MAX_H, v.el.offsetHeight);
+        v.el.style.height = `${v.h}px`;
+      }
+      const edges = [...next].flatMap(([a, bs]) => [...bs].map((b) => [a.path, b.path]));
+      const L = layered(files.map((f) => f.path), edges, { h: (p) => views.get(p).h, gap: GY, compGap: GY * 2 + TOP });
+      columns = [];
+      for (const f of files) {
+        const v = views.get(f.path), r = L.rank.get(f.path);
+        (columns[r] ??= []).push(f);
+        const at = placedBy.get(f.path) ?? { x: r * (W + GX), y: L.y.get(f.path) + TOP };
+        v.x = at.x; v.y = at.y;
+        v.el.style.transform = `translate(${v.x}px, ${v.y}px)`;
+      }
+      // Each group of linked files is headed by the cores it holds.
+      for (const comp of L.comps) {
+        const paths = new Set(comp.ids);
+        const fileOfPl = (pl) => { const n = app.nodeOf(pl.id); return n.kind === "change" ? n.file : n.location.path; };
+        const cores = app.graph.cores.map((c, ci) => ({ c, ci })).filter(({ c }) => c.bands.core.some((pl) => paths.has(fileOfPl(pl))));
+        const text = !comp.linked ? "not linked to other files"
+          : cores.slice(0, 3).map(({ c, ci }) => `core ${ci + 1} · ${c.title}`).join("   ·   ") + (cores.length > 3 ? `   +${cores.length - 3}` : "");
+        if (!text) continue;
         const h = document.createElement("div");
         h.className = "bhead";
-        h.textContent = { upUnchanged: "relies on · untouched", upChanged: "relies on · changed", core: "core change", downChanged: "affects · changed", downUnchanged: "affects · untouched" }[col[0].band];
-        h.style.transform = `translate(${x + 4}px, 0)`;
+        h.textContent = text;
+        h.style.transform = `translate(4px, ${comp.top}px)`;
         world.appendChild(h);
-        let y = TOP;
-        for (const f of col) {
-          const v = views.get(f.path);
-          v.el.style.height = "";
-          v.h = Math.min(MAX_H, v.el.offsetHeight);
-          v.el.style.height = `${v.h}px`;
-          const at = placedBy.get(f.path) ?? { x, y };
-          v.x = at.x; v.y = at.y;
-          v.el.style.transform = `translate(${v.x}px, ${v.y}px)`;
-          y += v.h + GY;
-        }
-      });
+      }
     }
 
     // ---- focus: highlight the current section and the viewer it's in
