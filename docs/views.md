@@ -45,8 +45,8 @@ A canvas with one scrollable diff viewer per file, arranged in columns by band (
 | Weight | Which viewers | Looks |
 |---|---|---|
 | Focus | The viewer you're in, plus the files its edges reach | Full strength and lifted. Yours has a slightly stronger border. |
-| Semi-focus | Other changed files | 60% |
-| Background | Untouched files (relied on or affected) | 30% |
+| Semi-focus | Other changed files in the current core (at the Overview, all changed files) | 60% |
+| Background | Untouched files, and at the Core level changed files from other cores | 30% |
 
 Until you're in a viewer, changed files stay at full strength and untouched files at 50%. Hover a dimmed viewer to bring it up.
 

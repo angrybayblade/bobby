@@ -328,8 +328,12 @@ export default {
       for (const pid of new Set([...relShown, ...rel])) for (const s of world.querySelectorAll(`.sec[data-pid="${pid}"]`)) s.classList.toggle("rel", rel.has(pid));
       relShown = rel;
       const near = new Set(engaged && v ? [v, ...ls.map((l) => l.to)] : []);
+      // At the core level, changed files outside the current core sit back with the untouched ones.
+      const core = app.level === 1 ? app.get(app.focus)?.core : null;
+      const coreNodes = core && new Set(app.corePlacements(core).map((pl) => pl.node));
+      const inCore = (o) => !coreNodes || o.f.sections.some((s) => coreNodes.has(app.get(s.pid).pl.node));
       for (const o of views.values()) {
-        const w = near.has(o) ? "focus" : o.f.changed ? "semi" : "none";
+        const w = near.has(o) ? "focus" : o.f.changed && inCore(o) ? "semi" : "none";
         if (o.w !== w) { o.el.classList.remove(`w-${o.w}`); o.el.classList.add(`w-${(o.w = w)}`); }
       }
       const keep = new Set(), entering = [];
