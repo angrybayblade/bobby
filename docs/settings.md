@@ -1,6 +1,6 @@
 # Settings
 
-Open settings with `,` or the gear in the header. Changes apply immediately and are saved to `~/.prfocus/settings.json`, so they carry across PRs.
+Open settings with `,` or the gear in the header. Changes apply immediately and are saved to `~/.bobby/settings.json`, so they carry across PRs.
 
 | Setting | Options | Default |
 |---|---|---|

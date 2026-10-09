@@ -1,6 +1,6 @@
-# prfocus
+# Focus Bobby (`bobby`)
 
-Focus-first PR reviewer. Extraction (`src/`) produces a `prfocus.review-graph/v1` document (`SPEC.md`); views (`public/app/views/`) only read that document.
+Focus-first PR reviewer. Extraction (`src/`) produces a `bobby.review-graph/v1` document (`SPEC.md`); views (`public/app/views/`) only read that document.
 
 ## Commits
 

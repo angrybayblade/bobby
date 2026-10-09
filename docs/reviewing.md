@@ -1,6 +1,6 @@
 # Reviewing a PR
 
-prfocus turns a PR into a short sequence of focused pages. You read one thing at a time, in an order where nothing appears before what it depends on.
+Focus Bobby turns a PR into a short sequence of focused pages. You read one thing at a time, in an order where nothing appears before what it depends on.
 
 ## The walk
 

@@ -1,4 +1,4 @@
-# prfocus docs
+# Focus Bobby docs
 
 ## User manual
 
@@ -11,7 +11,7 @@
 
 - [Architecture](architecture.md): the extraction/graph/view split, repo layout, one run end to end
 - [Extraction pipeline](extraction.md): fetch, diff, static analysis, change trees, Claude, graph building, caching
-- [Server and state](server-and-state.md): the HTTP API, review submission, `~/.prfocus` and content-keyed marks
+- [Server and state](server-and-state.md): the HTTP API, review submission, `~/.bobby` and content-keyed marks
 - [Browser runtime](frontend.md): boot, the `app` runtime and events, code rendering, how each view works
 - [Review graph v1](../SPEC.md): the format between extraction and views ([JSON Schema](../schema/review-graph.v1.schema.json))
 - [Contributing](contributing.md): setup, commit rules, iterating on the UI, common changes

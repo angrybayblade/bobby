@@ -1,10 +1,16 @@
-# focus-bobby
+<p align="center"><img src="public/bobby.svg" width="96" alt="Bobby"></p>
 
-A tool to help me not lose focus while reviewing PRs.
+# Focus Bobby
 
-![](img/bobby.png)
+> They tell you to focus, Bobby.
 
-**prfocus** turns a GitHub pull request into a short walk of focused pages. It finds the core changes and, around each one, the code they rely on and the code they affect. Then it shows you one thing at a time, in an order where nothing appears before what it depends on:
+A tool to help me not lose focus while reviewing PRs. The command is `bobby`.
+
+![They call me Focus Bobby (comic by @that_doodle_guy)](img/bobby.png)
+
+<sub>Comic by @that_doodle_guy. Bobby is who this is for.</sub>
+
+**Focus Bobby** turns a GitHub pull request into a short walk of focused pages. It finds the core changes and, around each one, the code they rely on and the code they affect. Then it shows you one thing at a time, in an order where nothing appears before what it depends on:
 
 ```
 untouched code it relies on → changed code it relies on → CORE CHANGE → changed code it affects → untouched code it affects
@@ -15,11 +21,11 @@ You can zoom out to see the whole tree, or walk it page by page. Mark pages as y
 ## Quick start
 
 ```sh
-bun add -g github:angrybayblade/focus-bobby   # or: bun run build → dist/prfocus, a standalone binary
+bun add -g github:angrybayblade/focus-bobby   # or: bun run build → dist/bobby, a standalone binary
 
-prfocus https://github.com/owner/repo/pull/123
-prfocus 123        # inside a clone of the repo
-prfocus            # no PR: review the branch you're on, uncommitted changes included
+bobby https://github.com/owner/repo/pull/123
+bobby 123        # inside a clone of the repo
+bobby            # no PR: review the branch you're on, uncommitted changes included
 ```
 
 You'll need `bun`, `git`, and `gh` (logged in). With the `claude` CLI installed, Claude organises the PR into a smarter tree in the background, using your Claude Code login.

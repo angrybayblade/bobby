@@ -1,6 +1,6 @@
 # Architecture
 
-prfocus has two halves joined by one document format:
+Focus Bobby has two halves joined by one document format:
 
 ```
                  extraction (src/, Bun)                          viewing (public/, browser)
@@ -13,11 +13,11 @@ prfocus has two halves joined by one document format:
                               (graph, state, settings, review submit)
 ```
 
-- **Extraction** turns a GitHub PR into a `prfocus.review-graph/v1` document ([SPEC.md](../SPEC.md)).
+- **Extraction** turns a GitHub PR into a `bobby.review-graph/v1` document ([SPEC.md](../SPEC.md)).
 - **Views** only ever read that document. They never see git, GitHub or the analysis.
 - A small **local server** serves the UI and the graph, persists review state, and posts the review to GitHub.
 
-Because the graph is the only contract, any extractor works with any view: `prfocus extract` writes a graph to a file, and `prfocus open` views a graph from anywhere.
+Because the graph is the only contract, any extractor works with any view: `bobby extract` writes a graph to a file, and `bobby open` views a graph from anywhere.
 
 ## Repository layout
 
@@ -32,7 +32,7 @@ src/                     extraction, server and CLI (TypeScript, run directly by
   server.ts              Bun HTTP server: static files + /api/*
   assets.ts              public/ embedded in a compiled binary (filled by scripts/build.ts)
   local.ts               no PR: the branch you're on vs a detected base
-  state.ts               ~/.prfocus: review state, caches, settings
+  state.ts               ~/.bobby: review state, caches, settings
   types.ts               internal types shared by the pipeline
 public/                  the UI: plain ES modules, no build step
   index.html             shell: header, breadcrumb bar, view slot, key hints, overlay, toast
@@ -52,8 +52,8 @@ There's no bundler and no framework. `src/` runs under Bun as TypeScript; `publi
 ## One run, end to end
 
 1. **Resolve** (`git.ts › resolvePr`). `gh pr view` gives metadata, including the head commit. A local clone is found or made.
-2. **Cache check** (`cli.ts`). If `~/.prfocus/cache` has graphs for this head commit and the same `VERSION`, they're reused and steps 3–6 are skipped. Review comments are always re-read.
-3. **Fetch and diff** (`git.ts › fetchPr`, `diff.ts`). The PR head and base are fetched into `refs/prfocus/<n>/`, and the diff is taken against the merge-base.
+2. **Cache check** (`cli.ts`). If `~/.bobby/cache` has graphs for this head commit and the same `VERSION`, they're reused and steps 3–6 are skipped. Review comments are always re-read.
+3. **Fetch and diff** (`git.ts › fetchPr`, `diff.ts`). The PR head and base are fetched into `refs/bobby/<n>/`, and the diff is taken against the merge-base.
 4. **Analysis** (`analyze.ts`). Hunks are grouped into units, and `git grep` finds static edges and references to untouched code.
 5. **Static tree** (`analyze.ts › heuristicTree`), then **graph** (`graph.ts › buildGraph`). The UI starts with this.
 6. **Claude tree** (`llm.ts`), in the background. When it's ready, it's built into a second graph and the UI offers to switch.

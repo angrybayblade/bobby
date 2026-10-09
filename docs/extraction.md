@@ -10,13 +10,13 @@ How a PR becomes a review graph. The code lives in `src/`; the output format is 
 
 1. `--repo <dir>` if given (it must have a remote pointing at the PR's repo);
 2. otherwise the current directory, if any remote's URL matches `owner/repo`;
-3. otherwise `~/.prfocus/repos/<owner>/<repo>`, cloned with `gh repo clone -- --no-tags` on first use.
+3. otherwise `~/.bobby/repos/<owner>/<repo>`, cloned with `gh repo clone -- --no-tags` on first use.
 
 `resolvePr` doesn't fetch, so it's cheap enough to run on every launch. That's what makes the cache check possible.
 
 **No PR (`local.ts`).** With no PR argument, `resolveLocal` reviews the branch you're on. `detectBase` picks the base (`--base`, the branch's PR base via `gh pr view`, `origin/HEAD`, then common names), and asks on a TTY if none is found. `baseSha` is the merge-base with `HEAD`. For uncommitted changes, `git stash create` snapshots tracked files without touching anything, and `headSha` is that snapshot's **tree** id: it's stable while the files are, so caches still hit, and `git diff`, `git grep` and `git show` all accept it. The `PrInfo` has `provider: "local"`, `number: 0`, an empty `url`, `branch` and `baseRef`; the title comes from the commit subjects. There are no review comments, and `/api/submit` refuses to post.
 
-`fetchPr` then fetches `refs/pull/<n>/head` and the base branch into `refs/prfocus/<n>/head` and `.../base`. The diff base is the **merge-base** of the base tip and the head, so the diff matches what GitHub shows. Because the diff is computed locally, GitHub's patch-size truncation doesn't apply.
+`fetchPr` then fetches `refs/pull/<n>/head` and the base branch into `refs/bobby/<n>/head` and `.../base`. The diff base is the **merge-base** of the base tip and the head, so the diff matches what GitHub shows. Because the diff is computed locally, GitHub's patch-size truncation doesn't apply.
 
 ## 2. Parsing the diff (`diff.ts`)
 
@@ -63,7 +63,7 @@ Deterministic and instant:
 
 ### Claude's tree (`llm.ts › claudeTree`)
 
-Runs `claude -p --output-format json --tools "" --no-session-persistence --json-schema <schema>` in a temp directory, with the prompt on stdin. `PRFOCUS_MODEL` adds `--model`.
+Runs `claude -p --output-format json --tools "" --no-session-persistence --json-schema <schema>` in a temp directory, with the prompt on stdin. `BOBBY_MODEL` adds `--model`.
 
 - **The prompt** has instructions written for a reviewer who reads one focused page at a time, then the PR title and body, every unit with its hunks (up to 120 lines each, within a ~160k-character budget), the static edges, and every ref.
 - **The schema** forces exactly the five band lists per core, plus a `hook` per core: one question to lead with. Each entry carries an id, a label, a why, `attachTo` (the unit one step closer to the core) and `relation` (a 1–4 word edge label). Refs also carry a risk.
@@ -99,7 +99,7 @@ Both trees go through `finalize`:
 
 ## 6. Caching (`cli.ts`, `state.ts`)
 
-Keyed by `owner_repo_number_<first 12 of head sha>` in `~/.prfocus/cache/`:
+Keyed by `owner_repo_number_<first 12 of head sha>` in `~/.bobby/cache/`:
 
 | File | Holds | Written |
 |---|---|---|

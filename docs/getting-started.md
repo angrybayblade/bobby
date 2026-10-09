@@ -15,35 +15,35 @@ Pick one:
 
 ```sh
 # 1. As a package (needs bun on your PATH)
-bun add -g prfocus                     # once published; or npm i -g prfocus
+bun add -g focus-bobby                 # once published; or npm i -g focus-bobby
 bun add -g github:angrybayblade/focus-bobby
 
 # 2. As a standalone binary (no bun needed to run it)
 git clone https://github.com/angrybayblade/focus-bobby && cd focus-bobby
-bun install && bun run build           # → dist/prfocus for this machine
-cp dist/prfocus /usr/local/bin/        # or anywhere on your PATH
-bun run build --all                    # → dist/prfocus-<os>-<arch> for macOS, Linux, Windows
+bun install && bun run build           # → dist/bobby for this machine
+cp dist/bobby /usr/local/bin/        # or anywhere on your PATH
+bun run build --all                    # → dist/bobby-<os>-<arch> for macOS, Linux, Windows
 
 # 3. From a clone, for development
-bun install && bun link                # `prfocus` now runs this checkout
+bun install && bun link                # `bobby` now runs this checkout
 ```
 
-Either way you still need `git` and `gh` on your PATH, and `claude` for the smarter tree. `prfocus -v` prints the version. The examples below use `prfocus`; `bun run src/cli.ts` works the same from a clone.
+Either way you still need `git` and `gh` on your PATH, and `claude` for the smarter tree. `bobby -v` prints the version. The examples below use `bobby`; `bun run src/cli.ts` works the same from a clone.
 
 The binary is about 60 MB because it carries the Bun runtime. The UI's files are embedded in it, so it runs with nothing beside it.
 
 ## Review a PR
 
 ```sh
-prfocus https://github.com/owner/repo/pull/123
+bobby https://github.com/owner/repo/pull/123
 # or, inside a clone of the repo:
-prfocus 123
+bobby 123
 ```
 
 What happens:
 
 1. The PR's metadata is read with `gh pr view`.
-2. A local clone is found: `--repo` if you passed it, otherwise the current directory if one of its remotes points at the PR's repo, otherwise `~/.prfocus/repos/<owner>/<repo>`, cloned the first time.
+2. A local clone is found: `--repo` if you passed it, otherwise the current directory if one of its remotes points at the PR's repo, otherwise `~/.bobby/repos/<owner>/<repo>`, cloned the first time.
 3. The PR's head and base are fetched and the diff is built. If the PR's head commit hasn't changed since you last opened it, this step is skipped and the cached graph is reused.
 4. The UI opens at `http://127.0.0.1:4173` with the **static tree**, which is usable straight away.
 5. If `claude` is available, it organises the PR in the background. When it's done, a **"Smarter tree ready · R"** pill appears. Press `R` to switch; you stay on the same code.
@@ -52,12 +52,12 @@ Stop the server with `ctrl+c`. Your progress is saved as you go.
 
 ## Review your own branch, no PR needed
 
-Run `prfocus` with no PR inside a repo to review the branch you're on, before you open a PR or while you work:
+Run `bobby` with no PR inside a repo to review the branch you're on, before you open a PR or while you work:
 
 ```sh
 cd my-repo
-prfocus                    # this branch vs its base, uncommitted changes included
-prfocus --base release/2.1 # compare with a specific branch or commit
+bobby                    # this branch vs its base, uncommitted changes included
+bobby --base release/2.1 # compare with a specific branch or commit
 ```
 
 The diff runs from the merge-base with the base branch to your **working tree**: commits on the branch plus staged and unstaged changes to tracked files. Untracked files are left out (the CLI says how many); `git add -N <file>` includes one without staging its content. Nothing in your working tree, index or stash list is touched.
@@ -69,20 +69,20 @@ The diff runs from the merge-base with the base branch to your **working tree**:
 3. origin's default branch (`origin/HEAD`);
 4. `main`, `master`, `develop` or `trunk`, as `origin/<name>` and then as a local branch.
 
-If none is found, prfocus asks for one on the terminal, or exits asking for `--base` when there's no terminal. The CLI prints which base it used and why.
+If none is found, bobby asks for one on the terminal, or exits asking for `--base` when there's no terminal. The CLI prints which base it used and why.
 
 A local review works like a PR review, with two differences: there are no existing review comments, and there's nowhere to post, so drafts and notes stay on your machine. Progress is kept per branch.
 
 ## Commands
 
 ```sh
-prfocus                                 # inside a repo: review this branch (see above)
-prfocus <pr-url | number>               # extract + open the review UI
-prfocus extract [pr] [-o file.json]     # write the review graph and exit (stdout without -o); no pr = this branch
-prfocus open <graph.json> [--repo dir]  # open the UI on an existing graph file
+bobby                                 # inside a repo: review this branch (see above)
+bobby <pr-url | number>               # extract + open the review UI
+bobby extract [pr] [-o file.json]     # write the review graph and exit (stdout without -o); no pr = this branch
+bobby open <graph.json> [--repo dir]  # open the UI on an existing graph file
 ```
 
-`extract` waits for Claude's tree (unless `--no-llm`) and writes it, falling back to the static tree if Claude fails. `open` views any `prfocus.review-graph/v1` file, whoever produced it. With `--repo`, it can also load more context around hunks.
+`extract` waits for Claude's tree (unless `--no-llm`) and writes it, falling back to the static tree if Claude fails. `open` views any `bobby.review-graph/v1` file, whoever produced it. With `--repo`, it can also load more context around hunks.
 
 ## Flags
 
@@ -96,11 +96,11 @@ prfocus open <graph.json> [--repo dir]  # open the UI on an existing graph file
 | `--no-open` | off | Don't open the browser. |
 | `-o, --out <file>` | stdout | Output file for `extract`. |
 
-Environment: `PRFOCUS_MODEL` picks the Claude model passed to `claude --model`.
+Environment: `BOBBY_MODEL` picks the Claude model passed to `claude --model` (the old `PRFOCUS_MODEL` still works).
 
 ## What it writes to disk
 
-Everything lives under `~/.prfocus/`:
+Everything lives under `~/.bobby/`. If you used the tool when it was called prfocus, `~/.prfocus` is moved there on the first run, progress and clones included:
 
 | Path | Contents |
 |---|---|
@@ -113,6 +113,6 @@ Everything lives under `~/.prfocus/`:
 
 Deleting `cache/` is always safe. Deleting a `state/` file forgets your progress on that PR.
 
-The fetch also writes refs under `refs/prfocus/<n>/` in the clone. They're harmless; remove them with `git for-each-ref --format='%(refname)' refs/prfocus | xargs -n1 git update-ref -d`.
+The fetch also writes refs under `refs/bobby/<n>/` in the clone. They're harmless; remove them with `git for-each-ref --format='%(refname)' refs/bobby | xargs -n1 git update-ref -d`.
 
 Next: [Reviewing a PR](reviewing.md).

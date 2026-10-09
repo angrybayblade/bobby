@@ -4,7 +4,7 @@
 
 ```ts
 interface Session {
-  cwd: string | null;        // local clone; null for `prfocus open` without --repo
+  cwd: string | null;        // local clone; null for `bobby open` without --repo
   staticGraph: ReviewGraph;
   claudeGraph?: ReviewGraph; // set when Claude's tree is ready
   state: ReviewState;        // this PR's review progress
@@ -22,7 +22,7 @@ The CLI fills `claudeGraph` and `llm` from the background Claude job while the s
 | `GET /api/graph` | → `ReviewGraph` | Claude's graph if ready, else the static one. `?tree=static` forces static. |
 | `GET /api/session` | → `{ state, settings, llm, llmError, caps: { files } }` | Everything the UI needs at boot. `caps.files` is true when there's a local clone. |
 | `GET /api/status` | → `{ llm, llmError, claudeReady }` | Polled every 4s while Claude is pending. |
-| `POST /api/settings` | patch → merged settings | Merges into `~/.prfocus/settings.json`. |
+| `POST /api/settings` | patch → merged settings | Merges into `~/.bobby/settings.json`. |
 | `GET /api/file?path=&side=base\|head` | → `{ lines }` | A whole file at the merge-base or head, for "more context". Returns 404 without a clone. |
 | `POST /api/mark` | `{ keys, mark }` | Sets `reviewed` or `flagged` (or clears, with `null`) for content keys. |
 | `POST /api/position` | `{ nodeId, level? }` | Remembers where you are and your zoom level (debounced by the UI). |
@@ -47,10 +47,10 @@ Every state-changing call writes the state file straight away.
 
 ## On-disk state (`src/state.ts`)
 
-Everything is JSON under `~/.prfocus/` (from `os.homedir()`):
+Everything is JSON under `~/.bobby/` (from `os.homedir()`):
 
 ```
-~/.prfocus/
+~/.bobby/
   settings.json                                  UI preferences (free-form; views may add keys)
   state/<owner>_<repo>_<n>.json                  ReviewState for one PR
   cache/<owner>_<repo>_<n>_<sha12>.graphs.json   built graphs for one head commit

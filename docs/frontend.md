@@ -12,7 +12,7 @@ The UI in `public/` is plain ES modules with no build step and no framework. `in
 6. Start the chrome. Show the welcome-back card if there's progress or a parked thought.
 7. If Claude is pending, poll `/api/status` every 4s and toast when its tree is ready.
 
-**Deep links for testing**: `#view=lens&level=1&p=5` picks the view, level and walk position (1-based). `window.prfocus` exposes the runtime in the console.
+**Deep links for testing**: `#view=lens&level=1&p=5` picks the view, level and walk position (1-based). `window.bobby` exposes the runtime in the console.
 
 ## The runtime (`app/core.js`)
 

@@ -12,7 +12,7 @@ There's no bundler or dev server. Edit `public/` and reload the page; restart th
 ## Releasing
 
 - **Package:** bump `version` in `package.json`, then `npm publish` (it runs `bun run check` first). `files` ships `src/`, `public/`, `schema/`, `SPEC.md` and the README; the bin is `src/cli.ts`, so users need bun.
-- **Binaries:** `bun run build --all` writes `dist/prfocus-<os>-<arch>` for macOS, Linux and Windows. `scripts/build.ts` generates an entry that embeds every file under `public/` (`src/assets.ts › embed`) before loading the CLI, then runs `bun build --compile`. Cross-compiling downloads each target's Bun runtime the first time.
+- **Binaries:** `bun run build --all` writes `dist/bobby-<os>-<arch>` for macOS, Linux and Windows. `scripts/build.ts` generates an entry that embeds every file under `public/` (`src/assets.ts › embed`) before loading the CLI, then runs `bun build --compile`. Cross-compiling downloads each target's Bun runtime the first time.
 
 ## Commits
 
@@ -29,16 +29,16 @@ The hooks enforce it. `pre-commit` runs the check against exactly what's staged 
 Re-running extraction is slow. Save a graph once and reopen it:
 
 ```sh
-prfocus extract <pr> -o /tmp/pr.json
-prfocus open /tmp/pr.json --repo <clone> --no-open
+bobby extract <pr> -o /tmp/pr.json
+bobby open /tmp/pr.json --repo <clone> --no-open
 ```
 
-Then use the deep links: `http://127.0.0.1:4173/#view=diff&level=1&p=5`. `window.prfocus` in the console is the runtime.
+Then use the deep links: `http://127.0.0.1:4173/#view=diff&level=1&p=5`. `window.bobby` in the console is the runtime.
 
-**Keep tests away from your real settings and state.** The server reads and writes `~/.prfocus` from `os.homedir()`, which follows `$HOME`. Point it at a scratch directory with an absolute path:
+**Keep tests away from your real settings and state.** The server reads and writes `~/.bobby` from `os.homedir()`, which follows `$HOME`. Point it at a scratch directory with an absolute path:
 
 ```sh
-HOME=/tmp/prfocus-home prfocus open /tmp/pr.json --repo <clone> --no-open
+HOME=/tmp/bobby-home bobby open /tmp/pr.json --repo <clone> --no-open
 ```
 
 Headless Chrome with `puppeteer-core` works well for checking layout, measuring frame cost (CDP `Performance.getMetrics`) and taking screenshots.
