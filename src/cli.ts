@@ -10,6 +10,7 @@ import { buildGraph, GRAPH_SCHEMA, VERSION, type ReviewGraph } from "./graph.ts"
 import { loadCachedGraphs, loadCachedTree, loadState, saveCachedGraphs, saveCachedTree } from "./state.ts";
 import type { FileDiff, PrInfo } from "./types.ts";
 import { startServer, type Session } from "./server.ts";
+import pkg from "../package.json" with { type: "json" };
 
 const { values, positionals } = parseArgs({
   args: Bun.argv.slice(2),
@@ -23,6 +24,7 @@ const { values, positionals } = parseArgs({
     refresh: { type: "boolean", default: false },
     "no-open": { type: "boolean", default: false },
     help: { type: "boolean", short: "h", default: false },
+    version: { type: "boolean", short: "v", default: false },
   },
 });
 
@@ -39,9 +41,14 @@ const USAGE = `prfocus: review a PR one focused page at a time
   --port <n>     UI port (default 4173)
   --no-llm       static analysis only; skip Claude
   --refresh      rebuild everything for this commit (ignore cached graphs and Claude tree)
-  --no-open      don't open the browser`;
+  --no-open      don't open the browser
+  -v, --version  print the version`;
 
 const [cmd, arg] = ["extract", "open"].includes(positionals[0]) ? [positionals[0], positionals[1]] : ["review", positionals[0]];
+if (values.version) {
+  console.log(pkg.version);
+  process.exit(0);
+}
 if (values.help || (cmd === "open" && !arg)) {
   console.log(USAGE);
   process.exit(values.help ? 0 : 1);
