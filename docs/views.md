@@ -7,7 +7,7 @@ There are four views of the same review. Switch with `v` or the toggle in the he
 | [Flow](#flow) | Node-link canvas, left to right | Seeing the shape of the change |
 | [Outline](#outline) | Document rail and a reading pane | Big PRs, reading first |
 | [Lens](#lens) | The focus in the centre, its neighbours either side | Maximum focus |
-| [Diff](#diff) | One diff viewer per file, in band columns | Reading real diffs without losing the thread |
+| [Diff](#diff) | One diff viewer per file, laid out as a graph | Reading real diffs without losing the thread |
 
 All views share the three zoom levels (Overview → Core → Page) described in [Reviewing](reviewing.md#zoom-levels).
 
@@ -36,7 +36,7 @@ The focused page sits dead centre. What it relies on fans in from the left, and 
 
 ## Diff
 
-A canvas with one scrollable diff viewer per file, arranged in columns by band (a file goes in the column of its most central code). Each viewer shows the file's sections: the pages of the walk that live in that file, in line order.
+A canvas with one scrollable diff viewer per file, laid out as a graph: each file sits one column to the right of the files that lead into it, so a chain a → b → c reads left to right, even when all three are in the same band. The band (relies on · untouched, core, affects · changed, …) is a label in the file's header, taken from its most central code. Files that are linked to each other form a group, headed by the cores it contains; files linked to nothing sit in a grid at the end. Each viewer shows the file's sections: the pages of the walk that live in that file, in line order.
 
 **Reading.** Click into a viewer's code to be *in* it. From then on the wheel scrolls its code, and the section under its top third becomes your focus. `j`/`k` also put you in the viewer and scroll it for you. Clicking another file's code moves you there. Clicking the background (without dragging) or zooming out to Overview lets go.
 
@@ -58,8 +58,8 @@ Until you're in a viewer, changed files stay at full strength and untouched file
 - Background lines can be turned off in settings ("Diff edges: Focused only").
 
 **Arrow keys.** In Diff the arrows move between files instead of walk pages (`j`/`k` still walk):
-- **← / →** move to the neighbouring band column, so you go up or down a layer: relies on ← core → affects. You land on a file related to the one you're reading if there is one, otherwise the file at the nearest height.
-- **↑ / ↓** move to the previous or next file in the same column.
+- **→** follows an edge to a file this one leads into, and **←** to a file that leads into it, picking the nearest. With no edge that way, they go to the nearest file in the next column.
+- **↑ / ↓** move to the file above or below in the same column.
 
 **Moving around the canvas.**
 
