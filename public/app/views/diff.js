@@ -151,7 +151,7 @@ export default {
         + `<button class="max vwf" data-fviewed="${esc(f.path)}" aria-label="Mark file viewed" data-tip="Mark whole file viewed · local only" data-tip-on="Unmark file viewed">✓</button>`
         + `<button class="max" data-fnote="${esc(f.path)}" aria-label="Note on this file" data-tip="Private note on this file · only you see it">✎</button>`
         + (exit ? `<button class="max" data-exit="1" aria-label="Back to all files" data-tip="Back to all files · esc">⤡</button>`
-          : `<button class="max" data-max="${esc(f.path)}" aria-label="Focus on this file" data-tip="Focus on this file · or double-click the header">⤢</button>`);
+          : `<button class="max" data-max="${esc(f.path)}" aria-label="Focus on this file" data-tip="Focus on this file · or click the header">⤢</button>`);
     }
 
     // ---- build: render every viewer, measure, then lay out in band columns.
@@ -518,7 +518,7 @@ export default {
       }
     });
     let drag = null, moved = false, held = null;
-    // The header is the handle: drag to move a viewer, double-click (or ⤢) to focus on it.
+    // The header is the handle: drag to move a viewer, click it (or ⤢) to focus on it.
     stage.addEventListener("pointerdown", (ev) => {
       const h = ev.target.closest(".fvh");
       if (!h || ev.target.closest("button")) return;
@@ -533,10 +533,6 @@ export default {
       if (n) { const v = views.get(n.dataset.fnote); engage(true); app.noteOnFile(v.body, v.f.path); }
       const vf = ev.target.closest("[data-fviewed]");
       if (vf) viewFile(vf.dataset.fviewed);
-    });
-    stage.addEventListener("dblclick", (ev) => {
-      const h = ev.target.closest(".fvh");
-      if (h && !ev.target.closest("button")) openFocus(h.parentElement.dataset.file);
     });
     stage.addEventListener("pointerdown", (ev) => {
       if (ev.target.closest(".fv")) return; // inside a viewer: code stays selectable
@@ -564,7 +560,11 @@ export default {
       apply();
     };
     const onUp = () => {
-      if (held) { held.v.el.classList.remove("held"); held = null; }
+      if (held) {
+        const h = held; held = null;
+        h.v.el.classList.remove("held");
+        if (!h.moved) openFocus(h.v.f.path); // a click on the header, not a drag
+      }
       if (drag && !moved) engage(false); // a click on the background, not a pan
       drag = null; root.classList.remove("dragging");
     };
