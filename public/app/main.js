@@ -105,6 +105,7 @@ document.addEventListener("keydown", (ev) => {
     k: () => app.step(-1), ArrowUp: () => app.step(-1), ArrowLeft: () => app.step(-1),
     J: () => app.stepCore(1), K: () => app.stepCore(-1),
     n: () => app.nextUnreviewed(),
+    F: () => app.nextFlagged() || chrome.toast("Nothing flagged yet. Skim at the core level and press <kbd>f</kbd> on anything worth a closer look.", 5000),
     a: () => { app.mark(app.focus, "reviewed"); app.nextUnreviewed(); },
     u: () => app.mark(app.focus, null),
     f: () => app.mark(app.focus, app.isFlagged(app.focus) ? null : "flagged"),

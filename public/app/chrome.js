@@ -98,7 +98,7 @@ const HINTS = [
 ];
 const HINTS_BY_LEVEL = {
   0: [[["j", "k"], "step"], [["enter"], "open core"], [["v"], "switch view"]],
-  1: [[["j", "k"], "step"], [["a"], "looks good →"], [["c"], "comment"], [["e"], "open / more"], [["enter"], "read page"], [["esc"], "overview"]],
+  1: [[["j", "k"], "step"], [["f"], "flag for later"], [["a"], "looks good →"], [["c"], "comment"], [["e"], "open / more"], [["enter"], "read page"], [["esc"], "overview"]],
   2: [[["j", "k"], "next / back"], [["a"], "looks good →"], [["f"], "flag"], [["c"], "comment"], [["e"], "open / more"], [["p"], "park a thought"], [["esc"], "zoom out"]],
 };
 function renderKeys() {
@@ -130,6 +130,7 @@ export function help() {
       ${r("a", "looks good: mark reviewed and move on")}
       ${r("u", "un-mark")}
       ${r("f", "flag to come back to")}
+      ${r("F", "next flagged: skim and flag first, then go deep")}
       ${r("c", "comment (click a line first, or it picks one)")}
       ${r("m", "private note on a line: only you see it, never posted")}
       ${r("M", "your notes: on the whole PR, plus a list of all of them")}

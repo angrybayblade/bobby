@@ -192,6 +192,15 @@ export function createApp({ graph, session }) {
       const best = pool[0];
       return best && { pid: best.pages[0], deps: best.deps };
     },
+    /** `F`: the deep pass. Next flagged page after the focus, wrapping around. Returns false if nothing is flagged. */
+    nextFlagged() {
+      const w = app.index.walk, i = app.index.walkPos.get(app.focus) ?? -1;
+      for (let k = 1; k <= w.length; k++) {
+        const p = w[(i + k) % w.length];
+        if (app.get(p) && app.isFlagged(p)) { app.setFocus(p); return true; }
+      }
+      return false;
+    },
     nextUnreviewed() {
       const w = app.index.walk, i = app.index.walkPos.get(app.focus) ?? -1;
       for (let k = 1; k <= w.length; k++) {
