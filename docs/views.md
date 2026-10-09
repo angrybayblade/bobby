@@ -1,0 +1,65 @@
+# Views
+
+There are four views of the same review. Switch with `v` or the toggle in the header. Your focus, progress and comments are shared between them, and the last view you used is remembered.
+
+| View | Shape | Good for |
+|---|---|---|
+| [Flow](#flow) | Node-link canvas, left to right | Seeing the shape of the change |
+| [Outline](#outline) | Document rail and a reading pane | Big PRs, reading first |
+| [Lens](#lens) | The focus in the centre, its neighbours either side | Maximum focus |
+| [Diff](#diff) | One diff viewer per file, in band columns | Reading real diffs without losing the thread |
+
+All views share the three zoom levels (Overview → Core → Page) described in [Reviewing](reviewing.md#zoom-levels).
+
+## Flow
+
+A canvas laid out left to right: relies on ← core → affects, with cores stacked.
+
+- Nodes are **sized by relevance**: the focus is big, its neighbours are medium, and the rest are small. Long bands fold into "+N".
+- Edges are labelled with the relationship, such as "uses `retryMethods`".
+- At **Core**, the focused node's card shows its comments and code. At **Page**, the page takes over the stage.
+- The camera glides between levels. Drag the background or scroll to pan. Click a node to focus it, click it again to zoom in, click a core's heading to open that core, and click "+N" to unfold a band.
+
+## Outline
+
+A rail on the left lists the walk as a document: cores in order, with indentation for depth in the tree, and distant cores folded. The pane on the right shows:
+
+- at **Overview**: the PR's story (intent and cores);
+- at **Core**: the current core's story;
+- at **Page**: the code page.
+
+Click any entry in the rail to focus it, or a core's heading to jump to its first unreviewed page.
+
+## Lens
+
+The focused page sits dead centre. What it relies on fans in from the left, and what it affects fans out to the right. Everything else is hidden. Walking re-centres the lens. At **Core**, the centre card shows the focus's comments and code. Click a neighbour to step to it.
+
+## Diff
+
+A canvas with one scrollable diff viewer per file, arranged in columns by band (a file goes in the column of its most central code). Each viewer shows the file's sections: the pages of the walk that live in that file, in line order.
+
+**Reading.** Scroll a viewer and the section under its top third becomes your focus. `j`/`k` scroll the viewer for you. Click into another file to start reading it.
+
+**Edges.**
+- The sections visible in the file you're reading get **full edges**, with arrows and labels, to related sections in other files. Those files scroll to bring the other end into view.
+- Every other relationship is a **faint background line**, so you can see the shape of the PR.
+- When a background line's end is scrolled out of view, lines that share both ends **merge** into one thicker line. Hover it for the count, for example "3 relationships scrolled ↓ in sealing.ts".
+- Past 300 relationships, background lines are drawn once per pair of files, header to header.
+- Background lines can be turned off in settings ("Diff edges: Focused only").
+
+**Moving around the canvas.**
+
+| Gesture | |
+|---|---|
+| Drag the background | Pan |
+| Pinch (trackpad), or `ctrl`+scroll | Zoom around the pointer |
+| Two-finger scroll over the background | Pan |
+| Two-finger scroll over a viewer | Scroll its code |
+| Two fingers on a touchscreen | Pan and zoom, even over code |
+| Drag a viewer's header | Move the viewer (kept until you reload) |
+| Double-click a header, or ⤢ | Focus on that file |
+
+**Zoom levels in Diff.**
+- **Overview:** all files fit on screen.
+- **Core:** the camera frames the file you're reading.
+- **Page:** focus mode. The file fills the stage, and two side rails list what its visible sections **rely on** and **affect**. Click a rail card to go there. ⤡ or `esc` goes back.
