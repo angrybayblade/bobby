@@ -2,6 +2,7 @@
 import { parseArgs } from "node:util";
 import { readFileSync, writeFileSync } from "node:fs";
 import { fetchPr, git, resolvePr, reviewComments, run } from "./git.ts";
+import { resolveLocal } from "./local.ts";
 import { parseDiff } from "./diff.ts";
 import { analyze, heuristicTree, type Analysis } from "./analyze.ts";
 import { claudeTree } from "./llm.ts";
@@ -15,6 +16,7 @@ const { values, positionals } = parseArgs({
   allowPositionals: true,
   options: {
     repo: { type: "string" },
+    base: { type: "string" },
     port: { type: "string", default: "4173" },
     out: { type: "string", short: "o" },
     "no-llm": { type: "boolean", default: false },
@@ -26,10 +28,13 @@ const { values, positionals } = parseArgs({
 
 const USAGE = `prfocus: review a PR one focused page at a time
 
-  prfocus <pr-url | number>            extract + open the review UI
-  prfocus extract <pr> [-o file.json]  write the review graph (${GRAPH_SCHEMA}) and exit
+  prfocus                              inside a repo: review this branch (and uncommitted changes)
+  prfocus <pr-url | number>            extract + open the review UI for a PR
+  prfocus extract [pr] [-o file.json]  write the review graph (${GRAPH_SCHEMA}) and exit
   prfocus open <graph.json>            open the UI on an existing graph file
 
+  --base <ref>   no PR: the branch to compare against (default: this branch's PR base,
+                 origin's default branch, then main/master/develop/trunk; asks if none)
   --repo <dir>   local clone (default: cwd, else auto-clone to ~/.prfocus/repos)
   --port <n>     UI port (default 4173)
   --no-llm       static analysis only; skip Claude
@@ -37,7 +42,7 @@ const USAGE = `prfocus: review a PR one focused page at a time
   --no-open      don't open the browser`;
 
 const [cmd, arg] = ["extract", "open"].includes(positionals[0]) ? [positionals[0], positionals[1]] : ["review", positionals[0]];
-if (values.help || !arg) {
+if (values.help || (cmd === "open" && !arg)) {
   console.log(USAGE);
   process.exit(values.help ? 0 : 1);
 }
@@ -50,22 +55,36 @@ if (cmd === "open") {
 } else {
   const t0 = Date.now();
   const secs = () => `${((Date.now() - t0) / 1000).toFixed(1)}s`;
-  log("▸ fetching PR…");
-  const resolved = await resolvePr(arg, values.repo);
-  const { cwd } = resolved;
-  const key = { owner: resolved.owner, repo: resolved.repo, number: resolved.meta.number, headSha: resolved.meta.headRefOid };
-  log(`  #${key.number} ${resolved.meta.title}`);
+  // Where the change comes from: a PR (fetched), or with no PR argument, the branch you're on.
+  let cwd: string, key: { owner: string; repo: string; number: number; branch?: string; headSha: string; baseSha?: string };
+  let getPr: () => Promise<PrInfo>, discussion: Awaited<ReturnType<typeof reviewComments>> = [];
+  if (arg) {
+    log("▸ fetching PR…");
+    const resolved = await resolvePr(arg, values.repo);
+    cwd = resolved.cwd;
+    key = { owner: resolved.owner, repo: resolved.repo, number: resolved.meta.number, headSha: resolved.meta.headRefOid };
+    log(`  #${key.number} ${resolved.meta.title}`);
+    getPr = () => fetchPr(resolved);
+  } else {
+    const local = await resolveLocal(values.repo ?? process.cwd(), values.base).catch((e) => { console.error(`✗ ${e.message}\n\n${USAGE}`); process.exit(1); });
+    cwd = local.cwd;
+    const { pr } = local;
+    key = { ...pr };
+    log(`▸ ${pr.branch} vs ${pr.baseRef} (${local.why})${local.dirty ? ", with uncommitted changes" : ""}`);
+    if (local.untracked) log(`  ${local.untracked} untracked file(s) left out: \`git add -N <file>\` to include one`);
+    getPr = async () => pr;
+  }
 
   // Same head commit as last time → reuse the built graphs. Comments still change, so they're always re-read.
   const hit = values.refresh ? null : loadCachedGraphs(key);
   const cached = hit?.static.generator.version === VERSION ? hit : null;
-  const discussion = await reviewComments(key);
+  if (arg) discussion = await reviewComments(key);
   if (discussion.length) log(`  ${discussion.length} existing review comment(s)`);
 
   // Fetch + diff + analysis, only when something needs it (a new head, or Claude's tree still missing).
   let built: Promise<{ pr: PrInfo; files: FileDiff[]; analysis: Analysis }> | null = null;
   const extract = () => (built ??= (async () => {
-    const pr = await fetchPr(resolved);
+    const pr = await getPr();
     log("▸ diffing & tracing references…");
     const files = parseDiff(await git(cwd, ["diff", "--no-color", "--no-ext-diff", "-M", "-U3", pr.baseSha, pr.headSha]));
     const analysis = await analyze(cwd, pr, files);

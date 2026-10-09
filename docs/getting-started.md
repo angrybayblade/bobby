@@ -36,11 +36,35 @@ What happens:
 
 Stop the server with `ctrl+c`. Your progress is saved as you go.
 
+## Review your own branch, no PR needed
+
+Run `prfocus` with no PR inside a repo to review the branch you're on, before you open a PR or while you work:
+
+```sh
+cd my-repo
+prfocus                    # this branch vs its base, uncommitted changes included
+prfocus --base release/2.1 # compare with a specific branch or commit
+```
+
+The diff runs from the merge-base with the base branch to your **working tree**: commits on the branch plus staged and unstaged changes to tracked files. Untracked files are left out (the CLI says how many); `git add -N <file>` includes one without staging its content. Nothing in your working tree, index or stash list is touched.
+
+**Base branch.** The first of these that exists wins:
+
+1. `--base <ref>`;
+2. the base of this branch's open PR, if `gh` finds one;
+3. origin's default branch (`origin/HEAD`);
+4. `main`, `master`, `develop` or `trunk`, as `origin/<name>` and then as a local branch.
+
+If none is found, prfocus asks for one on the terminal, or exits asking for `--base` when there's no terminal. The CLI prints which base it used and why.
+
+A local review works like a PR review, with two differences: there are no existing review comments, and there's nowhere to post, so drafts and notes stay on your machine. Progress is kept per branch.
+
 ## Commands
 
 ```sh
+prfocus                                 # inside a repo: review this branch (see above)
 prfocus <pr-url | number>               # extract + open the review UI
-prfocus extract <pr> [-o file.json]     # write the review graph and exit (stdout without -o)
+prfocus extract [pr] [-o file.json]     # write the review graph and exit (stdout without -o); no pr = this branch
 prfocus open <graph.json> [--repo dir]  # open the UI on an existing graph file
 ```
 
@@ -50,7 +74,8 @@ prfocus open <graph.json> [--repo dir]  # open the UI on an existing graph file
 
 | Flag | Default | |
 |---|---|---|
-| `--repo <dir>` | cwd, else auto-clone | Local clone to use. |
+| `--base <ref>` | detected | No PR: the branch or commit to compare with. |
+| `--repo <dir>` | cwd, else auto-clone | Local clone to use. With no PR, the repo to review. |
 | `--port <n>` | `4173` | UI port. |
 | `--no-llm` | off | Static analysis only; skip Claude. |
 | `--refresh` | off | Rebuild everything for this commit, ignoring the cached graphs and Claude tree. |
@@ -69,6 +94,7 @@ Everything lives under `~/.prfocus/`:
 | `cache/<owner>_<repo>_<n>_<sha12>.graphs.json` | Built graphs (static and Claude) for one head commit. |
 | `cache/<owner>_<repo>_<n>_<sha12>.json` | Claude's raw change tree for one head commit. |
 | `state/<owner>_<repo>_<n>.json` | Your review progress, draft comments, position and parked thought. |
+| `state/<owner>_<repo>_branch_<branch>.json`, `cache/…_branch_<branch>_<sha12>_<base7>.*` | The same for a local review. `<owner>_<repo>` comes from a GitHub `origin`, else `local_<folder>`. |
 | `settings.json` | UI preferences, shared by every PR. |
 
 Deleting `cache/` is always safe. Deleting a `state/` file forgets your progress on that PR.
