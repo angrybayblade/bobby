@@ -3,7 +3,7 @@
 `prfocus.review-graph/v1` is the contract between **extracting** a PR and **viewing** it.
 
 - Extractors turn a PR into a graph. This repo ships one: git and static analysis, refined by Claude.
-- Views render a graph. This repo ships three: Flow, Outline and Lens.
+- Views render a graph. This repo ships four: Flow, Outline, Lens and Diff.
 - Neither side knows about the other, so any extractor works with any view.
 
 The machine-readable schema is in [`schema/review-graph.v1.schema.json`](schema/review-graph.v1.schema.json).
