@@ -1,5 +1,5 @@
 // Everything around the view: header, where-am-I bar, key hints, overlays, toasts, settings.
-import { BAND_TEXT, DONE, LEVELS, LOW, api, esc } from "./core.js";
+import { BAND_TEXT, DONE, LEVELS, LOW, api, esc, inline } from "./core.js";
 
 const $ = (q) => document.querySelector(q);
 let app, views;
@@ -8,6 +8,14 @@ export function init(a, viewList) {
   app = a; views = viewList;
   for (const r of ["focus", "level", "marks", "graph", "settings", "comments", "llm"]) app.on((why) => why === r && render());
   render();
+  // Stepping into a new core: lead with its hook, so you know what to look for before reading.
+  let lastCore = app.get(app.focus)?.core.id;
+  app.on((why) => {
+    if (why !== "focus" && why !== "graph") return;
+    const loc = app.get(app.focus);
+    if (loc && loc.core.id !== lastCore && why === "focus") coreIntro(loc);
+    lastCore = loc?.core.id ?? lastCore;
+  });
   document.addEventListener("click", onClick);
   $("#overlay").addEventListener("keydown", (ev) => {
     if (ev.target.id === "gnote" && ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); addGlobalNote(); }
@@ -199,6 +207,11 @@ export function reentry() {
 function timeAgo(d) {
   const m = Math.round((Date.now() - d) / 60000);
   return m < 2 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`;
+}
+
+export function coreIntro(loc, lead = "") {
+  const c = loc.core;
+  toast(`<span class="intro">${lead}<b>Core ${loc.ci + 1} of ${app.graph.cores.length} · ${esc(c.title)}</b>${c.hook ? `<span class="hook">${inline(c.hook)}</span>` : ""}</span>`, 9000);
 }
 
 // ---------------------------------------------------------------- toast

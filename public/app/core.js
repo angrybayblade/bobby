@@ -25,6 +25,8 @@ export const DEFAULT_SETTINGS = {
 };
 
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+/** Escaped text with `backtick` spans as <code>, for model-written prose like hooks. */
+export const inline = (s) => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
 export const api = (url, body, method = body ? "POST" : "GET") =>
   fetch(url, { method, headers: body ? { "content-type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined }).then((r) => r.json());
 

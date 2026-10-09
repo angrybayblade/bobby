@@ -1,6 +1,6 @@
 // Outline: a document-like rail (walk order, indentation = depth in the tree, distant cores folded)
 // beside a reading pane that shows the PR story, the core's story, or the code page.
-import { BANDS, BAND_TEXT, DONE, LOW, esc } from "../core.js";
+import { BANDS, BAND_TEXT, DONE, LOW, esc, inline } from "../core.js";
 import { injectCss } from "./flow.js";
 
 const CSS = `
@@ -30,6 +30,7 @@ const CSS = `
 .outline .story { max-width: 760px; margin: 0 auto; padding: 36px 36px 80px; }
 .outline .story .eyebrow { font-size: 12px; letter-spacing: .09em; text-transform: uppercase; color: var(--faint); }
 .outline .story h1 { font: 650 calc(var(--size) * 1.9)/1.25 var(--font-prose); letter-spacing: -.015em; margin: 8px 0 14px; }
+.outline .story .hook { margin: -14px 0 28px; max-width: 65ch; }
 .outline .story .lede { font: calc(var(--size) * 1.12)/1.65 var(--font-prose); color: var(--muted); max-width: 65ch; margin: 0 0 28px; }
 .outline .story section { border: 1px solid var(--line-soft); border-radius: 6px; padding: 16px 18px; margin-bottom: 10px; cursor: pointer; background: var(--surface); }
 .outline .story section.cur { border-color: var(--signal); }
@@ -122,7 +123,7 @@ export default {
       const loc = app.get(app.focus);
       if (!loc) return overviewDoc();
       const c = loc.core;
-      return `<div class="story"><div class="eyebrow">Core ${loc.ci + 1} of ${app.graph.cores.length}</div><h1>${esc(c.title)}</h1><p class="lede">${esc(c.summary)}</p>
+      return `<div class="story"><div class="eyebrow">Core ${loc.ci + 1} of ${app.graph.cores.length}</div><h1>${esc(c.title)}</h1><p class="lede">${esc(c.summary)}</p>${c.hook ? `<p class="hook">${inline(c.hook)}</p>` : ""}
         ${BANDS.filter((b) => c.bands[b].length).map((b) => `<div class="bandh">${BAND_TEXT[b]}</div>` + c.bands[b].map((pl) => {
           const node = app.nodeOf(pl.id);
           return `<div class="step ${pl.id === app.focus ? "cur" : ""} ${app.isReviewed(pl.id) ? "done" : ""}" data-open="${pl.id}"><i class="glyph ${b === "core" ? "core" : node.kind}"></i><b>${esc(pl.title)}${app.isReviewed(pl.id) ? " ✓" : ""}${pl.repeatOf ? " ↺" : ""}</b><p>${esc(pl.why)}</p>${pl.id === app.focus ? `<div class="nbody"></div>` : ""}</div>`;

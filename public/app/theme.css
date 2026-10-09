@@ -188,6 +188,10 @@ mark.wd { background: var(--del-word); color: inherit; border-radius: 2px; }
 .note.mine { border-left: 3px dashed var(--muted); background: var(--surface); }
 .note.mine .body { color: var(--muted); }
 .cmt.private { border-style: dashed; }
+.hook { display: block; font: calc(var(--size) * 1.02)/1.5 var(--font-prose); color: var(--text); }
+.hook::before { content: "Look for  "; font: 600 10.5px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.hook code { font: .92em var(--font-code); }
+#toast .intro { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
 .sech .vw { margin-left: auto; font: 500 11.5px var(--font-ui); color: var(--faint); padding: 1px 8px; border: 1px solid var(--line-soft); border-radius: 3px; }
 .sech .vw:hover { color: var(--text); border-color: var(--muted); }
 .sech .vw .on, .sec.done .sech .vw .off { display: none; }

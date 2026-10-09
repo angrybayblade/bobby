@@ -1,4 +1,4 @@
-import { DONE, api, createApp, esc } from "./core.js";
+import { DONE, api, createApp } from "./core.js";
 import { expandAll, renderFile, renderNode, renderPage, startComment, startFileNote } from "./code.js";
 import * as chrome from "./chrome.js";
 import views from "./views/index.js";
@@ -86,7 +86,7 @@ chrome.init(app, views);
 if (resume && !hash.has("p") && (app.progress().done > 0 || session.state.note)) chrome.reentry();
 else if (entry && !hash.has("p")) {
   const deps = entry.deps === 1 ? "1 thing" : `${entry.deps} things`;
-  chrome.toast(`<span>Starting with core ${app.get(entry.pid).ci + 1}, <b>${esc(app.get(entry.pid).core.title)}</b>: the core with the least around it (${deps} it relies on or affects). <kbd>esc</kbd> for the overview.</span>`, 7000);
+  chrome.coreIntro(app.get(entry.pid), `<span style="color:var(--muted);font-size:13px">Start here: the core with the least around it (${deps} it relies on or affects). <kbd>esc</kbd> for the overview.</span>`);
 }
 
 // ---- keys
