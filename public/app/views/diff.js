@@ -1,7 +1,8 @@
 // Diff: one diff viewer per file on a canvas, columns by band (relies on ← core → affects).
 // Scrolling a viewer moves your focus to the section you're reading; j/k scrolls the viewer for you.
-// Only what you're reading gets edges: sections visible in the active viewer connect to related
-// sections in other files, and those viewers scroll so the other end is in view.
+// What you're reading gets full edges: sections visible in the active viewer connect to related
+// sections in other files, and those viewers scroll so the other end is in view. Every other
+// relationship is a faint background line; ones whose ends are scrolled away merge into one.
 import { BANDS, esc } from "../core.js";
 import { injectCss } from "./flow.js";
 
@@ -36,6 +37,12 @@ const CSS = `
 .dv svg.edges { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; z-index: 1; } /* under the viewers: edges live in the gaps */
 .dv svg.edges path { fill: none; stroke: var(--muted); stroke-width: 2; }
 .dv svg.edges marker path { fill: var(--muted); stroke: none; }
+.dv svg.edges .bg path { stroke-width: 1.5; opacity: .16; transition: opacity var(--dur); }
+.dv svg.edges .bg path.merged { opacity: .24; }
+.dv svg.edges .bg path.merged:has(+ .hit:hover) { opacity: .6; }
+.dv svg.edges .bg path.in, .dv svg.edges .bg path.out { opacity: 0; }
+.dv svg.edges .bg path.hit { stroke: transparent; stroke-width: 12px !important; opacity: 1; pointer-events: stroke; } /* hover target for a merged line */
+.dv svg.edges .bg path.hit.out { pointer-events: none; }
 .dv .elbl { position: absolute; z-index: 4; font: 11.5px var(--font-ui); color: var(--muted); background: var(--bg); border: 1px solid var(--line-soft); padding: 1px 7px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, -50%); pointer-events: none; }
 .dv .fvh:active { cursor: grabbing; }
 .dv .fv.held { box-shadow: 0 12px 40px rgba(0,0,0,.25); }
@@ -109,7 +116,9 @@ export default {
         add(a, b, "down", e.label);
         add(b, a, "up", e.label);
       }
-      return { files: [...files.values()], fileOf, canon, rel };
+      const pairs = []; // every relation once, for background edges
+      for (const [a, list] of rel) for (const r of list) if (r.dir === "down") pairs.push({ a, b: r.pid });
+      return { files: [...files.values()], fileOf, canon, rel, pairs };
     }
     const activeFile = () => M?.fileOf.get(M.canon(app.focus) ?? "");
 
@@ -128,7 +137,7 @@ export default {
     // ---- build: render every viewer, measure, then lay out in band columns.
     function build() {
       const keep = new Map([...views].map(([p, v]) => [p, v.body.scrollTop]));
-      world.innerHTML = `<svg class="edges"><defs><marker id="dv-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs><g></g></svg>`;
+      world.innerHTML = `<svg class="edges"><defs><marker id="dv-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs><g class="bg"></g><g class="fg"></g></svg>`;
       views.clear(); drawn.clear(); secs.clear(); relShown = new Set();
       M = model();
       if (!M.files.length) { world.innerHTML = `<div class="empty">Nothing to show</div>`; return; }
@@ -222,11 +231,11 @@ export default {
       const seen = (s) => Math.min(bot, s.offsetTop + s.offsetHeight) - Math.max(p.top, s.offsetTop) >= 28; // a sliver at the edge doesn't count
       return [...v.body.querySelectorAll(".sec")].filter(seen).map((s) => s.dataset.pid);
     }
-    // World y of a section's heading, pinned to the viewer's edge when scrolled out of view.
-    function anchorY(v, pid, p = port(v)) {
+    // World y of a section's heading, pinned to the viewer's top (pin -1) or bottom (pin 1) when scrolled out of view.
+    function anchor(v, pid, p = port(v)) {
       const s = secEl(v, pid);
-      const y = p.off + s.offsetTop - p.top + Math.min(16, s.offsetHeight / 2);
-      return v.y + Math.max(p.off + 10, Math.min(v.h - 10, y));
+      const y = p.off + s.offsetTop - p.top + Math.min(16, s.offsetHeight / 2), lo = p.off + 10, hi = v.h - 10;
+      return { y: v.y + Math.max(lo, Math.min(hi, y)), pin: y < lo ? -1 : y > hi ? 1 : 0 };
     }
     function links(p = port) {
       const act = activeFile(), v = act && views.get(act.path);
@@ -244,11 +253,43 @@ export default {
       const [x1, x2] = o.x > v.x ? [v.x + W, o.x] : [v.x, o.x + W], mx = (x1 + x2) / 2;
       return { d: `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`, lx: mx, ly: (y1 + y2) / 2 };
     }
+    // Background: every relation not already drawn as focused, faint, with no arrow or label. Both ends in
+    // view: its own line. An end scrolled away would pin to the viewer's border, so edges that share both
+    // ends become one line, thicker with the count. Past BG_CAP relations: one line per pair of files.
+    const BG_CAP = 300;
+    function background(p, focused) {
+      const out = [], groups = new Map(), byFile = M.pairs.length > BG_CAP;
+      const viewOf = (pid) => views.get(M.fileOf.get(pid).path);
+      const name = (v) => v.f.path.split("/").pop();
+      const group = (key, A, B, title) => (groups.get(key) ?? groups.set(key, { key, A, B, title, n: 0 }).get(key)).n++;
+      for (const { a, b } of M.pairs) {
+        if (focused.has(`${a}|${b}`)) continue;
+        const va = viewOf(a), vb = viewOf(b);
+        if (byFile) {
+          if (va === vb) continue;
+          const [x, y] = va.f.path < vb.f.path ? [va, vb] : [vb, va];
+          group(`h:${x.f.path}|${y.f.path}`, { v: x, y: x.y + 18 }, { v: y, y: y.y + 18 }, () => `between ${name(x)} and ${name(y)}`);
+          continue;
+        }
+        const ea = anchor(va, a, p(va)), eb = anchor(vb, b, p(vb));
+        if (!ea.pin && !eb.pin) { out.push({ key: `b:${a}>${b}`, bg: true, cls: "", ...curve(va, ea.y, vb, eb.y) }); continue; }
+        let A = { v: va, y: ea.y, pin: ea.pin, k: ea.pin ? `${va.f.path}${ea.pin}` : a }, B = { v: vb, y: eb.y, pin: eb.pin, k: eb.pin ? `${vb.f.path}${eb.pin}` : b };
+        if (A.k === B.k) continue; // both ends pinned to the same border
+        if (A.k > B.k) [A, B] = [B, A];
+        const where = [A, B].filter((e) => e.pin).map((e) => `${e.pin < 0 ? "↑" : "↓"} in ${name(e.v)}`).join(", ");
+        group(`m:${A.k}|${B.k}`, A, B, () => `scrolled ${where}`);
+      }
+      for (const g of groups.values()) out.push({
+        key: g.key, bg: true, cls: "merged", width: 1.5 + Math.log(g.n),
+        title: `${g.n} relationship${g.n === 1 ? "" : "s"} ${g.title()}`, ...curve(g.A.v, g.A.y, g.B.v, g.B.y),
+      });
+      return out;
+    }
     const drawn = new Map(); // key → { path, lbl, d, … } currently on the page
     let relShown = new Set();
     function draw() {
-      const g = world.querySelector("svg.edges g");
-      if (!g) return;
+      const fg = world.querySelector("svg.edges g.fg"), bgl = world.querySelector("svg.edges g.bg");
+      if (!fg) return;
       // read
       const ports = new Map(), p = (v) => ports.get(v) ?? ports.set(v, port(v)).get(v);
       const act = activeFile(), v = act && views.get(act.path);
@@ -257,28 +298,47 @@ export default {
         key: `f:${l.from}>${l.pid}:${l.dir}`, label: l.label,
         // Arrows point downstream: into the other file when it's affected, into yours when it's relied on.
         marker: l.dir === "down" ? "marker-end" : "marker-start",
-        ...curve(v, anchorY(v, l.from, p(v)), l.to, anchorY(l.to, l.pid, p(l.to))),
+        ...curve(v, anchor(v, l.from, p(v)).y, l.to, anchor(l.to, l.pid, p(l.to)).y),
       }));
+      if (app.level !== 2) shapes.unshift(...background(p, new Set(ls.flatMap((l) => [`${l.from}|${l.pid}`, `${l.pid}|${l.from}`]))));
       // write
       const rel = new Set(ls.map((l) => l.pid));
       for (const pid of new Set([...relShown, ...rel])) for (const s of world.querySelectorAll(`.sec[data-pid="${pid}"]`)) s.classList.toggle("rel", rel.has(pid));
       relShown = rel;
-      const keep = new Set();
+      const keep = new Set(), entering = [];
       for (const s of shapes) {
         keep.add(s.key);
         let e = drawn.get(s.key);
         if (!e) {
-          e = { path: g.appendChild(document.createElementNS(SVG, "path")) };
-          e.path.setAttribute(s.marker, "url(#dv-arrow)");
+          e = { bg: s.bg, path: (s.bg ? bgl : fg).appendChild(document.createElementNS(SVG, "path")) };
+          if (s.marker) e.path.setAttribute(s.marker, "url(#dv-arrow)");
+          if (s.bg) { e.path.setAttribute("class", `${s.cls} in`); entering.push(e.path); } // fades in rather than popping
+          if (s.title) {
+            e.hit = bgl.appendChild(document.createElementNS(SVG, "path"));
+            e.hit.setAttribute("class", "hit");
+            e.tip = e.hit.appendChild(document.createElementNS(SVG, "title"));
+          }
           drawn.set(s.key, e);
+        } else if (e.out) { // came back while fading out
+          clearTimeout(e.out); e.out = 0;
+          e.path.classList.remove("out"); e.hit?.classList.remove("out");
         }
-        if (e.d !== s.d) e.path.setAttribute("d", (e.d = s.d));
+        if (e.d !== s.d) { e.path.setAttribute("d", (e.d = s.d)); e.hit?.setAttribute("d", s.d); }
+        if (s.width && e.w !== s.width) e.path.style.strokeWidth = `${(e.w = s.width)}px`;
+        if (s.title && e.title !== s.title) e.tip.textContent = e.title = s.title;
         if (s.label) {
           e.lbl ??= world.appendChild(Object.assign(document.createElement("div"), { className: "elbl", textContent: s.label }));
           if (e.lx !== s.lx || e.ly !== s.ly) { e.lbl.style.left = `${(e.lx = s.lx)}px`; e.lbl.style.top = `${(e.ly = s.ly)}px`; }
         }
       }
-      for (const [k, e] of drawn) if (!keep.has(k)) { e.path.remove(); e.lbl?.remove(); drawn.delete(k); }
+      const gone = (k, e) => { e.path.remove(); e.hit?.remove(); e.lbl?.remove(); if (drawn.get(k) === e) drawn.delete(k); };
+      for (const [k, e] of drawn) {
+        if (keep.has(k) || e.out) continue;
+        if (!e.bg) { gone(k, e); continue; }
+        e.path.classList.add("out"); e.hit?.classList.add("out");
+        e.out = setTimeout(() => gone(k, e), 260);
+      }
+      if (entering.length) requestAnimationFrame(() => entering.forEach((el) => el.classList.remove("in")));
     }
     // Bring the other end of every edge into view in its own viewer.
     let followKey = "";
