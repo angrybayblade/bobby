@@ -36,7 +36,7 @@ export interface LocalReview { cwd: string; pr: PrInfo; dirty: boolean; untracke
 
 export async function resolveLocal(dir: string, baseArg?: string): Promise<LocalReview> {
   const cwd = (await git(dir, ["rev-parse", "--show-toplevel"], true)).trim();
-  if (!cwd) throw new Error(`${dir} isn't inside a git repository. Pass a PR URL or number, or run prfocus inside a repo.`);
+  if (!cwd) throw new Error(`${dir} isn't inside a git repository. Pass a PR URL or number, or run bobby inside a repo.`);
   const branch = (await git(cwd, ["branch", "--show-current"], true)).trim();
 
   let base: { ref: string; why: string } | null = baseArg ? { ref: baseArg, why: "--base" } : await detectBase(cwd, branch);

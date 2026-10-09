@@ -71,7 +71,8 @@ Rules:
 export async function claudeTree(pr: PrInfo, a: Analysis, files: FileDiff[]): Promise<ChangeTree> {
   const prompt = buildPrompt(pr, a);
   const cmd = ["claude", "-p", "--output-format", "json", "--tools", "", "--no-session-persistence", "--json-schema", JSON.stringify(SCHEMA)];
-  if (process.env.PRFOCUS_MODEL) cmd.push("--model", process.env.PRFOCUS_MODEL);
+  const model = process.env.BOBBY_MODEL ?? process.env.PRFOCUS_MODEL; // PRFOCUS_MODEL: the old name
+  if (model) cmd.push("--model", model);
   const out = JSON.parse(await run(cmd, { cwd: tmpdir(), input: prompt }));
   if (out.is_error || !out.structured_output) throw new Error(`claude returned no structured output: ${String(out.result).slice(0, 300)}`);
   return toTree(out.structured_output, a, files);

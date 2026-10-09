@@ -28,16 +28,16 @@ const { values, positionals } = parseArgs({
   },
 });
 
-const USAGE = `prfocus: review a PR one focused page at a time
+const USAGE = `bobby: focus, Bobby. Review a PR one focused page at a time.
 
-  prfocus                              inside a repo: review this branch (and uncommitted changes)
-  prfocus <pr-url | number>            extract + open the review UI for a PR
-  prfocus extract [pr] [-o file.json]  write the review graph (${GRAPH_SCHEMA}) and exit
-  prfocus open <graph.json>            open the UI on an existing graph file
+  bobby                              inside a repo: review this branch (and uncommitted changes)
+  bobby <pr-url | number>            extract + open the review UI for a PR
+  bobby extract [pr] [-o file.json]  write the review graph (${GRAPH_SCHEMA}) and exit
+  bobby open <graph.json>            open the UI on an existing graph file
 
   --base <ref>   no PR: the branch to compare against (default: this branch's PR base,
                  origin's default branch, then main/master/develop/trunk; asks if none)
-  --repo <dir>   local clone (default: cwd, else auto-clone to ~/.prfocus/repos)
+  --repo <dir>   local clone (default: cwd, else auto-clone to ~/.bobby/repos)
   --port <n>     UI port (default 4173)
   --no-llm       static analysis only; skip Claude
   --refresh      rebuild everything for this commit (ignore cached graphs and Claude tree)

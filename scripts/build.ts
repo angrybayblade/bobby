@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
-// Builds standalone prfocus binaries: the CLI, the server and the UI in one file, no bun needed to run it.
-//   bun run build            this machine → dist/prfocus
-//   bun run build --all      every target → dist/prfocus-<os>-<arch>[.exe]
+// Builds standalone bobby binaries: the CLI, the server and the UI in one file, no bun needed to run it.
+//   bun run build            this machine → dist/bobby
+//   bun run build --all      every target → dist/bobby-<os>-<arch>[.exe]
 // git and gh are still needed at runtime, and claude for the smarter tree.
 import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
@@ -31,7 +31,7 @@ const targets = Bun.argv.includes("--all")
   ? ["darwin-arm64", "darwin-x64", "linux-x64", "linux-arm64", "windows-x64"]
   : [null];
 for (const t of targets) {
-  const out = join(root, "dist", t ? `prfocus-${t}${t.startsWith("windows") ? ".exe" : ""}` : "prfocus");
+  const out = join(root, "dist", t ? `bobby-${t}${t.startsWith("windows") ? ".exe" : ""}` : "bobby");
   const args = ["bun", "build", "--compile", "--minify", join(gen, "entry.ts"), "--outfile", out, ...(t ? [`--target=bun-${t}`] : [])];
   const proc = Bun.spawnSync(args, { cwd: root, stdout: "inherit", stderr: "inherit" });
   if (proc.exitCode !== 0) process.exit(proc.exitCode ?? 1);

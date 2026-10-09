@@ -1,7 +1,7 @@
 {
-  "name": "prfocus",
+  "name": "focus-bobby",
   "version": "0.1.0",
-  "description": "Focus-first PR reviewer: one focused page at a time, in dependency order",
+  "description": "Focus, Bobby. A PR reviewer that shows one focused page at a time, in dependency order",
   "keywords": [
     "code-review",
     "pull-request",
@@ -15,7 +15,7 @@
   },
   "type": "module",
   "bin": {
-    "prfocus": "./src/cli.ts"
+    "bobby": "./src/cli.ts"
   },
   "files": [
     "src",
