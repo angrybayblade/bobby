@@ -15,11 +15,11 @@ You can zoom out to see the whole tree, or walk it page by page. Mark pages as y
 ## Quick start
 
 ```sh
-bun install
-bun run src/cli.ts https://github.com/owner/repo/pull/123
-# or, inside a clone:  bun run src/cli.ts 123
-# or, no PR: review the branch you're on, uncommitted changes included
-cd my-repo && bun run /path/to/prfocus/src/cli.ts
+bun add -g github:angrybayblade/focus-bobby   # or: bun run build → dist/prfocus, a standalone binary
+
+prfocus https://github.com/owner/repo/pull/123
+prfocus 123        # inside a clone of the repo
+prfocus            # no PR: review the branch you're on, uncommitted changes included
 ```
 
 You'll need `bun`, `git`, and `gh` (logged in). With the `claude` CLI installed, Claude organises the PR into a smarter tree in the background, using your Claude Code login.

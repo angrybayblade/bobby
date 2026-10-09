@@ -1,6 +1,6 @@
 # Server and state
 
-`src/server.ts` is a single `Bun.serve` on `127.0.0.1` (port 4173 by default). It serves `public/` as static files and a small JSON API. It holds one **session** in memory:
+`src/server.ts` is a single `Bun.serve` on `127.0.0.1` (port 4173 by default). It serves `public/` as static files (from the copy embedded in a compiled binary, if there is one) and a small JSON API. If the port is taken, the CLI falls back to a free one. It holds one **session** in memory:
 
 ```ts
 interface Session {

@@ -30,6 +30,8 @@ src/                     extraction, server and CLI (TypeScript, run directly by
   llm.ts                 Claude's change tree (headless `claude -p` with a JSON schema)
   graph.ts               packs everything into a ReviewGraph; wires edges; builds the walk
   server.ts              Bun HTTP server: static files + /api/*
+  assets.ts              public/ embedded in a compiled binary (filled by scripts/build.ts)
+  local.ts               no PR: the branch you're on vs a detected base
   state.ts               ~/.prfocus: review state, caches, settings
   types.ts               internal types shared by the pipeline
 public/                  the UI: plain ES modules, no build step

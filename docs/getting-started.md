@@ -11,12 +11,26 @@
 
 ## Install
 
+Pick one:
+
 ```sh
-git clone <this repo> && cd <this repo>
-bun install          # also turns on the commit hooks (see contributing.md)
+# 1. As a package (needs bun on your PATH)
+bun add -g prfocus                     # once published; or npm i -g prfocus
+bun add -g github:angrybayblade/focus-bobby
+
+# 2. As a standalone binary (no bun needed to run it)
+git clone https://github.com/angrybayblade/focus-bobby && cd focus-bobby
+bun install && bun run build           # → dist/prfocus for this machine
+cp dist/prfocus /usr/local/bin/        # or anywhere on your PATH
+bun run build --all                    # → dist/prfocus-<os>-<arch> for macOS, Linux, Windows
+
+# 3. From a clone, for development
+bun install && bun link                # `prfocus` now runs this checkout
 ```
 
-`package.json` declares a `prfocus` bin, so `bun link` makes `prfocus` available everywhere. The examples below use `prfocus`; `bun run src/cli.ts` works the same.
+Either way you still need `git` and `gh` on your PATH, and `claude` for the smarter tree. `prfocus -v` prints the version. The examples below use `prfocus`; `bun run src/cli.ts` works the same from a clone.
+
+The binary is about 60 MB because it carries the Bun runtime. The UI's files are embedded in it, so it runs with nothing beside it.
 
 ## Review a PR
 

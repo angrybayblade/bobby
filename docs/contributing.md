@@ -9,6 +9,11 @@ bun run check     # the build gate: tsc --noEmit for src/, node --check for ever
 
 There's no bundler or dev server. Edit `public/` and reload the page; restart the CLI after editing `src/`.
 
+## Releasing
+
+- **Package:** bump `version` in `package.json`, then `npm publish` (it runs `bun run check` first). `files` ships `src/`, `public/`, `schema/`, `SPEC.md` and the README; the bin is `src/cli.ts`, so users need bun.
+- **Binaries:** `bun run build --all` writes `dist/prfocus-<os>-<arch>` for macOS, Linux and Windows. `scripts/build.ts` generates an entry that embeds every file under `public/` (`src/assets.ts › embed`) before loading the CLI, then runs `bun build --compile`. Cross-compiling downloads each target's Bun runtime the first time.
+
 ## Commits
 
 Read [COMMITS.md](../COMMITS.md). In short:
