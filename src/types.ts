@@ -99,10 +99,21 @@ export interface Comment {
   inDiff: boolean; // false → goes into the review body, GitHub rejects inline comments outside the diff
 }
 
+/** A note only you see. Never posted to GitHub. On a line (path + line + side), a whole file (path only), or the PR (neither). */
+export interface PrivateNote {
+  id: string;
+  body: string;
+  createdAt: string;
+  path?: string;
+  line?: number;
+  side?: "LEFT" | "RIGHT";
+}
+
 export interface ReviewState {
   headSha: string;
   marks: Record<string, "reviewed" | "flagged">; // keyed by hunk hash or ref key
   comments: Comment[];
+  notes?: PrivateNote[]; // private; /api/submit never reads them
   lastNodeId?: string; // graph node id (stable across tree regenerations)
   lastSeenAt?: string;
   note?: string; // "where my head was": parked thought shown on return

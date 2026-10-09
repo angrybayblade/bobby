@@ -2,7 +2,7 @@ import { join, normalize } from "node:path";
 import { fileLines, run } from "./git.ts";
 import type { ReviewGraph } from "./graph.ts";
 import { loadSettings, saveSettings, saveState } from "./state.ts";
-import type { Comment, ReviewState } from "./types.ts";
+import type { Comment, PrivateNote, ReviewState } from "./types.ts";
 
 export interface Session {
   cwd: string | null; // local clone; null when viewing a graph file without one
@@ -81,6 +81,21 @@ export function startServer(s: Session, port: number) {
       if (req.method === "DELETE" && p.startsWith("/api/comment/")) {
         const id = p.split("/").pop();
         s.state.comments = s.state.comments.filter((c) => c.id !== id);
+        persist();
+        return json({ ok: true });
+      }
+
+      // Private notes: kept in the state file only, never sent to GitHub.
+      if (req.method === "POST" && p === "/api/notes") {
+        const { body, path, line, side } = (await req.json()) as Omit<PrivateNote, "id" | "createdAt">;
+        const n: PrivateNote = { id: crypto.randomUUID().slice(0, 8), body, createdAt: new Date().toISOString(), ...(path ? { path } : {}), ...(line ? { line, side } : {}) };
+        (s.state.notes ??= []).push(n);
+        persist();
+        return json(n);
+      }
+      if (req.method === "DELETE" && p.startsWith("/api/notes/")) {
+        const id = p.split("/").pop();
+        s.state.notes = (s.state.notes ?? []).filter((n) => n.id !== id);
         persist();
         return json({ ok: true });
       }
