@@ -104,6 +104,7 @@ export function startServer(s: Session, port: number) {
 
       if (req.method === "POST" && p === "/api/submit") {
         const { event, body } = (await req.json()) as { event: "COMMENT" | "APPROVE" | "REQUEST_CHANGES"; body: string };
+        if (pr().provider === "local") return json({ ok: false, error: "This is a local review with no PR, so there's nowhere to post. Your drafts stay here." }, 400);
         const outside = s.state.comments.filter((c) => !c.inDiff);
         const fullBody = [
           body.trim(),
