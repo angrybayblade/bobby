@@ -18,17 +18,20 @@ Pick one:
 bun add -g focus-bobby                 # once published; or npm i -g focus-bobby
 bun add -g github:angrybayblade/focus-bobby
 
-# 2. As a standalone binary (no bun needed to run it)
+# 2. As a standalone binary (no bun needed to run it): download one from GitHub Releases
+#    bobby-<version>-<os>-<arch>.tar.gz (.zip on Windows), unpack, put `bobby` on your PATH
+tar -xzf bobby-v0.1.0-darwin-arm64.tar.gz && mv bobby /usr/local/bin/
+#    or build it yourself
 git clone https://github.com/angrybayblade/focus-bobby && cd focus-bobby
 bun install && bun run build           # → dist/bobby for this machine
-cp dist/bobby /usr/local/bin/        # or anywhere on your PATH
-bun run build --all                    # → dist/bobby-<os>-<arch> for macOS, Linux, Windows
 
 # 3. From a clone, for development
 bun install && bun link                # `bobby` now runs this checkout
 ```
 
 Either way you still need `git` and `gh` on your PATH, and `claude` for the smarter tree. `bobby -v` prints the version. The examples below use `bobby`; `bun run src/cli.ts` works the same from a clone.
+
+Release binaries aren't code-signed. On macOS, if Gatekeeper blocks a downloaded one, run `xattr -d com.apple.quarantine "$(which bobby)"`. Each release has a `SHA256SUMS` file to check downloads against.
 
 The binary is about 60 MB because it carries the Bun runtime. The UI's files are embedded in it, so it runs with nothing beside it.
 
