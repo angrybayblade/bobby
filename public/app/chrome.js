@@ -85,6 +85,7 @@ export function help() {
       ${r("u", "un-mark")}
       ${r("f", "flag to come back to")}
       ${r("c", "comment (click a line first, or it picks one)")}
+      ${r("m", "private note on a line: only you see it, never posted")}
       ${r("e", "open collapsed code, then more context")}
       ${r("p", "park a thought: jot what's in your head, shown when you return")}
       ${r("enter esc", "zoom in / out: overview → core → page")}

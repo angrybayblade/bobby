@@ -117,11 +117,19 @@ function row(app, { t, o, n }, html, target) {
   const key = `${target.path}|${side}|${line}`;
   const cls = t === "+" ? "add" : t === "-" ? "del" : t === "x" ? "exp" : "ctx";
   const at = (c) => c.path === target.path && c.side === side && c.line === line;
-  const count = app.state.comments.filter(at).length + (app.graph.discussion ?? []).filter(at).length;
+  const count = app.state.comments.filter(at).length + (app.graph.discussion ?? []).filter(at).length + app.state.notes.filter(at).length;
   const composing = app.page.composing?.key === key;
   return `<div class="ln ${cls}${count ? " hasc" : ""}${app.page.sel?.key === key ? " sel" : ""}${target.hi === n && t !== "-" ? " target" : ""}" data-key="${esc(key)}" data-path="${esc(target.path)}" data-line="${line}" data-side="${side}" data-indiff="${target.inDiff && t !== "x" ? 1 : 0}">
     <span class="bar"></span><span class="no">${o ?? ""}</span><span class="no">${n ?? ""}</span><span class="sg">${t === "+" ? "+" : t === "-" ? "−" : ""}</span><code${count ? ` data-cn="${count}"` : ""}>${html}</code></div>`
-    + (composing ? `<div class="cmt"><textarea data-composer placeholder="Draft a comment.  ⌘/Ctrl+Enter to save · Esc to cancel"></textarea></div>` : "");
+    + (composing ? composer(app.page.composing) : "");
+}
+// A line can take a GitHub draft or a private note; c.file composes a note on a whole file (notes only).
+function composer(c) {
+  const note = c.kind === "note";
+  const kinds = c.file ? "" : `<div class="ckind" role="group" aria-label="Kind">${[["comment", "GitHub draft"], ["note", "Private note"]].map(([k, t]) =>
+    `<button data-ckind="${k}" aria-pressed="${c.kind === k}">${t}</button>`).join("")}</div>`;
+  const hint = note ? "A private note: only you see it, and it's never posted to GitHub." : "Draft a comment for your GitHub review.";
+  return `<div class="cmt${note ? " private" : ""}">${kinds}<textarea data-composer placeholder="${hint}  ⌘/Ctrl+Enter to save · Esc to cancel">${esc(c.text ?? "")}</textarea></div>`;
 }
 
 // ---- comments: your drafts plus existing GitHub discussion on the lines this node shows.
@@ -144,21 +152,27 @@ function spans(app, pid) {
 export function nodeComments(app, pid) {
   const sp = spans(app, pid);
   const hit = (c) => sp.some((s) => s.path === c.path && s.side === c.side && c.line >= s.lo && c.line <= s.hi);
-  return [...(app.graph.discussion ?? []).filter(hit), ...app.state.comments.filter(hit)]
+  const notes = app.state.notes.filter((n) => n.line && hit(n)).map((n) => ({ ...n, private: true }));
+  return [...(app.graph.discussion ?? []).filter(hit), ...app.state.comments.filter(hit), ...notes]
     .sort((a, b) => a.path.localeCompare(b.path) || a.line - b.line || !!b.url - !!a.url || String(a.createdAt).localeCompare(String(b.createdAt)));
 }
 function notesHtml(app, pid) {
   const list = nodeComments(app, pid);
   if (!list.length) return "";
-  return `<section class="notes"><h4>Comments · ${list.length}</h4>${list.map((c) => {
+  return `<section class="notes"><h4>${list.some((c) => c.private) ? "Comments & notes" : "Comments"} · ${list.length}</h4>${list.map((c) => {
     const key = esc(`${c.path}|${c.side}|${c.line}`);
     const where = `${c.side === "LEFT" ? "old " : ""}L${c.line}`;
+    if (c.private) return privateNote(c, where, key);
     if (c.url) {
       const link = /^https:\/\//.test(c.url) ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">${where} ↗</a>` : where;
       return `<div class="note gh${c.replyTo ? " reply" : ""}" data-jump="${key}"><div class="who">@${esc(c.author)} · ${link}</div><div class="body">${esc(c.body)}</div></div>`;
     }
     return `<div class="note draft" data-jump="${key}"><div class="who">You · draft · ${where}<button class="x" data-del="${c.id}" title="Delete draft">✕</button></div><div class="body">${esc(c.body)}</div>${c.inDiff ? "" : `<div class="hint">Outside the diff, so this goes into the review summary.</div>`}</div>`;
   }).join("")}</section>`;
+}
+
+function privateNote(n, where, key) {
+  return `<div class="note mine"${key ? ` data-jump="${key}"` : ""}><div class="who">You · private note${where ? ` · ${where}` : ""}<button class="x" data-delnote="${n.id}" title="Delete note">✕</button></div><div class="body">${esc(n.body)}</div></div>`;
 }
 
 function fileHead(path, extra = "", stat = "") {
@@ -325,10 +339,16 @@ function bind(app, el, rerender) {
   el.dataset.bound = "1";
   el.addEventListener("click", (ev) => {
     if (ev.target.closest("a")) return;
-    const t = ev.target.closest("[data-exp],[data-del],[data-low],[data-go],[data-jump],[data-fold],.ln[data-key]");
+    const t = ev.target.closest("[data-ckind],[data-delnote],[data-exp],[data-del],[data-low],[data-go],[data-jump],[data-fold],.ln[data-key]");
     if (!t || !el.contains(t)) return;
     const again = () => bound.get(el)();
     const ds = t.dataset;
+    if (ds.ckind) { // switch the composer between a GitHub draft and a private note, keeping the text
+      app.page.composing.text = el.querySelector("textarea[data-composer]")?.value ?? "";
+      app.page.composing.kind = app.page.kind = ds.ckind;
+      return again();
+    }
+    if (ds.delnote) { app.deleteNote(ds.delnote); return again(); }
     if (ds.go) app.setFocus(ds.go);
     else if (ds.fold) {
       app.page.open.has(ds.fold) ? app.page.open.delete(ds.fold) : app.page.open.add(ds.fold);
@@ -362,7 +382,7 @@ function bind(app, el, rerender) {
       open.has(ds.low) ? open.delete(ds.low) : open.add(ds.low);
       again();
     } else if (ds.key) {
-      if (app.page.sel?.key === ds.key && !app.page.composing) { app.page.composing = { ...ds }; return again(); }
+      if (app.page.sel?.key === ds.key && !app.page.composing) { app.page.composing = { ...ds, kind: app.page.kind ?? "comment" }; return again(); }
       el.querySelectorAll(".ln.sel").forEach((x) => x.classList.remove("sel"));
       t.classList.add("sel");
       app.page.sel = { ...ds };
@@ -380,13 +400,14 @@ async function saveComment(app, text) {
   const t = app.page.composing;
   app.page.composing = null;
   if (!text.trim()) return;
+  if (t.kind === "note") return void (await app.addNote({ body: text.trim(), path: t.path, ...(t.line ? { line: Number(t.line), side: t.side } : {}) }));
   const c = await api("/api/comment", { path: t.path, line: Number(t.line), side: t.side, body: text.trim(), inDiff: t.indiff === "1" });
   app.state.comments.push(c);
   app.emit("comments");
 }
 
-/** `c` key: comment on the selected line, else the most relevant line on the page. */
-export function startComment(app, el) {
+/** `c` key (kind "comment") or `m` key (kind "note"): compose on the selected line, else the most relevant line on the page. */
+export function startComment(app, el, kind = "comment") {
   if (!app.page.sel) {
     if (!el.querySelector(".ln[data-key]") && unfoldAll(app)) bound.get(el)?.(); // nothing to point at while collapsed
     const rows = [...el.querySelectorAll(".ln[data-key]")];
@@ -394,7 +415,7 @@ export function startComment(app, el) {
     if (!pick) return;
     app.page.sel = { ...pick.dataset };
   }
-  app.page.composing = { ...app.page.sel };
+  app.page.composing = { ...app.page.sel, kind };
   bound.get(el)?.();
 }
 

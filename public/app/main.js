@@ -102,6 +102,7 @@ document.addEventListener("keydown", (ev) => {
     u: () => app.mark(app.focus, null),
     f: () => app.mark(app.focus, app.isFlagged(app.focus) ? null : "flagged"),
     c: () => { if (page()) return startComment(app, app.pageEl); app.setLevel(2); setTimeout(() => page() && startComment(app, app.pageEl)); },
+    m: () => { if (page()) return startComment(app, app.pageEl, "note"); app.setLevel(2); setTimeout(() => page() && startComment(app, app.pageEl, "note")); },
     e: () => page() && expandAll(app, app.pageEl),
     Enter: () => app.setLevel(app.level + 1), "+": () => app.setLevel(app.level + 1), "=": () => app.setLevel(app.level + 1),
     Escape: () => app.setLevel(app.level - 1), "-": () => app.setLevel(app.level - 1), _: () => app.setLevel(app.level - 1),

@@ -182,6 +182,12 @@ mark.wd { background: var(--del-word); color: inherit; border-radius: 3px; }
 .note .x { margin-left: auto; color: var(--faint); }
 .note .body { font: var(--size)/1.5 var(--font-prose); white-space: pre-wrap; overflow-wrap: anywhere; margin-top: 2px; }
 .note .hint { font-size: 12px; color: var(--faint); margin-top: 4px; }
+.note.mine { border-left: 3px dashed var(--muted); background: var(--surface); }
+.note.mine .body { color: var(--muted); }
+.cmt.private { border-style: dashed; }
+.cmt .ckind { display: flex; gap: 4px; margin: -2px 0 6px; }
+.cmt .ckind button { font: 12px var(--font-ui); color: var(--faint); padding: 2px 8px; border-radius: 6px; }
+.cmt .ckind button[aria-pressed="true"] { color: var(--text); background: var(--raised); }
 .cmt { margin: 6px 16px 10px 110px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); font: var(--size)/1.5 var(--font-prose); max-width: 70ch; }
 .cmt textarea { width: 100%; min-height: 72px; border: 0; outline: 0; resize: vertical; background: none; color: inherit; font: inherit; }
 
