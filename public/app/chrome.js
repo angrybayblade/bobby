@@ -9,11 +9,13 @@ export function init(a, viewList) {
   for (const r of ["focus", "level", "marks", "graph", "settings", "comments", "llm"]) app.on((why) => why === r && render());
   render();
   // Stepping into a new core: lead with its hook, so you know what to look for before reading.
+  watchCores();
+  app.on((why) => (why === "marks" ? watchCores() : why === "graph" ? (doneCores = null, watchCores()) : null));
   let lastCore = app.get(app.focus)?.core.id;
   app.on((why) => {
     if (why !== "focus" && why !== "graph") return;
     const loc = app.get(app.focus);
-    if (loc && loc.core.id !== lastCore && why === "focus") coreIntro(loc);
+    if (loc && loc.core.id !== lastCore && why === "focus" && Date.now() - doneAt > 1500) coreIntro(loc);
     lastCore = loc?.core.id ?? lastCore;
   });
   document.addEventListener("click", onClick);
@@ -53,6 +55,28 @@ function coreProgress() {
   if (!loc) return "";
   const pages = corePages(loc.ci), d = pages.filter((p) => app.isReviewed(p)).length;
   return `<div class="prog core" title="Core ${loc.ci + 1}: ${d} of ${pages.length} pages reviewed"><span>core ${loc.ci + 1}</span><div class="bar"><i style="width:${Math.round((d / pages.length) * 100)}%"></i></div>${d}/${pages.length}</div>`;
+}
+
+// Finishing a core gets a moment: what you flagged and noted there, and what to look for next.
+let doneCores = null, doneAt = 0;
+function watchCores() {
+  const now = new Set(app.graph.cores.map((_, ci) => ci).filter((ci) => corePages(ci).every((p) => app.isReviewed(p))));
+  const fresh = doneCores ? [...now].filter((ci) => !doneCores.has(ci)) : [];
+  doneCores = now;
+  if (fresh.length !== 1) return;
+  const ci = fresh[0], c = app.graph.cores[ci];
+  doneAt = Date.now(); // the recap names the next core, so its intro would only replace it
+  const pages = corePages(ci), flagged = pages.filter((p) => app.isFlagged(p)).length;
+  const files = new Set(pages.map((p) => { const n = app.nodeOf(p); return n.kind === "change" ? n.file : n.location.path; }));
+  const notes = app.state.notes.filter((n) => n.path && files.has(n.path));
+  // Next: the core `a` and `n` will take you to, the first unfinished one after this, wrapping around.
+  const order = app.graph.cores.map((_, i) => (ci + 1 + i) % app.graph.cores.length);
+  const next = order.find((i) => !now.has(i)) ?? -1;
+  const nc = next >= 0 ? app.graph.cores[next] : null;
+  toast(`<span class="intro"><b>✓ Core ${ci + 1} of ${app.graph.cores.length} done · ${esc(c.title)}</b>
+    <span style="color:var(--muted);font-size:13px">${pages.length} page${pages.length === 1 ? "" : "s"}${flagged ? ` · ${flagged} flagged` : ""}${notes.length ? ` · ${notes.length} note${notes.length > 1 ? "s" : ""}` : ""} · ${now.size} of ${app.graph.cores.length} cores done</span>
+    ${notes.slice(0, 3).map((n) => `<span style="font-size:13px">✎ ${esc(n.body.slice(0, 80))}</span>`).join("")}
+    ${nc ? `<span style="font-size:13px;color:var(--muted)">Next: core ${next + 1} · ${esc(nc.title)}</span>${nc.hook ? `<span class="hook">${inline(nc.hook)}</span>` : ""}` : `<span style="font-size:13px">That was the last core. <kbd>s</kbd> to submit.</span>`}</span>`, 12000);
 }
 
 function renderWhere() {
