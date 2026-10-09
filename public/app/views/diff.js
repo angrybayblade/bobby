@@ -15,8 +15,7 @@ const CSS = `
 .dv .world { position: absolute; left: 0; top: 0; transform-origin: 0 0; transition: transform var(--dur) var(--ease); }
 .dv.dragging .world, .dv .world.still { transition: none; }
 .dv .bhead { position: absolute; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
-.dv .fv { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; box-shadow: var(--shadow); z-index: 2; transition: transform var(--dur) var(--ease), width var(--dur) var(--ease), height var(--dur) var(--ease), opacity var(--dur); }
-.dv .fv.grown { z-index: 4; }
+.dv .fv { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; box-shadow: var(--shadow); z-index: 2; transition: transform var(--dur) var(--ease), opacity var(--dur); }
 .dv.dragging .fv, .dv .fv.held { transition: none; }
 .dv .fv.context { border-style: dashed; }
 /* Weight: what you're in and what it reaches (w-focus) > other changed files (w-semi) > untouched files (w-none).
@@ -162,7 +161,7 @@ export default {
     function build() {
       const keep = new Map([...views].map(([p, v]) => [p, v.body.scrollTop]));
       world.innerHTML = `<svg class="edges"><defs><marker id="dv-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs><g class="bg"></g><g class="fg"></g></svg>`;
-      views.clear(); drawn.clear(); secs.clear(); relShown = new Set(); grown = null;
+      views.clear(); drawn.clear(); secs.clear(); relShown = new Set();
       M = model();
       if (!M.files.length) { world.innerHTML = `<div class="empty">Nothing to show</div>`; return; }
       for (const f of M.files) {
@@ -174,7 +173,7 @@ export default {
         world.appendChild(v);
         const body = v.querySelector(".fvb");
         app.renderFile(body, f.sections.map((s) => s.pid));
-        views.set(f.path, { el: v, body, f, wd: W });
+        views.set(f.path, { el: v, body, f });
       }
       layout();
       for (const [p, top] of keep) if (views.has(p)) views.get(p).body.scrollTop = top;
@@ -224,30 +223,10 @@ export default {
       }
     }
 
-    // ---- the viewer you're reading at the Core level grows into the gaps beside it and down to the screen's height
-    const GROW = 2 * (GX - 40);
-    let grown = null;
-    function place(v) { v.el.style.transform = `translate(${v.x}px, ${v.y}px)`; v.el.style.width = `${v.wd}px`; v.el.style.height = `${v.h}px`; }
-    function regrow() {
-      const act = activeFile(), want = app.level === 1 && act ? views.get(act.path) : null;
-      if (want === grown) return;
-      if (grown) { Object.assign(grown, grown.base); grown.base = null; grown.el.classList.remove("grown"); place(grown); }
-      grown = want;
-      if (!want) return;
-      const v = want;
-      v.base = { x: v.x, wd: v.wd, h: v.h };
-      v.el.style.width = `${W + GROW}px`; v.el.style.height = "";
-      const natural = v.el.offsetHeight, room = (stage.clientHeight - 80) / Math.max(cam.s, 0.75);
-      Object.assign(v, { x: v.x - GROW / 2, wd: W + GROW, h: Math.max(v.h, Math.min(natural, room)) });
-      v.el.classList.add("grown");
-      place(v);
-    }
-
     // ---- focus: highlight the current section and the viewer it's in
     function restyle() {
       const act = activeFile();
       for (const v of views.values()) v.el.classList.toggle("active", v.f === act);
-      regrow();
       const cur = M?.canon(app.focus);
       for (const s of root.querySelectorAll(".sec")) {
         s.classList.toggle("cur", s.dataset.pid === cur);
@@ -313,11 +292,11 @@ export default {
     }
     // A curve between two viewers at world heights y1, y2; label at (lx, ly).
     function curve(v, y1, o, y2) {
-      if (Math.abs(o.x + o.wd / 2 - (v.x + v.wd / 2)) < W / 2) { // same column: loop out to the right
-        const x1 = v.x + v.wd, x2 = o.x + o.wd, bx = Math.max(x1, x2) + 70;
+      if (Math.abs(o.x - v.x) < W / 2) { // same column: loop out to the right
+        const x1 = v.x + W, x2 = o.x + W, bx = Math.max(x1, x2) + 70;
         return { d: `M${x1},${y1} C${bx},${y1} ${bx},${y2} ${x2},${y2}`, lx: (x1 + x2) / 2 + 52, ly: (y1 + y2) / 2 };
       }
-      const [x1, x2] = o.x > v.x ? [v.x + v.wd, o.x] : [v.x, o.x + o.wd], mx = (x1 + x2) / 2;
+      const [x1, x2] = o.x > v.x ? [v.x + W, o.x] : [v.x, o.x + W], mx = (x1 + x2) / 2;
       return { d: `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`, lx: mx, ly: (y1 + y2) / 2 };
     }
     // Background: every relation not already drawn as focused, faint, with no arrow or label. Both ends in
@@ -506,7 +485,7 @@ export default {
 
     // ---- camera
     function bounds(list) {
-      const xs = list.flatMap((v) => [v.x, v.x + v.wd]), ys = list.flatMap((v) => [v.y, v.y + v.h]);
+      const xs = list.flatMap((v) => [v.x, v.x + W]), ys = list.flatMap((v) => [v.y, v.y + v.h]);
       return { x: Math.min(...xs), y: Math.min(...ys) - TOP, w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) + TOP };
     }
     function frame() {
@@ -527,9 +506,9 @@ export default {
       const act = activeFile(), v = act && views.get(act.path);
       if (!v) return frame();
       const sw = stage.clientWidth, sh = stage.clientHeight, PAD = 40, s = cam.s;
-      const left = (v.x * s) + cam.tx + pan.x, top = (v.y - TOP) * s + cam.ty + pan.y, w = v.wd * s, h = (v.h + TOP) * s;
+      const left = (v.x * s) + cam.tx + pan.x, top = (v.y - TOP) * s + cam.ty + pan.y, w = W * s, h = (v.h + TOP) * s;
       if (app.level === 0 && left >= 0 && top >= 0 && left + w <= sw && top + h <= sh) return;
-      cam = { s, tx: sw / 2 - (v.x + v.wd / 2) * s, ty: h > sh - PAD * 2 ? PAD - (v.y - TOP) * s : sh / 2 - (v.y - TOP + (v.h + TOP) / 2) * s };
+      cam = { s, tx: sw / 2 - (v.x + W / 2) * s, ty: h > sh - PAD * 2 ? PAD - (v.y - TOP) * s : sh / 2 - (v.y - TOP + (v.h + TOP) / 2) * s };
       pan = { x: 0, y: 0 };
       apply();
     }
@@ -616,9 +595,7 @@ export default {
         v.el.classList.add("held");
         v.x = held.ox + dx; v.y = held.oy + dy;
         v.el.style.transform = `translate(${v.x}px, ${v.y}px)`;
-        const rest = v.base ? v.x + GROW / 2 : v.x;
-        if (v.base) v.base.x = rest;
-        placedBy.set(v.f.path, { x: rest, y: v.y });
+        placedBy.set(v.f.path, { x: v.x, y: v.y });
         redraw();
         return;
       }
