@@ -1,4 +1,5 @@
 import { join, normalize } from "node:path";
+import { embeddedAsset } from "./assets.ts";
 import { fileLines, run } from "./git.ts";
 import type { ReviewGraph } from "./graph.ts";
 import { loadSettings, saveSettings, saveState } from "./state.ts";
@@ -30,6 +31,8 @@ export function startServer(s: Session, port: number) {
       if (!p.startsWith("/api/")) {
         const rel = normalize(p === "/" ? "index.html" : p.slice(1));
         if (rel.startsWith("..")) return new Response("Not found", { status: 404 });
+        const asset = embeddedAsset(rel.split("\\").join("/"));
+        if (asset) return new Response(asset.body, { headers: { "content-type": asset.type } });
         const file = Bun.file(join(PUBLIC, rel));
         return (await file.exists()) ? new Response(file) : new Response("Not found", { status: 404 });
       }
