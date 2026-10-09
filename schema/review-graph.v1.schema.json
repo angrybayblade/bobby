@@ -144,6 +144,7 @@
         "id": { "type": "string" },
         "title": { "type": "string" },
         "summary": { "type": "string" },
+        "hook": { "type": "string", "description": "Optional. One question or risk to lead with when entering the core." },
         "bands": {
           "type": "object",
           "required": ["upUnchanged", "upChanged", "core", "downChanged", "downUnchanged"],

@@ -30,13 +30,14 @@ const SCHEMA = {
         properties: {
           title: { type: "string" },
           summary: { type: "string" },
+          hook: { type: "string" },
           coreUnits: { type: "array", items: unitEdge },
           upstreamUnchanged: { type: "array", items: refEdge },
           upstreamChanged: { type: "array", items: unitEdge },
           downstreamChanged: { type: "array", items: unitEdge },
           downstreamUnchanged: { type: "array", items: refEdge },
         },
-        required: ["title", "summary", "coreUnits", "upstreamUnchanged", "upstreamChanged", "downstreamChanged", "downstreamUnchanged"],
+        required: ["title", "summary", "hook", "coreUnits", "upstreamUnchanged", "upstreamChanged", "downstreamChanged", "downstreamUnchanged"],
       },
     },
   },
@@ -64,6 +65,7 @@ Rules:
 - label (refs): the function/type at that location, e.g. "normalizeRetryOptions()".
 - label (units): what this unit changes, as a short code-ish name (e.g. "retryMethods default", "ky.query() type"); don't just repeat the file name.
 - title: 2–6 words. summary: one sentence. intent: one sentence describing what the whole PR does.
+- hook: one short question (at most ~14 words) that gives the reviewer something specific to look for in this core, grounded in the code and usually about what could break, e.g. "Can retry() now loop forever when limit is 0?" or "Do untouched callers still pass a string id?". Not a summary, and no filler like "Let's look at…".
 - Use only the ids given below, and only in the id fields. Never mention ids like "u3" or "r12" in labels, why, title, summary or intent; name the code instead.`;
 
 export async function claudeTree(pr: PrInfo, a: Analysis, files: FileDiff[]): Promise<ChangeTree> {
@@ -102,7 +104,7 @@ const link = (e: { attachTo?: string; relation?: string }) => ({ attachTo: e.att
 interface Raw {
   intent: string;
   cores: Array<{
-    title: string; summary: string;
+    title: string; summary: string; hook?: string;
     coreUnits: Array<UnitEdge>;
     upstreamChanged: Array<UnitEdge>;
     downstreamChanged: Array<UnitEdge>;
@@ -117,7 +119,7 @@ function toTree(raw: Raw, a: Analysis, files: FileDiff[]): ChangeTree {
   // Belt and braces: swap any leaked internal ids in prose for the code they refer to.
   const names = new Map<string, string>([...a.units.map((u) => [u.id, u.symbols[0]] as const), ...a.refs.map((r) => [r.id, r.symbol] as const)]);
   const scrub = (text: string) => text.replace(/\b[ur]\d+\b/g, (id) => (names.has(id) ? `\`${names.get(id)}\`` : id));
-  raw = JSON.parse(JSON.stringify(raw), (k, v) => (typeof v === "string" && ["why", "title", "summary", "intent", "label"].includes(k) ? scrub(v) : v));
+  raw = JSON.parse(JSON.stringify(raw), (k, v) => (typeof v === "string" && ["why", "title", "summary", "intent", "label", "hook"].includes(k) ? scrub(v) : v));
   const cores: Core[] = [];
   for (const rc of raw.cores) {
     const bands = emptyBands();
@@ -133,7 +135,7 @@ function toTree(raw: Raw, a: Analysis, files: FileDiff[]): ChangeTree {
     unitNodes(rc.downstreamChanged, "downChanged");
     for (const e of rc.upstreamUnchanged ?? []) { const r = refs.get(e.ref); if (r) bands.upUnchanged.push({ ...refNode(r, "upUnchanged", e.why, e.risk, e.label), ...link(e) }); }
     for (const e of rc.downstreamUnchanged ?? []) { const r = refs.get(e.ref); if (r) bands.downUnchanged.push({ ...refNode(r, "downUnchanged", e.why, e.risk, e.label), ...link(e) }); }
-    cores.push({ id: "", title: rc.title, summary: rc.summary, bands });
+    cores.push({ id: "", title: rc.title, summary: rc.summary, hook: rc.hook?.trim() || undefined, bands });
   }
   return finalize({ source: "claude", intent: raw.intent, cores, noiseHunkIds: [] }, a, files);
 }

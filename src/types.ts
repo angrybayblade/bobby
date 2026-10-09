@@ -68,6 +68,7 @@ export interface Core {
   id: string;
   title: string;
   summary: string;
+  hook?: string; // one question or risk to lead with, so the core starts with something to look for
   bands: Record<Band, TreeNode[]>;
 }
 

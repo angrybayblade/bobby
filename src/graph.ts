@@ -9,7 +9,7 @@ import type { Band, ChangeTree, DiffLine, FileDiff, PrInfo, TreeNode } from "./t
 import { BANDS } from "./types.ts";
 
 export const GRAPH_SCHEMA = "prfocus.review-graph/v1" as const;
-export const VERSION = "0.2.0"; // bump when extraction output changes: cached graphs from other versions are rebuilt
+export const VERSION = "0.3.0"; // bump when extraction output changes: cached graphs from other versions are rebuilt
 const SNIPPET_RADIUS = 10;
 
 export interface ReviewGraph {
@@ -72,6 +72,7 @@ export interface GCore {
   id: string;
   title: string;
   summary: string;
+  hook?: string; // a question or risk to lead with
   bands: Record<Band, GPlacement[]>;
 }
 
@@ -127,7 +128,9 @@ export async function buildGraph(cwd: string | null, pr: PrInfo, files: FileDiff
         if (n.attachTo || n.relation) hints.set(id, { attachNode: n.attachTo ? unitNode.get(n.attachTo) : undefined, relation: n.relation });
       }
     }
-    cores.push({ id: c.id, title: c.title, summary: c.summary, bands });
+    const core: GCore = { id: c.id, title: c.title, summary: c.summary, bands };
+    core.hook = c.hook || staticHook(core);
+    cores.push(core);
   }
   // Repeats point at the placement that shows the content in full.
   for (const c of tree.cores)
@@ -166,6 +169,17 @@ export async function buildGraph(cwd: string | null, pr: PrInfo, files: FileDiff
     lowSignal: tree.noiseHunkIds,
     ...(discussion.length ? { discussion } : {}),
   };
+}
+
+/** A question to lead with when the tree didn't write one: what this core could break. */
+function staticHook(c: GCore): string {
+  const name = c.bands.core[0]?.title ?? c.title;
+  const risky = c.bands.downUnchanged.find((p) => p.risk === "high");
+  if (risky) return `Does ${risky.title} still behave now that \`${name}\` changed?`;
+  const n = c.bands.downUnchanged.length, m = c.bands.downChanged.length;
+  if (n) return `${n} untouched place${n > 1 ? "s" : ""} use${n > 1 ? "" : "s"} \`${name}\`. Do they still hold?`;
+  if (m) return `${m} other change${m > 1 ? "s" : ""} follow${m > 1 ? "" : "s"} from \`${name}\`. Do they line up with it?`;
+  return `What does \`${name}\` change, and could anything rely on the old behaviour?`;
 }
 
 function findPlacement(cores: GCore[], id: string) {

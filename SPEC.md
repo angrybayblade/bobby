@@ -56,6 +56,10 @@ upUnchanged → upChanged → core → downChanged → downUnchanged
 
 An untouched upstream node can attach to a changed upstream node, and an untouched downstream node can hang off a changed downstream node. That's how the tree gets depth. `label` names the relationship, for example "uses `retryMethods`".
 
+### Hooks
+
+A core may carry `hook`: one short question to lead with, usually about what could break ("Do untouched callers still pass a string id?"). Views show it when the reviewer enters the core, so each core starts with something specific to look for. It's optional and additive: v1 consumers that don't know it ignore it.
+
 ### Walk
 
 `walk` is the canonical traversal: cores in order, and within each core the bands in the order above, with repeats left out. Views may present it differently, but "next" and "previous" always follow `walk`. That way, switching views never changes what comes next.

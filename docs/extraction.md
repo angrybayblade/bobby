@@ -64,7 +64,7 @@ Deterministic and instant:
 Runs `claude -p --output-format json --tools "" --no-session-persistence --json-schema <schema>` in a temp directory, with the prompt on stdin. `PRFOCUS_MODEL` adds `--model`.
 
 - **The prompt** has instructions written for a reviewer who reads one focused page at a time, then the PR title and body, every unit with its hunks (up to 120 lines each, within a ~160k-character budget), the static edges, and every ref.
-- **The schema** forces exactly the five band lists per core. Each entry carries an id, a label, a why, `attachTo` (the unit one step closer to the core) and `relation` (a 1–4 word edge label). Refs also carry a risk.
+- **The schema** forces exactly the five band lists per core, plus a `hook` per core: one question to lead with. Each entry carries an id, a label, a why, `attachTo` (the unit one step closer to the core) and `relation` (a 1–4 word edge label). Refs also carry a risk.
 - **Guard rails**: Claude may only use the ids it was given. Unknown ids are dropped, cores without a valid core unit are dropped, and any leaked ids in prose (`u3`, `r12`) are replaced with the symbol name.
 
 `attachTo` and `relation` travel as hints into graph building, where they choose edge endpoints and labels.
@@ -84,6 +84,7 @@ Both trees go through `finalize`:
 
 - **Nodes**: one `change` node per unit (`chg:<file>#<symbol>`), and one `context` node per referenced location (`ctx:<path>:<line>`). Context nodes carry a snippet of ±10 lines read with `git show <head>:<path>`.
 - **Placements**: each tree node becomes a placement `p1…` in its core's band, with its title, why and risk. Repeats get `repeatOf`.
+- **Hooks**: Claude's, or `staticHook` when the tree has none, built from the core's untouched downstream code (risky first), then its downstream changes.
 - **Edges** (`coreEdges`), inside each core:
   - Each upstream placement feeds one node on its right. An untouched upstream node may feed an upstream changed node or a core node; an upstream changed node feeds a core node.
   - Each downstream placement hangs off one node on its left, in the mirror-image way.
