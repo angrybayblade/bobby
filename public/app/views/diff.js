@@ -74,7 +74,7 @@ const CSS = `
 .dv .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--faint); }
 `;
 
-const W = 600, MAX_H = 460, GX = 120, GY = 34, TOP = 34;
+const W = 840, MAX_H = 460, GX = 120, GY = 34, TOP = 34;
 
 export default {
   id: "diff",
