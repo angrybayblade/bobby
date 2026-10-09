@@ -150,7 +150,7 @@ export default {
         + `<button class="max vwf" data-fviewed="${esc(f.path)}" aria-label="Mark file viewed" data-tip="Mark whole file viewed · local only" data-tip-on="Unmark file viewed">✓</button>`
         + `<button class="max" data-fnote="${esc(f.path)}" aria-label="Note on this file" data-tip="Private note on this file · only you see it">✎</button>`
         + (exit ? `<button class="max" data-exit="1" aria-label="Back to all files" data-tip="Back to all files · esc">⤡</button>`
-          : `<button class="max" data-max="${esc(f.path)}" aria-label="Focus on this file" data-tip="Focus on this file · or click the header">⤢</button>`);
+          : `<button class="max" data-max="${esc(f.path)}" aria-label="Expand this file" data-tip="Expand to full screen · or double-click the header">⤢</button>`);
     }
 
     // ---- build: render every viewer, measure, then lay out in band columns.
@@ -527,7 +527,7 @@ export default {
       }
     });
     let drag = null, moved = false, held = null;
-    // The header is the handle: drag to move a viewer, click it (or ⤢) to focus on it.
+    // The header is the handle: drag to move a viewer, click it to read that file, double-click it (or ⤢) to expand it.
     stage.addEventListener("pointerdown", (ev) => {
       const h = ev.target.closest(".fvh");
       if (!h || ev.target.closest("button")) return;
@@ -547,6 +547,10 @@ export default {
       if (ev.target.closest(".fv")) return; // inside a viewer: code stays selectable
       if (ev.pointerType === "mouse") ev.preventDefault(); // a press-and-drag pans; it must not start a text selection
       drag = { x: ev.clientX, y: ev.clientY, p: { ...pan } }; moved = false;
+    });
+    stage.addEventListener("dblclick", (ev) => {
+      const h = ev.target.closest(".fvh");
+      if (h && !ev.target.closest("button")) openFocus(h.parentElement.dataset.file);
     });
     const onMove = (ev) => {
       if (held) {
@@ -572,7 +576,10 @@ export default {
       if (held) {
         const h = held; held = null;
         h.v.el.classList.remove("held");
-        if (!h.moved) openFocus(h.v.f.path); // a click on the header, not a drag
+        if (!h.moved) { // a click on the header, not a drag: that's the file you're reading now
+          if (h.v.f !== activeFile()) { quietUntil = 0; readFocus(h.v); }
+          engage(true);
+        }
       }
       if (drag && !moved) engage(false); // a click on the background, not a pan
       drag = null; root.classList.remove("dragging");

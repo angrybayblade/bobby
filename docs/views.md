@@ -70,7 +70,8 @@ Until you're in a viewer, changed files stay at full strength and untouched file
 | Two-finger scroll | Pan, except over the code of the viewer you're in, which scrolls |
 | Two fingers on a touchscreen | Pan and zoom, even over code |
 | Drag a viewer's header | Move the viewer (kept until you reload) |
-| Click a header, or ⤢ | Focus on that file (drag the header to move it instead) |
+| Click a header | Make that file the one you're reading (drag the header to move it instead) |
+| Double-click a header, or ⤢ | Expand that file to full screen |
 | ✓ in a header | Mark every section in the file viewed (or clear them) |
 | ✎ in a header | Private note on the whole file |
 | **Mark viewed** on a section | Mark that section viewed (or clear it) |
