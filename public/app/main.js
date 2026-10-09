@@ -1,4 +1,4 @@
-import { DONE, api, createApp } from "./core.js";
+import { DONE, api, createApp, esc } from "./core.js";
 import { expandAll, renderFile, renderNode, renderPage, startComment, startFileNote } from "./code.js";
 import * as chrome from "./chrome.js";
 import views from "./views/index.js";
@@ -74,14 +74,20 @@ if (app.llm === "pending") poll();
 // ---- start: resume where you were, else the first unreviewed page
 const lastNode = session.state.lastNodeId;
 const resume = lastNode && [...app.index.placement.values()].find((x) => x.pl.node === lastNode && !x.pl.repeatOf)?.pl.id;
-app.focus = resume ?? app.index.walk.find((p) => p !== DONE && !app.isReviewed(p)) ?? app.index.walk[0];
-app.level = resume ? 2 : 0;
+// First time on this PR: start at the easiest entry point, the change with the fewest links to other code.
+const entry = resume ? null : app.entryPoint();
+app.focus = resume ?? entry?.pid ?? app.index.walk.find((p) => p !== DONE && !app.isReviewed(p)) ?? app.index.walk[0];
+app.level = resume ? 2 : entry ? 1 : 0;
 const hash = new URLSearchParams(location.hash.slice(1)); // deep links for testing: #view=lens&level=1&p=5
 if (hash.has("level")) app.level = Number(hash.get("level"));
 if (hash.has("p")) app.focus = app.index.walk[Number(hash.get("p")) - 1] ?? app.focus;
 mount(hash.get("view") ?? app.settings.view);
 chrome.init(app, views);
 if (resume && !hash.has("p") && (app.progress().done > 0 || session.state.note)) chrome.reentry();
+else if (entry && !hash.has("p")) {
+  const why = entry.links === 0 ? "it doesn't depend on or affect other changes" : `it has the fewest links to other code (${entry.links})`;
+  chrome.toast(`<span>Starting with <b>${esc(app.get(entry.pid).pl.title)}</b>: ${why}. <kbd>esc</kbd> for the overview.</span>`, 7000);
+}
 
 // ---- keys
 const typing = (t) => t.matches?.("input, textarea, [contenteditable]");
