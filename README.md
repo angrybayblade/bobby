@@ -2,7 +2,7 @@
 
 A tool to help me not loose focus while reviewing PRs
 
-[](img/bobby.png)
+![](img/bobby.png)
 
 ```
 untouched code it relies on → changed code it relies on → CORE CHANGE → changed code it affects → untouched code it affects
