@@ -24,8 +24,7 @@ const CSS = `
 .dv.engaged .fv.w-none { opacity: .3; }
 .dv .fv.w-none:hover, .dv.engaged .fv.w-semi:hover { opacity: .9; }
 .dv .fv.w-focus { box-shadow: var(--shadow), 0 2px 12px rgba(0,0,0,.2); z-index: 3; }
-.dv .fv.w-focus:not(.active) { border-color: var(--muted); }
-.dv .fv.active { border: 2px solid var(--signal); box-shadow: 0 0 0 6px var(--signal-soft), var(--shadow); z-index: 3; }
+.dv .fv.active { border-color: var(--muted); border-style: solid; z-index: 3; } /* neutral: weight, not colour, says where you are */
 .dv .fvh { display: flex; gap: 10px; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--line-soft); font: 12.5px var(--font-code); color: var(--muted); cursor: grab; user-select: none; background: var(--raised); }
 .dv .fvh b { font-weight: 600; }
 .dv .fvh .p { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -41,13 +40,13 @@ const CSS = `
 .dv .fvb { position: relative; overflow: auto; overscroll-behavior: contain; cursor: auto; flex: 1; min-height: 0; }
 .dv .sec { padding: 10px 12px 2px; border-bottom: 1px solid var(--line-soft); }
 .dv .sec:last-child { border-bottom: 0; }
-.dv .sec.cur { box-shadow: inset 3px 0 0 var(--signal); }
+.dv .sec.cur { box-shadow: inset 3px 0 0 var(--muted); }
 .dv .sech { display: flex; gap: 8px; align-items: center; font: 600 12.5px var(--font-code); color: var(--muted); padding: 0 2px 8px; }
 .dv .sec.cur .sech { color: var(--text); }
 .dv .sec.done .sech span:first-of-type { color: var(--faint); }
 .dv .sec .code { margin-bottom: 10px; }
 .dv .sec .notes { margin-bottom: 10px; }
-.dv .sec.rel { box-shadow: inset 3px 0 0 var(--muted); }
+.dv .sec.rel { box-shadow: inset 3px 0 0 var(--line); }
 .dv svg.edges { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; z-index: 1; } /* under the viewers: edges live in the gaps */
 .dv svg.edges path { fill: none; stroke: var(--muted); stroke-width: 2; }
 .dv svg.edges marker path { fill: var(--muted); stroke: none; }
