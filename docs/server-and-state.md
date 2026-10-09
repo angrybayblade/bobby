@@ -29,6 +29,8 @@ The CLI fills `claudeGraph` and `llm` from the background Claude job while the s
 | `POST /api/note` | `{ note }` | The parked thought. |
 | `POST /api/comment` | `{ path, line, side, body, inDiff }` → comment with `id` | Adds a draft. |
 | `DELETE /api/comment/:id` | | Removes a draft. |
+| `POST /api/notes` | `{ body, path?, line?, side? }` → note with `id`, `createdAt` | Adds a private note: on a line, a file (no `line`) or the PR (no `path`). |
+| `DELETE /api/notes/:id` | | Removes a private note. |
 | `POST /api/submit` | `{ event, body }` → `{ ok, url }` or `{ ok: false, error }` | Posts the review to GitHub. |
 
 Every state-changing call writes the state file straight away.
@@ -40,6 +42,7 @@ Every state-changing call writes the state file straight away.
 - `event` is `COMMENT`, `APPROVE` or `REQUEST_CHANGES`.
 - Drafts with `inDiff: true` become inline comments (`path`, `line`, `side`).
 - Drafts on untouched code (`inDiff: false`) can't be inline on GitHub, so they're appended to the body under **"Notes on code this PR doesn't touch"**.
+- Private notes and review marks are never read here, so they never reach GitHub.
 - It's posted with `gh api --method POST repos/<o>/<r>/pulls/<n>/reviews --input -`. Drafts are cleared only on success; on failure the error is returned and shown in the submit dialog.
 
 ## On-disk state (`src/state.ts`)
@@ -62,6 +65,7 @@ interface ReviewState {
   headSha: string;                                // refreshed on load
   marks: Record<string, "reviewed" | "flagged">;  // content key → mark
   comments: Comment[];                            // drafts until submitted
+  notes?: PrivateNote[];                          // private notes; never submitted
   lastNodeId?: string;                            // graph node id, for resuming
   lastSeenAt?: string;
   note?: string;                                  // parked thought

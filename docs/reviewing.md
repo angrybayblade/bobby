@@ -43,6 +43,7 @@ The breadcrumb bar shows where you are (`repo #n › core › page`) and the cur
 | `j` / `k` (or arrows, space) | Next / previous page |
 | `J` / `K` | Next / previous core |
 | `n` | Next page you haven't reviewed |
+| `m` / `M` | Private note on a line / your notes panel |
 | `v` | Switch view (Flow → Outline → Lens → Diff) |
 | `?` | All keys |
 
@@ -55,6 +56,7 @@ The breadcrumb bar shows where you are (`repo #n › core › page`) and the cur
 | `a` | Looks good: mark reviewed and go to the next unreviewed page |
 | `f` | Flag to come back to (press again to clear) |
 | `u` | Un-mark |
+| **Mark viewed** (Diff) | Toggle one section viewed, without moving on. ✓ in a file's header marks or clears the whole file. |
 
 The header shows progress (`12/40`) and a rough estimate of the time left.
 
@@ -76,9 +78,21 @@ Marks are stored by the **content** of each hunk, not its position. After a forc
 
 Comments on **untouched code** can't be inline on GitHub. They're kept as drafts and go into the review summary under "Notes on code this PR doesn't touch".
 
+## Private notes
+
+Notes are for you: reminders, questions to come back to, half-formed thoughts. **They're never posted to GitHub**, and they're kept in your local state file for this PR.
+
+| Where | How |
+|---|---|
+| On a line | Select a line and press `m`. Or open the composer as for a comment and switch it to **Private note**; the choice sticks for the next one. |
+| On a whole file | In the Diff view, click ✎ in the file's header. File notes show at the top of the file, and on its pages in every view. |
+| On the whole PR | Press `M`, or click **✎ Notes** in the header, and write in the panel. |
+
+The **Notes** panel (`M`) also lists every note on code. Click one to jump to its page. Notes look like comments but quieter (dashed, muted), and the composer is dashed while it's in note mode. Delete a note with its ✕.
+
 ## Submitting
 
-Press `s`. Add an optional summary, then choose **Comment**, **Approve** or **Request changes**. All drafts are posted together as one GitHub review on the PR's current head commit, and you get a link to it. Drafts are cleared only once GitHub accepts the review.
+Press `s`. Add an optional summary, then choose **Comment**, **Approve** or **Request changes**. Only drafts are posted; private notes and viewed marks stay local. All drafts are posted together as one GitHub review on the PR's current head commit, and you get a link to it. Drafts are cleared only once GitHub accepts the review.
 
 ## Staying focused
 

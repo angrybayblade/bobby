@@ -36,13 +36,15 @@ The UI in `public/` is plain ES modules with no build step and no framework. `in
 | `focus` | The focused placement changed |
 | `level` | The zoom level changed |
 | `marks` | A page was marked or un-marked |
-| `comments` | A draft was added, deleted or submitted |
+| `comments` | A draft or private note was added, deleted or submitted |
 | `graph` | `replaceGraph` swapped in Claude's tree (focus is kept by node id) |
 | `settings` | A setting changed |
 | `llm` | Claude's status changed |
 | `resize` | The window resized (sent to the view by `main.js`) |
 
 `main.js` forwards every reason to the mounted view's `update(reason)`.
+
+**Private notes.** `addNote({ body, path?, line?, side? })` and `deleteNote(id)` keep `state.notes` in sync with the server and emit `comments`, since notes render wherever comments do. `pidAt(path, line)` finds the page that shows a file's line, for jumping to a note.
 
 **Settings.** `settings` is `DEFAULT_SETTINGS` overlaid with the saved file. `saveSettings(patch)` updates it locally, POSTs the patch and emits `settings`. `useKey(k)` counts key uses so hints can fade.
 
@@ -71,7 +73,8 @@ Details:
 - **Word diff**: within each run of removed lines followed by added lines, lines are paired in order and diffed token by token (LCS). The differing ranges get `--add-word` / `--del-word` highlights, unless most of the line changed, since whole-line changes read better without marks.
 - **Folding**: a hunk that only adds or only removes lines (and untouched-code snippets) starts folded. `app.page.open` tracks what's unfolded.
 - **Context**: `app.page.exp` grows the lines shown around a hunk (12 per click, 10 per `e`). It's fetched from `/api/file` and cached per path. It needs `caps.files`.
-- **Comments**: drafts and `graph.discussion` entries are matched to lines by `path`, `line` and `side`. A line's `data-indiff` says whether a comment there can be inline on GitHub.
+- **Comments and notes**: drafts, `graph.discussion` entries and line notes are matched to lines by `path`, `line` and `side`. A line's `data-indiff` says whether a comment there can be inline on GitHub. The line composer (`app.page.composing`, with `kind` set to `comment` or `note`) can switch kind without losing its text. File notes render at the top of `renderFile` and on page and card bodies, and their composer (`composing.file`) survives focus changes within the file.
+- **Viewed toggles**: `renderFile` section headers carry a `data-viewed` button that toggles the review mark. Views keep `.sec.done` current, and CSS swaps the label.
 - **Events**: one delegated click and keydown listener per container (`bind`). Re-rendering goes through a stored `rerender` closure, so state changes in place.
 
 `startComment(app, el)` and `expandAll(app, el)` back the `c` and `e` keys. They act on `app.pageEl`, which views set to whatever container currently shows the focus's code.
