@@ -32,6 +32,11 @@ const CSS = `
 .dv .fvh .st { white-space: nowrap; }
 .dv .fvh .max { width: 26px; height: 22px; border-radius: 6px; color: var(--muted); font-size: 14px; line-height: 1; }
 .dv .fvh .max:hover { background: var(--bg); color: var(--text); }
+/* Header tooltips: quick, below the button, right-aligned so they stay inside the viewer. */
+.dv .fvh [data-tip] { position: relative; }
+.dv .fvh [data-tip]::after { content: attr(data-tip); position: absolute; top: calc(100% + 8px); right: 0; z-index: 6; padding: 4px 9px; border-radius: 6px; background: var(--text); color: var(--bg); font: 500 12px var(--font-ui); white-space: nowrap; pointer-events: none; opacity: 0; transform: translateY(-2px); transition: opacity .12s, transform .12s; }
+.dv .fvh [data-tip]:hover::after { opacity: 1; transform: none; transition-delay: .25s; }
+.dv .viewed .fvh .vwf::after { content: attr(data-tip-on); }
 .dv .viewed .fvh .vwf { color: var(--ok); }
 .dv .fvb { position: relative; overflow: auto; overscroll-behavior: contain; cursor: auto; flex: 1; min-height: 0; }
 .dv .sec { padding: 10px 12px 2px; border-bottom: 1px solid var(--line-soft); }
@@ -143,10 +148,10 @@ export default {
     function header(f, exit = false) {
       const dir = f.path.includes("/") ? f.path.slice(0, f.path.lastIndexOf("/") + 1) : "";
       return `<i class="glyph ${f.changed ? "change" : "context"}"></i><span class="p">${esc(dir)}<b>${esc(f.path.split("/").pop())}</b></span><span class="st">${stat(f)}</span>`
-        + `<button class="max vwf" data-fviewed="${esc(f.path)}" title="Mark every section in this file viewed (tracked here only, not on GitHub)">✓</button>`
-        + `<button class="max" data-fnote="${esc(f.path)}" title="Private note on this file (only you see it)">✎</button>`
-        + (exit ? `<button class="max" data-exit="1" title="Back to all files (esc)">⤡</button>`
-          : `<button class="max" data-max="${esc(f.path)}" title="Focus on this file (or double-click the header)">⤢</button>`);
+        + `<button class="max vwf" data-fviewed="${esc(f.path)}" aria-label="Mark file viewed" data-tip="Mark whole file viewed · local only" data-tip-on="Unmark file viewed">✓</button>`
+        + `<button class="max" data-fnote="${esc(f.path)}" aria-label="Note on this file" data-tip="Private note on this file · only you see it">✎</button>`
+        + (exit ? `<button class="max" data-exit="1" aria-label="Back to all files" data-tip="Back to all files · esc">⤡</button>`
+          : `<button class="max" data-max="${esc(f.path)}" aria-label="Focus on this file" data-tip="Focus on this file · or double-click the header">⤢</button>`);
     }
 
     // ---- build: render every viewer, measure, then lay out in band columns.
