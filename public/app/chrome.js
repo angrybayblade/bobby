@@ -88,7 +88,7 @@ export function help() {
       ${r("e", "open collapsed code, then more context")}
       ${r("p", "park a thought: jot what's in your head, shown when you return")}
       ${r("enter esc", "zoom in / out: overview → core → page")}
-      ${r("v", "switch view: Flow, Outline, Lens")}
+      ${r("v", "switch view: Flow, Outline, Lens, Diff")}
       ${r("s", "submit review")}
       ${r(",", "settings")}
     </table>
