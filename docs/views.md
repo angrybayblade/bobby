@@ -38,7 +38,17 @@ The focused page sits dead centre. What it relies on fans in from the left, and 
 
 A canvas with one scrollable diff viewer per file, arranged in columns by band (a file goes in the column of its most central code). Each viewer shows the file's sections: the pages of the walk that live in that file, in line order.
 
-**Reading.** Scroll a viewer and the section under its top third becomes your focus. `j`/`k` scroll the viewer for you. Click into another file to start reading it.
+**Reading.** Click into a viewer's code to be *in* it. From then on the wheel scrolls its code, and the section under its top third becomes your focus. `j`/`k` also put you in the viewer and scroll it for you. Clicking another file's code moves you there. Clicking the background (without dragging) or zooming out to Overview lets go.
+
+**What stands out.** Viewers have three weights, so you can tell at a glance what you're looking at:
+
+| Weight | Which viewers | Looks |
+|---|---|---|
+| Focus | The viewer you're in, plus the files its edges reach | Full strength and lifted. Yours has the amber border. |
+| Semi-focus | Other changed files | 60% |
+| Background | Untouched files (relied on or affected) | 30% |
+
+Until you're in a viewer, changed files stay at full strength and untouched files at 50%. Hover a dimmed viewer to bring it up.
 
 **Edges.**
 - The sections visible in the file you're reading get **full edges**, with arrows and labels, to related sections in other files. Those files scroll to bring the other end into view.
@@ -53,8 +63,7 @@ A canvas with one scrollable diff viewer per file, arranged in columns by band (
 |---|---|
 | Drag the background | Pan |
 | Pinch (trackpad), or `ctrl`+scroll | Zoom around the pointer |
-| Two-finger scroll over the background | Pan |
-| Two-finger scroll over a viewer | Scroll its code |
+| Two-finger scroll | Pan, except over the code of the viewer you're in, which scrolls |
 | Two fingers on a touchscreen | Pan and zoom, even over code |
 | Drag a viewer's header | Move the viewer (kept until you reload) |
 | Double-click a header, or ⤢ | Focus on that file |

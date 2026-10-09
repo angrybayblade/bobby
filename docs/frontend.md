@@ -96,7 +96,9 @@ The most involved view.
 
 - **Model.** Every node's first placement in walk order is its canonical section. Sections are grouped by file (a change node's file, or a context node's path) and sorted by line. A file's column is the band of its most central section. `rel` maps each section to its related sections, from `graph.edges` mapped onto canonical sections, with a direction relative to that section. `pairs` lists each relation once.
 - **Layout.** Every viewer is rendered with `renderFile`, measured (height capped at 460px) and stacked in band columns. Dragged viewers keep their position in `placedBy`.
+- **Engagement.** `engaged` is true once the reader clicks into a viewer's code or steps with `j`/`k`. It's false after a background click (not a drag) or at Overview, and `.dv.engaged` mirrors it. Wheel events scroll code only over the active viewer while engaged; everywhere else they pan.
 - **Reading focus.** A scroll in the active viewer, after 90ms, makes the section under the top third the focus (`readFocus`). Programmatic scrolls set a `quietUntil` window so they aren't read back as the reader moving.
+- **Weights.** Each redraw gives every viewer `w-focus` (the active viewer and the targets of its focused edges, only while engaged), `w-semi` (other changed files) or `w-none` (untouched files). The CSS maps these to opacity and lift.
 - **Follow.** When the focused edges change, other viewers smooth-scroll so the other ends are visible. The file you're reading is never scrolled for you.
 - **Edges**, drawn by `draw()` once per animation frame:
   - *Read pass*: every viewer's scroll window and every anchor's position is read before anything is written, so the browser lays out once per frame.
