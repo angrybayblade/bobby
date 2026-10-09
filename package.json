@@ -10,7 +10,8 @@
     "review": "bun run src/cli.ts",
     "check": "sh scripts/check.sh",
     "typecheck": "bunx tsc --noEmit",
-    "prepare": "git config core.hooksPath .githooks"
+    "prepare": "git config core.hooksPath .githooks",
+    "build": "bun scripts/build.ts"
   },
   "devDependencies": {
     "@types/bun": "1.1.14",
