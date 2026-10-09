@@ -185,6 +185,11 @@ mark.wd { background: var(--del-word); color: inherit; border-radius: 3px; }
 .note.mine { border-left: 3px dashed var(--muted); background: var(--surface); }
 .note.mine .body { color: var(--muted); }
 .cmt.private { border-style: dashed; }
+.sech .vw { margin-left: auto; font: 500 11.5px var(--font-ui); color: var(--faint); padding: 1px 8px; border: 1px solid var(--line-soft); border-radius: 6px; }
+.sech .vw:hover { color: var(--text); border-color: var(--muted); }
+.sech .vw .on, .sec.done .sech .vw .off { display: none; }
+.sec.done .sech .vw .on { display: inline; }
+.sec.done .sech .vw { color: var(--ok); border-color: transparent; }
 .modal.notes { display: flex; flex-direction: column; gap: 8px; }
 .modal.notes .nh { margin: 10px 0 0; font: 600 11px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
 .modal.notes .note code { font: 12px var(--font-code); color: var(--muted); }

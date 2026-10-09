@@ -32,6 +32,7 @@ const CSS = `
 .dv .fvh .st { white-space: nowrap; }
 .dv .fvh .max { width: 26px; height: 22px; border-radius: 6px; color: var(--muted); font-size: 14px; line-height: 1; }
 .dv .fvh .max:hover { background: var(--bg); color: var(--text); }
+.dv .viewed .fvh .vwf { color: var(--ok); }
 .dv .fvb { position: relative; overflow: auto; overscroll-behavior: contain; cursor: auto; flex: 1; min-height: 0; }
 .dv .sec { padding: 10px 12px 2px; border-bottom: 1px solid var(--line-soft); }
 .dv .sec:last-child { border-bottom: 0; }
@@ -142,6 +143,7 @@ export default {
     function header(f, exit = false) {
       const dir = f.path.includes("/") ? f.path.slice(0, f.path.lastIndexOf("/") + 1) : "";
       return `<i class="glyph ${f.changed ? "change" : "context"}"></i><span class="p">${esc(dir)}<b>${esc(f.path.split("/").pop())}</b></span><span class="st">${stat(f)}</span>`
+        + `<button class="max vwf" data-fviewed="${esc(f.path)}" title="Mark every section in this file viewed (tracked here only, not on GitHub)">✓</button>`
         + `<button class="max" data-fnote="${esc(f.path)}" title="Private note on this file (only you see it)">✎</button>`
         + (exit ? `<button class="max" data-exit="1" title="Back to all files (esc)">⤡</button>`
           : `<button class="max" data-max="${esc(f.path)}" title="Focus on this file (or double-click the header)">⤢</button>`);
@@ -202,6 +204,9 @@ export default {
         s.classList.toggle("cur", s.dataset.pid === cur);
         s.classList.toggle("done", app.isReviewed(s.dataset.pid));
       }
+      const all = (f) => f.sections.every((s) => app.isReviewed(s.pid));
+      for (const v of views.values()) v.el.classList.toggle("viewed", all(v.f));
+      big.classList.toggle("viewed", !!bigPath && all(views.get(bigPath).f));
       const body = readingBody();
       if (body) app.pageEl = body; // c / e act on the file you're in
     }
@@ -416,6 +421,8 @@ export default {
     dfocus.addEventListener("click", (ev) => {
       const n = ev.target.closest("[data-fnote]");
       if (n) return app.noteOnFile(big.querySelector(".fvb"), n.dataset.fnote);
+      const vf = ev.target.closest("[data-fviewed]");
+      if (vf) return viewFile(vf.dataset.fviewed);
       const t = ev.target.closest("[data-rel],[data-exit]");
       if (!t) return;
       if (t.dataset.exit) return app.setLevel(1);
@@ -426,6 +433,12 @@ export default {
       clearTimeout(big._t);
       big._t = setTimeout(() => { readFocus({ body: ev.target }); rails(); }, 90);
     }, true);
+    // ✓ in a header: mark every section of the file viewed, or clear them all if they already are.
+    function viewFile(path) {
+      const pids = views.get(path).f.sections.map((s) => s.pid);
+      const on = !pids.every((pid) => app.isReviewed(pid));
+      for (const pid of pids) app.mark(pid, on ? "reviewed" : null);
+    }
     function openFocus(path) {
       const v = views.get(path);
       if (!v) return;
@@ -513,6 +526,8 @@ export default {
       if (b) openFocus(b.dataset.max);
       const n = ev.target.closest("[data-fnote]");
       if (n) { const v = views.get(n.dataset.fnote); engage(true); app.noteOnFile(v.body, v.f.path); }
+      const vf = ev.target.closest("[data-fviewed]");
+      if (vf) viewFile(vf.dataset.fviewed);
     });
     stage.addEventListener("dblclick", (ev) => {
       const h = ev.target.closest(".fvh");

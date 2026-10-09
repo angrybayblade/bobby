@@ -342,7 +342,7 @@ export function renderFile(app, el, pids) {
     const { pl } = app.get(pid), node = app.nodeOf(pid), done = app.isReviewed(pid);
     const code = node.kind === "change" ? app.hunksOf(pid).map((h) => hunkBox(app, h, rerender, opts)).join("") : contextBox(app, node, rerender, opts);
     return `<section class="sec ${pid === app.focus ? "cur" : ""} ${done ? "done" : ""}" data-pid="${pid}">
-      <div class="sech"><i class="glyph ${pl.band === "core" ? "core" : node.kind}"></i><span>${esc(pl.title)}</span>${pl.risk === "high" ? `<i class="riskdot"></i>` : ""}${app.isFlagged(pid) ? `<span class="status flag">⚑</span>` : ""}${done ? `<span class="status">✓</span>` : ""}</div>
+      <div class="sech"><i class="glyph ${pl.band === "core" ? "core" : node.kind}"></i><span>${esc(pl.title)}</span>${pl.risk === "high" ? `<i class="riskdot"></i>` : ""}${app.isFlagged(pid) ? `<span class="status flag">⚑</span>` : ""}<button class="vw" data-viewed="${pid}" title="Mark viewed: tracks your progress here only, not on GitHub"><span class="on">✓ Viewed</span><span class="off">Mark viewed</span></button></div>
       ${notesHtml(app, pid)}${code}</section>`;
   }).join("")}</div>`;
   const ta = el.querySelector("textarea[data-composer]");
@@ -357,7 +357,7 @@ function bind(app, el, rerender) {
   el.dataset.bound = "1";
   el.addEventListener("click", (ev) => {
     if (ev.target.closest("a")) return;
-    const t = ev.target.closest("[data-ckind],[data-delnote],[data-exp],[data-del],[data-low],[data-go],[data-jump],[data-fold],.ln[data-key]");
+    const t = ev.target.closest("[data-ckind],[data-delnote],[data-viewed],[data-exp],[data-del],[data-low],[data-go],[data-jump],[data-fold],.ln[data-key]");
     if (!t || !el.contains(t)) return;
     const again = () => bound.get(el)();
     const ds = t.dataset;
@@ -367,6 +367,7 @@ function bind(app, el, rerender) {
       return again();
     }
     if (ds.delnote) { app.deleteNote(ds.delnote); return again(); }
+    if (ds.viewed) return app.mark(ds.viewed, app.isReviewed(ds.viewed) ? null : "reviewed"); // views restyle .sec.done
     if (ds.go) app.setFocus(ds.go);
     else if (ds.fold) {
       app.page.open.has(ds.fold) ? app.page.open.delete(ds.fold) : app.page.open.add(ds.fold);
