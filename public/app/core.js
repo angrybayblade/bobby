@@ -168,6 +168,26 @@ export function createApp({ graph, session }) {
       const first = app.index.walk.find((p) => app.get(p)?.ci === target);
       app.setFocus(first);
     },
+    /**
+     * Where to start a PR you haven't opened before: the unreviewed changed code with the fewest links to
+     * other code (edges in or out, across every core it appears in), then the smallest change, then walk order.
+     */
+    entryPoint() {
+      const degree = new Map();
+      for (const e of graph.edges) for (const pid of [e.from, e.to]) {
+        const n = app.nodeOf(pid)?.id;
+        if (n) degree.set(n, (degree.get(n) ?? 0) + 1);
+      }
+      const size = (pid) => { const { a, d } = app.stat(pid); return a + d; };
+      const open = app.index.walk.filter((p) => app.get(p) && !app.isReviewed(p));
+      const pool = open.some((p) => app.nodeOf(p).kind === "change") ? open.filter((p) => app.nodeOf(p).kind === "change") : open;
+      let best = null, bestKey = null;
+      for (const pid of pool) {
+        const key = [degree.get(app.nodeOf(pid).id) ?? 0, size(pid)];
+        if (!best || key[0] < bestKey[0] || (key[0] === bestKey[0] && key[1] < bestKey[1])) { best = pid; bestKey = key; }
+      }
+      return best && { pid: best, links: bestKey[0] };
+    },
     nextUnreviewed() {
       const w = app.index.walk, i = app.index.walkPos.get(app.focus) ?? -1;
       for (let k = 1; k <= w.length; k++) {
