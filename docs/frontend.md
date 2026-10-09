@@ -7,7 +7,7 @@ The UI in `public/` is plain ES modules with no build step and no framework. `in
 1. Fetch `/api/graph` and `/api/session` in parallel, and create the runtime with `createApp`.
 2. Attach the rendering helpers to `app` (`renderPage`, `renderNode`, `renderFile`).
 3. Apply settings to the document: `data-theme`, `data-motion`, and CSS variables for font, size and word spacing.
-4. Pick the starting focus. Resume on the stored `lastNodeId` at the Page level, otherwise go to the first unreviewed page at Overview.
+4. Pick the starting focus. Resume on the stored `lastNodeId` at the Page level. On a first visit, use `app.entryPoint()` (fewest edges, then smallest change) at the Core level, with a toast saying why. Fall back to the first unreviewed page at Overview.
 5. Mount the view: from the URL hash if present, otherwise the last one used (`settings.view`).
 6. Start the chrome. Show the welcome-back card if there's progress or a parked thought.
 7. If Claude is pending, poll `/api/status` every 4s and toast when its tree is ready.

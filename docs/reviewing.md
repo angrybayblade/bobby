@@ -24,6 +24,11 @@ Each stop on the walk is a **page**: a title, one sentence on why it matters, an
 
 If the same code is relevant to two cores, you review it once. Later appearances are shown as "already seen" and skipped by `j`/`k`.
 
+## Where you start
+
+- **First time on a PR:** you start at the **easiest entry point**, the changed code with the fewest links to other code (up- or downstream). Ties go to the smallest change. A toast says what was picked and why, and `esc` takes you to the overview.
+- **Coming back:** you resume on the page you were last on. If you've made progress or parked a thought, the welcome-back card shows first.
+
 ## Zoom levels
 
 Every view has three levels. `enter` zooms in, `esc` zooms out.
