@@ -102,6 +102,7 @@ const SETTINGS = [
   ["spacing", "Word spacing", [["normal", "Normal"], ["wide", "Wide"], ["wider", "Wider"]]],
   ["motion", "Motion", [["system", "System"], ["on", "On"], ["off", "Off"]]],
   ["hints", "Key hints", [["fade", "Fade when learned"], ["always", "Always"], ["never", "Hidden"]]],
+  ["edges", "Diff edges", [["all", "All, faint"], ["focus", "Focused only"]]],
   ["timebox", "Break reminder", [[0, "Off"], [15, "15m"], [25, "25m"], [45, "45m"]]],
 ];
 export function settings() {

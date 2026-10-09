@@ -20,6 +20,7 @@ export const DEFAULT_SETTINGS = {
   motion: "system", // system | on | off
   hints: "fade", // fade | always | never
   timebox: 0, // minutes; 0 = off
+  edges: "all", // all | focus: Diff draws background edges, or only the focused ones
   hintUses: {},
 };
 

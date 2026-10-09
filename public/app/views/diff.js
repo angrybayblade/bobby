@@ -300,7 +300,7 @@ export default {
         marker: l.dir === "down" ? "marker-end" : "marker-start",
         ...curve(v, anchor(v, l.from, p(v)).y, l.to, anchor(l.to, l.pid, p(l.to)).y),
       }));
-      if (app.level !== 2) shapes.unshift(...background(p, new Set(ls.flatMap((l) => [`${l.from}|${l.pid}`, `${l.pid}|${l.from}`]))));
+      if (app.level !== 2 && app.settings.edges !== "focus") shapes.unshift(...background(p, new Set(ls.flatMap((l) => [`${l.from}|${l.pid}`, `${l.pid}|${l.from}`]))));
       // write
       const rel = new Set(ls.map((l) => l.pid));
       for (const pid of new Set([...relShown, ...rel])) for (const s of world.querySelectorAll(`.sec[data-pid="${pid}"]`)) s.classList.toggle("rel", rel.has(pid));
