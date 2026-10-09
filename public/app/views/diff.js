@@ -142,6 +142,7 @@ export default {
     function header(f, exit = false) {
       const dir = f.path.includes("/") ? f.path.slice(0, f.path.lastIndexOf("/") + 1) : "";
       return `<i class="glyph ${f.changed ? "change" : "context"}"></i><span class="p">${esc(dir)}<b>${esc(f.path.split("/").pop())}</b></span><span class="st">${stat(f)}</span>`
+        + `<button class="max" data-fnote="${esc(f.path)}" title="Private note on this file (only you see it)">✎</button>`
         + (exit ? `<button class="max" data-exit="1" title="Back to all files (esc)">⤡</button>`
           : `<button class="max" data-max="${esc(f.path)}" title="Focus on this file (or double-click the header)">⤢</button>`);
     }
@@ -413,6 +414,8 @@ export default {
       railDown.innerHTML = `<h4>affects</h4>${down.map(card).join("") || `<div class="none">nothing in view affects other code</div>`}`;
     }
     dfocus.addEventListener("click", (ev) => {
+      const n = ev.target.closest("[data-fnote]");
+      if (n) return app.noteOnFile(big.querySelector(".fvb"), n.dataset.fnote);
       const t = ev.target.closest("[data-rel],[data-exit]");
       if (!t) return;
       if (t.dataset.exit) return app.setLevel(1);
@@ -500,7 +503,7 @@ export default {
     // The header is the handle: drag to move a viewer, double-click (or ⤢) to focus on it.
     stage.addEventListener("pointerdown", (ev) => {
       const h = ev.target.closest(".fvh");
-      if (!h || ev.target.closest(".max")) return;
+      if (!h || ev.target.closest("button")) return;
       if (ev.pointerType === "mouse") ev.preventDefault(); // dragging a viewer must not select text
       const v = views.get(h.parentElement.dataset.file);
       held = { v, x: ev.clientX, y: ev.clientY, ox: v.x, oy: v.y, moved: false };
@@ -508,10 +511,12 @@ export default {
     stage.addEventListener("click", (ev) => {
       const b = ev.target.closest("[data-max]");
       if (b) openFocus(b.dataset.max);
+      const n = ev.target.closest("[data-fnote]");
+      if (n) { const v = views.get(n.dataset.fnote); engage(true); app.noteOnFile(v.body, v.f.path); }
     });
     stage.addEventListener("dblclick", (ev) => {
       const h = ev.target.closest(".fvh");
-      if (h && !ev.target.closest(".max")) openFocus(h.parentElement.dataset.file);
+      if (h && !ev.target.closest("button")) openFocus(h.parentElement.dataset.file);
     });
     stage.addEventListener("pointerdown", (ev) => {
       if (ev.target.closest(".fv")) return; // inside a viewer: code stays selectable

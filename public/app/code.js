@@ -175,6 +175,22 @@ function privateNote(n, where, key) {
   return `<div class="note mine"${key ? ` data-jump="${key}"` : ""}><div class="who">You · private note${where ? ` · ${where}` : ""}<button class="x" data-delnote="${n.id}" title="Delete note">✕</button></div><div class="body">${esc(n.body)}</div></div>`;
 }
 
+// Notes on a whole file, plus the composer while you're writing one.
+const pathOf = (node) => (node.kind === "change" ? node.file : node.location.path);
+function fileNotesHtml(app, path) {
+  const list = app.state.notes.filter((n) => n.path === path && !n.line);
+  const c = app.page.composing, writing = c?.key === `file:${path}`;
+  if (!list.length && !writing) return "";
+  return `<section class="notes fnotes"><h4>Your notes on this file${list.length ? ` · ${list.length}` : ""}</h4>${list.map((n) => privateNote(n, "", "")).join("")}${writing ? composer(c) : ""}</section>`;
+}
+/** Starts a private note on a whole file shown in el (a renderFile container). */
+export function startFileNote(app, el, path) {
+  app.page.composing = { key: `file:${path}`, kind: "note", file: true, path };
+  bound.get(el)?.();
+  el.scrollTop = 0;
+  el.querySelector("textarea[data-composer]")?.focus();
+}
+
 function fileHead(path, extra = "", stat = "") {
   const dir = path.includes("/") ? path.slice(0, path.lastIndexOf("/") + 1) : "";
   return `<div class="fh"><span>${esc(dir)}<b>${esc(path.split("/").pop())}</b>${extra}</span><span class="ctx"></span>${stat}</div>`;
@@ -293,7 +309,7 @@ export function renderNode(app, el, pid, { head = true } = {}) {
   else if (pid === LOW) body = lowPage(app);
   else if (!head) {
     const node = app.nodeOf(pid);
-    body = notesHtml(app, pid) + (node.kind === "change" ? app.hunksOf(pid).map((h) => hunkBox(app, h, rerender)).join("") : contextBox(app, node, rerender));
+    body = fileNotesHtml(app, pathOf(node)) + notesHtml(app, pid) + (node.kind === "change" ? app.hunksOf(pid).map((h) => hunkBox(app, h, rerender)).join("") : contextBox(app, node, rerender));
   } else {
     const { pl } = app.get(pid);
     const node = app.nodeOf(pid);
@@ -306,6 +322,7 @@ export function renderNode(app, el, pid, { head = true } = {}) {
     body = `<div class="band"><i class="glyph ${glyph}"></i>${BAND_TEXT[pl.band]}</div>
       <h1>${esc(pl.title)}${badges ? `<span class="badges">${badges}</span>` : ""}</h1>
       <p class="why">${esc(pl.why)}</p>
+      ${fileNotesHtml(app, pathOf(node))}
       ${notesHtml(app, pid)}
       ${node.kind === "change" ? app.hunksOf(pid).map((h) => hunkBox(app, h, rerender)).join("") : contextBox(app, node, rerender)}`;
   }
@@ -320,7 +337,8 @@ export function renderFile(app, el, pids) {
   const rerender = () => renderFile(app, el, pids);
   bind(app, el, rerender);
   const opts = { whole: true };
-  el.innerHTML = `<div class="node file">${pids.map((pid) => {
+  const path = pids.length ? pathOf(app.nodeOf(pids[0])) : "";
+  el.innerHTML = `<div class="node file">${fileNotesHtml(app, path)}${pids.map((pid) => {
     const { pl } = app.get(pid), node = app.nodeOf(pid), done = app.isReviewed(pid);
     const code = node.kind === "change" ? app.hunksOf(pid).map((h) => hunkBox(app, h, rerender, opts)).join("") : contextBox(app, node, rerender, opts);
     return `<section class="sec ${pid === app.focus ? "cur" : ""} ${done ? "done" : ""}" data-pid="${pid}">
@@ -399,7 +417,7 @@ function bind(app, el, rerender) {
 async function saveComment(app, text) {
   const t = app.page.composing;
   app.page.composing = null;
-  if (!text.trim()) return;
+  if (!t || !text.trim()) return;
   if (t.kind === "note") return void (await app.addNote({ body: text.trim(), path: t.path, ...(t.line ? { line: Number(t.line), side: t.side } : {}) }));
   const c = await api("/api/comment", { path: t.path, line: Number(t.line), side: t.side, body: text.trim(), inDiff: t.indiff === "1" });
   app.state.comments.push(c);

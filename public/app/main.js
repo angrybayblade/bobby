@@ -1,5 +1,5 @@
 import { DONE, api, createApp } from "./core.js";
-import { expandAll, renderFile, renderNode, renderPage, startComment } from "./code.js";
+import { expandAll, renderFile, renderNode, renderPage, startComment, startFileNote } from "./code.js";
 import * as chrome from "./chrome.js";
 import views from "./views/index.js";
 
@@ -11,6 +11,7 @@ app.renderPage = (el, pid) => { app.pageEl = el; renderPage(app, el, pid ?? app.
 app.renderNode = (el, pid) => { app.pageEl = el; renderNode(app, el, pid ?? app.focus, { head: false }); };
 // A whole file (sections = placement ids in file order) for file-level views.
 app.renderFile = (el, pids) => renderFile(app, el, pids);
+app.noteOnFile = (el, path) => startFileNote(app, el, path); // el: the renderFile container showing path
 
 // ---- settings → document
 const FONTS = {

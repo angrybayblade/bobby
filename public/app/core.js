@@ -139,7 +139,8 @@ export function createApp({ graph, session }) {
       pid = app.canonical(pid);
       const changed = pid !== app.focus;
       app.focus = pid;
-      app.page = { exp: app.page.exp, open: app.page.open, sel: null, composing: null };
+      const fileNote = app.page.composing?.file ? app.page.composing : null; // a note on the whole file outlives moving within it
+      app.page = { exp: app.page.exp, open: app.page.open, kind: app.page.kind, sel: null, composing: fileNote };
       if (level !== undefined && level !== app.level) { app.level = level; app.emit("level"); }
       if (changed) {
         app.emit("focus");

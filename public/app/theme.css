@@ -185,6 +185,7 @@ mark.wd { background: var(--del-word); color: inherit; border-radius: 3px; }
 .note.mine { border-left: 3px dashed var(--muted); background: var(--surface); }
 .note.mine .body { color: var(--muted); }
 .cmt.private { border-style: dashed; }
+.node.file > .fnotes { margin: 0; padding: 10px 12px; border-bottom: 1px solid var(--line-soft); max-width: none; }
 .cmt .ckind { display: flex; gap: 4px; margin: -2px 0 6px; }
 .cmt .ckind button { font: 12px var(--font-ui); color: var(--faint); padding: 2px 8px; border-radius: 6px; }
 .cmt .ckind button[aria-pressed="true"] { color: var(--text); background: var(--raised); }
