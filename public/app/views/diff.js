@@ -521,6 +521,18 @@ export default {
       pan = { x: 0, y: 0 };
       apply();
     }
+    // The focus moved (arrows, j/k, a click): keep the zoom and pan to the viewer. At the Core level it's
+    // centred; at the Overview the camera only moves if the viewer isn't already on screen.
+    function track() {
+      const act = activeFile(), v = act && views.get(act.path);
+      if (!v) return frame();
+      const sw = stage.clientWidth, sh = stage.clientHeight, PAD = 40, s = cam.s;
+      const left = (v.x * s) + cam.tx + pan.x, top = (v.y - TOP) * s + cam.ty + pan.y, w = v.wd * s, h = (v.h + TOP) * s;
+      if (app.level === 0 && left >= 0 && top >= 0 && left + w <= sw && top + h <= sh) return;
+      cam = { s, tx: sw / 2 - (v.x + v.wd / 2) * s, ty: h > sh - PAD * 2 ? PAD - (v.y - TOP) * s : sh / 2 - (v.y - TOP + (v.h + TOP) / 2) * s };
+      pan = { x: 0, y: 0 };
+      apply();
+    }
     function apply() { world.style.transform = `translate(${cam.tx + pan.x}px, ${cam.ty + pan.y}px) scale(${cam.s})`; }
     // Zoom by k around a point on the stage, keeping whatever is under it in place.
     function zoomAt(k, px, py) {
@@ -550,7 +562,7 @@ export default {
       if (reason === "focus" && !selfFocus) engage(true); // j/k or a click elsewhere: you're reading that file
       if (reason === "comments") { for (const v of views.values()) { const t = v.body.scrollTop; app.renderFile(v.body, v.f.sections.map((s) => s.pid)); v.body.scrollTop = t; } }
       restyle();
-      if (reason === "focus" && !selfFocus) { reveal(true); frame(); setTimeout(follow, 350); } // after the smooth scroll settles
+      if (reason === "focus" && !selfFocus) { reveal(true); track(); setTimeout(follow, 350); } // after the smooth scroll settles
       if (reason === "level" || reason === "resize") frame();
       redraw();
     }

@@ -112,6 +112,7 @@ The most involved view.
   - *Background edges* (`background()`): every other pair, at low opacity. If both ends are visible, the pair gets its own line. If an end is scrolled out of view it would pin to the viewer's border, so edges sharing both ends merge, with stroke `1.5 + ln(n)` px and a hover title. Past `BG_CAP` (300) pairs, lines go file to file between headers. The `edges: "focus"` setting skips this.
   - *Write pass*: shapes are reconciled by a stable key against `drawn`. Existing paths only get a new `d`. New background paths fade in, and removed ones fade out over 260ms. The background layer is drawn under the focused one.
 - **Focus mode** (level 2). One file in a large viewer, with rails listing what its visible sections rely on and affect.
+- **Camera.** `frame()` fits the view on a level change. `track()` handles focus changes at the current scale: it centres the active viewer at the Core level and only pans at the Overview if it's off screen. At the Core level `regrow()` widens the active viewer by `2 × (GX − 40)` and lets it grow to the stage height, keeping its resting geometry in `v.base` (viewer width lives in `v.wd`; `v.w` is its weight).
 - **Input.** The header drags a viewer; the background drags the camera; `ctrl`+wheel or Safari gesture events zoom; two-finger touch pans and zooms. Mouse presses that start a drag call `preventDefault` so they don't select text.
 
 ## Styling (`app/theme.css`)
