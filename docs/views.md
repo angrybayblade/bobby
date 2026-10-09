@@ -52,7 +52,7 @@ Until you're in a viewer, changed files stay at full strength and untouched file
 
 **Edges.**
 - The sections visible in the file you're reading get **full edges**, with arrows and labels, to related sections in other files. Those files scroll to bring the other end into view.
-- Every other relationship is a **faint background line**, so you can see the shape of the PR.
+- Every other relationship is a **faint background line**, so you can see the shape of the PR. Hover one to see what it connects and how.
 - When a background line's end is scrolled out of view, lines that share both ends **merge** into one thicker line. Hover it for the count, for example "3 relationships scrolled ↓ in sealing.ts".
 - Past 300 relationships, background lines are drawn once per pair of files, header to header.
 - Background lines can be turned off in settings ("Diff edges: Focused only").

@@ -52,9 +52,9 @@ const CSS = `
 .dv svg.edges marker path { fill: var(--muted); stroke: none; }
 .dv svg.edges .bg path { stroke-width: 1.5; opacity: .16; transition: opacity var(--dur); }
 .dv svg.edges .bg path.merged { opacity: .24; }
-.dv svg.edges .bg path.merged:has(+ .hit:hover) { opacity: .6; }
+.dv svg.edges .bg path:has(+ .hit:hover) { opacity: .6; }
 .dv svg.edges .bg path.in, .dv svg.edges .bg path.out { opacity: 0; }
-.dv svg.edges .bg path.hit { stroke: transparent; stroke-width: 12px !important; opacity: 1; pointer-events: stroke; } /* hover target for a merged line */
+.dv svg.edges .bg path.hit { stroke: transparent; stroke-width: 12px !important; opacity: 1; pointer-events: stroke; } /* hover target: names what a line connects */
 .dv svg.edges .bg path.hit.out { pointer-events: none; }
 .dv .elbl { position: absolute; z-index: 4; font: 11.5px var(--font-ui); color: var(--muted); background: var(--bg); border: 1px solid var(--line-soft); padding: 1px 7px; border-radius: 3px; white-space: nowrap; transform: translate(-50%, -50%); pointer-events: none; }
 .dv .fvh:active { cursor: grabbing; }
@@ -134,7 +134,7 @@ export default {
         add(b, a, "up", e.label);
       }
       const pairs = []; // every relation once, for background edges
-      for (const [a, list] of rel) for (const r of list) if (r.dir === "down") pairs.push({ a, b: r.pid });
+      for (const [a, list] of rel) for (const r of list) if (r.dir === "down") pairs.push({ a, b: r.pid, label: r.label });
       return { files: [...files.values()], fileOf, canon, rel, pairs };
     }
     const activeFile = () => M?.fileOf.get(M.canon(app.focus) ?? "");
@@ -284,7 +284,8 @@ export default {
       const viewOf = (pid) => views.get(M.fileOf.get(pid).path);
       const name = (v) => v.f.path.split("/").pop();
       const group = (key, A, B, title) => (groups.get(key) ?? groups.set(key, { key, A, B, title, n: 0 }).get(key)).n++;
-      for (const { a, b } of M.pairs) {
+      const title = (pid) => app.get(pid).pl.title;
+      for (const { a, b, label } of M.pairs) {
         if (focused.has(`${a}|${b}`)) continue;
         const va = viewOf(a), vb = viewOf(b);
         if (byFile) {
@@ -294,7 +295,10 @@ export default {
           continue;
         }
         const ea = anchor(va, a, p(va)), eb = anchor(vb, b, p(vb));
-        if (!ea.pin && !eb.pin) { out.push({ key: `b:${a}>${b}`, bg: true, cls: "", ...curve(va, ea.y, vb, eb.y) }); continue; }
+        if (!ea.pin && !eb.pin) { // hover names both ends and how they relate
+          out.push({ key: `b:${a}>${b}`, bg: true, cls: "", title: `${title(a)} → ${title(b)}${label ? ` · ${label.replace(/`/g, "")}` : ""}`, ...curve(va, ea.y, vb, eb.y) });
+          continue;
+        }
         let A = { v: va, y: ea.y, pin: ea.pin, k: ea.pin ? `${va.f.path}${ea.pin}` : a }, B = { v: vb, y: eb.y, pin: eb.pin, k: eb.pin ? `${vb.f.path}${eb.pin}` : b };
         if (A.k === B.k) continue; // both ends pinned to the same border
         if (A.k > B.k) [A, B] = [B, A];
