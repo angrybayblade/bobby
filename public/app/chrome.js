@@ -128,7 +128,8 @@ export function help() {
   open(`<h2>How the walk works</h2>
     <p>Each core change comes with its surroundings, in this order: <b>untouched code it relies on</b> → <b>changed code it relies on</b> → <b>the core</b> → <b>changed code it affects</b> → <b>untouched code it affects</b>. Solid dots ● are changed code, hollow ○ are untouched, and ◆ is the core.</p>
     <table>
-      ${r("j k", "next / previous page (arrows and space work too)")}
+      ${r("j k", "next / previous page (space too; arrows too, except in Diff)")}
+      ${r("← → ↑ ↓", "in Diff: ← → neighbouring column (relies on ← core → affects), ↑ ↓ previous / next file in it")}
       ${r("J K", "next / previous core")}
       ${r("n", "next unreviewed")}
       ${r("a", "looks good: mark reviewed and move on")}

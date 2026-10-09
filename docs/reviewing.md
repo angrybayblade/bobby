@@ -45,7 +45,7 @@ The breadcrumb bar shows where you are (`repo #n › core › page`) and the cur
 
 | Key | |
 |---|---|
-| `j` / `k` (or arrows, space) | Next / previous page |
+| `j` / `k` (or space; arrows outside Diff) | Next / previous page |
 | `J` / `K` | Next / previous core |
 | `n` | Next page you haven't reviewed |
 | `m` / `M` | Private note on a line / your notes panel |

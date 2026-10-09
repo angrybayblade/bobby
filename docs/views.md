@@ -57,6 +57,10 @@ Until you're in a viewer, changed files stay at full strength and untouched file
 - Past 300 relationships, background lines are drawn once per pair of files, header to header.
 - Background lines can be turned off in settings ("Diff edges: Focused only").
 
+**Arrow keys.** In Diff the arrows move between files instead of walk pages (`j`/`k` still walk):
+- **← / →** move to the neighbouring band column, so you go up or down a layer: relies on ← core → affects. You land on a file related to the one you're reading if there is one, otherwise the file at the nearest height.
+- **↑ / ↓** move to the previous or next file in the same column.
+
 **Moving around the canvas.**
 
 | Gesture | |

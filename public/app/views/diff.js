@@ -175,9 +175,11 @@ export default {
       for (const [p, top] of keep) if (views.has(p)) views.get(p).body.scrollTop = top;
     }
 
+    let columns = []; // files per band column, left to right, each top to bottom
     function layout() {
       for (const el of world.querySelectorAll(".bhead")) el.remove();
       const cols = BANDS.map((b) => M.files.filter((f) => f.band === b).sort((a, b2) => a.order - b2.order)).filter((c) => c.length);
+      columns = cols;
       cols.forEach((col, ci) => {
         const x = ci * (W + GX);
         const h = document.createElement("div");
@@ -617,6 +619,32 @@ export default {
     stage.addEventListener("touchend", (ev) => { if (ev.touches.length < 2) touch = null; });
 
     update("mount");
-    return { update, destroy() { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); } };
+    // Arrows move around the canvas: ← → to the neighbouring band column (relies on ← core → affects),
+    // ↑ ↓ to the previous or next file in the same column. You land on the file's first section.
+    function moveFile(dc, dr) {
+      const act = activeFile();
+      const ci = columns.findIndex((col) => col.includes(act));
+      if (ci < 0) return;
+      let to;
+      if (dr) {
+        const col = [...columns[ci]].sort((a, b) => views.get(a.path).y - views.get(b.path).y); // as laid out, after any dragging
+        to = col[col.indexOf(act) + dr];
+      } else {
+        const col = columns[ci + dc];
+        if (!col) return;
+        // Prefer a file the one you're reading relates to; otherwise the one nearest in height.
+        const linked = new Set(act.sections.flatMap((s) => (M.rel.get(s.pid) ?? []).map((r) => M.fileOf.get(r.pid))));
+        const y = views.get(act.path).y;
+        const near = (f) => Math.abs(views.get(f.path).y - y);
+        to = col.filter((f) => linked.has(f)).sort((a, b) => near(a) - near(b))[0] ?? [...col].sort((a, b) => near(a) - near(b))[0];
+      }
+      if (to) app.setFocus(to.sections[0].pid);
+    }
+    const keys = {
+      ArrowLeft: () => moveFile(-1, 0), ArrowRight: () => moveFile(1, 0),
+      ArrowUp: () => moveFile(0, -1), ArrowDown: () => moveFile(0, 1),
+    };
+
+    return { update, keys, destroy() { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); } };
   },
 };
