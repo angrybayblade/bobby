@@ -44,6 +44,7 @@ export function indexGraph(g) {
 
 export function createApp({ graph, session }) {
   const listeners = new Set();
+  session.state.notes ??= [];
   const app = {
     graph,
     index: indexGraph(graph),
@@ -102,6 +103,34 @@ export function createApp({ graph, session }) {
       const left = pages.filter((p) => !app.isReviewed(p));
       const secs = left.reduce((s, p) => { const { a, d } = app.stat(p); return s + 12 + (a + d) * 1.1; }, 0);
       return { done: pages.length - left.length, total: pages.length, mins: Math.round(secs / 60) };
+    },
+
+    // ---- private notes: on a line, a file (no line) or the PR (no path). Never posted to GitHub.
+    async addNote(n) {
+      const note = await api("/api/notes", n);
+      app.state.notes.push(note);
+      app.emit("comments"); // shown where comments are, so views re-render the same way
+      return note;
+    },
+    deleteNote(id) {
+      api(`/api/notes/${id}`, null, "DELETE");
+      app.state.notes = app.state.notes.filter((n) => n.id !== id);
+      app.emit("comments");
+    },
+    /** The page that shows a file's line (or just the file), for jumping to a note. */
+    pidAt(path, line) {
+      let first = null;
+      for (const pid of app.index.walk) {
+        const n = app.nodeOf(pid);
+        if (!n || (n.kind === "change" ? n.file : n.location.path) !== path) continue;
+        first ??= pid;
+        if (!line) break;
+        const hit = n.kind === "context"
+          ? line >= n.snippet.start && line < n.snippet.start + n.snippet.lines.length
+          : app.hunksOf(pid).some((h) => (line >= h.newStart && line < h.newStart + h.lines.length) || (line >= h.oldStart && line < h.oldStart + h.lines.length));
+        if (hit) return pid;
+      }
+      return first;
     },
 
     // ---- navigation (always along graph.walk, so every view agrees on "next")
