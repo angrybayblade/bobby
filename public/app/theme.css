@@ -96,6 +96,9 @@ kbd {
 .prog { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; white-space: nowrap; }
 .prog .bar { width: 140px; height: 4px; border-radius: 2px; background: var(--raised); overflow: hidden; }
 .prog .bar i { display: block; height: 100%; background: var(--signal); transition: width var(--dur) var(--ease); }
+.prog.core { gap: 7px; }
+.prog.core .bar { width: 56px; }
+.prog.core .bar i { background: var(--muted); }
 .seg { display: flex; padding: 3px; border-radius: 5px; background: var(--raised); gap: 2px; }
 .seg button { padding: 3px 11px; border-radius: 4px; font-size: 13px; color: var(--muted); }
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.15); }

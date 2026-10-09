@@ -30,11 +30,21 @@ function renderTop() {
     <div class="brand">pr<b>focus</b></div>
     <a class="prtitle" href="${esc(g.pr.url)}" target="_blank" rel="noopener">#${g.pr.number} ${esc(g.pr.title)}</a>
     ${llm}
+    ${coreProgress()}
     <div class="prog" title="${done} of ${total} pages reviewed"><div class="bar"><i style="width:${pct}%"></i></div>${done}/${total}${mins && done < total ? ` · ~${mins}m` : ""}</div>
     <div class="seg" role="group" aria-label="View">${views.map((v) => `<button data-view="${v.id}" aria-pressed="${app.viewId === v.id}" title="${esc(v.hint)} (v)">${esc(v.name)}</button>`).join("")}</div>
     ${drafts ? `<button class="pill signal" data-act="submit">${drafts} draft${drafts > 1 ? "s" : ""} · S</button>` : ""}
     <button class="pill" data-act="notes" title="Your private notes (M). Never posted to GitHub.">✎ Notes${app.state.notes.length ? ` · ${app.state.notes.length}` : ""}</button>
     <button class="iconbtn" data-act="settings" title="Settings (,)" aria-label="Settings">${GEAR}</button>`;
+}
+
+// Progress inside the core you're in: a bar that moves every few pages, not every few dozen.
+const corePages = (ci) => app.index.walk.filter((p) => app.get(p)?.ci === ci);
+function coreProgress() {
+  const loc = app.get(app.focus);
+  if (!loc) return "";
+  const pages = corePages(loc.ci), d = pages.filter((p) => app.isReviewed(p)).length;
+  return `<div class="prog core" title="Core ${loc.ci + 1}: ${d} of ${pages.length} pages reviewed"><span>core ${loc.ci + 1}</span><div class="bar"><i style="width:${Math.round((d / pages.length) * 100)}%"></i></div>${d}/${pages.length}</div>`;
 }
 
 function renderWhere() {
