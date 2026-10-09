@@ -121,4 +121,4 @@ document.addEventListener("keydown", (ev) => {
   if (act) { ev.preventDefault(); app.useKey(k === "Enter" ? "enter" : k === "Escape" ? "esc" : k); act(); }
 });
 
-window.prfocus = app; // handy for debugging and tests
+window.bobby = app; // handy for debugging and tests

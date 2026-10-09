@@ -41,7 +41,7 @@ function renderTop() {
     : app.claudeReady && g.generator.tree !== "claude" ? `<button class="pill signal" data-act="switch-tree">Smarter tree ready · R</button>` : "";
   const drafts = app.state.comments.length;
   $("#top").innerHTML = `
-    <div class="brand">pr<b>focus</b></div>
+    <div class="brand" title="They call me Focus Bobby"><img src="/bobby.svg" alt="" width="22" height="22">focus <b>bobby</b></div>
     ${g.pr.provider === "local" ? `<span class="prtitle" title="Local review: ${esc(g.pr.branch)} compared with ${esc(g.pr.baseRef)}">⎇ ${esc(g.pr.branch)} → ${esc(g.pr.baseRef)} · ${esc(g.pr.title)}</span>`
       : `<a class="prtitle" href="${esc(g.pr.url)}" target="_blank" rel="noopener">#${g.pr.number} ${esc(g.pr.title)}</a>`}
     ${llm}
@@ -173,7 +173,7 @@ export function settings() {
 export function submit(msg) {
   const cs = app.state.comments;
   if (app.graph.pr.provider === "local") return open(`<h2>Nothing to post to</h2>
-    <p>This is a local review of <b>⎇ ${esc(app.graph.pr.branch)}</b>, with no PR behind it, so your ${cs.length ? `${cs.length} draft(s)` : "drafts"} and notes stay here. Open a PR and review it with <code>prfocus &lt;number&gt;</code> to post a review on GitHub.</p>
+    <p>This is a local review of <b>⎇ ${esc(app.graph.pr.branch)}</b>, with no PR behind it, so your ${cs.length ? `${cs.length} draft(s)` : "drafts"} and notes stay here. Open a PR and review it with <code>bobby &lt;number&gt;</code> to post a review on GitHub.</p>
     <div style="font-size:13px;color:var(--muted);margin-top:10px">${cs.map((c) => `· <code>${esc(c.path)}:${c.line}</code> ${esc(c.body.slice(0, 70))}`).join("<br>")}</div>
     <div class="row"><button class="btn" data-act="close" style="margin-left:auto">Close</button></div>`);
   open(`<h2>Submit review</h2>
@@ -312,14 +312,14 @@ function startTimebox() {
   }, 10000);
 }
 function driftPrompt() {
-  toast(`<span class="intro"><b>Drifting?</b><span style="font-size:13px;color:var(--muted)">Jot where your head is; it'll be waiting when you're back.</span>
+  toast(`<span class="intro"><b>Spotted a ball?</b><span style="font-size:13px;color:var(--muted)">Jot where your head is; it'll be waiting when you're back.</span>
     <input id="drift" placeholder="e.g. checking whether retries stop at the limit" value="${esc(app.state.note ?? "")}"><span class="acts"><button class="btn" data-act="drift-park">Park it</button></span></span>`);
 }
 function welcomeBackLite() {
   const loc = app.get(app.focus);
   if (!loc || isOpen()) return;
   const before = trail.filter((p) => p !== app.focus).slice(-2).map((p) => esc(app.get(p).pl.title));
-  toast(`<span class="intro"><b>Welcome back</b><span style="font-size:13px">You were on <b>${esc(loc.pl.title)}</b> · core ${loc.ci + 1}, ${esc(loc.core.title)}</span>
+  toast(`<span class="intro"><b>Welcome back, Bobby</b><span style="font-size:13px">You were on <b>${esc(loc.pl.title)}</b> · core ${loc.ci + 1}, ${esc(loc.core.title)}</span>
     ${before.length ? `<span style="font-size:13px;color:var(--muted)">Before that: ${before.join(" → ")}</span>` : ""}
     ${app.state.note ? `<span style="font-size:13px">📌 ${esc(app.state.note)}</span>` : ""}
     ${loc.core.hook ? `<span class="hook">${inline(loc.core.hook)}</span>` : ""}</span>`, 15000);
