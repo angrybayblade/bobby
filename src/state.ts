@@ -1,18 +1,31 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { mkdirSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import type { ReviewGraph } from "./graph.ts";
 import type { ChangeTree, PrInfo, ReviewState } from "./types.ts";
 
-const ROOT = join(homedir(), ".prfocus");
+const ROOT = join(homedir(), ".bobby");
+// Before the rename, everything lived in ~/.prfocus: move it over once, progress and clones included.
+// Lazily, on first use, so --help and --version never touch your files.
+const LEGACY = join(homedir(), ".prfocus");
+let migrated = false;
+export function home() {
+  if (!migrated && !existsSync(ROOT) && existsSync(LEGACY)) {
+    try { renameSync(LEGACY, ROOT); console.error(`  moved ${LEGACY} to ${ROOT}`); } catch { /* keep going with a fresh ~/.bobby */ }
+  }
+  migrated = true;
+  return ROOT;
+}
 type PrKey = Pick<PrInfo, "owner" | "repo" | "number" | "branch">;
 // A local review is keyed by its branch, so each branch keeps its own progress.
 const slug = (pr: PrKey) => (pr.branch ? `${pr.owner}_${pr.repo}_branch_${pr.branch.replace(/[^\w.-]+/g, "-")}` : `${pr.owner}_${pr.repo}_${pr.number}`);
 
 function readJson<T>(path: string): T | null {
+  home();
   try { return existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : null; } catch { return null; }
 }
 function writeJson(path: string, value: unknown) {
+  home();
   mkdirSync(join(path, ".."), { recursive: true });
   writeFileSync(path, JSON.stringify(value, null, 1));
 }

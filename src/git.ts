@@ -1,7 +1,7 @@
-import { homedir } from "node:os";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
 import type { PrInfo } from "./types.ts";
+import { home } from "./state.ts";
 
 export async function run(
   cmd: string[],
@@ -64,7 +64,7 @@ export async function resolvePr(arg: string, repoDir?: string): Promise<Resolved
   const isRepo = (await git(cwd, ["rev-parse", "--git-dir"], true)).trim() !== "";
   let remote = isRepo ? await remoteFor(cwd, owner, repo) : null;
   if (!remote && !repoDir) {
-    cwd = join(homedir(), ".prfocus", "repos", owner, repo);
+    cwd = join(home(), "repos", owner, repo);
     if (!existsSync(cwd)) {
       console.log(`  cloning ${owner}/${repo} into ${cwd} (first time only)…`);
       await run(["gh", "repo", "clone", `${owner}/${repo}`, cwd, "--", "--no-tags"]);
@@ -77,7 +77,7 @@ export async function resolvePr(arg: string, repoDir?: string): Promise<Resolved
 
 /** Fetches base + head commits and pins the diff range. */
 export async function fetchPr({ cwd, remote, owner, repo, meta }: ResolvedPr): Promise<PrInfo> {
-  const ns = `refs/prfocus/${meta.number}`;
+  const ns = `refs/bobby/${meta.number}`;
   await git(cwd, [
     "fetch", "--quiet", "--no-tags", remote,
     `+refs/pull/${meta.number}/head:${ns}/head`,
