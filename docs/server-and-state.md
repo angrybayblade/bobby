@@ -25,7 +25,7 @@ The CLI fills `claudeGraph` and `llm` from the background Claude job while the s
 | `POST /api/settings` | patch → merged settings | Merges into `~/.prfocus/settings.json`. |
 | `GET /api/file?path=&side=base\|head` | → `{ lines }` | A whole file at the merge-base or head, for "more context". Returns 404 without a clone. |
 | `POST /api/mark` | `{ keys, mark }` | Sets `reviewed` or `flagged` (or clears, with `null`) for content keys. |
-| `POST /api/position` | `{ nodeId }` | Remembers where you are (debounced by the UI). |
+| `POST /api/position` | `{ nodeId, level? }` | Remembers where you are and your zoom level (debounced by the UI). |
 | `POST /api/note` | `{ note }` | The parked thought. |
 | `POST /api/comment` | `{ path, line, side, body, inDiff }` → comment with `id` | Adds a draft. |
 | `DELETE /api/comment/:id` | | Removes a draft. |
@@ -67,6 +67,7 @@ interface ReviewState {
   comments: Comment[];                            // drafts until submitted
   notes?: PrivateNote[];                          // private notes; never submitted
   lastNodeId?: string;                            // graph node id, for resuming
+  lastLevel?: number;                             // zoom level, for resuming
   lastSeenAt?: string;
   note?: string;                                  // parked thought
 }

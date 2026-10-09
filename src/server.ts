@@ -62,7 +62,9 @@ export function startServer(s: Session, port: number) {
         return json({ ok: true });
       }
       if (req.method === "POST" && p === "/api/position") {
-        s.state.lastNodeId = ((await req.json()) as { nodeId: string }).nodeId;
+        const pos = (await req.json()) as { nodeId: string; level?: number };
+        s.state.lastNodeId = pos.nodeId;
+        if (typeof pos.level === "number") s.state.lastLevel = pos.level;
         s.state.lastSeenAt = new Date().toISOString();
         persist();
         return json({ ok: true });

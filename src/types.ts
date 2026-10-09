@@ -116,6 +116,7 @@ export interface ReviewState {
   comments: Comment[];
   notes?: PrivateNote[]; // private; /api/submit never reads them
   lastNodeId?: string; // graph node id (stable across tree regenerations)
+  lastLevel?: number; // zoom level you were at: 0 overview · 1 core · 2 page
   lastSeenAt?: string;
   note?: string; // "where my head was": parked thought shown on return
 }

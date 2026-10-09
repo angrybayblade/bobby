@@ -144,9 +144,7 @@ export function createApp({ graph, session }) {
       if (level !== undefined && level !== app.level) { app.level = level; app.emit("level"); }
       if (changed) {
         app.emit("focus");
-        const n = app.nodeOf(pid);
-        clearTimeout(app._pos);
-        app._pos = setTimeout(() => api("/api/position", { nodeId: n?.id ?? pid }), 500);
+        app.savePosition();
       }
     },
     setLevel(l) {
@@ -155,6 +153,12 @@ export function createApp({ graph, session }) {
       app.level = l;
       app.page.composing = null;
       app.emit("level");
+      app.savePosition();
+    },
+    /** Remembers the page and zoom level, debounced, so a return lands where you were. */
+    savePosition() {
+      clearTimeout(app._pos);
+      app._pos = setTimeout(() => api("/api/position", { nodeId: app.nodeOf(app.focus)?.id ?? app.focus, level: app.level }), 500);
     },
     step(d) {
       const i = app.index.walkPos.get(app.focus) ?? 0;

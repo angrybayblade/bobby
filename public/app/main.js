@@ -77,7 +77,7 @@ const resume = lastNode && [...app.index.placement.values()].find((x) => x.pl.no
 // First time on this PR: start at the easiest entry point, the change with the fewest links to other code.
 const entry = resume ? null : app.entryPoint();
 app.focus = resume ?? entry?.pid ?? app.index.walk.find((p) => p !== DONE && !app.isReviewed(p)) ?? app.index.walk[0];
-app.level = resume ? 2 : entry ? 1 : 0;
+app.level = resume ? (session.state.lastLevel ?? 2) : entry ? 1 : 0;
 const hash = new URLSearchParams(location.hash.slice(1)); // deep links for testing: #view=lens&level=1&p=5
 if (hash.has("level")) app.level = Number(hash.get("level"));
 if (hash.has("p")) app.focus = app.index.walk[Number(hash.get("p")) - 1] ?? app.focus;
