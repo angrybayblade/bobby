@@ -142,8 +142,21 @@ if (cmd === "open") {
 }
 
 async function serve(session: Session) {
-  const server = startServer(session, Number(values.port));
+  // The default port may be taken (another review, a dev server): fall back to any free one.
+  let server;
+  try { server = startServer(session, Number(values.port)); }
+  catch (e) {
+    if (!/EADDRINUSE|in use/i.test(String((e as Error).message ?? e))) throw e;
+    server = startServer(session, 0);
+    console.log(`  port ${values.port} is in use, using ${server.port}`);
+  }
   const url = `http://127.0.0.1:${server.port}`;
   console.log(`\n  ▶ ${url}\n`);
-  if (!values["no-open"]) await run(["open", url], { allowFail: true });
+  if (!values["no-open"]) await run(openCommand(url), { allowFail: true }).catch(() => console.log("  (open that link in your browser)"));
+}
+
+function openCommand(url: string) {
+  if (process.platform === "darwin") return ["open", url];
+  if (process.platform === "win32") return ["cmd", "/c", "start", "", url];
+  return ["xdg-open", url];
 }
