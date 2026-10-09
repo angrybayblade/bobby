@@ -85,6 +85,10 @@ export default {
     let cam = { tx: 0, ty: 0, s: 1 }, pan = { x: 0, y: 0 };
     let quietUntil = 0; // our own scrolling (j/k, opening a file) must not be read back as the reader moving
     let selfFocus = false; // focus change came from scrolling a viewer: don't move the camera or the scroll
+    // You're in the active viewer once you click into its code or step with j/k; until then the wheel pans the
+    // canvas everywhere. Clicking the background or zooming out to the overview lets go.
+    let engaged = false;
+    const engage = (on) => { if (engaged !== on) { engaged = on; root.classList.toggle("engaged", on); redraw(); } };
 
     // ---- model: one file per path, sections = canonical placements of the nodes in that file.
     function model() {
@@ -456,6 +460,8 @@ export default {
         return;
       }
       if (reason === "level") { bigPath = null; reveal(false); followKey = ""; setTimeout(follow, 50); }
+      if (reason === "level" && app.level === 0) engage(false);
+      if (reason === "focus" && !selfFocus) engage(true); // j/k or a click elsewhere: you're reading that file
       if (reason === "comments") { for (const v of views.values()) { const t = v.body.scrollTop; app.renderFile(v.body, v.f.sections.map((s) => s.pid)); v.body.scrollTop = t; } }
       restyle();
       if (reason === "focus" && !selfFocus) { reveal(true); frame(); setTimeout(follow, 350); } // after the smooth scroll settles
@@ -473,7 +479,8 @@ export default {
       const fv = ev.target.closest(".fv");
       if (fv && !ev.target.closest(".fvh")) { // clicking into another file makes it the one you're reading
         const v = views.get(fv.dataset.file);
-        if (v.f !== activeFile()) readFocus(v);
+        if (v.f !== activeFile()) { quietUntil = 0; readFocus(v); } // a click is never our own scroll settling
+        engage(true);
       }
     });
     let drag = null, moved = false, held = null;
@@ -520,19 +527,20 @@ export default {
     };
     const onUp = () => {
       if (held) { held.v.el.classList.remove("held"); held = null; }
+      if (drag && !moved) engage(false); // a click on the background, not a pan
       drag = null; root.classList.remove("dragging");
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
-    // Trackpad: pinch arrives as ctrl+wheel (Chrome, Firefox) and zooms anywhere; two-finger scroll pans
-    // the background but scrolls the code when over a viewer.
+    // Trackpad: pinch arrives as ctrl+wheel (Chrome, Firefox) and zooms anywhere; two-finger scroll pans the
+    // canvas, except over the code of the viewer you're in, which scrolls.
     stage.addEventListener("wheel", (ev) => {
       const r = stage.getBoundingClientRect();
       if (ev.ctrlKey) {
         ev.preventDefault(); still();
         return zoomAt(Math.exp(-ev.deltaY * 0.01), ev.clientX - r.left, ev.clientY - r.top);
       }
-      if (ev.target.closest(".fvb")) return; // the code scrolls itself
+      if (engaged && ev.target.closest(".fvb") && ev.target.closest(".fv").dataset.file === activeFile()?.path) return; // the code scrolls itself
       ev.preventDefault(); still();
       pan = { x: pan.x - ev.deltaX, y: pan.y - ev.deltaY };
       apply();
