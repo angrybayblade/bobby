@@ -1,17 +1,39 @@
 {
   "name": "prfocus",
   "version": "0.1.0",
-  "private": true,
+  "description": "Focus-first PR reviewer: one focused page at a time, in dependency order",
+  "keywords": [
+    "code-review",
+    "pull-request",
+    "github",
+    "cli",
+    "diff"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/angrybayblade/focus-bobby.git"
+  },
   "type": "module",
   "bin": {
     "prfocus": "./src/cli.ts"
+  },
+  "files": [
+    "src",
+    "public",
+    "schema",
+    "SPEC.md",
+    "README.md"
+  ],
+  "engines": {
+    "bun": ">=1.1"
   },
   "scripts": {
     "review": "bun run src/cli.ts",
     "check": "sh scripts/check.sh",
     "typecheck": "bunx tsc --noEmit",
-    "prepare": "git config core.hooksPath .githooks",
-    "build": "bun scripts/build.ts"
+    "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true",
+    "build": "bun scripts/build.ts",
+    "prepublishOnly": "bun run check"
   },
   "devDependencies": {
     "@types/bun": "1.1.14",
