@@ -7,7 +7,7 @@ The UI in `public/` is plain ES modules with no build step and no framework. `in
 1. Fetch `/api/graph` and `/api/session` in parallel, and create the runtime with `createApp`.
 2. Attach the rendering helpers to `app` (`renderPage`, `renderNode`, `renderFile`).
 3. Apply settings to the document: `data-theme`, `data-motion`, and CSS variables for font, size and word spacing.
-4. Pick the starting focus. Resume on the stored `lastNodeId` at the Page level. On a first visit, use `app.entryPoint()` (fewest edges, then smallest change) at the Core level, with a toast saying why. Fall back to the first unreviewed page at Overview.
+4. Pick the starting focus. Resume on the stored `lastNodeId` at the stored `lastLevel` (default Page). On a first visit, use `app.entryPoint()` (the core with the fewest dependency pages, then the fewest changed lines, preferring linked cores) at the Core level, with the core's intro toast. Fall back to the first unreviewed page at Overview.
 5. Mount the view: from the URL hash if present, otherwise the last one used (`settings.view`).
 6. Start the chrome. Show the welcome-back card if there's progress or a parked thought.
 7. If Claude is pending, poll `/api/status` every 4s and toast when its tree is ready.
@@ -54,7 +54,10 @@ One `keydown` handler. It ignores typing in inputs and any modified keys, and le
 
 ## Chrome (`app/chrome.js`)
 
-Everything outside the view: the header (title, Claude status pill, progress, view switcher, drafts pill, settings), the breadcrumb bar (crumbs, parked thought, level dots), key hints per level, and modals (help, settings, submit, park, welcome back). Also toasts and the break-reminder timer, which counts only visible, recently active minutes. It re-renders on `focus`, `level`, `marks`, `graph`, `settings`, `comments` and `llm`.
+Everything outside the view: the header (title, Claude status pill, progress, view switcher, drafts pill, settings), the breadcrumb bar (crumbs, parked thought, level dots), key hints per level, and modals (help, settings, submit, park, welcome back). Also toasts, plus the attention aids, which all run off one 10-second activity clock ("active" means the tab is visible and there was input in the last two minutes):
+- the core intro (hook) on entering a new core, suppressed for 1.5s after a core-done recap;
+- per-core progress in the header, and the core-done recap (`watchCores` on `marks`);
+- the drift prompt (90s idle on a page), the back-after-a-while recap (over 8 minutes away, with a trail of the last few pages), the rabbit-hole nudge (`settings.rabbit` active minutes on one page) and the break reminder. It re-renders on `focus`, `level`, `marks`, `graph`, `settings`, `comments` and `llm`.
 
 To add a setting, add its default to `DEFAULT_SETTINGS` in `core.js` and a row to `SETTINGS` in `chrome.js`. Settings are free-form on the server.
 

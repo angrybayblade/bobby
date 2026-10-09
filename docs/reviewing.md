@@ -26,8 +26,12 @@ If the same code is relevant to two cores, you review it once. Later appearances
 
 ## Where you start
 
-- **First time on a PR:** you start at the **easiest entry point**, the changed code with the fewest links to other code (up- or downstream). Ties go to the smallest change. A toast says what was picked and why, and `esc` takes you to the overview.
-- **Coming back:** you resume on the page you were last on. If you've made progress or parked a thought, the welcome-back card shows first.
+- **First time on a PR:** you start in the **easiest core**: the one with the least around it (fewest pages it relies on or affects), then the fewest changed lines. Cores linked to nothing are only used when every core is like that. You land on its first page at the Core level, with a toast saying why and what to look for. `esc` takes you to the overview.
+- **Coming back:** you resume on the page and zoom level you were last on. If you've made progress or parked a thought, the welcome-back card shows first.
+
+## Hooks: what to look for
+
+Every core has a **hook**: one question to keep in mind while you read it, usually about what could break ("Do untouched callers still pass a string id?"). Claude writes them. The static tree gets a simpler one built from the code ("6 untouched places use `x`. Do they still hold?"). The hook shows when you step into a core, on Outline's core page, in the core-done recap, and in the back-after-a-while recap.
 
 ## Zoom levels
 
@@ -60,10 +64,15 @@ The breadcrumb bar shows where you are (`repo #n › core › page`) and the cur
 |---|---|
 | `a` | Looks good: mark reviewed and go to the next unreviewed page |
 | `f` | Flag to come back to (press again to clear) |
+| `F` | Next flagged page |
 | `u` | Un-mark |
 | **Mark viewed** (Diff) | Toggle one section viewed, without moving on. ✓ in a file's header marks or clears the whole file. |
 
-The header shows progress (`12/40`) and a rough estimate of the time left.
+The header shows progress through the core you're in (`core 3 ▬ 2/5`) next to the whole PR (`12/40`, with a rough time left).
+
+**Finishing a core** gets a short recap: pages, flags and notes from that core, how many cores are done, and the next core with its hook.
+
+**Two passes.** For a big core, skim first: at the Core level every page is a title and a why, so step through with `j` and press `f` on anything worth a closer look. Then press `F` to jump between flagged pages for the deep read.
 
 Marks are stored by the **content** of each hunk, not its position. After a force-push, hunks that didn't change stay reviewed, and only new or changed code comes back.
 
@@ -103,6 +112,9 @@ Press `s`. Add an optional summary, then choose **Comment**, **Approve** or **Re
 
 - **Park a thought (`p`).** Before you get pulled away, jot down what's in your head. It shows as a 📌 in the breadcrumb bar and on the welcome-back card.
 - **Welcome back.** When you reopen a PR you've made progress on, a card shows where you were, your progress, flags, drafts and your parked thought. `enter` continues; "See the overview first" zooms out.
+- **Drift prompt.** After 90 seconds without input on a page, a small box asks where your head is. Type a line and press `enter` to park it, or ignore it. One prompt per page visit; it can be turned off in settings.
+- **Back after a while.** After more than 8 minutes away (tab hidden or no input), a recap shows the page you were on, the two before it, your parked thought, and the core's hook.
+- **Rabbit-hole nudge.** After 12 active minutes on one page (configurable, or off), it asks whether you're still in the right place: **Flag & move on**, or **Keep going**. Once per page visit.
 - **Break reminder.** Opt in from settings (15, 25 or 45 minutes). It counts only active time, with the tab visible and recent input, and nudges once per period without blocking anything.
 - **Key hints** at the bottom fade once you've used a key five times.
 
