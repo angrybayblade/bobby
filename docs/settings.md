@@ -12,6 +12,8 @@ Open settings with `,` or the gear in the header. Changes apply immediately and 
 | Key hints | Fade when learned · Always · Hidden | Fade when learned |
 | Diff edges | All, faint · Focused only | All, faint |
 | Break reminder | Off · 15m · 25m · 45m | Off |
+| Rabbit-hole nudge | Off · 8m · 12m · 20m | 12m |
+| Drift prompt | On · Off | On |
 
 "System" follows your OS: light/dark preference for the theme, and the reduced-motion preference for motion. With motion off, every transition and animation is disabled.
 

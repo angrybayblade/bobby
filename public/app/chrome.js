@@ -19,6 +19,10 @@ export function init(a, viewList) {
     lastCore = loc?.core.id ?? lastCore;
   });
   document.addEventListener("click", onClick);
+  $("#toast").addEventListener("keydown", (ev) => {
+    if (ev.target.id === "drift" && ev.key === "Enter") { ev.preventDefault(); parkDrift(); }
+    if (ev.target.id === "drift" && ev.key === "Escape") $("#toast").hidden = true;
+  });
   $("#overlay").addEventListener("keydown", (ev) => {
     if (ev.target.id === "gnote" && ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); addGlobalNote(); }
   });
@@ -153,6 +157,8 @@ const SETTINGS = [
   ["hints", "Key hints", [["fade", "Fade when learned"], ["always", "Always"], ["never", "Hidden"]]],
   ["edges", "Diff edges", [["all", "All, faint"], ["focus", "Focused only"]]],
   ["timebox", "Break reminder", [[0, "Off"], [15, "15m"], [25, "25m"], [45, "45m"]]],
+  ["rabbit", "Rabbit-hole nudge", [[0, "Off"], [8, "8m"], [12, "12m"], [20, "20m"]]],
+  ["drift", "Drift prompt", [["on", "On"], ["off", "Off"]]],
 ];
 export function settings() {
   open(`<h2>Settings</h2><p>Changes apply immediately and are remembered.</p>
@@ -209,6 +215,11 @@ export function park() {
     <textarea id="note" placeholder="e.g. check whether normalizeRetryOptions copies the array before mutating">${esc(app.state.note ?? "")}</textarea>
     <div class="row"><button class="btn primary" data-act="save-note">Park it</button>${app.state.note ? `<button class="btn" data-act="clear-note">Clear</button>` : ""}<button class="btn" data-act="close" style="margin-left:auto">Cancel</button></div>`);
 }
+function parkDrift() {
+  const v = $("#drift")?.value.trim();
+  $("#toast").hidden = true;
+  if (v) { app.state.note = v; api("/api/note", { note: v }); renderWhere(); }
+}
 function saveNote(note) {
   app.state.note = note;
   api("/api/note", { note });
@@ -248,20 +259,63 @@ export function toast(html, ms = 0) {
   if (ms) toast._t = setTimeout(() => (t.hidden = true), ms);
 }
 
-// Counts active minutes (tab visible + recent input); nudges once per period, never blocks.
+// Attention aids, all driven by one activity clock. "Active" means the tab is visible and there was input
+// in the last two minutes. None of them block: each is a toast you can ignore.
+//  - break reminder: every N active minutes (settings.timebox; off by default)
+//  - rabbit hole: N active minutes on one page (settings.rabbit) → flag it and move on, or keep going
+//  - drift: 90s without input while on a page (settings.drift) → park a thought before it's gone
+//  - back after a while: more than 8 minutes away → where you were, what to look for, your parked thought
+const AWAY_MS = 8 * 60000, IDLE_MS = 90000;
+let trail = []; // recent pages, newest last
 function startTimebox() {
-  let active = 0, last = Date.now();
-  for (const ev of ["keydown", "pointerdown", "wheel"]) document.addEventListener(ev, () => (last = Date.now()), { passive: true });
+  let active = 0, last = Date.now(), onPage = 0, nudged = false, prompted = false, hiddenAt = 0;
+  const input = () => {
+    if (Date.now() - last > AWAY_MS) welcomeBackLite();
+    last = Date.now();
+  };
+  for (const ev of ["keydown", "pointerdown", "wheel"]) document.addEventListener(ev, input, { passive: true });
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) hiddenAt = Date.now();
+    else if (hiddenAt && Date.now() - hiddenAt > AWAY_MS) { welcomeBackLite(); last = Date.now(); }
+  });
+  app.on((why) => {
+    if (why !== "focus") return;
+    onPage = 0; nudged = false; prompted = false;
+    if (app.get(app.focus)) trail = [...trail.filter((p) => p !== app.focus), app.focus].slice(-4);
+  });
+  if (app.get(app.focus)) trail = [app.focus];
   setInterval(() => {
+    const idle = Date.now() - last, onAPage = app.level >= 1 && !!app.get(app.focus);
+    if (document.hidden) return;
+    if (app.settings.drift !== "off" && onAPage && !prompted && idle > IDLE_MS && idle < AWAY_MS && !isOpen()) { prompted = true; driftPrompt(); }
+    if (idle > 120000) return;
+    active += 1 / 6; onPage += 1 / 6;
+    const rabbit = Number(app.settings.rabbit);
+    if (rabbit && onAPage && !nudged && onPage >= rabbit) {
+      nudged = true;
+      toast(`<span class="intro"><b>${rabbit} minutes on ${esc(app.get(app.focus).pl.title)}</b><span style="font-size:13px;color:var(--muted)">Still the right place to be? You can flag it and come back.</span>
+        <span class="acts"><button class="btn" data-act="rabbit-flag">Flag & move on</button><button class="btn" data-act="toast-close">Keep going</button></span></span>`);
+    }
     const box = Number(app.settings.timebox);
-    if (!box || document.hidden || Date.now() - last > 120000) return;
-    active += 1 / 6;
-    if (active >= box) {
+    if (box && active >= box) {
       active = 0;
       const { done } = app.progress();
       toast(`<span>${box} min in, ${done} pages reviewed. A good moment for a break; your place is saved.</span>`);
     }
   }, 10000);
+}
+function driftPrompt() {
+  toast(`<span class="intro"><b>Drifting?</b><span style="font-size:13px;color:var(--muted)">Jot where your head is; it'll be waiting when you're back.</span>
+    <input id="drift" placeholder="e.g. checking whether retries stop at the limit" value="${esc(app.state.note ?? "")}"><span class="acts"><button class="btn" data-act="drift-park">Park it</button></span></span>`);
+}
+function welcomeBackLite() {
+  const loc = app.get(app.focus);
+  if (!loc || isOpen()) return;
+  const before = trail.filter((p) => p !== app.focus).slice(-2).map((p) => esc(app.get(p).pl.title));
+  toast(`<span class="intro"><b>Welcome back</b><span style="font-size:13px">You were on <b>${esc(loc.pl.title)}</b> · core ${loc.ci + 1}, ${esc(loc.core.title)}</span>
+    ${before.length ? `<span style="font-size:13px;color:var(--muted)">Before that: ${before.join(" → ")}</span>` : ""}
+    ${app.state.note ? `<span style="font-size:13px">📌 ${esc(app.state.note)}</span>` : ""}
+    ${loc.core.hook ? `<span class="hook">${inline(loc.core.hook)}</span>` : ""}</span>`, 15000);
 }
 
 // ---------------------------------------------------------------- clicks
@@ -288,6 +342,8 @@ function onClick(ev) {
     "save-note": () => saveNote($("#note").value.trim()),
     "clear-note": () => saveNote(""),
     "toast-close": () => ($("#toast").hidden = true),
+    "rabbit-flag": () => { $("#toast").hidden = true; app.mark(app.focus, "flagged"); app.nextUnreviewed(); },
+    "drift-park": () => parkDrift(),
   })[ds.act]?.();
 }
 

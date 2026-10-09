@@ -192,6 +192,9 @@ mark.wd { background: var(--del-word); color: inherit; border-radius: 2px; }
 .hook::before { content: "Look for  "; font: 600 10.5px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
 .hook code { font: .92em var(--font-code); }
 #toast .intro { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+#toast .acts { display: flex; gap: 6px; margin-top: 4px; }
+#toast .acts .btn { padding: 4px 10px; font-size: 13px; }
+#toast input { width: 100%; margin-top: 4px; padding: 6px 9px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg); color: inherit; font: 13px var(--font-prose); }
 .sech .vw { margin-left: auto; font: 500 11.5px var(--font-ui); color: var(--faint); padding: 1px 8px; border: 1px solid var(--line-soft); border-radius: 3px; }
 .sech .vw:hover { color: var(--text); border-color: var(--muted); }
 .sech .vw .on, .sec.done .sech .vw .off { display: none; }
