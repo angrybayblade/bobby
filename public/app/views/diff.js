@@ -14,7 +14,7 @@ const CSS = `
 .dv .world { position: absolute; left: 0; top: 0; transform-origin: 0 0; transition: transform var(--dur) var(--ease); }
 .dv.dragging .world, .dv .world.still { transition: none; }
 .dv .bhead { position: absolute; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
-.dv .fv { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); z-index: 2; transition: transform var(--dur) var(--ease), opacity var(--dur); }
+.dv .fv { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; box-shadow: var(--shadow); z-index: 2; transition: transform var(--dur) var(--ease), opacity var(--dur); }
 .dv.dragging .fv, .dv .fv.held { transition: none; }
 .dv .fv.context { border-style: dashed; }
 /* Weight: what you're in and what it reaches (w-focus) > other changed files (w-semi) > untouched files (w-none).
@@ -29,11 +29,11 @@ const CSS = `
 .dv .fvh b { font-weight: 600; }
 .dv .fvh .p { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dv .fvh .st { white-space: nowrap; }
-.dv .fvh .max { width: 26px; height: 22px; border-radius: 6px; color: var(--muted); font-size: 14px; line-height: 1; }
+.dv .fvh .max { width: 26px; height: 22px; border-radius: 3px; color: var(--muted); font-size: 14px; line-height: 1; }
 .dv .fvh .max:hover { background: var(--bg); color: var(--text); }
 /* Header tooltips: quick, below the button, right-aligned so they stay inside the viewer. */
 .dv .fvh [data-tip] { position: relative; }
-.dv .fvh [data-tip]::after { content: attr(data-tip); position: absolute; top: calc(100% + 8px); right: 0; z-index: 6; padding: 4px 9px; border-radius: 6px; background: var(--text); color: var(--bg); font: 500 12px var(--font-ui); white-space: nowrap; pointer-events: none; opacity: 0; transform: translateY(-2px); transition: opacity .12s, transform .12s; }
+.dv .fvh [data-tip]::after { content: attr(data-tip); position: absolute; top: calc(100% + 8px); right: 0; z-index: 6; padding: 4px 9px; border-radius: 3px; background: var(--text); color: var(--bg); font: 500 12px var(--font-ui); white-space: nowrap; pointer-events: none; opacity: 0; transform: translateY(-2px); transition: opacity .12s, transform .12s; }
 .dv .fvh [data-tip]:hover::after { opacity: 1; transform: none; transition-delay: .25s; }
 .dv .viewed .fvh .vwf::after { content: attr(data-tip-on); }
 .dv .viewed .fvh .vwf { color: var(--ok); }
@@ -56,7 +56,7 @@ const CSS = `
 .dv svg.edges .bg path.in, .dv svg.edges .bg path.out { opacity: 0; }
 .dv svg.edges .bg path.hit { stroke: transparent; stroke-width: 12px !important; opacity: 1; pointer-events: stroke; } /* hover target for a merged line */
 .dv svg.edges .bg path.hit.out { pointer-events: none; }
-.dv .elbl { position: absolute; z-index: 4; font: 11.5px var(--font-ui); color: var(--muted); background: var(--bg); border: 1px solid var(--line-soft); padding: 1px 7px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, -50%); pointer-events: none; }
+.dv .elbl { position: absolute; z-index: 4; font: 11.5px var(--font-ui); color: var(--muted); background: var(--bg); border: 1px solid var(--line-soft); padding: 1px 7px; border-radius: 3px; white-space: nowrap; transform: translate(-50%, -50%); pointer-events: none; }
 .dv .fvh:active { cursor: grabbing; }
 .dv .fv.held { box-shadow: 0 12px 40px rgba(0,0,0,.25); }
 .dv .dfocus { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(180px, 260px) minmax(0, 1fr) minmax(180px, 260px); gap: 22px; padding: 18px 22px; background: var(--bg); z-index: 5; }
@@ -67,7 +67,7 @@ const CSS = `
 .dv .rail { display: flex; flex-direction: column; gap: 8px; overflow: auto; padding-top: 4px; }
 .dv .rail h4 { margin: 0 0 4px; font: 600 10.5px var(--font-ui); letter-spacing: .09em; text-transform: uppercase; color: var(--faint); }
 .dv .rail.up { align-items: stretch; text-align: right; }
-.dv .rc { text-align: left; border: 1px solid var(--line); border-radius: 10px; padding: 8px 11px; background: var(--surface); }
+.dv .rc { text-align: left; border: 1px solid var(--line); border-radius: 5px; padding: 8px 11px; background: var(--surface); }
 .dv .rc:hover { border-color: var(--muted); }
 .dv .rc.context { border-style: dashed; }
 .dv .rc .t { display: flex; gap: 7px; align-items: center; font: 500 12.5px var(--font-code); }
