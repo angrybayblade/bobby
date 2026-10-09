@@ -129,7 +129,7 @@ export default {
     function build() {
       const keep = new Map([...views].map(([p, v]) => [p, v.body.scrollTop]));
       world.innerHTML = `<svg class="edges"><defs><marker id="dv-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs><g></g></svg>`;
-      views.clear();
+      views.clear(); drawn.clear(); secs.clear(); relShown = new Set();
       M = model();
       if (!M.files.length) { world.innerHTML = `<div class="empty">Nothing to show</div>`; return; }
       for (const f of M.files) {
@@ -207,54 +207,78 @@ export default {
     }
 
     // ---- edges: only from the sections visible in the active viewer
-    const secEl = (v, pid) => v.body.querySelector(`.sec[data-pid="${pid}"]`);
-    function visible(v) {
-      const top = v.body.scrollTop, bot = top + v.body.clientHeight;
-      const seen = (s) => Math.min(bot, s.offsetTop + s.offsetHeight) - Math.max(top, s.offsetTop) >= 28; // a sliver at the edge doesn't count
+    // A redraw reads every position before it changes the page (so the browser lays out once per frame),
+    // then updates the curves it already has instead of rebuilding them.
+    const SVG = "http://www.w3.org/2000/svg";
+    const secs = new Map(); // pid → section element, re-found when a viewer re-renders
+    function secEl(v, pid) {
+      let s = secs.get(pid);
+      if (!s?.isConnected || !v.body.contains(s)) secs.set(pid, (s = v.body.querySelector(`.sec[data-pid="${pid}"]`)));
+      return s;
+    }
+    const port = (v) => ({ top: v.body.scrollTop, h: v.body.clientHeight, off: v.body.offsetTop }); // a viewer's scroll window
+    function visible(v, p = port(v)) {
+      const bot = p.top + p.h;
+      const seen = (s) => Math.min(bot, s.offsetTop + s.offsetHeight) - Math.max(p.top, s.offsetTop) >= 28; // a sliver at the edge doesn't count
       return [...v.body.querySelectorAll(".sec")].filter(seen).map((s) => s.dataset.pid);
     }
     // World y of a section's heading, pinned to the viewer's edge when scrolled out of view.
-    function anchorY(v, pid) {
+    function anchorY(v, pid, p = port(v)) {
       const s = secEl(v, pid);
-      const y = v.body.offsetTop + s.offsetTop - v.body.scrollTop + Math.min(16, s.offsetHeight / 2);
-      return v.y + Math.max(v.body.offsetTop + 10, Math.min(v.h - 10, y));
+      const y = p.off + s.offsetTop - p.top + Math.min(16, s.offsetHeight / 2);
+      return v.y + Math.max(p.off + 10, Math.min(v.h - 10, y));
     }
-    function links() {
+    function links(p = port) {
       const act = activeFile(), v = act && views.get(act.path);
       if (!v || app.level === 2) return [];
-      return visible(v).flatMap((pid) => (M.rel.get(pid) ?? []).map((r) => ({ from: pid, ...r, to: views.get(M.fileOf.get(r.pid)?.path) })))
+      return visible(v, p(v)).flatMap((pid) => (M.rel.get(pid) ?? []).map((r) => ({ from: pid, ...r, to: views.get(M.fileOf.get(r.pid)?.path) })))
         .filter((l, i, all) => l.to // same-file relations loop out of the viewer's right edge
           && !(l.dir === "up" && all.some((m) => m.dir === "down" && m.from === l.pid && m.pid === l.from))); // both ends visible: draw once
     }
+    // A curve between two viewers at world heights y1, y2; label at (lx, ly).
+    function curve(v, y1, o, y2) {
+      if (Math.abs(o.x - v.x) < W / 2) { // same column: loop out to the right
+        const x1 = v.x + W, x2 = o.x + W, bx = Math.max(x1, x2) + 70;
+        return { d: `M${x1},${y1} C${bx},${y1} ${bx},${y2} ${x2},${y2}`, lx: (x1 + x2) / 2 + 52, ly: (y1 + y2) / 2 };
+      }
+      const [x1, x2] = o.x > v.x ? [v.x + W, o.x] : [v.x, o.x + W], mx = (x1 + x2) / 2;
+      return { d: `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`, lx: mx, ly: (y1 + y2) / 2 };
+    }
+    const drawn = new Map(); // key → { path, lbl, d, … } currently on the page
+    let relShown = new Set();
     function draw() {
-      const svg = world.querySelector("svg.edges g");
-      if (!svg) return;
-      world.querySelectorAll(".elbl").forEach((n) => n.remove());
+      const g = world.querySelector("svg.edges g");
+      if (!g) return;
+      // read
+      const ports = new Map(), p = (v) => ports.get(v) ?? ports.set(v, port(v)).get(v);
       const act = activeFile(), v = act && views.get(act.path);
-      const ls = links();
-      const relSet = new Set(ls.map((l) => l.pid));
-      for (const s of world.querySelectorAll(".sec")) s.classList.toggle("rel", relSet.has(s.dataset.pid));
-      svg.innerHTML = ls.map((l) => {
-        const o = l.to, y1 = anchorY(v, l.from), y2 = anchorY(o, l.pid);
-        let x1, x2, d;
-        if (Math.abs(o.x - v.x) < W / 2) { // same column: loop out to the right
-          x1 = v.x + W; x2 = o.x + W;
-          const bx = Math.max(x1, x2) + 70;
-          d = `M${x1},${y1} C${bx},${y1} ${bx},${y2} ${x2},${y2}`;
-        } else {
-          [x1, x2] = o.x > v.x ? [v.x + W, o.x] : [v.x, o.x + W];
-          const mx = (x1 + x2) / 2;
-          d = `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`;
-        }
-        if (l.label) {
-          const n = document.createElement("div");
-          n.className = "elbl"; n.textContent = l.label;
-          n.style.left = `${(x1 + x2) / 2 + (Math.abs(o.x - v.x) < W / 2 ? 52 : 0)}px`; n.style.top = `${(y1 + y2) / 2}px`;
-          world.appendChild(n);
-        }
+      const ls = links(p);
+      const shapes = ls.map((l) => ({
+        key: `f:${l.from}>${l.pid}:${l.dir}`, label: l.label,
         // Arrows point downstream: into the other file when it's affected, into yours when it's relied on.
-        return `<path d="${d}" ${l.dir === "down" ? `marker-end="url(#dv-arrow)"` : `marker-start="url(#dv-arrow)"`}/>`;
-      }).join("");
+        marker: l.dir === "down" ? "marker-end" : "marker-start",
+        ...curve(v, anchorY(v, l.from, p(v)), l.to, anchorY(l.to, l.pid, p(l.to))),
+      }));
+      // write
+      const rel = new Set(ls.map((l) => l.pid));
+      for (const pid of new Set([...relShown, ...rel])) for (const s of world.querySelectorAll(`.sec[data-pid="${pid}"]`)) s.classList.toggle("rel", rel.has(pid));
+      relShown = rel;
+      const keep = new Set();
+      for (const s of shapes) {
+        keep.add(s.key);
+        let e = drawn.get(s.key);
+        if (!e) {
+          e = { path: g.appendChild(document.createElementNS(SVG, "path")) };
+          e.path.setAttribute(s.marker, "url(#dv-arrow)");
+          drawn.set(s.key, e);
+        }
+        if (e.d !== s.d) e.path.setAttribute("d", (e.d = s.d));
+        if (s.label) {
+          e.lbl ??= world.appendChild(Object.assign(document.createElement("div"), { className: "elbl", textContent: s.label }));
+          if (e.lx !== s.lx || e.ly !== s.ly) { e.lbl.style.left = `${(e.lx = s.lx)}px`; e.lbl.style.top = `${(e.ly = s.ly)}px`; }
+        }
+      }
+      for (const [k, e] of drawn) if (!keep.has(k)) { e.path.remove(); e.lbl?.remove(); drawn.delete(k); }
     }
     // Bring the other end of every edge into view in its own viewer.
     let followKey = "";
