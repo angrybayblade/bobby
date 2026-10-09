@@ -48,6 +48,8 @@ const CSS = `
 .dv .sec.cur .sech { color: var(--text); }
 .dv .sec.done .sech span:first-of-type { color: var(--faint); }
 .dv .sec .code { margin-bottom: 10px; }
+.dv .world .lines { font-size: calc(var(--code-size) - 2px); } /* a size down from the page: more fits, and zoom brings it back */
+.dv .world .ln .no { font-size: calc(var(--code-size) - 3px); }
 .dv .sec .notes { margin-bottom: 10px; }
 .dv .sec.rel { box-shadow: inset 3px 0 0 var(--line); }
 .dv svg.edges { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; z-index: 1; } /* under the viewers: edges live in the gaps */

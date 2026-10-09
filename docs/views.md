@@ -76,8 +76,10 @@ Until you're in a viewer, changed files stay at full strength and untouched file
 | ✎ in a header | Private note on the whole file |
 | **Mark viewed** on a section | Mark that section viewed (or clear it) |
 
+Code on the canvas is a size smaller than on a page, so more of each file fits. Pinch or `ctrl`+scroll to zoom a viewer up to a comfortable reading size; moving around keeps that zoom.
+
 **Zoom levels in Diff.**
 - **Overview:** all files fit on screen.
-- **Core:** the camera frames the file you're reading, and that file grows: wider, into the gaps beside it, and taller, down to the height of the screen. It shrinks back when you move on or zoom out.
+- **Core:** the camera frames the file you're reading.
 - **Moving the focus** (arrows, `j`/`k`, a click) keeps your zoom. At the Core level the camera pans to centre the new file; at the Overview it only pans if the file is off screen. Changing level frames the view afresh.
 - **Page:** focus mode. The file fills the stage, and two side rails list what its visible sections **rely on** and **affect**. Click a rail card to go there. ⤡ or `esc` goes back.
