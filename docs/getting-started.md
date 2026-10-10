@@ -14,22 +14,27 @@
 Pick one:
 
 ```sh
-# 1. As a package (needs bun on your PATH)
-bun add -g focus-bobby                 # once published; or npm i -g focus-bobby
-bun add -g github:angrybayblade/focus-bobby
+# 1. The install script (macOS, Linux): the latest release binary into ~/.local/bin
+curl -fsSL https://raw.githubusercontent.com/angrybayblade/bobby/main/install.sh | bash
+#    a specific version, or somewhere else:
+curl -fsSL https://raw.githubusercontent.com/angrybayblade/bobby/main/install.sh | BOBBY_VERSION=0.1.0-rc0 BOBBY_INSTALL_DIR=~/bin bash
 
-# 2. As a standalone binary (no bun needed to run it): download one from GitHub Releases
-#    bobby-<version>-<os>-<arch>.tar.gz (.zip on Windows), unpack, put `bobby` on your PATH
-tar -xzf bobby-v0.1.0-darwin-arm64.tar.gz && mv bobby /usr/local/bin/
+# 2. A release binary by hand (Windows: the .zip): https://github.com/angrybayblade/bobby/releases
+tar -xzf bobby-0.1.0-rc0-darwin-arm64.tar.gz && mv bobby ~/.local/bin/
 #    or build it yourself
-git clone https://github.com/angrybayblade/focus-bobby && cd focus-bobby
+git clone https://github.com/angrybayblade/bobby && cd bobby
 bun install && bun run build           # → dist/bobby for this machine
 
-# 3. From a clone, for development
+# 3. As a package (needs bun on your PATH)
+bun add -g github:angrybayblade/bobby  # or, once published: bun add -g focus-bobby
+
+# 4. From a clone, for development
 bun install && bun link                # `bobby` now runs this checkout
 ```
 
 Either way you still need `git` and `gh` on your PATH, and `claude` for the smarter tree. `bobby -v` prints the version. The examples below use `bobby`; `bun run src/cli.ts` works the same from a clone.
+
+The install script picks the build for your OS and CPU, checks it against the release's `SHA256SUMS`, and tells you if the install folder isn't on your `PATH` or if `git` or `gh` is missing. With no `BOBBY_VERSION`, it takes the latest release, or the newest pre-release while there's no stable one.
 
 Release binaries aren't code-signed. On macOS, if Gatekeeper blocks a downloaded one, run `xattr -d com.apple.quarantine "$(which bobby)"`. Each release has a `SHA256SUMS` file to check downloads against.
 

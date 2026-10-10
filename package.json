@@ -11,7 +11,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/angrybayblade/focus-bobby.git"
+    "url": "git+https://github.com/angrybayblade/bobby.git"
   },
   "type": "module",
   "bin": {

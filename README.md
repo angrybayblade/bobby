@@ -15,7 +15,7 @@ You can zoom out to see the whole tree, or walk it page by page. Mark pages as y
 ## Quick start
 
 ```sh
-bun add -g github:angrybayblade/focus-bobby   # or grab a binary from Releases
+curl -fsSL https://raw.githubusercontent.com/angrybayblade/bobby/main/install.sh | bash
 
 bobby https://github.com/owner/repo/pull/123
 bobby 123        # inside a clone of the repo
