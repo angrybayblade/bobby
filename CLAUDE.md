@@ -1,4 +1,4 @@
-# Focus Bobby (`bobby`)
+# Bobby
 
 Focus-first PR reviewer. Extraction (`src/`) produces a `bobby.review-graph/v1` document (`SPEC.md`); views (`public/app/views/`) only read that document.
 

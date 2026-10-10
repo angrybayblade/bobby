@@ -1,4 +1,4 @@
-# Focus Bobby docs
+# Bobby docs
 
 ## User manual
 

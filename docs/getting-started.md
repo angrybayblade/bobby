@@ -103,7 +103,7 @@ Environment: `BOBBY_MODEL` picks the Claude model passed to `claude --model` (th
 
 ## What it writes to disk
 
-Everything lives under `~/.bobby/`. If you used the tool when it was called prfocus, `~/.prfocus` is moved there on the first run, progress and clones included:
+Everything lives under `~/.bobby/`. If you used Bobby when it was called prfocus, `~/.prfocus` is moved there on the first run, progress and clones included:
 
 | Path | Contents |
 |---|---|

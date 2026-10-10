@@ -1,6 +1,6 @@
 # Architecture
 
-Focus Bobby has two halves joined by one document format:
+Bobby has two halves joined by one document format:
 
 ```
                  extraction (src/, Bun)                          viewing (public/, browser)
