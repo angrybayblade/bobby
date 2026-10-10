@@ -28,7 +28,7 @@ const { values, positionals } = parseArgs({
   },
 });
 
-const USAGE = `bobby: focus, Bobby. Review a PR one focused page at a time.
+const USAGE = `bobby: review a PR one focused page at a time
 
   bobby                              inside a repo: review this branch (and uncommitted changes)
   bobby <pr-url | number>            extract + open the review UI for a PR

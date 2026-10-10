@@ -83,7 +83,7 @@ jobs:
           flags=""
           case "$GITHUB_REF_NAME" in *-*) flags="--prerelease" ;; esac
           gh release create "$GITHUB_REF_NAME" release/* \
-            --title "Focus Bobby $GITHUB_REF_NAME" \
+            --title "Bobby $GITHUB_REF_NAME" \
             --generate-notes \
             --verify-tag \
             $flags

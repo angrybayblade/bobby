@@ -1,5 +1,5 @@
 /**
- * Focus Bobby's review graph v1: the contract between extraction and views.
+ * Bobby's review graph v1: the contract between extraction and views.
  * Extractors (this repo's static + Claude pipeline, or anything else) emit a ReviewGraph;
  * views only ever read a ReviewGraph. See SPEC.md and schema/review-graph.v1.schema.json.
  */
@@ -150,7 +150,7 @@ export async function buildGraph(cwd: string | null, pr: PrInfo, files: FileDiff
   return {
     schema: GRAPH_SCHEMA,
     generatedAt: new Date().toISOString(),
-    generator: { name: "focus-bobby", version: VERSION, tree: tree.source === "claude" ? "claude" : "static" },
+    generator: { name: "bobby", version: VERSION, tree: tree.source === "claude" ? "claude" : "static" },
     pr: {
       provider: pr.provider ?? "github", ...(pr.branch ? { branch: pr.branch, baseRef: pr.baseRef } : {}), owner: pr.owner, repo: pr.repo, number: pr.number, url: pr.url,
       title: pr.title, body: pr.body, author: pr.author, baseSha: pr.baseSha, headSha: pr.headSha,

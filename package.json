@@ -1,7 +1,7 @@
 {
   "name": "focus-bobby",
   "version": "0.1.0",
-  "description": "Focus, Bobby. A PR reviewer that shows one focused page at a time, in dependency order",
+  "description": "Bobby: a PR reviewer that shows one focused page at a time, in dependency order",
   "keywords": [
     "code-review",
     "pull-request",
