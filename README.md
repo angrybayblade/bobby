@@ -34,6 +34,6 @@ In the UI: `j`/`k` to step, `enter`/`esc` to zoom, `a` for looks good, `c` to co
 
 ---
 
-<sub>Named after this comic by @that_doodle_guy.</sub>
+<sub>Named after this comic by <a href="https://www.instagram.com/that_doodleguy/">@that_doodleguy</a> on Instagram.</sub>
 
 ![They call me Focus Bobby](img/bobby.png)
