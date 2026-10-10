@@ -1,15 +1,15 @@
-# Release: pushing a version tag (v1.2.3, or v1.2.3-rc.1 for a pre-release) builds standalone bobby
+# Release: pushing a version tag (v1.2.3 or 1.2.3; a hyphen, as in 1.2.3-rc0, makes a pre-release) builds standalone bobby
 # binaries for every platform and publishes them, with checksums, as a GitHub release.
 #
 #   git tag v0.2.0 && git push origin v0.2.0
 #
-# The tag must match "version" in package.json. Bun cross-compiles every target, so one Linux runner
+# The tag, without any leading v, must match "version" in package.json. Bun cross-compiles every target, so one Linux runner
 # builds them all.
 name: release
 
 on:
   push:
-    tags: ["v*"]
+    tags: ["v[0-9]*", "[0-9]*"]
 
 permissions:
   contents: write # create the release and upload its assets
