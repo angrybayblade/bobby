@@ -14,7 +14,7 @@ const CSS = `
 .flow svg path.dim { opacity: .35; }
 .flow svg path.rep { stroke-dasharray: 4 4; }
 .flow .card, .flow .lbl, .flow .chead, .flow .bhead { position: absolute; left: 0; top: 0; transition: transform var(--dur) var(--ease), width var(--dur) var(--ease), height var(--dur) var(--ease), opacity var(--dur); }
-.flow .card { border-radius: 5px; background: var(--surface); border: 1px solid var(--line); padding: 8px 12px; overflow: hidden; cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
+.flow .card { border-radius: 4px; background: var(--surface); border: 1px solid var(--line); padding: 8px 12px; overflow: hidden; cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
 .flow .card:hover { border-color: var(--muted); }
 .flow .card .t { display: flex; align-items: center; gap: 8px; font: 500 13px/1.3 var(--font-code); white-space: nowrap; }
 .flow .card .t span { overflow: hidden; text-overflow: ellipsis; flex: 1; }
@@ -36,7 +36,7 @@ const CSS = `
 .flow .card.rep { opacity: .45; border-style: dotted; }
 .flow .card.other { opacity: .32; }
 .flow .card.agg { background: none; border-style: dashed; color: var(--muted); font-size: 13px; justify-content: center; }
-.flow .lbl { font: 11.5px var(--font-ui); color: var(--muted); background: var(--bg); padding: 1px 6px; border-radius: 3px; white-space: nowrap; transform-origin: 50% 50%; }
+.flow .lbl { font: 11.5px var(--font-ui); color: var(--muted); background: var(--bg); padding: 1px 6px; border-radius: 2px; white-space: nowrap; transform-origin: 50% 50%; }
 .flow .chead { font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; display: flex; gap: 10px; align-items: baseline; max-width: ${5 * 320 - 60}px; }
 .flow .chead small { font-weight: 400; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
 .flow .chead.other { opacity: .45; }

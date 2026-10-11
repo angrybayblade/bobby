@@ -7,9 +7,9 @@ const CSS = `
 .outline { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(300px, 380px) 1fr; }
 .outline .rail { overflow: auto; border-right: 1px solid var(--line-soft); padding: 14px 10px 60px; background: var(--surface); }
 .outline .doc { overflow: auto; }
-.outline .oc { margin-bottom: 4px; border-radius: 5px; }
+.outline .oc { margin-bottom: 4px; border-radius: 4px; }
 .outline .oc.cur { background: var(--bg); }
-.outline .ch { width: 100%; display: grid; grid-template-columns: 26px 1fr auto; gap: 6px; align-items: baseline; padding: 8px 10px; border-radius: 4px; text-align: left; }
+.outline .ch { width: 100%; display: grid; grid-template-columns: 26px 1fr auto; gap: 6px; align-items: baseline; padding: 8px 10px; border-radius: 3px; text-align: left; }
 .outline .ch:hover { background: var(--raised); }
 .outline .ch .n { font: 600 12px var(--font-code); color: var(--faint); }
 .outline .ch .tt { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -18,7 +18,7 @@ const CSS = `
 .outline .ch .dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--line); }
 .outline .ch .dots i.d { background: var(--muted); }
 .outline .grp { font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--faint); padding: 8px 12px 3px 38px; }
-.outline .row { width: 100%; display: flex; align-items: center; gap: 8px; padding: 5px 10px 5px calc(14px + var(--depth) * 18px); border-radius: 4px; text-align: left; font: 13px/1.35 var(--font-code); position: relative; }
+.outline .row { width: 100%; display: flex; align-items: center; gap: 8px; padding: 5px 10px 5px calc(14px + var(--depth) * 18px); border-radius: 3px; text-align: left; font: 13px/1.35 var(--font-code); position: relative; }
 .outline .row:hover { background: var(--raised); }
 .outline .row .tt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 .outline .row .via { font: 11px var(--font-ui); color: var(--faint); white-space: nowrap; }
@@ -32,12 +32,12 @@ const CSS = `
 .outline .story h1 { font: 650 calc(var(--size) * 1.9)/1.25 var(--font-prose); letter-spacing: -.015em; margin: 8px 0 14px; }
 .outline .story .hook { margin: -14px 0 28px; max-width: 65ch; }
 .outline .story .lede { font: calc(var(--size) * 1.12)/1.65 var(--font-prose); color: var(--muted); max-width: 65ch; margin: 0 0 28px; }
-.outline .story section { border: 1px solid var(--line-soft); border-radius: 6px; padding: 16px 18px; margin-bottom: 10px; cursor: pointer; background: var(--surface); }
+.outline .story section { border: 1px solid var(--line-soft); border-radius: 5px; padding: 16px 18px; margin-bottom: 10px; cursor: pointer; background: var(--surface); }
 .outline .story section.cur { border-color: var(--signal); }
 .outline .story section h3 { margin: 0 0 4px; font-size: calc(var(--size) * 1.05); display: flex; gap: 10px; }
 .outline .story section h3 small { margin-left: auto; color: var(--faint); font-weight: 400; font-size: 12px; }
 .outline .story section p { margin: 0; color: var(--muted); font-family: var(--font-prose); }
-.outline .step { display: grid; grid-template-columns: 18px 1fr; gap: 4px 12px; padding: 12px 10px; border-radius: 5px; cursor: pointer; }
+.outline .step { display: grid; grid-template-columns: 18px 1fr; gap: 4px 12px; padding: 12px 10px; border-radius: 4px; cursor: pointer; }
 .outline .step:hover { background: var(--surface); }
 .outline .step.cur { background: var(--signal-soft); }
 .outline .step .glyph { margin-top: 6px; }
