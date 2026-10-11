@@ -4,7 +4,7 @@ Open settings with `,` or the gear in the header. Changes apply immediately and 
 
 | Setting | Options | Default |
 |---|---|---|
-| Style | Warm · GitHub | Warm |
+| Style | GitHub · Warm | GitHub |
 | Theme | System · Dark · Light | System |
 | Reading font | Sans (Inter) · Hyperlegible (Atkinson) · Serif (Literata) · Mono (JetBrains Mono) | Sans |
 | Text size | 14 · 15 · 16 · 18 | 15 |
@@ -18,7 +18,7 @@ Open settings with `,` or the gear in the header. Changes apply immediately and 
 | Drift prompt | On · Off | On |
 | PR comments | Hidden, show per page · Always shown | Hidden, show per page |
 
-**Style** picks the colours. Warm is Bobby's own: warm neutrals with one amber signal colour. GitHub uses GitHub's colours and fonts: its accent blue as the signal, its diff greens and reds, blue hunk rows, its syntax colours, and the system UI and monospace fonts. Either comes in dark and light.
+**Style** picks the colours. GitHub is the default. Warm is the alternative: warm neutrals with one amber signal colour. GitHub uses GitHub's colours and fonts: its accent blue as the signal, its diff greens and reds, blue hunk rows, its syntax colours, and the system UI and monospace fonts. Either comes in dark and light.
 
 "System" follows your OS: light/dark preference for the theme, and the reduced-motion preference for motion. With motion off, every transition and animation is disabled.
 
