@@ -215,8 +215,19 @@ export function createApp({ graph, session }) {
       app.setFocus(DONE);
     },
 
+    // ---- diff layout: global (a setting), or switched for one file until the global one changes
+    fileLayout: new Map(),
+    layoutOf(path) { return app.fileLayout.get(path) ?? app.settings.diffLayout; },
+    toggleLayout(path) {
+      if (!path) return app.saveSettings({ diffLayout: app.settings.diffLayout === "split" ? "inline" : "split" });
+      const next = app.layoutOf(path) === "split" ? "inline" : "split";
+      if (next === app.settings.diffLayout) app.fileLayout.delete(path); else app.fileLayout.set(path, next);
+      app.emit("settings");
+    },
+
     // ---- settings
     saveSettings(patch) {
+      if ("diffLayout" in patch) app.fileLayout.clear(); // the global layout applies to every file again
       Object.assign(app.settings, patch);
       api("/api/settings", patch);
       app.emit("settings");

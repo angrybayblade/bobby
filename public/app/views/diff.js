@@ -34,6 +34,7 @@ const CSS = `
 .dv .fvh .band.core { color: var(--text); border-color: var(--muted); }
 .dv .fvh .max { width: 26px; height: 22px; border-radius: 2px; color: var(--muted); font-size: 14px; line-height: 1; }
 .dv .fvh .max:hover { background: var(--bg); color: var(--text); }
+.dv .fvh .lay { font-size: 13px; }
 /* Header tooltips: quick, below the button, right-aligned so they stay inside the viewer. */
 .dv .fvh [data-tip] { position: relative; }
 .dv .fvh [data-tip]::after { content: attr(data-tip); position: absolute; top: calc(100% + 8px); right: 0; z-index: 6; padding: 4px 9px; border-radius: 2px; background: var(--text); color: var(--bg); font: 500 12px var(--font-ui); white-space: nowrap; pointer-events: none; opacity: 0; transform: translateY(-2px); transition: opacity .12s, transform .12s; }
@@ -175,6 +176,7 @@ export default {
       const dir = f.path.includes("/") ? f.path.slice(0, f.path.lastIndexOf("/") + 1) : "";
       return `<i class="glyph ${f.changed ? "change" : "context"}"></i><span class="p">${esc(dir)}<b>${esc(f.path.split("/").pop())}</b></span><span class="band ${f.band}">${BAND_LABEL[f.band]}</span><span class="st">${stat(f)}</span>`
         + `<button class="max vwf" data-fviewed="${esc(f.path)}" aria-label="Mark file viewed" data-tip="Mark whole file viewed · local only" data-tip-on="Unmark file viewed">✓</button>`
+        + `<button class="max lay" data-flayout="${esc(f.path)}" aria-label="Inline or split" data-tip="${app.layoutOf(f.path) === "split" ? "Show this file inline" : "Show this file split"} · d for every file">${app.layoutOf(f.path) === "split" ? "▤" : "◫"}</button>`
         + `<button class="max" data-fnote="${esc(f.path)}" aria-label="Note on this file" data-tip="Private note on this file · only you see it">✎</button>`
         + (exit ? `<button class="max" data-exit="1" aria-label="Back to all files" data-tip="Back to all files · esc">⤡</button>`
           : `<button class="max" data-max="${esc(f.path)}" aria-label="Expand this file" data-tip="Expand to full screen · or double-click the header">⤢</button>`);

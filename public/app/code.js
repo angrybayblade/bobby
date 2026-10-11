@@ -127,7 +127,7 @@ function row(app, { t, o, n }, html, target, half) {
 }
 /** Diff lines as rows: one column (inline), or old beside new (split), pairing each run of removals with the additions after it. */
 function diffRows(app, lines, html, target) {
-  if (app.settings.diffLayout !== "split") return lines.map((l, i) => row(app, l, html[i], target)).join("");
+  if (app.layoutOf(target.path) !== "split") return lines.map((l, i) => row(app, l, html[i], target)).join("");
   const pair = (L, R) => {
     const cell = (i, half) => i == null ? `<div class="ln none"></div>` : row(app, lines[i], html[i], target, half);
     const c = app.page.composing;
@@ -220,8 +220,13 @@ export function startFileNote(app, el, path) {
 
 function fileHead(path, extra = "", stat = "") {
   const dir = path.includes("/") ? path.slice(0, path.lastIndexOf("/") + 1) : "";
-  return `<div class="fh"><span>${esc(dir)}<b>${esc(path.split("/").pop())}</b>${extra}</span><span class="ctx"></span>${stat}</div>`;
+  return `<div class="fh"><span>${esc(dir)}<b>${esc(path.split("/").pop())}</b>${extra}</span><span class="ctx"></span>${stat}${layoutBtn(path)}</div>`;
 }
+/** Switch one file between inline and split; the label names what you'd switch to. */
+export const layoutBtn = (path, cls = "lay") => {
+  const split = window.bobby?.layoutOf(path) === "split";
+  return `<button class="${cls}" data-flayout="${esc(path)}" title="${split ? "Show this file inline" : "Show this file split: old beside new"} (d for every file)">${split ? "Inline" : "Split"}</button>`;
+};
 
 // ---- folding: pure additions/removals and untouched snippets start collapsed; a mixed diff is always open.
 const statusByGraph = new WeakMap();

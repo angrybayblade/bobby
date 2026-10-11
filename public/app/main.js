@@ -118,7 +118,7 @@ document.addEventListener("keydown", (ev) => {
     v: () => app.switchView(views[(views.findIndex((v) => v.id === currentId) + 1) % views.length].id),
     s: () => chrome.submit(), "?": () => chrome.help(), ",": () => chrome.settings(), p: () => chrome.park(), M: () => chrome.notes(),
     R: () => app.switchTree(),
-    d: () => app.saveSettings({ diffLayout: app.settings.diffLayout === "split" ? "inline" : "split" }),
+    d: () => app.toggleLayout(),
   }[k];
   if (act) { ev.preventDefault(); app.useKey(k === "Enter" ? "enter" : k === "Escape" ? "esc" : k); act(); }
 });

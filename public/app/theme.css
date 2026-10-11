@@ -237,6 +237,11 @@ kbd {
 .ln.target { background: var(--target); } .ln.target .bar { background: var(--signal); }
 .ln.sel { box-shadow: inset 0 0 0 1px var(--signal); }
 .ln:hover .no { color: var(--muted); }
+.code .fh .lay { margin-left: 4px; padding: 0 7px; font: 500 11px/18px var(--font-ui); color: var(--faint); border: 1px solid var(--line-soft); border-radius: 2px; }
+.code .fh .lay:hover { color: var(--text); border-color: var(--muted); }
+#where .seg.lay { margin-left: auto; padding: 2px; }
+#where .seg.lay button { padding: 1px 9px; font-size: 12px; max-width: none; }
+#where .seg.lay + .levels { margin-left: 14px; }
 /* Split diff: old on the left, new on the right; long lines wrap so the two sides stay in step. */
 .srow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .srow > .ln { grid-template-columns: 3px 44px 16px minmax(0, 1fr); min-width: 0; }

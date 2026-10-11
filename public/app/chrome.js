@@ -95,6 +95,7 @@ function renderWhere() {
   else if (pid === DONE) crumbs.push(`<button class="here">End</button>`);
   const note = app.state.note ? `<button data-act="note" title="Your parked thought (p)" style="color:var(--signal)">📌 ${esc(app.state.note.slice(0, 48))}${app.state.note.length > 48 ? "…" : ""}</button>` : "";
   $("#where").innerHTML = `${crumbs.join(`<span class="sep">›</span>`)}${note}
+    <span class="seg lay" role="group" aria-label="Diff layout" title="Diff layout for every file (d)">${[["inline", "Inline"], ["split", "Split"]].map(([v, t]) => `<button data-act="layout" data-val="${v}" aria-pressed="${app.settings.diffLayout === v}">${t}</button>`).join("")}</span>
     <span class="levels" title="Zoom: ${LEVELS[app.level]} (enter / esc)">${LEVELS.map((_, i) => `<i class="${i <= app.level ? "on" : ""}"></i>`).join("")}<span style="margin-left:6px">${LEVELS[app.level]}</span></span>`;
 }
 
@@ -331,6 +332,8 @@ function welcomeBackLite() {
 
 // ---------------------------------------------------------------- clicks
 function onClick(ev) {
+  const lay = ev.target.closest("[data-flayout]");
+  if (lay) return app.toggleLayout(lay.dataset.flayout);
   const t = ev.target.closest("[data-act],[data-view],[data-level],[data-set],[data-submit],[data-gdel],[data-gonote]");
   if (!t) { if (ev.target.id === "overlay") close(); return; }
   const ds = t.dataset;
@@ -355,6 +358,7 @@ function onClick(ev) {
     "toast-close": () => ($("#toast").hidden = true),
     "rabbit-flag": () => { $("#toast").hidden = true; app.mark(app.focus, "flagged"); app.nextUnreviewed(); },
     "drift-park": () => parkDrift(),
+    layout: () => app.saveSettings({ diffLayout: ds.val }),
   })[ds.act]?.();
 }
 
