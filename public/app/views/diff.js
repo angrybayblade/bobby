@@ -81,6 +81,7 @@ const CSS = `
 .dv .rc .l { font: 11.5px var(--font-ui); color: var(--muted); margin-top: 3px; }
 .dv .rail .none { color: var(--faint); font-size: 13px; }
 .dv .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--faint); }
+.dv .fv.pinned > .fvh, .dv .fv.pinned > .fvb { zoom: var(--fill, 1); } /* filled: the viewer is zoomed up, its contents back down */
 /* Compact, GitHub-like code: one box per file, slim hunk rows, a tight gutter. */
 .dv .fvh { gap: 8px; padding: 5px 6px 5px 10px; font-size: 12px; }
 .dv .fvh .band { font-size: 9.5px; padding: 0 5px; }
@@ -536,8 +537,9 @@ export default {
       pan = { x: 0, y: 0 };
       apply();
     }
-    // Shift+F: the focused file fills the canvas, flush with its top-left. The viewer widens to the screen rather than
-    // zooming up to it, so code stays at a reading size (FILL_ZOOM) and more of each line fits. Again to go back.
+    // Shift+F: the focused file fills the canvas, flush with its top-left. The viewer keeps its width, takes the canvas's
+    // proportions, and is zoomed to fill it; its contents shrink by as much, so code reads at FILL_ZOOM× its canvas size
+    // and more of each line fits. Again to go back.
     const FILL_ZOOM = 1.1;
     let filled = null;
     function fill() {
@@ -548,21 +550,19 @@ export default {
         if (back.path === act.path) { cam = back; return apply(); }
         cam = { ...cam, s: back.s }; return track();
       }
-      const s = Math.min(FILL_ZOOM, stage.clientWidth / W); // a narrow screen zooms out to fit the usual width
+      const s = stage.clientWidth / W; // may pass the wheel's 2× limit on a wide screen
       const prev = { s: cam.s, tx: cam.tx + pan.x, ty: cam.ty + pan.y, path: act.path };
       cam = { s, tx: -v.x * s, ty: -v.y * s };
       pan = { x: 0, y: 0 };
       filled = { path: act.path, s, prev };
       engage(true); pin(v); apply();
     }
-    // While filled, the viewer is the screen's size (shorter if its code ends sooner), and every scroll is its code's.
+    // While filled, the viewer has the canvas's proportions, its contents are scaled to a reading size, and every scroll is its code's.
     function pin(v) {
-      for (const o of views.values()) if (o !== v && o.el.classList.contains("pinned")) { o.el.classList.remove("pinned"); o.el.style.width = `${W}px`; o.el.style.height = `${o.h}px`; }
+      for (const o of views.values()) if (o !== v && o.el.classList.contains("pinned")) { o.el.classList.remove("pinned"); o.el.style.removeProperty("--fill"); o.el.style.height = `${o.h}px`; }
       if (!v) return;
-      v.el.style.width = `${Math.max(W, stage.clientWidth / cam.s)}px`;
-      v.el.style.height = "";
-      const full = v.el.offsetHeight;
-      v.el.style.height = `${Math.min(full, stage.clientHeight / cam.s)}px`;
+      v.el.style.height = `${stage.clientHeight / cam.s}px`;
+      v.el.style.setProperty("--fill", Math.min(1, FILL_ZOOM / cam.s));
       v.el.classList.add("pinned");
     }
     function apply() {
@@ -571,7 +571,7 @@ export default {
     }
     // Zoom by k around a point on the stage, keeping whatever is under it in place.
     function zoomAt(k, px, py) {
-      const s = Math.max(0.15, Math.min(2, cam.s * k));
+      const s = Math.max(0.15, Math.min(Math.max(2, cam.s), cam.s * k)); // never jumps down from a filled view past 2×
       const wx = (px - cam.tx - pan.x) / cam.s, wy = (py - cam.ty - pan.y) / cam.s;
       cam = { s, tx: px - wx * s - pan.x, ty: py - wy * s - pan.y };
       apply();
