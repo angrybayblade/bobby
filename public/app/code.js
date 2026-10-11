@@ -348,7 +348,7 @@ export function renderFile(app, el, pids) {
     const { pl } = app.get(pid), node = app.nodeOf(pid), done = app.isReviewed(pid);
     const code = node.kind === "change" ? app.hunksOf(pid).map((h) => hunkBox(app, h, rerender, opts)).join("") : contextBox(app, node, rerender, opts);
     return `<section class="sec ${pid === app.focus ? "cur" : ""} ${done ? "done" : ""}" data-pid="${pid}">
-      <div class="sech"><i class="glyph ${pl.band === "core" ? "core" : node.kind}"></i><span>${esc(pl.title)}</span>${pl.risk === "high" ? `<i class="riskdot"></i>` : ""}${app.isFlagged(pid) ? `<span class="status flag">⚑</span>` : ""}<button class="vw" data-viewed="${pid}" title="Mark viewed: tracks your progress here only, not on GitHub"><span class="on">✓ Viewed</span><span class="off">Mark viewed</span></button></div>
+      <div class="sech"><i class="glyph ${pl.band === "core" ? "core" : node.kind}"></i><span>${esc(pl.title)}</span>${pl.risk === "high" ? `<i class="riskdot"></i>` : ""}${app.isFlagged(pid) ? `<span class="status flag">⚑</span>` : ""}<button class="vw" data-viewed="${pid}" title="Mark viewed: tracks your progress here only, not on GitHub"><span class="on"><i class="cb">✓</i>Viewed</span><span class="off"><i class="cb"></i>Viewed</span></button></div>
       ${notesHtml(app, pid)}${code}</section>`;
   }).join("")}</div>`;
   const ta = el.querySelector("textarea[data-composer]");

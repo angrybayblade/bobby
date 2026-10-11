@@ -81,6 +81,23 @@ const CSS = `
 .dv .rc .l { font: 11.5px var(--font-ui); color: var(--muted); margin-top: 3px; }
 .dv .rail .none { color: var(--faint); font-size: 13px; }
 .dv .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--faint); }
+/* Compact, GitHub-like code: one box per file, slim hunk rows, a tight gutter. */
+.dv .fvh { gap: 8px; padding: 5px 6px 5px 10px; font-size: 12px; }
+.dv .fvh .band { font-size: 9.5px; padding: 0 5px; }
+.dv .fvh .max { width: 22px; height: 20px; font-size: 12.5px; }
+.dv .sec { padding: 0; }
+.dv .sec .notes { margin: 6px 10px; }
+.dv .sech { position: sticky; top: 0; z-index: 2; gap: 7px; padding: 4px 8px 4px 10px; font: 600 12px var(--font-ui); background: var(--surface); border-bottom: 1px solid var(--line-soft); }
+.dv .sech .vw { font-size: 11px; padding: 0 7px; line-height: 18px; }
+.dv .sec .code { margin: 0; border: 0; border-radius: 0; background: none; }
+.dv .sec .code + .code { border-top: 1px solid var(--line-soft); }
+.dv .code .fh { padding: 2px 10px 2px 72px; font-size: 11.5px; line-height: 18px; border-bottom: 0; color: var(--faint); background: var(--raised); }
+.dv .code .fh b { color: var(--muted); font-weight: 500; }
+.dv .code .more { padding: 0 10px 0 72px; font-size: 11px; line-height: 18px; background: var(--raised); opacity: .85; }
+.dv .lines { line-height: 1.55; }
+.dv .ln { grid-template-columns: 3px 34px 34px 14px 1fr; }
+.dv .ln .no { padding-right: 8px; }
+.dv .dfocus .lines { font-size: calc(var(--code-size) - 1px); }
 `;
 
 const BAND_LABEL = { upUnchanged: "relies on · untouched", upChanged: "relies on · changed", core: "core", downChanged: "affects · changed", downUnchanged: "affects · untouched" };

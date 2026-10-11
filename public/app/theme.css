@@ -209,6 +209,7 @@ mark.wd { background: var(--del-word); color: inherit; border-radius: 2px; }
 .sech .vw .on, .sec.done .sech .vw .off { display: none; }
 .sec.done .sech .vw .on { display: inline; }
 .sec.done .sech .vw { color: var(--ok); border-color: transparent; }
+.sech .vw .cb { display: inline-grid; place-items: center; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; border: 1px solid currentColor; border-radius: 2px; font: 700 8px/1 var(--font-ui); }
 .modal.notes { display: flex; flex-direction: column; gap: 8px; }
 .modal.notes .nh { margin: 10px 0 0; font: 600 11px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
 .modal.notes .note code { font: 12px var(--font-code); color: var(--muted); }
