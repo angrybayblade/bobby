@@ -1,6 +1,8 @@
-// Outline: a document-like rail (walk order, indentation = depth in the tree, distant cores folded)
-// beside a reading pane that shows the PR story, the core's story, or the code page.
+// Outline: a document-like rail (the open core as a tree: each page nested under the page it attaches to, distant
+// cores folded) beside a reading pane that shows the PR story, the core's story, or the code page.
 import { BANDS, BAND_TEXT, DONE, LOW, esc, inline } from "../core.js";
+
+const BAND_CHIP = { upUnchanged: "relies on · untouched", upChanged: "relies on · changed", core: "core", downChanged: "affects · changed", downUnchanged: "affects · untouched" };
 import { injectCss } from "./flow.js";
 
 const CSS = `
@@ -25,8 +27,11 @@ const CSS = `
 .outline .row.done .tt { color: var(--faint); }
 .outline .row.rep { opacity: .5; }
 .outline .row.cur { background: var(--signal-soft); box-shadow: inset 3px 0 0 var(--signal); }
-.outline .row[style*="--depth: 2"]::before { content: ""; position: absolute; left: 30px; top: -6px; height: 18px; width: 10px; border-left: 1px solid var(--line); border-bottom: 1px solid var(--line); border-bottom-left-radius: 6px; }
-.outline .more { padding: 4px 10px 4px 48px; font-size: 12px; color: var(--muted); }
+.outline .row.sub::before { content: ""; position: absolute; left: calc(var(--depth) * 18px); top: -6px; height: 18px; width: 9px; border-left: 1px solid var(--line); border-bottom: 1px solid var(--line); border-bottom-left-radius: 4px; }
+.outline .row .bandc { font: 500 9px var(--font-ui); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); white-space: nowrap; padding: 0 4px; border: 1px solid var(--line-soft); border-radius: 1px; flex: none; }
+.outline .more { padding: 3px 10px 3px calc(36px + var(--depth, 0) * 18px); font-size: 12px; color: var(--muted); }
+.outline.filled { grid-template-columns: 1fr; }
+.outline.filled .rail { display: none; }
 .outline .story { max-width: 760px; margin: 0 auto; padding: 36px 36px 80px; }
 .outline .story .eyebrow { font-size: 12px; letter-spacing: .09em; text-transform: uppercase; color: var(--faint); }
 .outline .story h1 { font: 650 calc(var(--size) * 1.9)/1.25 var(--font-prose); letter-spacing: -.015em; margin: 8px 0 14px; }
@@ -48,7 +53,7 @@ const CSS = `
 .outline .step .nbody .code { margin-bottom: 10px; }
 .outline .story .bandh { font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--faint); margin: 22px 0 4px 10px; }
 `;
-const MAX_BAND = 5;
+const MAX_KIDS = 6;
 
 export default {
   id: "outline",
@@ -59,21 +64,32 @@ export default {
     el.innerHTML = `<div class="outline"><nav class="rail" aria-label="Change tree"></nav><div class="doc"></div></div>`;
     const rail = el.querySelector(".rail"), doc = el.querySelector(".doc");
     const expanded = new Set();
-    let lastDoc = null;
+    let lastDoc = null, filled = false;
 
-    // Depth = 2 when a node attaches to another non-core node (e.g. an untouched helper used by a changed test).
-    const depthOf = (c, pl) => {
-      if (pl.band === "core") return 0;
-      const es = app.edgesOf(c.id);
-      const link = pl.band.startsWith("up") ? es.find((e) => e.from === pl.id) : es.find((e) => e.to === pl.id);
-      const other = link && app.get(pl.band.startsWith("up") ? link.to : link.from)?.pl;
-      return other && other.band !== "core" ? 2 : 1;
-    };
-    const viaOf = (c, pl) => {
-      const es = app.edgesOf(c.id);
-      const link = pl.band.startsWith("up") ? es.find((e) => e.from === pl.id) : es.find((e) => e.to === pl.id);
-      return link?.label ?? "";
-    };
+    // The open core as a tree. Every page attaches to exactly one other page in its core (what it feeds, if it's
+    // something relied on; what feeds it, if it's affected), so nesting each under that one reads as a tree rooted at
+    // the core change: core → what it affects → what that affects, and core ← what it relies on ← what that relies on.
+    function treeOf(c) {
+      const es = app.edgesOf(c.id), pls = app.corePlacements(c), order = new Map(pls.map((pl, i) => [pl.id, i]));
+      const parent = new Map(), kids = new Map();
+      for (const pl of pls) {
+        if (pl.band === "core") continue;
+        const up = pl.band.startsWith("up"), e = up ? es.find((x) => x.from === pl.id) : es.find((x) => x.to === pl.id);
+        const p = e && (up ? e.to : e.from);
+        if (p && p !== pl.id && order.has(p)) parent.set(pl.id, { p, via: e.label ?? "" });
+      }
+      const rows = [], seen = new Set();
+      for (const [id, { p }] of parent) (kids.get(p) ?? kids.set(p, []).get(p)).push(id);
+      for (const list of kids.values()) list.sort((a, b) => order.get(a) - order.get(b));
+      const visit = (id, depth) => {
+        if (seen.has(id)) return; seen.add(id);
+        rows.push({ id, depth, via: parent.get(id)?.via ?? "" });
+        for (const k of kids.get(id) ?? []) visit(k, depth + 1);
+      };
+      for (const pl of pls) if (!parent.has(pl.id) || !order.has(parent.get(pl.id).p)) visit(pl.id, 0);
+      for (const pl of pls) visit(pl.id, 0); // anything left on a cycle
+      return { rows, parent, kids };
+    }
 
     function renderRail() {
       const focusCore = app.get(app.focus)?.core;
@@ -84,24 +100,31 @@ export default {
         const head = `<button class="ch" data-core="${c.id}"><span class="n">${String(ci + 1).padStart(2, "0")}</span><span class="tt">${esc(c.title)}</span><span class="pg">${done}/${items.length}</span>
           ${open ? "" : `<span class="dots">${items.map((p) => `<i class="${app.isReviewed(p) ? "d" : ""}"></i>`).join("")}</span>`}</button>`;
         if (!open) return `<div class="oc">${head}</div>`;
-        const groups = [["relies on", ["upUnchanged", "upChanged"]], ["core", ["core"]], ["affects", ["downChanged", "downUnchanged"]]];
-        const body = groups.map(([label, bands]) => {
-          const list = bands.flatMap((b) => c.bands[b]);
-          if (!list.length) return "";
-          const key = `${c.id}:${label}`;
-          let shown = list;
-          if (list.length > MAX_BAND + 1 && !expanded.has(key) && !list.slice(MAX_BAND).some((pl) => pl.id === app.focus)) shown = list.slice(0, MAX_BAND);
-          const rows = shown.map((pl) => {
-            const node = app.nodeOf(pl.id);
-            const d = depthOf(c, pl), via = d === 2 ? viaOf(c, pl) : "";
-            const glyph = pl.band === "core" ? "core" : node.kind;
-            return `<button class="row ${pl.id === app.focus ? "cur" : ""} ${app.isReviewed(pl.id) ? "done" : ""} ${pl.repeatOf ? "rep" : ""}" style="--depth: ${d}" data-go="${pl.id}" title="${esc(pl.why)}">
-              <i class="glyph ${glyph}"></i><span class="tt">${esc(pl.title)}</span>${via ? `<span class="via">${esc(via)}</span>` : ""}
-              ${pl.risk === "high" ? `<i class="riskdot"></i>` : ""}${app.isFlagged(pl.id) ? `<span class="status flag">⚑</span>` : ""}${app.isReviewed(pl.id) ? `<span class="status">✓</span>` : ""}${pl.repeatOf ? `<span class="status">↺</span>` : ""}</button>`;
-          }).join("");
-          const more = shown.length < list.length ? `<button class="more" data-expand="${key}">+${list.length - shown.length} more</button>` : "";
-          return `<div class="grp">${label}</div>${rows}${more}`;
-        }).join("");
+        const { rows, parent, kids } = treeOf(c);
+        // Fold long lists of children into "+N more", each direction on its own (what a page relies on, what it
+        // affects), unless the focus is among them.
+        const hidden = new Set(), more = new Map();
+        const groups = [...kids].flatMap(([p, list]) => ["up", "down"].map((d) => [`${p}:${d}`, list.filter((id) => app.get(id).pl.band.startsWith("up") === (d === "up"))]));
+        for (const [p, list] of groups) {
+          const key = `${c.id}:${p}`;
+          if (list.length <= MAX_KIDS + 1 || expanded.has(key)) continue;
+          const rest = list.slice(MAX_KIDS);
+          const under = (id) => { for (let q = app.focus; q; q = parent.get(q)?.p) if (q === id) return true; return false; };
+          if (rest.some(under)) continue;
+          const drop = (id) => { hidden.add(id); for (const k of kids.get(id) ?? []) drop(k); };
+          rest.forEach(drop);
+          more.set(rest[rest.length - 1], { key, n: rest.length });
+        }
+        let body = "", lastBand = null, lastVia = null;
+        for (const r of rows) {
+          const m = [...more].find(([last]) => last === r.id);
+          if (hidden.has(r.id)) { if (m) body += `<button class="more" style="--depth: ${r.depth}" data-expand="${m[1].key}">+${m[1].n} more</button>`; continue; }
+          const pl = app.get(r.id).pl, node = app.nodeOf(r.id), glyph = pl.band === "core" ? "core" : node.kind;
+          body += `<button class="row ${r.depth ? "sub" : ""} ${r.id === app.focus ? "cur" : ""} ${app.isReviewed(r.id) ? "done" : ""} ${pl.repeatOf ? "rep" : ""}" style="--depth: ${r.depth}" data-go="${r.id}" title="${esc(BAND_CHIP[pl.band])} · ${esc(pl.why)}">
+            <i class="glyph ${glyph}"></i><span class="tt">${esc(pl.title)}</span>${r.via && r.via !== lastVia ? `<span class="via">${esc(r.via)}</span>` : ""}${pl.band !== lastBand ? `<span class="bandc">${BAND_CHIP[pl.band]}</span>` : ""}
+            ${pl.risk === "high" ? `<i class="riskdot"></i>` : ""}${app.isFlagged(r.id) ? `<span class="status flag">⚑</span>` : ""}${app.isReviewed(r.id) ? `<span class="status">✓</span>` : ""}${pl.repeatOf ? `<span class="status">↺</span>` : ""}</button>`;
+          lastBand = pl.band; lastVia = r.via; // band and relation show where they change, not on every row
+        }
         return `<div class="oc cur">${head}${body}</div>`;
       }).join("") + (app.graph.lowSignal.length
         ? `<div class="oc"><button class="row ${app.focus === LOW ? "cur" : ""} ${app.isReviewed(LOW) ? "done" : ""}" style="--depth: 0" data-go="${LOW}"><i class="glyph context"></i><span class="tt">Low-signal changes</span>${app.isReviewed(LOW) ? `<span class="status">✓</span>` : ""}</button></div>` : "");
@@ -131,6 +154,7 @@ export default {
     }
 
     function update(reason) {
+      el.firstElementChild.classList.toggle("filled", filled);
       renderRail();
       const key = `${app.level}:${app.level === 2 ? app.focus : app.get(app.focus)?.core.id ?? app.focus}`;
       if (app.level === 2) {
@@ -159,7 +183,28 @@ export default {
       app.setFocus(ds.go, { level: Math.max(1, app.level) });
     });
 
+    // ---- arrows follow the tree: ↑/↓ the previous/next row, → the first page nested under this one, ← its parent
+    function move(dc, dr) {
+      const loc = app.get(app.focus);
+      if (!loc) return;
+      const { parent, kids } = treeOf(loc.core);
+      if (dr) {
+        const ids = [...rail.querySelectorAll(".row[data-go]")].map((b) => b.dataset.go);
+        const to = ids[ids.indexOf(app.focus) + dr];
+        return to && app.setFocus(to, { level: Math.max(1, app.level) });
+      }
+      const to = dc > 0 ? kids.get(app.focus)?.[0] : parent.get(app.focus)?.p;
+      if (to) app.setFocus(to, { level: Math.max(1, app.level) });
+    }
+    const fill = () => { filled = !filled; update("fill"); };
+    const keys = {
+      ArrowLeft: () => move(-1, 0), ArrowRight: () => move(1, 0), ArrowUp: () => move(0, -1), ArrowDown: () => move(0, 1),
+      f: () => fill(), // the reading pane takes the whole width
+      g: () => app.setLevel(app.level === 2 ? 1 : 2),
+      Escape: () => (filled ? fill() : app.setLevel(app.level - 1)),
+    };
+
     update("mount");
-    return { update, destroy() {} };
+    return { update, keys, destroy() {} };
   },
 };
