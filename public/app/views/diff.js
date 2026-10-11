@@ -210,12 +210,35 @@ export default {
       }
       layout();
       for (const [p, top] of keep) if (views.has(p)) views.get(p).body.scrollTop = top;
+      builtFrom = buildSig(); fileSigs = new Map(M.files.map((f) => [f.path, fileSig(f.path)]));
+    }
+    // What a viewer's content depends on. Settings outside buildSig (theme, motion, hints, edges…) are pure CSS or
+    // a redraw, so they never rebuild; a change inside one file (its layout, its comments and notes) re-renders that file.
+    let builtFrom = "", fileSigs = new Map();
+    const buildSig = () => JSON.stringify(["diffLayout", "size", "font", "spacing", "palette", "prComments"].map((k) => app.settings[k]));
+    const fileSig = (path) => {
+      const on = (x) => x.path === path;
+      return JSON.stringify([app.layoutOf(path), app.state.comments.filter(on).map((c) => [c.id, c.line, c.body]),
+        app.state.notes.filter(on).map((n) => [n.id, n.line, n.body]), (app.graph.discussion ?? []).filter(on).length]);
+    };
+    /** Re-render only the viewers whose content changed, and re-measure only them. Returns the paths re-rendered. */
+    function refresh() {
+      const changed = M.files.filter((f) => fileSigs.get(f.path) !== fileSig(f.path)).map((f) => f.path);
+      for (const path of changed) {
+        const v = views.get(path), top = v.body.scrollTop;
+        v.el.querySelector(".fvh").innerHTML = header(v.f);
+        app.renderFile(v.body, v.f.sections.map((s) => s.pid));
+        v.body.scrollTop = top;
+        fileSigs.set(path, fileSig(path));
+      }
+      if (changed.length) { layout(new Set(changed)); if (filled && changed.includes(filled.path)) pin(views.get(filled.path)); }
+      return changed;
     }
 
     // Files are laid out as a graph: each one a column right of the files that lead into it, so a chain
     // a → b → c reads left to right even inside one band. The band is a label on the file, not a column.
     let columns = [], fileLinks = { prev: new Map(), next: new Map() };
-    function layout() {
+    function layout(only = null) { // only: the viewers whose content changed; the rest keep their measured height
       for (const el of world.querySelectorAll(".bhead")) el.remove();
       const prev = new Map(M.files.map((f) => [f, new Set()])), next = new Map(M.files.map((f) => [f, new Set()]));
       for (const { a, b } of M.pairs) {
@@ -226,7 +249,7 @@ export default {
       const files = [...M.files].sort((a, b) => BANDS.indexOf(a.band) - BANDS.indexOf(b.band) || a.order - b.order);
       // Measure every viewer in one layout: all writes, then all reads, then all writes. Interleaving them
       // forced a full layout per file.
-      const vs = files.map((f) => views.get(f.path));
+      const vs = files.map((f) => views.get(f.path)).filter((v) => !only || only.has(v.f.path));
       for (const v of vs) v.el.style.height = "";
       for (const v of vs) v.h = Math.min(MAX_H, v.el.offsetHeight);
       for (const v of vs) v.el.style.height = `${v.h}px`;
@@ -595,6 +618,12 @@ export default {
         lastLevel = app.level;
       }
       dfocus.hidden = app.level !== 2;
+      if (reason === "settings" && M && buildSig() === builtFrom) { // nothing the viewers are built from: at most one file's layout
+        const changed = refresh();
+        if (app.level === 2) showFocus(changed.includes(bigPath) ? "settings" : "same");
+        restyle(); redraw();
+        return;
+      }
       if (reason === "mount" || reason === "graph" || reason === "settings") {
         build(); bigPath = null;
         if (app.level === 2) showFocus(reason);
@@ -607,10 +636,10 @@ export default {
         if (reason === "focus" && !selfFocus) reveal(true);
         return;
       }
-      if (reason === "level") { bigPath = null; reveal(false); followKey = ""; setTimeout(follow, 50); }
+      if (reason === "level") { refresh(); bigPath = null; reveal(false); followKey = ""; setTimeout(follow, 50); } // catch up on notes added on a page
       if (reason === "level" && app.level === 0) engage(false);
       if (reason === "focus" && !selfFocus) engage(true); // j/k or a click elsewhere: you're reading that file
-      if (reason === "comments") { for (const v of views.values()) { const t = v.body.scrollTop; app.renderFile(v.body, v.f.sections.map((s) => s.pid)); v.body.scrollTop = t; } }
+      if (reason === "comments") refresh(); // only the files whose comments or notes changed
       restyle();
       if (reason === "focus" && !selfFocus) { reveal(true); track(); setTimeout(follow, 350); } // after the smooth scroll settles
       if (reason === "level" && app.level === 1 && beforePage) { cam = beforePage.cam; pan = beforePage.pan; beforePage = null; apply(); }
