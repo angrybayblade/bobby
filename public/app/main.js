@@ -15,7 +15,7 @@ app.noteOnFile = (el, path) => startFileNote(app, el, path); // el: the renderFi
 
 // ---- settings → document
 const FONTS = {
-  sans: `"Inter", -apple-system, BlinkMacSystemFont, sans-serif`,
+  sans: "var(--font-ui)", // the style's UI font: Inter (warm) or the system font (github)
   hyper: `"Atkinson Hyperlegible", "Inter", sans-serif`,
   serif: `"Literata", Georgia, serif`,
   mono: `"JetBrains Mono", ui-monospace, monospace`,
@@ -24,6 +24,7 @@ const media = (q) => window.matchMedia(q).matches;
 function applySettings() {
   const s = app.settings, root = document.documentElement;
   root.dataset.theme = s.theme === "system" ? (media("(prefers-color-scheme: light)") ? "light" : "dark") : s.theme;
+  root.dataset.palette = s.palette === "github" ? "github" : "warm";
   root.dataset.motion = s.motion === "system" ? (media("(prefers-reduced-motion: reduce)") ? "off" : "on") : s.motion;
   root.style.setProperty("--font-prose", FONTS[s.font] ?? FONTS.sans);
   root.style.setProperty("--size", `${s.size}px`);

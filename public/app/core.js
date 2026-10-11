@@ -25,6 +25,7 @@ export const DEFAULT_SETTINGS = {
   drift: "on", // on | off: after 90s idle on a page, offer to park a thought
   prComments: "hide", // hide | show: other reviewers' comments, behind a per-page toggle when hidden
   diffLayout: "inline", // inline | split: changed lines in one column, or old beside new
+  palette: "warm", // warm | github: colours (and, for github, fonts); theme picks dark or light
   hintUses: {},
 };
 

@@ -153,7 +153,8 @@ export function help() {
 }
 
 const SETTINGS = [
-  ["theme", "Theme", [["system", "System"], ["dark", "Warm dark"], ["light", "Warm light"]]],
+  ["palette", "Style", [["warm", "Warm"], ["github", "GitHub"]]],
+  ["theme", "Theme", [["system", "System"], ["dark", "Dark"], ["light", "Light"]]],
   ["font", "Reading font", [["sans", "Sans"], ["hyper", "Hyperlegible"], ["serif", "Serif"], ["mono", "Mono"]]],
   ["size", "Text size", [[14, "14"], [15, "15"], [16, "16"], [18, "18"]]],
   ["spacing", "Word spacing", [["normal", "Normal"], ["wide", "Wide"], ["wider", "Wider"]]],

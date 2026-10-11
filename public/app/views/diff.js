@@ -92,9 +92,9 @@ const CSS = `
 .dv .sech .vw { font-size: 11px; padding: 0 7px; line-height: 18px; }
 .dv .sec .code { margin: 0; border: 0; border-radius: 0; background: none; }
 .dv .sec .code + .code { border-top: 1px solid var(--line-soft); }
-.dv .code .fh { padding: 2px 10px 2px 72px; font-size: 11.5px; line-height: 18px; border-bottom: 0; color: var(--faint); background: var(--raised); }
+.dv .code .fh { padding: 2px 10px 2px 72px; font-size: 11.5px; line-height: 18px; border-bottom: 0; color: var(--faint); background: var(--hunk); }
 .dv .code .fh b { color: var(--muted); font-weight: 500; }
-.dv .code .more { padding: 0 10px 0 72px; font-size: 11px; line-height: 18px; background: var(--raised); opacity: .85; }
+.dv .code .more { padding: 0 10px 0 72px; font-size: 11px; line-height: 18px; background: var(--hunk); opacity: .85; }
 .dv .lines { line-height: 1.55; }
 .dv .ln { grid-template-columns: 3px 34px 34px 14px 1fr; }
 .dv .srow > .ln { grid-template-columns: 3px 34px 14px minmax(0, 1fr); }

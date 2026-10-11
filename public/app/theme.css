@@ -37,6 +37,7 @@
   --shadow: 0 10px 40px rgba(0, 0, 0, .35);
   --hl-kw: #d7a6c4; --hl-str: #a9c79b; --hl-num: #e0b384; --hl-com: #7a7266;
   --hl-fn: #9fb6d9; --hl-type: #c3b1e1; --hl-attr: #d9c28f;
+  --hunk: var(--raised);
   color-scheme: dark;
 }
 
@@ -63,8 +64,66 @@
   --shadow: 0 10px 40px rgba(60, 40, 10, .12);
   --hl-kw: #8e3b6b; --hl-str: #4a7a3d; --hl-num: #9a5a12; --hl-com: #a1978a;
   --hl-fn: #355c95; --hl-type: #6c4a9e; --hl-attr: #7d6413;
+  --hunk: var(--raised);
   color-scheme: light;
 }
+
+/* GitHub style: Primer colours and fonts, for those at home in GitHub's diff. Signal is GitHub's accent blue. */
+[data-palette="github"] {
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  --font-code: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+[data-palette="github"][data-theme="dark"] {
+  --bg: #0d1117;
+  --surface: #0d1117;
+  --raised: #151b23;
+  --line: #3d444d;
+  --line-soft: #262c36;
+  --text: #f0f6fc;
+  --muted: #9198a1;
+  --faint: #6e7681;
+  --signal: #4493f8;
+  --signal-ink: #0d1117;
+  --signal-soft: rgba(56, 139, 253, .15);
+  --risk: #f85149;
+  --risk-soft: rgba(248, 81, 73, .15);
+  --ok: #3fb950;
+  --add-tint: rgba(46, 160, 67, .15);
+  --add-word: rgba(46, 160, 67, .4);
+  --del-tint: rgba(248, 81, 73, .1);
+  --del-word: rgba(248, 81, 73, .4);
+  --target: rgba(187, 128, 9, .15);
+  --shadow: 0 8px 24px rgba(1, 4, 9, .75);
+  --hl-kw: #ff7b72; --hl-str: #a5d6ff; --hl-num: #79c0ff; --hl-com: #9198a1;
+  --hl-fn: #d2a8ff; --hl-type: #ffa657; --hl-attr: #79c0ff;
+  --hunk: rgba(56, 139, 253, .1);
+}
+[data-palette="github"][data-theme="light"] {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --raised: #f6f8fa;
+  --line: #d1d9e0;
+  --line-soft: #e2e7ec;
+  --text: #1f2328;
+  --muted: #59636e;
+  --faint: #818b98;
+  --signal: #0969da;
+  --signal-ink: #ffffff;
+  --signal-soft: rgba(9, 105, 218, .1);
+  --risk: #d1242f;
+  --risk-soft: rgba(209, 36, 47, .1);
+  --ok: #1a7f37;
+  --add-tint: #dafbe1;
+  --add-word: #aceebb;
+  --del-tint: #ffebe9;
+  --del-word: rgba(255, 129, 130, .4);
+  --target: #fff8c5;
+  --shadow: 0 8px 24px rgba(140, 149, 159, .2);
+  --hl-kw: #cf222e; --hl-str: #0a3069; --hl-num: #0550ae; --hl-com: #59636e;
+  --hl-fn: #8250df; --hl-type: #953800; --hl-attr: #0550ae;
+  --hunk: #ddf4ff;
+}
+[data-palette="github"] .hljs-comment, [data-palette="github"] .hljs-quote { font-style: normal; }
 
 [data-motion="off"] { --dur: 0ms; }
 [data-motion="off"] *, [data-motion="off"] *::before, [data-motion="off"] *::after { animation: none !important; transition: none !important; }
