@@ -224,12 +224,12 @@ export default {
       }
       fileLinks = { prev, next };
       const files = [...M.files].sort((a, b) => BANDS.indexOf(a.band) - BANDS.indexOf(b.band) || a.order - b.order);
-      for (const f of files) {
-        const v = views.get(f.path);
-        v.el.style.height = "";
-        v.h = Math.min(MAX_H, v.el.offsetHeight);
-        v.el.style.height = `${v.h}px`;
-      }
+      // Measure every viewer in one layout: all writes, then all reads, then all writes. Interleaving them
+      // forced a full layout per file.
+      const vs = files.map((f) => views.get(f.path));
+      for (const v of vs) v.el.style.height = "";
+      for (const v of vs) v.h = Math.min(MAX_H, v.el.offsetHeight);
+      for (const v of vs) v.el.style.height = `${v.h}px`;
       const edges = [...next].flatMap(([a, bs]) => [...bs].map((b) => [a.path, b.path]));
       const L = layered(files.map((f) => f.path), edges, { h: (p) => views.get(p).h, gap: GY, compGap: GY * 2 + TOP });
       columns = [];
