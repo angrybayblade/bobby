@@ -113,17 +113,17 @@ document.addEventListener("keydown", (ev) => {
     return;
   }
   const k = ev.key;
-  if (current?.keys?.[k]) { ev.preventDefault(); current.keys[k](); return; }
+  if (current?.keys?.[k]) { ev.preventDefault(); app.useKey(k === "Escape" ? "esc" : k); current.keys[k](); return; } // counted, so its hint fades too
   const page = () => app.pageEl?.isConnected; // the focused node's code is on screen (page or card)
   const act = {
     j: () => app.step(1), ArrowDown: () => app.step(1), ArrowRight: () => app.step(1), " ": () => app.step(1),
     k: () => app.step(-1), ArrowUp: () => app.step(-1), ArrowLeft: () => app.step(-1),
     J: () => app.stepCore(1), K: () => app.stepCore(-1),
     n: () => app.nextUnreviewed(),
-    F: () => app.nextFlagged() || chrome.toast("Nothing flagged yet. Skim at the core level and press <kbd>f</kbd> on anything worth a closer look.", 5000),
+    F: () => app.nextFlagged() || chrome.toast("Nothing flagged yet. Skim at the core level and press <kbd>x</kbd> on anything worth a closer look.", 5000),
     a: () => { app.mark(app.focus, "reviewed"); app.nextUnreviewed(); },
     u: () => app.mark(app.focus, null),
-    f: () => app.mark(app.focus, app.isFlagged(app.focus) ? null : "flagged"),
+    x: () => app.mark(app.focus, app.isFlagged(app.focus) ? null : "flagged"), // f is focus mode in every view
     c: () => { if (page()) return startComment(app, app.pageEl); app.setLevel(2); setTimeout(() => page() && startComment(app, app.pageEl)); },
     m: () => { if (page()) return startComment(app, app.pageEl, "note"); app.setLevel(2); setTimeout(() => page() && startComment(app, app.pageEl, "note")); },
     e: () => page() && expandAll(app, app.pageEl),

@@ -9,30 +9,31 @@ There are four views of the same review. Switch with `v` or the toggle in the he
 | [Lens](#lens) | The focus in the centre, its neighbours either side | Maximum focus |
 | [Diff](#diff) | One diff viewer per file, laid out as a graph | Reading real diffs without losing the thread |
 
-All views share the three zoom levels (Overview → Core → Page) described in [Reviewing](reviewing.md#zoom-levels).
+All views share the three zoom levels (Overview → Core → Page) described in [Reviewing](reviewing.md#zoom-levels), the same compact, GitHub-like code, and the same keys: `f` focus mode, `g` full screen, `esc` back exactly as you were, and arrows that follow the view's shape (edges in Flow, Lens and Diff; the tree in Outline).
 
 ## Flow
 
-A canvas laid out left to right: relies on ← core → affects, with cores stacked.
+A canvas of pages with cores stacked. Each core is laid out as a graph, like Diff's files: a page sits one column right of what leads into it, so a chain reads left to right, and its band (relies on · untouched, core, affects · changed, …) is a chip on its card.
 
-- Nodes are **sized by relevance**: the focus is big, its neighbours are medium, and the rest are small. Long bands fold into "+N".
+- Nodes are **sized by relevance**: the focus is big, its neighbours are medium, and the rest are small and sit back. Long columns fold into "+N", always keeping the focus and its neighbours.
 - Edges are labelled with the relationship, such as "uses `retryMethods`".
 - At **Core**, the focused node's card shows its comments and code. At **Page**, the page takes over the stage.
-- The camera glides between levels. Drag the background or scroll to pan. Click a node to focus it, click it again to zoom in, click a core's heading to open that core, and click "+N" to unfold a band.
+- The camera glides between levels. Drag the background or scroll to pan, pinch or `ctrl`+scroll to zoom. Click a node to focus it, click it again to zoom in, click a core's heading to open that core, and click "+N" to unfold a column.
+- `f` fills the canvas with the focused card and its code at a reading size; scrolling reads its code, and `j`/`k` keep it filled.
 
 ## Outline
 
-A rail on the left lists the walk as a document: cores in order, with indentation for depth in the tree, and distant cores folded. The pane on the right shows:
+A rail on the left lists the cores in order, with the open core as a tree: each page nested under the page it attaches to, so it reads core → what it affects → what that affects, and core ← what it relies on ← what that relies on. The band and the relation show where they change, long lists fold per direction, and distant cores are folded. The pane on the right shows:
 
 - at **Overview**: the PR's story (intent and cores);
 - at **Core**: the current core's story;
 - at **Page**: the code page.
 
-Click any entry in the rail to focus it, or a core's heading to jump to its first unreviewed page.
+Click any entry in the rail to focus it, or a core's heading to jump to its first unreviewed page. `f` hides the rail so the reading pane takes the full width.
 
 ## Lens
 
-The focused page sits dead centre. What it relies on fans in from the left, and what it affects fans out to the right. Everything else is hidden. Walking re-centres the lens. At **Core**, the centre card shows the focus's comments and code. Click a neighbour to step to it.
+The focused page sits dead centre. What it relies on fans in from the left, and what it affects fans out to the right. Everything else is hidden. Walking re-centres the lens. At **Core**, the centre card shows the focus's comments and code. Click a neighbour to step to it. `f` gives the centre card the whole stage.
 
 ## Diff
 

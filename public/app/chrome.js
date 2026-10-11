@@ -104,15 +104,13 @@ const HINTS = [
 ];
 const HINTS_BY_LEVEL = {
   0: [[["j", "k"], "step"], [["enter"], "open core"], [["v"], "switch view"]],
-  1: [[["j", "k"], "step"], [["f"], "flag for later"], [["a"], "looks good →"], [["c"], "comment"], [["e"], "open / more"], [["enter"], "read page"], [["esc"], "overview"]],
-  2: [[["j", "k"], "next / back"], [["a"], "looks good →"], [["f"], "flag"], [["c"], "comment"], [["e"], "open / more"], [["p"], "park a thought"], [["esc"], "zoom out"]],
+  1: [[["j", "k"], "step"], [["f"], "focus"], [["g"], "full screen"], [["x"], "flag for later"], [["a"], "looks good →"], [["c"], "comment"], [["e"], "open / more"], [["esc"], "overview"]],
+  2: [[["j", "k"], "next / back"], [["g"], "back"], [["a"], "looks good →"], [["x"], "flag"], [["c"], "comment"], [["e"], "open / more"], [["p"], "park a thought"], [["esc"], "zoom out"]],
 };
 function renderKeys() {
   const mode = app.settings.hints;
   const uses = app.settings.hintUses ?? {};
-  const diff = ([ks, label]) => [ks, app.viewId === "diff" && ks[0] === "f" ? "focus file" : label]; // in Diff, f fills the screen
-  const extra = app.viewId === "diff" ? [[["g"], app.level === 2 ? "back to files" : "full screen"]] : [];
-  const list = [...(HINTS_BY_LEVEL[app.level] ?? HINTS).map(diff), ...extra].filter(([ks]) => mode === "always" || (mode === "fade" && ks.some((k) => (uses[k] ?? 0) < 5)));
+  const list = (HINTS_BY_LEVEL[app.level] ?? HINTS).filter(([ks]) => mode === "always" || (mode === "fade" && ks.some((k) => (uses[k] ?? 0) < 5)));
   $("#keys").innerHTML = mode === "never" ? `<span><kbd>?</kbd> keys</span>`
     : [...list, [["?"], "all keys"]].map(([ks, label]) => `<span>${ks.map((k) => `<kbd>${k}</kbd>`).join(" ")} ${label}</span>`).join("");
 }
@@ -132,14 +130,15 @@ export function help() {
   open(`<h2>How the walk works</h2>
     <p>Each core change comes with its surroundings, in this order: <b>untouched code it relies on</b> → <b>changed code it relies on</b> → <b>the core</b> → <b>changed code it affects</b> → <b>untouched code it affects</b>. Solid dots ● are changed code, hollow ○ are untouched, and ◆ is the core.</p>
     <table>
-      ${r("j k", "next / previous page (space too; arrows too, except in Diff)")}
-      ${r("← → ↑ ↓", "in Diff: → / ← follow edges to a file this one leads into / comes from, ↑ ↓ the file above / below")}
+      ${r("j k", "next / previous page (space too)")}
+      ${r("← → ↑ ↓", "follow the shape: → / ← along edges to what this leads into / comes from (Outline: first nested page / parent), ↑ ↓ within the column (Lens: siblings; Outline: rows)")}
       ${r("J K", "next / previous core")}
       ${r("n", "next unreviewed")}
       ${r("a", "looks good: mark reviewed and move on")}
       ${r("u", "un-mark")}
-      ${r("f", "flag to come back to · in Diff: focus, the file fills the screen; again to go back")}
-      ${r("g", "in Diff: open this file full screen, with what it relies on and affects; again to go back")}
+      ${r("f", "focus: what you're on fills the screen with its code; again (or esc) to go back as you were")}
+      ${r("g", "full screen page; again (or esc) to go back as you were")}
+      ${r("x", "flag to come back to")}
       ${r("F", "next flagged: skim and flag first, then go deep")}
       ${r("c", "comment (click a line first, or it picks one)")}
       ${r("m", "private note on a line: only you see it, never posted")}

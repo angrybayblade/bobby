@@ -49,12 +49,14 @@ The breadcrumb bar shows where you are (`repo #n › core › page`) and the cur
 
 | Key | |
 |---|---|
-| `j` / `k` (or space; arrows outside Diff) | Next / previous page |
+| `j` / `k` (or space) | Next / previous page, in walk order |
+| Arrows | Follow the view's shape: → / ← along edges to what this leads into / comes from, ↑ / ↓ within the column. In Lens ↑ / ↓ move between siblings; in Outline → / ← go to the first nested page / the parent and ↑ / ↓ move between rows. |
 | `J` / `K` | Next / previous core |
 | `n` | Next page you haven't reviewed |
 | `m` / `M` | Private note on a line / your notes panel |
 | `v` | Switch view (Flow → Outline → Lens → Diff) |
-| `g` | In Diff: open the file you're on full screen; again to go back |
+| `f` | Focus: what you're on fills the screen with its code (Flow, Lens and Diff: the card or file; Outline: the reading pane takes the full width). Again, or `esc`, to go back exactly as you were. |
+| `g` | Full screen page for what you're on; again, or `esc`, to go back exactly as you were |
 | `d` | Diff layout for every file: inline or split (old beside new). Also the **Inline / Split** switch under the header; a file's own button switches just that file. |
 | `?` | All keys |
 
@@ -65,7 +67,7 @@ The breadcrumb bar shows where you are (`repo #n › core › page`) and the cur
 | Key | |
 |---|---|
 | `a` | Looks good: mark reviewed and go to the next unreviewed page |
-| `f` | Flag to come back to (press again to clear). In Diff, `f` is focus instead: the file fills the screen. |
+| `x` | Flag to come back to (press again to clear) |
 | `F` | Next flagged page |
 | `u` | Un-mark |
 | **Viewed** (Diff) | Toggle one section viewed, without moving on. ✓ in a file's header marks or clears the whole file. |
@@ -74,7 +76,7 @@ The header shows progress through the core you're in (`core 3 ▬ 2/5`) next to 
 
 **Finishing a core** gets a short recap: pages, flags and notes from that core, how many cores are done, and the next core with its hook.
 
-**Two passes.** For a big core, skim first: at the Core level every page is a title and a why, so step through with `j` and press `f` on anything worth a closer look. Then press `F` to jump between flagged pages for the deep read.
+**Two passes.** For a big core, skim first: at the Core level every page is a title and a why, so step through with `j` and press `x` on anything worth a closer look. Then press `F` to jump between flagged pages for the deep read.
 
 Marks are stored by the **content** of each hunk, not its position. After a force-push, hunks that didn't change stay reviewed, and only new or changed code comes back.
 
