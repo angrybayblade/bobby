@@ -54,6 +54,7 @@ The breadcrumb bar shows where you are (`repo #n › core › page`) and the cur
 | `n` | Next page you haven't reviewed |
 | `m` / `M` | Private note on a line / your notes panel |
 | `v` | Switch view (Flow → Outline → Lens → Diff) |
+| `g` | In Diff: open the file you're on full screen; again to go back |
 | `d` | Diff layout for every file: inline or split (old beside new). Also the **Inline / Split** switch under the header; a file's own button switches just that file. |
 | `?` | All keys |
 

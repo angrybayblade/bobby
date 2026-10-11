@@ -71,7 +71,7 @@ Once you're in a viewer (you clicked it, or stepped into it with `j`/`k`), every
 | Two fingers on a touchscreen | Pan and zoom, even over code |
 | Drag a viewer's header | Move the viewer (kept until you reload) |
 | Click a header | Make that file the one you're reading (drag the header to move it instead) |
-| Double-click a header, or ⤢ | Expand that file to full screen |
+| Double-click a header, ⤢, or `g` | Expand that file to full screen (`g` again, or `esc`, goes back) |
 | ✓ in a header | Mark every section in the file viewed (or clear them) |
 | ✎ in a header | Private note on the whole file |
 | **Viewed** on a section | Mark that section viewed (or clear it) |

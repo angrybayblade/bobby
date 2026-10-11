@@ -784,6 +784,7 @@ export default {
       ArrowUp: () => moveFile(0, -1), ArrowDown: () => moveFile(0, 1),
       f: () => { if (app.level < 2) return fill(); app.setLevel(1); setTimeout(fill, 60); }, // from the page, back to the canvas, filled
       Escape: () => (filled && app.level < 2 ? fill() : app.setLevel(app.level - 1)), // focus mode: back to the canvas as it was
+      g: () => { if (app.level === 2) return app.setLevel(1); const act = activeFile(); if (act) openFocus(act.path); }, // full screen and back
     };
 
     return { update, keys, destroy() { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); } };
