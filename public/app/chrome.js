@@ -137,6 +137,7 @@ export function help() {
       ${r("u", "un-mark")}
       ${r("f", "flag to come back to")}
       ${r("F", "next flagged: skim and flag first, then go deep")}
+      ${r("F", "in Diff: fill the screen with this file, centred; again to go back")}
       ${r("c", "comment (click a line first, or it picks one)")}
       ${r("m", "private note on a line: only you see it, never posted")}
       ${r("M", "your notes: on the whole PR, plus a list of all of them")}

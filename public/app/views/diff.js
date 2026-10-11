@@ -535,6 +535,20 @@ export default {
       pan = { x: 0, y: 0 };
       apply();
     }
+    // Shift+F: the focused file as large as it goes while it still fits the width, centred. Again to go back.
+    let filled = null;
+    function fill() {
+      const act = activeFile(), v = act && views.get(act.path);
+      if (!v) return;
+      if (filled?.path === act.path && filled.s === cam.s && !pan.x && !pan.y) { cam = filled.prev; filled = null; return apply(); }
+      const sw = stage.clientWidth, sh = stage.clientHeight, PAD = 24;
+      const s = Math.max(0.15, Math.min(2, (sw - PAD * 2) / W)), h = (v.h + TOP) * s;
+      const prev = { ...cam, tx: cam.tx + pan.x, ty: cam.ty + pan.y };
+      cam = { s, tx: sw / 2 - (v.x + W / 2) * s, ty: h > sh - PAD * 2 ? PAD - (v.y - TOP) * s : sh / 2 - (v.y - TOP + (v.h + TOP) / 2) * s };
+      pan = { x: 0, y: 0 };
+      filled = { path: act.path, s, prev };
+      apply();
+    }
     function apply() { world.style.transform = `translate(${cam.tx + pan.x}px, ${cam.ty + pan.y}px) scale(${cam.s})`; }
     // Zoom by k around a point on the stage, keeping whatever is under it in place.
     function zoomAt(k, px, py) {
@@ -703,6 +717,7 @@ export default {
     const keys = {
       ArrowLeft: () => moveFile(-1, 0), ArrowRight: () => moveFile(1, 0),
       ArrowUp: () => moveFile(0, -1), ArrowDown: () => moveFile(0, 1),
+      F: () => { if (app.level < 2) return fill(); app.setLevel(1); setTimeout(fill, 60); }, // from the page, back to the canvas, filled
     };
 
     return { update, keys, destroy() { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); } };
