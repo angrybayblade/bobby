@@ -133,6 +133,7 @@ export function help() {
       ${r("j k", "next / previous page (space too)")}
       ${r("← → ↑ ↓", "follow the shape: → / ← along edges to what this leads into / comes from (Outline: first nested page / parent), ↑ ↓ within the column (Lens: siblings; Outline: rows)")}
       ${r("J K", "next / previous core")}
+      ${r("shift 1", "back to the entry point: the unreviewed core with the least around it, where a load starts")}
       ${r("n", "next unreviewed")}
       ${r("a", "looks good: mark reviewed and move on")}
       ${r("u", "un-mark")}
@@ -241,8 +242,10 @@ function saveNote(note) {
 }
 
 /** Shown on load when there's progress to return to: cheap re-entry after an interruption. */
-export function reentry() {
-  const loc = app.get(app.focus);
+let resumeTo = null;
+export function reentry(pid, level) {
+  resumeTo = { pid, level };
+  const loc = app.get(pid);
   const { done, total } = app.progress();
   const flagged = app.index.walk.filter((p) => p !== DONE && app.isFlagged(p)).length;
   const ago = app.state.lastSeenAt ? timeAgo(new Date(app.state.lastSeenAt)) : "";
@@ -250,7 +253,7 @@ export function reentry() {
     <p>${done} of ${total} reviewed${flagged ? ` · ${flagged} flagged` : ""}${app.state.comments.length ? ` · ${app.state.comments.length} draft comment(s)` : ""}${ago ? ` · last here ${ago}` : ""}</p>
     ${loc ? `<div class="where"><span style="color:var(--muted);font-size:13px">You were in core ${loc.ci + 1}, <b style="display:inline;font-family:inherit">${esc(loc.core.title)}</b>, on ${esc(BAND_TEXT[loc.pl.band].toLowerCase())}:</span><b>${esc(loc.pl.title)}</b></div>` : ""}
     ${app.state.note ? `<div class="parked">📌 ${esc(app.state.note)}</div>` : ""}
-    <div class="row"><button class="btn primary" data-act="close">Continue <kbd style="margin-left:6px">enter</kbd></button><button class="btn" data-act="overview">See the overview first</button></div>`, "reentry");
+    <div class="row"><button class="btn primary" data-act="close">Start at the entry point <kbd style="margin-left:6px">enter</kbd></button><button class="btn" data-act="resume">Back to where you were</button><button class="btn" data-act="overview">See the overview first</button></div>`, "reentry");
 }
 
 function timeAgo(d) {
@@ -353,6 +356,7 @@ function onClick(ev) {
     "add-note": () => addGlobalNote(),
     note: park,
     overview: () => { close(); app.setLevel(0); },
+    resume: () => { close(); if (resumeTo) app.setFocus(resumeTo.pid, { level: resumeTo.level }); },
     "switch-tree": () => app.switchTree(),
     "save-note": () => saveNote($("#note").value.trim()),
     "clear-note": () => saveNote(""),

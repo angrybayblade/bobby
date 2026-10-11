@@ -86,19 +86,19 @@ async function poll() {
 }
 if (app.llm === "pending") poll();
 
-// ---- start: resume where you were, else the first unreviewed page
+// ---- start: at the entry point (the unreviewed core with the least around it), on every load. Where you were last is
+// offered on the welcome-back card instead of being jumped to.
 const lastNode = session.state.lastNodeId;
 const resume = lastNode && [...app.index.placement.values()].find((x) => x.pl.node === lastNode && !x.pl.repeatOf)?.pl.id;
-// First time on this PR: start at the easiest entry point, the core with the least around it.
-const entry = resume ? null : app.entryPoint();
-app.focus = resume ?? entry?.pid ?? app.index.walk.find((p) => p !== DONE && !app.isReviewed(p)) ?? app.index.walk[0];
-app.level = resume ? (session.state.lastLevel ?? 2) : entry ? 1 : 0;
+const entry = app.entryPoint();
+app.focus = entry?.pid ?? resume ?? app.index.walk.find((p) => p !== DONE && !app.isReviewed(p)) ?? app.index.walk[0];
+app.level = entry ? 1 : resume ? (session.state.lastLevel ?? 2) : 0;
 const hash = new URLSearchParams(location.hash.slice(1)); // deep links for testing: #view=lens&level=1&p=5
 if (hash.has("level")) app.level = Number(hash.get("level"));
 if (hash.has("p")) app.focus = app.index.walk[Number(hash.get("p")) - 1] ?? app.focus;
 mount(hash.get("view") ?? app.settings.view);
 chrome.init(app, views);
-if (resume && !hash.has("p") && (app.progress().done > 0 || session.state.note)) chrome.reentry();
+if (resume && resume !== app.focus && !hash.has("p") && (app.progress().done > 0 || session.state.note)) chrome.reentry(resume, session.state.lastLevel ?? 2);
 else if (entry && !hash.has("p")) {
   const deps = entry.deps === 1 ? "1 thing" : `${entry.deps} things`;
   chrome.coreIntro(app.get(entry.pid), `<span style="color:var(--muted);font-size:13px">Start here: the core with the least around it (${deps} it relies on or affects). <kbd>esc</kbd> for the overview.</span>`);
@@ -112,7 +112,7 @@ document.addEventListener("keydown", (ev) => {
     if (ev.key === "Escape" || ev.key === "Enter") { ev.preventDefault(); chrome.close(); }
     return;
   }
-  const k = ev.key;
+  const k = ev.shiftKey && ev.code === "Digit1" ? "!" : ev.key; // shift+1, whatever the layout prints
   if (current?.keys?.[k]) { ev.preventDefault(); app.useKey(k === "Escape" ? "esc" : k); current.keys[k](); return; } // counted, so its hint fades too
   const page = () => app.pageEl?.isConnected; // the focused node's code is on screen (page or card)
   const act = {
@@ -132,6 +132,7 @@ document.addEventListener("keydown", (ev) => {
     v: () => app.switchView(views[(views.findIndex((v) => v.id === currentId) + 1) % views.length].id),
     s: () => chrome.submit(), "?": () => chrome.help(), ",": () => chrome.settings(), p: () => chrome.park(), M: () => chrome.notes(),
     R: () => app.switchTree(),
+    "!": () => { const e = app.entryPoint(); if (e) app.setFocus(e.pid, { level: 1 }); }, // back to the entry point
     d: () => app.toggleLayout(),
   }[k];
   if (act) { ev.preventDefault(); app.useKey(k === "Enter" ? "enter" : k === "Escape" ? "esc" : k); act(); }

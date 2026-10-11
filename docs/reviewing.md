@@ -52,6 +52,7 @@ The breadcrumb bar shows where you are (`repo #n › core › page`) and the cur
 | `j` / `k` (or space) | Next / previous page, in walk order |
 | Arrows | Follow the view's shape: → / ← along edges to what this leads into / comes from, ↑ / ↓ within the column. In Lens ↑ / ↓ move between siblings; in Outline → / ← go to the first nested page / the parent and ↑ / ↓ move between rows. |
 | `J` / `K` | Next / previous core |
+| `shift`+`1` | Back to the entry point: the unreviewed core with the least around it, where every load starts |
 | `n` | Next page you haven't reviewed |
 | `m` / `M` | Private note on a line / your notes panel |
 | `v` | Switch view (Flow → Outline → Lens → Diff) |
@@ -115,7 +116,7 @@ Press `s`. Add an optional summary, then choose **Comment**, **Approve** or **Re
 ## Staying focused
 
 - **Park a thought (`p`).** Before you get pulled away, jot down what's in your head. It shows as a 📌 in the breadcrumb bar and on the welcome-back card.
-- **Welcome back.** When you reopen a PR you've made progress on, a card shows where you were, your progress, flags, drafts and your parked thought. `enter` continues; "See the overview first" zooms out.
+- **Welcome back.** Every load starts at the **entry point**, the unreviewed core with the least around it, at the Core level. When you've made progress on the PR, a card shows where you were, your progress, flags, drafts and your parked thought: `enter` starts at the entry point, "Back to where you were" jumps there, and "See the overview first" zooms out. `shift`+`1` goes back to the entry point at any time.
 - **Drift prompt.** After 90 seconds without input on a page, a small box asks where your head is. Type a line and press `enter` to park it, or ignore it. One prompt per page visit; it can be turned off in settings.
 - **Back after a while.** After more than 8 minutes away (tab hidden or no input), a recap shows the page you were on, the two before it, your parked thought, and the core's hook.
 - **Rabbit-hole nudge.** After 12 active minutes on one page (configurable, or off), it asks whether you're still in the right place: **Flag & move on**, or **Keep going**. Once per page visit.
