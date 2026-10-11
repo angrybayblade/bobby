@@ -111,17 +111,38 @@ function fileLines(app, path, rerender) {
 }
 
 // ---- rendering
-function row(app, { t, o, n }, html, target) {
+function row(app, { t, o, n }, html, target, half) {
   const side = t === "-" ? "LEFT" : "RIGHT";
   const line = t === "-" ? o : n;
   const key = `${target.path}|${side}|${line}`;
   const cls = t === "+" ? "add" : t === "-" ? "del" : t === "x" ? "exp" : "ctx";
+  const mirror = half === "L" && t !== "-"; // the left copy of an unchanged line in split view: the right copy carries its marks
   const at = (c) => c.path === target.path && c.side === side && c.line === line;
-  const count = app.state.comments.filter(at).length + (app.graph.discussion ?? []).filter(at).length + app.state.notes.filter(at).length;
-  const composing = app.page.composing?.key === key;
-  return `<div class="ln ${cls}${count ? " hasc" : ""}${app.page.sel?.key === key ? " sel" : ""}${target.hi === n && t !== "-" ? " target" : ""}" data-key="${esc(key)}" data-path="${esc(target.path)}" data-line="${line}" data-side="${side}" data-indiff="${target.inDiff && t !== "x" ? 1 : 0}">
-    <span class="bar"></span><span class="no">${o ?? ""}</span><span class="no">${n ?? ""}</span><span class="sg">${t === "+" ? "+" : t === "-" ? "−" : ""}</span><code${count ? ` data-cn="${count}"` : ""}>${html}</code></div>`
+  const count = mirror ? 0 : app.state.comments.filter(at).length + (app.graph.discussion ?? []).filter(at).length + app.state.notes.filter(at).length;
+  const nums = half === "L" ? `<span class="no">${o ?? ""}</span>` : half === "R" ? `<span class="no">${n ?? ""}</span>` : `<span class="no">${o ?? ""}</span><span class="no">${n ?? ""}</span>`;
+  const composing = !half && app.page.composing?.key === key;
+  return `<div class="ln ${cls}${count ? " hasc" : ""}${!mirror && app.page.sel?.key === key ? " sel" : ""}${!mirror && target.hi === n && t !== "-" ? " target" : ""}" data-key="${esc(key)}" data-path="${esc(target.path)}" data-line="${line}" data-side="${side}" data-indiff="${target.inDiff && t !== "x" ? 1 : 0}">
+    <span class="bar"></span>${nums}<span class="sg">${t === "+" ? "+" : t === "-" ? "−" : ""}</span><code${count ? ` data-cn="${count}"` : ""}>${html}</code></div>`
     + (composing ? composer(app.page.composing) : "");
+}
+/** Diff lines as rows: one column (inline), or old beside new (split), pairing each run of removals with the additions after it. */
+function diffRows(app, lines, html, target) {
+  if (app.settings.diffLayout !== "split") return lines.map((l, i) => row(app, l, html[i], target)).join("");
+  const pair = (L, R) => {
+    const cell = (i, half) => i == null ? `<div class="ln none"></div>` : row(app, lines[i], html[i], target, half);
+    const c = app.page.composing;
+    const composing = c && [L, R].some((i) => i != null && c.key === `${target.path}|${lines[i].t === "-" ? "LEFT" : "RIGHT"}|${lines[i].t === "-" ? lines[i].o : lines[i].n}`);
+    return `<div class="srow">${cell(L, "L")}${cell(R, "R")}</div>${composing ? composer(c) : ""}`;
+  };
+  let out = "";
+  for (let i = 0; i < lines.length;) {
+    if (lines[i].t !== "-" && lines[i].t !== "+") { out += pair(i, i); i++; continue; }
+    const d = [], a = [];
+    while (i < lines.length && lines[i].t === "-") d.push(i++);
+    while (i < lines.length && lines[i].t === "+") a.push(i++);
+    for (let k = 0; k < Math.max(d.length, a.length); k++) out += pair(d[k], a[k]);
+  }
+  return out;
 }
 // A line can take a GitHub draft or a private note; c.file composes a note on a whole file (notes only).
 function composer(c) {
@@ -239,7 +260,7 @@ function hunkBox(app, h, rerender, opts = {}) {
     if (!file || to < from) return "";
     const nums = []; for (let n = from; n <= Math.min(to, file.length); n++) nums.push(n);
     const html = hlBlock(nums.map((n) => file[n - 1] ?? ""), langOf(h.file));
-    return nums.map((n, i) => row(app, { t: "x", o: n + offset, n }, html[i], target)).join("");
+    return diffRows(app, nums.map((n) => ({ t: "x", o: n + offset, n })), html, target);
   };
   const html = hunkHtml(h);
   let a = 0, d = 0; for (const l of h.lines) l.t === "+" ? a++ : l.t === "-" ? d++ : 0;
@@ -250,7 +271,7 @@ function hunkBox(app, h, rerender, opts = {}) {
   return `<div class="code">
     ${head}
     ${canExpand && h.newStart > 1 ? `<button class="more" data-exp="${h.id}:above">⋯ more above</button>` : ""}
-    <div class="lines">${ctxRows(Math.max(1, h.newStart - e.above), h.newStart - 1, h.oldStart - h.newStart)}${h.lines.map((l, i) => row(app, l, html[i], target)).join("")}${ctxRows(lastN + 1, lastN + e.below, lastO - lastN)}</div>
+    <div class="lines">${ctxRows(Math.max(1, h.newStart - e.above), h.newStart - 1, h.oldStart - h.newStart)}${diffRows(app, h.lines, html, target)}${ctxRows(lastN + 1, lastN + e.below, lastO - lastN)}</div>
     ${canExpand ? `<button class="more" data-exp="${h.id}:below">⋯ more below</button>` : ""}
   </div>`;
 }

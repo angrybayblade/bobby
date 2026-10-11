@@ -96,12 +96,14 @@ const CSS = `
 .dv .code .more { padding: 0 10px 0 72px; font-size: 11px; line-height: 18px; background: var(--raised); opacity: .85; }
 .dv .lines { line-height: 1.55; }
 .dv .ln { grid-template-columns: 3px 34px 34px 14px 1fr; }
+.dv .srow > .ln { grid-template-columns: 3px 34px 14px minmax(0, 1fr); }
 .dv .ln .no { padding-right: 8px; }
 .dv .dfocus .lines { font-size: calc(var(--code-size) - 1px); }
 `;
 
 const BAND_LABEL = { upUnchanged: "relies on · untouched", upChanged: "relies on · changed", core: "core", downChanged: "affects · changed", downUnchanged: "affects · untouched" };
-const W = 840, MAX_H = 460, GX = 200, GY = 64, TOP = 34;
+let W = 840; // a viewer's width: wider in split layout, so each side keeps room
+const MAX_H = 460, GX = 200, GY = 64, TOP = 34;
 
 export default {
   id: "diff",
@@ -181,6 +183,7 @@ export default {
       const keep = new Map([...views].map(([p, v]) => [p, v.body.scrollTop]));
       world.innerHTML = `<svg class="edges"><defs><marker id="dv-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs><g class="bg"></g><g class="fg"></g></svg>`;
       views.clear(); drawn.clear(); secs.clear(); relShown = new Set();
+      W = app.settings.diffLayout === "split" ? 1280 : 840;
       M = model();
       if (!M.files.length) { world.innerHTML = `<div class="empty">Nothing to show</div>`; return; }
       for (const f of M.files) {

@@ -178,6 +178,12 @@ kbd {
 .ln.target { background: var(--target); } .ln.target .bar { background: var(--signal); }
 .ln.sel { box-shadow: inset 0 0 0 1px var(--signal); }
 .ln:hover .no { color: var(--muted); }
+/* Split diff: old on the left, new on the right; long lines wrap so the two sides stay in step. */
+.srow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.srow > .ln { grid-template-columns: 3px 44px 16px minmax(0, 1fr); min-width: 0; }
+.srow > .ln + .ln { border-left: 1px solid var(--line-soft); }
+.srow > .ln code { white-space: pre-wrap; overflow-wrap: anywhere; padding-right: 12px; }
+.ln.none { background: repeating-linear-gradient(135deg, transparent 0 6px, var(--line-soft) 6px 7px); cursor: default; }
 mark.wa { background: var(--add-word); color: inherit; border-radius: 2px; }
 mark.wd { background: var(--del-word); color: inherit; border-radius: 2px; }
 .ln.hasc code::after { content: "  ◂ " attr(data-cn); color: var(--signal); font: 600 11px var(--font-ui); }
