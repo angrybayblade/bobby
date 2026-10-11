@@ -21,10 +21,17 @@ const CSS = `
 /* Weight: what you're in and what it reaches (w-focus) > other changed files (w-semi) > untouched files (w-none).
    Until you're in a viewer, only untouched files sit back. */
 .dv .fv.w-none { opacity: .5; box-shadow: none; }
-.dv.engaged .fv.w-semi { opacity: .6; box-shadow: none; }
-.dv.engaged .fv.w-none { opacity: .3; }
+.dv.engaged .fv.w-semi { box-shadow: none; }
 .dv .fv.w-none:hover, .dv.engaged .fv.w-semi:hover { opacity: .9; }
 .dv .fv.w-focus { box-shadow: var(--shadow), 0 2px 12px rgba(0,0,0,.2); z-index: 3; }
+/* In a file (you clicked it, or stepped into it): only it and the files it relates to show code. The rest shrink to their
+   title bars, in place, and the faint lines between them go, so what's left is what bears on the file you're reading. */
+.dv.engaged .fv:not(.w-focus):not(.active) { height: auto !important; }
+.dv.engaged .fv:not(.w-focus):not(.active) > .fvb { display: none; }
+.dv.engaged .fv:not(.w-focus):not(.active) > .fvh { border-bottom: 0; }
+.dv.engaged .fv.w-semi { opacity: .85; }
+.dv.engaged .fv.w-none { opacity: .6; }
+.dv.engaged svg.edges .bg { display: none; }
 .dv .fv.active { border-style: solid; z-index: 3; } /* no border of its own: weight (opacity, shadow) says where you are */
 .dv .fvh { display: flex; gap: 10px; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--line-soft); font: 12.5px var(--font-code); color: var(--muted); cursor: grab; user-select: none; background: var(--raised); }
 .dv .fvh b { font-weight: 600; }

@@ -44,11 +44,11 @@ A canvas with one scrollable diff viewer per file, laid out as a graph: each fil
 
 | Weight | Which viewers | Looks |
 |---|---|---|
-| Focus | The viewer you're in, plus the files its edges reach | Full strength and lifted. Yours has a slightly stronger border. |
-| Semi-focus | Other changed files in the current core (at the Overview, all changed files) | 60% |
-| Background | Untouched files, and at the Core level changed files from other cores | 30% |
+| Focus | The viewer you're in, plus the files its edges reach | Full strength and lifted, with their code |
+| Semi-focus | Other changed files in the current core (at the Overview, all changed files) | Title bar only, 85% |
+| Background | Untouched files, and at the Core level changed files from other cores | Title bar only, 60% |
 
-Until you're in a viewer, changed files stay at full strength and untouched files at 50%. Hover a dimmed viewer to bring it up.
+Once you're in a viewer (you clicked it, or stepped into it with `j`/`k`), everything outside Focus shrinks to its title bar in place, keeping the file name, band and counts, and the faint background lines go. What's left showing code is what bears on the file you're reading. Click the background, or zoom out to the Overview, to bring every file back. Until you're in a viewer, every file shows its code: changed files at full strength and untouched ones at 50%. Hover a dimmed viewer to bring it up.
 
 **Edges.**
 - The sections visible in the file you're reading get **full edges**, with arrows and labels, to related sections in other files. Those files scroll to bring the other end into view.
