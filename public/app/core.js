@@ -195,7 +195,10 @@ export function createApp({ graph, session }) {
       const pool = linked.length ? linked : cores;
       pool.sort((x, y) => x.deps - y.deps || x.size - y.size);
       const best = pool[0];
-      return best && { pid: best.pages[0], deps: best.deps };
+      // Start at changed code: the core change itself, else the first changed page, never the context around it.
+      const changed = (p) => app.nodeOf(p)?.kind === "change";
+      const pid = best && (best.pages.find((p) => app.get(p).pl.band === "core") ?? best.pages.find(changed) ?? best.pages[0]);
+      return best && { pid, deps: best.deps };
     },
     /** `F`: the deep pass. Next flagged page after the focus, wrapping around. Returns false if nothing is flagged. */
     nextFlagged() {
