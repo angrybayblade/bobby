@@ -1,8 +1,8 @@
-// Flow: left→right node-link canvas of pages. Each core is laid out as a graph (a page sits one column right of
-// what leads into it; its band is a chip on the card), with degree-of-interest sizing (focus big, neighbours medium,
-// rest small, long columns folded into "+N"), labelled edges, and a camera that glides between overview → core → page.
+// Flow: each core as a left→right tree that starts at the change: core change → 1st-order effects → 2nd order → …,
+// every page hanging off the page it's reached from. What the core relies on sits in lanes to the left. Degree-of-
+// interest sizing (focus big, its first few neighbours medium, the rest small, long lists folded into "+N"), and a
+// camera that glides between overview → core → page.
 import { DONE, LOW, esc } from "../core.js";
-import { layered } from "./layered.js";
 
 const CSS = `
 .flow { position: absolute; inset: 0; display: grid; grid-template-rows: 1fr; }
@@ -15,7 +15,7 @@ const CSS = `
 .flow svg path.hot { stroke: var(--muted); stroke-width: 2; }
 .flow svg path.dim { opacity: .35; }
 .flow svg path.rep { stroke-dasharray: 4 4; }
-.flow .card, .flow .lbl, .flow .chead, .flow .bhead { position: absolute; left: 0; top: 0; transition: transform var(--dur) var(--ease), width var(--dur) var(--ease), height var(--dur) var(--ease), opacity var(--dur); }
+.flow .card, .flow .chead, .flow .colh { position: absolute; left: 0; top: 0; transition: transform var(--dur) var(--ease), width var(--dur) var(--ease), height var(--dur) var(--ease), opacity var(--dur); }
 .flow .card { border-radius: 3px; background: var(--surface); border: 1px solid var(--line); padding: 8px 12px; overflow: hidden; cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
 .flow .card:hover { border-color: var(--muted); }
 .flow .card .t { display: flex; align-items: center; gap: 8px; font: 500 13px/1.3 var(--font-code); white-space: nowrap; }
@@ -42,10 +42,12 @@ const CSS = `
 .flow .card.pinned > * { zoom: var(--fill, 1); }
 .flow .card.pinned .nbody { max-height: none; flex: 1; min-height: 0; }
 .flow .card.agg { background: none; border-style: dashed; color: var(--muted); font-size: 13px; justify-content: center; }
-.flow .lbl { font: 11.5px var(--font-ui); color: var(--muted); background: var(--bg); padding: 1px 6px; border-radius: 1px; white-space: nowrap; transform-origin: 50% 50%; }
 .flow .chead { font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; display: flex; gap: 10px; align-items: baseline; max-width: 1400px; }
 .flow .chead small { font-weight: 400; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
 .flow .chead.other { opacity: .45; }
+.flow .colh { z-index: 4; font: 600 10.5px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); white-space: nowrap; text-align: center; }
+.flow .colh.root { color: var(--signal); }
+.flow .colh.lane { opacity: .7; font-weight: 500; }
 .flow .card .t .bandc { font: 500 9.5px var(--font-ui); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); white-space: nowrap; padding: 0 5px; border: 1px solid var(--line-soft); border-radius: 1px; flex: none; }
 .flow .card.core .t .bandc { color: var(--text); border-color: var(--muted); }
 .flow .pane { overflow: auto; border-top: 1px solid var(--line); background: var(--bg); }
@@ -58,6 +60,8 @@ const CSS = `
 const GUTTER = 90, PAD = 40, GAP_Y = 12, CORE_GAP = 80, HEAD = 40, MAX_COL = 5;
 const SIZES = { focus: [290, 172], near: [250, 100], far: [230, 38], agg: [230, 34] };
 const BODY_W = 720; // focused card when it shows its code (core level only)
+const ORD = (n) => `${n}${n % 10 === 1 && n % 100 !== 11 ? "st" : n % 10 === 2 && n % 100 !== 12 ? "nd" : n % 10 === 3 && n % 100 !== 13 ? "rd" : "th"}`;
+const COL_HEAD = (d) => (d === -2 ? "relies on · untouched" : d === -1 ? "relies on · changed" : d === 0 ? "① core change" : `${ORD(d)} order`);
 const BAND_CHIP = { upUnchanged: "relies on · untouched", upChanged: "relies on · changed", core: "core", downChanged: "affects · changed", downUnchanged: "affects · untouched" };
 
 export default {
@@ -81,57 +85,113 @@ export default {
     function layout() {
       const focusLoc = app.get(app.focus);
       const body = withBody();
-      const items = [], heads = [], labels = [];
+      const items = [], heads = [];
       let y = 0, width = 0;
       const lowY = () => y;
       app.graph.cores.forEach((c) => {
         const current = focusLoc?.core === c && app.level > 0;
         const nb = current ? app.neighbours(app.focus) : { up: [], down: [] };
-        const near = new Set([...nb.up.map((e) => e.from), ...nb.down.map((e) => e.to)]);
-        const pls = app.corePlacements(c), ids = pls.map((pl) => pl.id), byId = new Map(pls.map((pl) => [pl.id, pl]));
-        const es = app.edgesOf(c.id).map((e) => [e.from, e.to]);
+        // Neighbours get medium cards, but only the first few each way: a core change with dozens would fill the screen.
+        const near = new Set([...nb.up.slice(0, MAX_COL).map((e) => e.from), ...nb.down.slice(0, MAX_COL).map((e) => e.to)]);
+        const pls = app.corePlacements(c), byId = new Map(pls.map((pl) => [pl.id, pl])), order = new Map(pls.map((pl, i) => [pl.id, i]));
+        const es = app.edgesOf(c.id);
+        const isUp = (pl) => pl.band.startsWith("up");
         const sizeOf = (pl) => (!current ? "far" : pl.id === app.focus ? "focus" : near.has(pl.id) ? "near" : "far");
         const dims = (pl) => (sizeOf(pl) === "focus" && body ? [BODY_W, bodyH] : SIZES[sizeOf(pl)]);
-        // Fold long columns into "+N": rank everything once, then keep the focus, its neighbours and the first few.
-        const ranks = layered(ids, es, { h: () => 40, gap: GAP_Y, compGap: GAP_Y }).rank;
-        const cols = new Map();
-        for (const id of ids) (cols.get(ranks.get(id)) ?? cols.set(ranks.get(id), []).get(ranks.get(id))).push(id);
-        const foldTo = new Map(), aggs = new Map();
-        for (const [r, list] of cols) {
-          const key = `${c.id}:r${r}`;
-          if (list.length <= MAX_COL + 1 || expanded.has(key)) continue;
-          const keep = (id) => !current || id === app.focus || near.has(id);
-          const must = list.filter(keep), rest = list.filter((id) => !keep(id));
-          const shown = new Set([...must, ...rest.slice(0, Math.max(0, MAX_COL - must.length))]);
-          const folded = list.filter((id) => !shown.has(id));
-          if (!folded.length) continue;
-          const agg = `agg:${key}`;
-          aggs.set(agg, { key, n: folded.length });
-          for (const id of folded) foldTo.set(id, agg);
+
+        // The flow is a tree rooted at the core change: every affected page hangs off the page it's reached from, so
+        // each column is one order further from the change. What the core relies on isn't part of the flow: it sits
+        // in lanes to the left (changed, then untouched), each card beside the page it feeds.
+        const roots = pls.filter((pl) => pl.band === "core").map((pl) => pl.id);
+        const parentOf = new Map(), feeds = new Map(), kids = new Map();
+        for (const pl of pls) {
+          if (pl.band === "core") continue;
+          if (isUp(pl)) { const e = es.find((x) => x.from === pl.id); if (e && byId.has(e.to)) feeds.set(pl.id, e.to); continue; }
+          const e = es.find((x) => x.to === pl.id), p = e?.from;
+          if (p && byId.has(p) && !isUp(byId.get(p))) parentOf.set(pl.id, p);
         }
-        const vis = [...ids.filter((id) => !foldTo.has(id)), ...aggs.keys()];
-        const ves = [...new Set(es.map(([a, b]) => `${foldTo.get(a) ?? a}\n${foldTo.get(b) ?? b}`))].map((k) => k.split("\n")).filter(([a, b]) => a !== b);
+        const addKid = (p, k) => (kids.get(p) ?? kids.set(p, []).get(p)).push(k);
+        for (const [k, p] of parentOf) addKid(p, k);
+        const depth = new Map();
+        const reach = (id, d) => { if (depth.has(id)) return; depth.set(id, d); for (const k of kids.get(id) ?? []) reach(k, d + 1); };
+        roots.forEach((r) => reach(r, 0));
+        for (const pl of pls) if (!isUp(pl) && !depth.has(pl.id)) { // on a cycle, or cut off: hang it off the first root
+          if (roots[0]) { const old = parentOf.get(pl.id); if (old) kids.set(old, kids.get(old).filter((k) => k !== pl.id)); parentOf.set(pl.id, roots[0]); addKid(roots[0], pl.id); reach(pl.id, 1); }
+          else { roots.push(pl.id); reach(pl.id, 0); }
+        }
+        for (const list of kids.values()) list.sort((a, b) => order.get(a) - order.get(b));
+
+        // Fold long lists of children into "+N", keeping the path to the focus and its neighbours.
+        const onPath = new Set(); for (let q = current ? app.focus : null; q; q = parentOf.get(q) ?? feeds.get(q)) { if (onPath.has(q)) break; onPath.add(q); }
+        const foldTo = new Map(), aggs = new Map(), shownKids = new Map();
+        for (const [p, list] of kids) {
+          const key = `${c.id}:k:${p}`;
+          let shown = list;
+          if (list.length > MAX_COL + 1 && !expanded.has(key)) {
+            const keep = (id) => onPath.has(id) || near.has(id);
+            const must = list.filter(keep), rest = list.filter((id) => !keep(id));
+            const pick = new Set([...must, ...rest.slice(0, Math.max(0, MAX_COL - must.length))]);
+            shown = list.filter((id) => pick.has(id));
+            const folded = list.filter((id) => !pick.has(id));
+            if (folded.length) {
+              const agg = `agg:${key}`;
+              aggs.set(agg, { key, n: folded.length });
+              const hide = (id) => { foldTo.set(id, agg); for (const k of kids.get(id) ?? []) hide(k); };
+              folded.forEach(hide);
+              shown = [...shown, agg];
+            }
+          }
+          shownKids.set(p, shown);
+        }
         const hOf = (id) => (aggs.has(id) ? SIZES.agg[1] : dims(byId.get(id))[1]);
-        const L = layered(vis, ves, { h: hOf, gap: GAP_Y, compGap: GAP_Y * 4 });
-        // Columns as wide as their widest card.
         const wOf = (id) => (aggs.has(id) ? SIZES.agg[0] : dims(byId.get(id))[0]);
-        const colW = [];
-        for (const id of vis) { const r = L.rank.get(id); colW[r] = Math.max(colW[r] ?? 0, wOf(id)); }
-        const colX = []; let acc = 0;
-        for (let r = 0; r < colW.length; r++) { colX[r] = acc; acc += (colW[r] ?? 0) + GUTTER; }
+
+        // Tidy tree: leaves stack down the page, each parent centred on its children.
+        const top = y + HEAD + (current ? 34 : 0);
+        const at = new Map(), colOf = new Map(), colBottom = new Map();
+        let cursor = top;
+        const lay = (id, d) => {
+          colOf.set(id, d);
+          const ch = shownKids.get(id) ?? [], h = hOf(id);
+          let cy;
+          if (!ch.length) cy = Math.max(cursor, colBottom.get(d) ?? top);
+          else { const mids = ch.map((k) => lay(k, d + 1)); cy = Math.max((mids[0] + mids[mids.length - 1]) / 2 - h / 2, colBottom.get(d) ?? top); }
+          at.set(id, cy);
+          colBottom.set(d, cy + h + GAP_Y);
+          cursor = Math.max(cursor, cy + h + GAP_Y);
+          return cy + h / 2;
+        };
+        for (const r of roots) lay(r, 0);
+        // The lanes: changed code it relies on (column -1), untouched (-2), beside what each one feeds.
+        for (const lane of [-1, -2]) {
+          const list = pls.filter((pl) => isUp(pl) && (lane === -1 ? pl.band === "upChanged" : pl.band === "upUnchanged"))
+            .map((pl) => pl.id).sort((a, b) => (at.get(feeds.get(a)) ?? 1e9) - (at.get(feeds.get(b)) ?? 1e9) || order.get(a) - order.get(b));
+          let bottom = top;
+          for (const id of list) {
+            const t = feeds.get(id), want = at.has(t) ? at.get(t) + hOf(t) / 2 - hOf(id) / 2 : bottom;
+            const cy = Math.max(want, bottom);
+            at.set(id, cy); colOf.set(id, lane); bottom = cy + hOf(id) + GAP_Y;
+          }
+        }
+        // Columns as wide as their widest card, from the leftmost lane in use.
+        const cols = [...new Set(colOf.values())].sort((a, b) => a - b), colW = new Map();
+        for (const [id, d] of colOf) colW.set(d, Math.max(colW.get(d) ?? 0, wOf(id)));
+        const colX = new Map(); let acc = 0;
+        for (const d of cols) { colX.set(d, acc); acc += colW.get(d) + GUTTER; }
         heads.push({ c, x: 0, y, current });
-        const top = y + HEAD;
+        if (current) for (const d of cols) heads.push({ col: d, x: colX.get(d), y: y + HEAD - 6, w: colW.get(d) });
         let bottom = top;
-        for (const id of vis) {
-          const r = L.rank.get(id), w = wOf(id), h = hOf(id), x = colX[r] + ((colW[r] ?? w) - w) / 2, cy = top + L.y.get(id);
+        for (const [id, d] of colOf) {
+          const w = wOf(id), h = hOf(id), x = colX.get(d) + (colW.get(d) - w) / 2, cy = at.get(id);
           bottom = Math.max(bottom, cy + h);
           if (aggs.has(id)) { const a = aggs.get(id); items.push({ kind: "agg", key: a.key, n: a.n, size: "agg", w, h, x, y: cy, current }); continue; }
           const pl = byId.get(id), size = sizeOf(pl);
-          items.push({ kind: "pl", pl, size, body: size === "focus" && !!body, w, h, x, y: cy, current, foldTo });
+          items.push({ kind: "pl", pl, size, body: size === "focus" && !!body, w, h, x, y: cy, current, col: d });
         }
         width = Math.max(width, acc);
         c._box = { x: -20, y, w: Math.max(acc, 400), h: bottom - y + 10 };
         c._foldTo = foldTo;
+        c._tree = { parentOf, feeds, kids: shownKids, roots };
         y = bottom + CORE_GAP;
       });
       if (app.graph.lowSignal.length) {
@@ -142,15 +202,14 @@ export default {
       // Edges between visible cards (folded endpoints route to the "+N" card).
       const pos = new Map(items.filter((i) => i.kind === "pl").map((i) => [i.pl.id, i]));
       const aggOf = (pid) => { const loc = app.get(pid); const a = loc && loc.core._foldTo?.get(pid); return a && items.find((i) => i.kind === "agg" && `agg:${i.key}` === a); };
-      const edges = [], said = new Set();
+      const edges = [];
       for (const e of app.graph.edges) {
         const a = pos.get(e.from) ?? aggOf(e.from), b = pos.get(e.to) ?? aggOf(e.to);
         if (!a || !b) continue;
         const hot = app.level > 0 && (e.from === app.focus || e.to === app.focus);
         edges.push({ e, a, b, hot, dim: !a.current, rep: !!(app.get(e.from).pl.repeatOf || app.get(e.to).pl.repeatOf) });
-        if (hot && e.label && !said.has(e.label) && said.add(e.label)) labels.push({ key: `${e.from}>${e.to}`, text: e.label, x: (a.x + a.w + b.x) / 2, y: (a.y + a.h / 2 + b.y + b.h / 2) / 2 });
       }
-      return { items, heads, edges, labels, height: y, width };
+      return { items, heads, edges, height: y, width };
     }
 
     function card(it) {
@@ -256,8 +315,6 @@ export default {
         return `<path class="${hot ? "hot" : ""} ${dim && !hot ? "dim" : ""} ${rep ? "rep" : ""}" d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}"/>`;
       }).join("");
 
-      // Labels sit centred on their point; measure after insertion.
-      for (const l of L.labels) { const n = els.get(`lbl:${l.key}`); n.style.transform = `translate(${l.x - n.offsetWidth / 2}px, ${l.y - 11}px)`; }
 
       lastL = L;
       if (filled && (app.level !== 1 || !L.items.some((i) => i.body))) unfill(false); // f only holds on the canvas, with code showing
@@ -284,6 +341,7 @@ export default {
     function placeAll(L) {
       for (const n of els.values()) n._seen = false;
       for (const h of L.heads) {
+        if (h.col != null) { place(`col:${h.col}`, `colh ${h.col === 0 ? "root" : h.col < 0 ? "lane" : ""}`, COL_HEAD(h.col), h.x, h.y, h.w, null); continue; }
         const items = app.index.walk.filter((p) => app.get(p)?.core === h.c);
         const done = items.filter((p) => app.isReviewed(p)).length;
         place(`ch:${h.c.id}`, `chead ${app.level > 0 && !h.current ? "other" : ""}`, `${app.graph.cores.indexOf(h.c) + 1} · ${esc(h.c.title)} <small>${done}/${items.length}${h.current || app.level === 0 ? ` · ${esc(h.c.summary)}` : ""}</small>`, h.x, h.y, null, null, { core: h.c.id });
@@ -294,7 +352,6 @@ export default {
         const pin = filled?.h && it.body; // the filled card keeps its size through updates
         place(key, `card ${c.cls}${pin ? " pinned" : ""}`, c.html, it.x, it.y, it.w, pin ? filled.h : it.body ? null : it.h, c.data, c.title);
       }
-      for (const l of L.labels) place(`lbl:${l.key}`, "lbl", esc(l.text), l.x - 40, l.y - 11, null, null);
       for (const [k, n] of els) if (!n._seen) { n.remove(); els.delete(k); }
     }
 
@@ -372,24 +429,21 @@ export default {
       update("measure"); // its own height again
     }
 
-    // ---- arrows follow edges: → to what this leads into, ← to what leads into it, ↑/↓ within its column
+    // ---- arrows follow the flow: → one order deeper (the first page reached from this one), ← back toward the core
+    // change (and from it, to what it relies on), ↑/↓ the page above or below in the same column.
     function move(dc, dr) {
-      const its = (lastL?.items ?? []).filter((i) => i.kind === "pl");
+      const loc = app.get(app.focus), t = loc?.core._tree;
+      const its = (lastL?.items ?? []).filter((i) => i.kind === "pl" && i.current);
       const at = its.find((i) => i.pl.id === app.focus);
-      if (!at) return;
-      const cx = (i) => i.x + i.w / 2, cy = (i) => i.y + i.h / 2;
-      const dist = (i) => Math.abs(cx(i) - cx(at)) + Math.abs(cy(i) - cy(at)) * 2;
+      if (!t || !at) return;
+      const shown = (id) => its.some((i) => i.pl.id === id);
       let to;
       if (dr) {
-        const col = its.filter((i) => Math.abs(cx(i) - cx(at)) < 2).sort((a, b) => a.y - b.y);
-        to = col[col.indexOf(at) + dr];
-      } else {
-        const nb = app.neighbours(app.focus), ids = new Set((dc > 0 ? nb.down.map((e) => e.to) : nb.up.map((e) => e.from)));
-        const linked = its.filter((i) => ids.has(i.pl.id));
-        const beside = its.filter((i) => (dc > 0 ? cx(i) > cx(at) + 2 : cx(i) < cx(at) - 2) && i.current === at.current);
-        to = [...(linked.length ? linked : beside)].sort((a, b) => dist(a) - dist(b))[0];
-      }
-      if (to) app.setFocus(to.pl.id);
+        const col = its.filter((i) => i.col === at.col).sort((a, b) => a.y - b.y);
+        to = col[col.indexOf(at) + dr]?.pl.id;
+      } else if (dc > 0) to = t.feeds.get(app.focus) ?? (t.kids.get(app.focus) ?? []).find(shown);
+      else to = t.parentOf.get(app.focus) ?? [...t.feeds].find(([, f]) => f === app.focus)?.[0];
+      if (to && shown(to)) app.setFocus(to);
     }
     const keys = {
       ArrowLeft: () => move(-1, 0), ArrowRight: () => move(1, 0), ArrowUp: () => move(0, -1), ArrowDown: () => move(0, 1),
