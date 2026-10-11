@@ -531,20 +531,25 @@ export default {
       const sw = stage.clientWidth, sh = stage.clientHeight, PAD = 40, s = cam.s;
       const left = (v.x * s) + cam.tx + pan.x, top = (v.y - TOP) * s + cam.ty + pan.y, w = W * s, h = (v.h + TOP) * s;
       if (app.level === 0 && left >= 0 && top >= 0 && left + w <= sw && top + h <= sh) return;
+      if (filled && filled.s === s) { filled.path = act.path; cam = { s, tx: sw / 2 - (v.x + W / 2) * s, ty: -v.y * s }; pan = { x: 0, y: 0 }; return apply(); } // still filled: same alignment
       cam = { s, tx: sw / 2 - (v.x + W / 2) * s, ty: h > sh - PAD * 2 ? PAD - (v.y - TOP) * s : sh / 2 - (v.y - TOP + (v.h + TOP) / 2) * s };
       pan = { x: 0, y: 0 };
       apply();
     }
-    // Shift+F: the focused file as large as it goes while it still fits the width, centred. Again to go back.
+    // Shift+F: the focused file as large as it goes while it still fits the width, top-aligned and centred. Again to go back.
     let filled = null;
     function fill() {
       const act = activeFile(), v = act && views.get(act.path);
       if (!v) return;
-      if (filled?.path === act.path && filled.s === cam.s && !pan.x && !pan.y) { cam = filled.prev; filled = null; return apply(); }
-      const sw = stage.clientWidth, sh = stage.clientHeight, PAD = 24;
-      const s = Math.max(0.15, Math.min(2, (sw - PAD * 2) / W)), h = (v.h + TOP) * s;
-      const prev = { ...cam, tx: cam.tx + pan.x, ty: cam.ty + pan.y };
-      cam = { s, tx: sw / 2 - (v.x + W / 2) * s, ty: h > sh - PAD * 2 ? PAD - (v.y - TOP) * s : sh / 2 - (v.y - TOP + (v.h + TOP) / 2) * s };
+      if (filled?.path === act.path && filled.s === cam.s && !pan.x && !pan.y) { // back out: the earlier zoom, on the file you're on now
+        const back = filled.prev; filled = null;
+        if (back.path === act.path) { cam = back; return apply(); }
+        cam = { ...cam, s: back.s }; return track();
+      }
+      const sw = stage.clientWidth, PAD = 24;
+      const s = Math.max(0.15, Math.min(2, (sw - PAD * 2) / W));
+      const prev = { s: cam.s, tx: cam.tx + pan.x, ty: cam.ty + pan.y, path: act.path };
+      cam = { s, tx: sw / 2 - (v.x + W / 2) * s, ty: -v.y * s }; // top edge flush with the stage, centred across
       pan = { x: 0, y: 0 };
       filled = { path: act.path, s, prev };
       apply();
