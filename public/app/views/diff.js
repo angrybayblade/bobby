@@ -82,6 +82,7 @@ const CSS = `
 .dv .rc .l { font: 11.5px var(--font-ui); color: var(--muted); margin-top: 3px; }
 .dv .rail .none { color: var(--faint); font-size: 13px; }
 .dv .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--faint); }
+.dv .fv.pinned { border: 0; border-radius: 0; box-shadow: none; z-index: 5; } /* filled: square, borderless, over edge labels */
 .dv .fv.pinned > .fvh, .dv .fv.pinned > .fvb { zoom: var(--fill, 1); } /* filled: the viewer is zoomed up, its contents back down */
 /* Compact, GitHub-like code: one box per file, slim hunk rows, a tight gutter. */
 .dv .fvh { gap: 8px; padding: 5px 6px 5px 10px; font-size: 12px; }
