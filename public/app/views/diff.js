@@ -27,7 +27,7 @@ const CSS = `
 /* In a file (you clicked it, or stepped into it): only it and the files it relates to show code. The rest keep their place
    and size, title bar included, but their code fades into the background: content-visibility skips drawing it, so nothing re-lays out or
    re-renders as you move. The faint lines between them go too, so what's left is what bears on the file you're reading. */
-.dv.engaged .fv:not(.w-focus):not(.active) > .fvb { content-visibility: hidden; background: var(--bg); }
+.dv.engaged .world .fv:not(.w-focus):not(.active) > .fvb { content-visibility: hidden; background: var(--bg); }
 .dv.engaged .fv.w-semi { opacity: .85; }
 .dv.engaged .fv.w-none { opacity: .6; }
 .dv.engaged svg.edges .bg { display: none; }
