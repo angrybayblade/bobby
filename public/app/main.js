@@ -44,6 +44,7 @@ const alive = new Map(); // view id → { inst, slot }
 let current = null, currentId = null;
 function mount(id) {
   const view = views.find((v) => v.id === id) ?? views[0];
+  el.querySelector(":scope > .empty")?.remove(); // the "Fetching the change tree…" placeholder from index.html
   if (current) {
     const a = alive.get(currentId);
     if (KEEP.has(currentId)) { current.hide?.(); a.slot.classList.add("parked"); }
