@@ -1,6 +1,8 @@
-// Flow: left→right node-link canvas. Degree-of-interest sizing (focus big, neighbours medium, rest small,
-// long bands folded into "+N"), labelled edges, and a camera that glides between overview → core → page.
-import { BANDS, DONE, LOW, esc } from "../core.js";
+// Flow: left→right node-link canvas of pages. Each core is laid out as a graph (a page sits one column right of
+// what leads into it; its band is a chip on the card), with degree-of-interest sizing (focus big, neighbours medium,
+// rest small, long columns folded into "+N"), labelled edges, and a camera that glides between overview → core → page.
+import { DONE, LOW, esc } from "../core.js";
+import { layered } from "./layered.js";
 
 const CSS = `
 .flow { position: absolute; inset: 0; display: grid; grid-template-rows: 1fr; }
@@ -37,10 +39,11 @@ const CSS = `
 .flow .card.other { opacity: .32; }
 .flow .card.agg { background: none; border-style: dashed; color: var(--muted); font-size: 13px; justify-content: center; }
 .flow .lbl { font: 11.5px var(--font-ui); color: var(--muted); background: var(--bg); padding: 1px 6px; border-radius: 1px; white-space: nowrap; transform-origin: 50% 50%; }
-.flow .chead { font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; display: flex; gap: 10px; align-items: baseline; max-width: ${5 * 320 - 60}px; }
+.flow .chead { font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; display: flex; gap: 10px; align-items: baseline; max-width: 1400px; }
 .flow .chead small { font-weight: 400; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
 .flow .chead.other { opacity: .45; }
-.flow .bhead { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
+.flow .card .t .bandc { font: 500 9.5px var(--font-ui); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); white-space: nowrap; padding: 0 5px; border: 1px solid var(--line-soft); border-radius: 1px; flex: none; }
+.flow .card.core .t .bandc { color: var(--text); border-color: var(--muted); }
 .flow .pane { overflow: auto; border-top: 1px solid var(--line); background: var(--bg); }
 .flow.paged { grid-template-rows: var(--rail, 220px) 1fr; }
 .flow.paged .stage { cursor: default; }
@@ -48,10 +51,10 @@ const CSS = `
 .flow .intent small { display: block; font: 12px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); margin-bottom: 6px; }
 `;
 
-const PITCH = 320, PAD = 40, GAP_Y = 12, CORE_GAP = 80, HEAD = 46, MAX_BAND = 4;
+const GUTTER = 90, PAD = 40, GAP_Y = 12, CORE_GAP = 80, HEAD = 40, MAX_COL = 5;
 const SIZES = { focus: [290, 172], near: [250, 100], far: [230, 38], agg: [230, 34] };
 const BODY_W = 720; // focused card when it shows its code (core level only)
-const BAND_HEAD = { upUnchanged: "relies on · untouched", upChanged: "relies on · changed", core: "core change", downChanged: "affects · changed", downUnchanged: "affects · untouched" };
+const BAND_CHIP = { upUnchanged: "relies on · untouched", upChanged: "relies on · changed", core: "core", downChanged: "affects · changed", downUnchanged: "affects · untouched" };
 
 export default {
   id: "flow",
@@ -72,68 +75,73 @@ export default {
       const focusLoc = app.get(app.focus);
       const body = withBody();
       const items = [], heads = [], labels = [];
-      let y = 0, width = 5 * PITCH;
+      let y = 0, width = 0;
       const lowY = () => y;
       app.graph.cores.forEach((c) => {
         const current = focusLoc?.core === c && app.level > 0;
         const nb = current ? app.neighbours(app.focus) : { up: [], down: [] };
         const near = new Set([...nb.up.map((e) => e.from), ...nb.down.map((e) => e.to)]);
-        // The column holding a code-bearing focus card widens; the others keep their pitch.
-        const colW = BANDS.map((b) => (current && body && focusLoc.pl.band === b ? BODY_W + 70 : PITCH));
-        const colX = colW.map((_, i) => colW.slice(0, i).reduce((a, w) => a + w, 0));
-        const cols = BANDS.map((b) => {
-          const list = c.bands[b];
-          const keep = (pl) => !current || pl.id === app.focus || near.has(pl.id);
-          let shown = list, folded = 0;
-          if (list.length > MAX_BAND + 1 && !expanded.has(`${c.id}:${b}`)) {
-            const must = list.filter(keep);
-            const rest = list.filter((pl) => !keep(pl));
-            shown = [...must, ...rest.slice(0, Math.max(0, MAX_BAND - must.length))];
-            shown.sort((a, b2) => list.indexOf(a) - list.indexOf(b2));
-            folded = list.length - shown.length;
-          }
-          const cards = shown.map((pl) => {
-            const size = !current ? "far" : pl.id === app.focus ? "focus" : near.has(pl.id) ? "near" : "far";
-            if (size === "focus" && body) return { kind: "pl", pl, size, body: true, w: BODY_W, h: bodyH, current };
-            return { kind: "pl", pl, size, w: SIZES[size][0], h: SIZES[size][1], current };
-          });
-          if (folded) cards.push({ kind: "agg", key: `${c.id}:${b}`, n: folded, size: "agg", w: SIZES.agg[0], h: SIZES.agg[1], current });
-          return cards;
-        });
-        const colH = cols.map((cs) => cs.reduce((s, x) => s + x.h, 0) + Math.max(0, cs.length - 1) * GAP_Y);
-        const colsH = Math.max(...colH, 40);
+        const pls = app.corePlacements(c), ids = pls.map((pl) => pl.id), byId = new Map(pls.map((pl) => [pl.id, pl]));
+        const es = app.edgesOf(c.id).map((e) => [e.from, e.to]);
+        const sizeOf = (pl) => (!current ? "far" : pl.id === app.focus ? "focus" : near.has(pl.id) ? "near" : "far");
+        const dims = (pl) => (sizeOf(pl) === "focus" && body ? [BODY_W, bodyH] : SIZES[sizeOf(pl)]);
+        // Fold long columns into "+N": rank everything once, then keep the focus, its neighbours and the first few.
+        const ranks = layered(ids, es, { h: () => 40, gap: GAP_Y, compGap: GAP_Y }).rank;
+        const cols = new Map();
+        for (const id of ids) (cols.get(ranks.get(id)) ?? cols.set(ranks.get(id), []).get(ranks.get(id))).push(id);
+        const foldTo = new Map(), aggs = new Map();
+        for (const [r, list] of cols) {
+          const key = `${c.id}:r${r}`;
+          if (list.length <= MAX_COL + 1 || expanded.has(key)) continue;
+          const keep = (id) => !current || id === app.focus || near.has(id);
+          const must = list.filter(keep), rest = list.filter((id) => !keep(id));
+          const shown = new Set([...must, ...rest.slice(0, Math.max(0, MAX_COL - must.length))]);
+          const folded = list.filter((id) => !shown.has(id));
+          if (!folded.length) continue;
+          const agg = `agg:${key}`;
+          aggs.set(agg, { key, n: folded.length });
+          for (const id of folded) foldTo.set(id, agg);
+        }
+        const vis = [...ids.filter((id) => !foldTo.has(id)), ...aggs.keys()];
+        const ves = [...new Set(es.map(([a, b]) => `${foldTo.get(a) ?? a}\n${foldTo.get(b) ?? b}`))].map((k) => k.split("\n")).filter(([a, b]) => a !== b);
+        const hOf = (id) => (aggs.has(id) ? SIZES.agg[1] : dims(byId.get(id))[1]);
+        const L = layered(vis, ves, { h: hOf, gap: GAP_Y, compGap: GAP_Y * 4 });
+        // Columns as wide as their widest card.
+        const wOf = (id) => (aggs.has(id) ? SIZES.agg[0] : dims(byId.get(id))[0]);
+        const colW = [];
+        for (const id of vis) { const r = L.rank.get(id); colW[r] = Math.max(colW[r] ?? 0, wOf(id)); }
+        const colX = []; let acc = 0;
+        for (let r = 0; r < colW.length; r++) { colX[r] = acc; acc += (colW[r] ?? 0) + GUTTER; }
         heads.push({ c, x: 0, y, current });
-        if (current) BANDS.forEach((b, i) => heads.push({ band: b, x: colX[i], y: y + 26, current: true }));
-        const top = y + HEAD + (current ? 18 : 0);
-        cols.forEach((cs, i) => {
-          let cy = top + (colsH - colH[i]) / 2;
-          for (const it of cs) {
-            it.x = colX[i] + (colW[i] - 50 - it.w) / 2 + (i === 2 ? 0 : i < 2 ? 20 : -20);
-            it.y = cy;
-            cy += it.h + GAP_Y;
-            items.push(it);
-          }
-        });
-        const coreW = colW.reduce((a, w) => a + w, 0);
-        width = Math.max(width, coreW);
-        c._box = { x: -20, y, w: coreW, h: colsH + HEAD + (current ? 18 : 0) + 10 };
-        y = top + colsH + CORE_GAP;
+        const top = y + HEAD;
+        let bottom = top;
+        for (const id of vis) {
+          const r = L.rank.get(id), w = wOf(id), h = hOf(id), x = colX[r] + ((colW[r] ?? w) - w) / 2, cy = top + L.y.get(id);
+          bottom = Math.max(bottom, cy + h);
+          if (aggs.has(id)) { const a = aggs.get(id); items.push({ kind: "agg", key: a.key, n: a.n, size: "agg", w, h, x, y: cy, current }); continue; }
+          const pl = byId.get(id), size = sizeOf(pl);
+          items.push({ kind: "pl", pl, size, body: size === "focus" && !!body, w, h, x, y: cy, current, foldTo });
+        }
+        width = Math.max(width, acc);
+        c._box = { x: -20, y, w: Math.max(acc, 400), h: bottom - y + 10 };
+        c._foldTo = foldTo;
+        y = bottom + CORE_GAP;
       });
       if (app.graph.lowSignal.length) {
         const sel = app.focus === LOW;
-        items.push({ kind: "low", size: sel ? "near" : "far", w: 260, h: 38, x: 2 * PITCH - 10, y: lowY(), current: sel });
+        items.push({ kind: "low", size: sel ? "near" : "far", w: 260, h: 38, x: 0, y: lowY(), current: sel });
         y += 38 + CORE_GAP;
       }
       // Edges between visible cards (folded endpoints route to the "+N" card).
       const pos = new Map(items.filter((i) => i.kind === "pl").map((i) => [i.pl.id, i]));
-      const aggOf = (pid) => { const loc = app.get(pid); return items.find((i) => i.kind === "agg" && i.key === `${loc.core.id}:${loc.pl.band}`); };
-      const edges = [];
+      const aggOf = (pid) => { const loc = app.get(pid); const a = loc && loc.core._foldTo?.get(pid); return a && items.find((i) => i.kind === "agg" && `agg:${i.key}` === a); };
+      const edges = [], said = new Set();
       for (const e of app.graph.edges) {
         const a = pos.get(e.from) ?? aggOf(e.from), b = pos.get(e.to) ?? aggOf(e.to);
         if (!a || !b) continue;
         const hot = app.level > 0 && (e.from === app.focus || e.to === app.focus);
         edges.push({ e, a, b, hot, dim: !a.current, rep: !!(app.get(e.from).pl.repeatOf || app.get(e.to).pl.repeatOf) });
-        if (hot && e.label) labels.push({ key: `${e.from}>${e.to}`, text: e.label, x: (a.x + a.w + b.x) / 2, y: (a.y + a.h / 2 + b.y + b.h / 2) / 2 });
+        if (hot && e.label && !said.has(e.label) && said.add(e.label)) labels.push({ key: `${e.from}>${e.to}`, text: e.label, x: (a.x + a.w + b.x) / 2, y: (a.y + a.h / 2 + b.y + b.h / 2) / 2 });
       }
       return { items, heads, edges, labels, height: y, width };
     }
@@ -151,11 +159,12 @@ export default {
         if (node.kind === "context") meta = `${node.location.path}:${node.location.line}`;
         else { const { a, d } = app.stat(pl.id); meta = `${node.file} · +${a} −${d}`; }
       }
-      const html = `<div class="t"><i class="glyph ${glyph}"></i><span>${esc(pl.title)}</span>${status}</div>`
+      const chip = size === "focus" || size === "near" ? `<span class="bandc">${BAND_CHIP[pl.band]}</span>` : "";
+      const html = `<div class="t"><i class="glyph ${glyph}"></i><span>${esc(pl.title)}</span>${status}${chip}</div>`
         + (size === "focus" || size === "near" ? `<div class="w">${esc(pl.why)}</div>${it.body ? "" : `<div class="m">${esc(meta)}</div>`}` : "")
         + (it.body ? `<div class="nbody"></div>` : "");
       const cls = [it.body ? "withbody" : "", node.kind, pl.band === "core" ? "core" : "", size === "focus" ? "focus" : "", done ? "done" : "", pl.repeatOf ? "rep" : "", !current && app.level > 0 ? "other" : ""].join(" ");
-      return { cls, html, data: { go: pl.id }, title: pl.why };
+      return { cls, html, data: { go: pl.id }, title: `${BAND_CHIP[pl.band]} · ${pl.why}` };
     }
 
     function place(key, cls, html, x, y, w, h, data = {}, title = "") {
@@ -256,7 +265,6 @@ export default {
     function placeAll(L) {
       for (const n of els.values()) n._seen = false;
       for (const h of L.heads) {
-        if (h.band) { place(`bh:${h.band}`, "bhead", BAND_HEAD[h.band], h.x + 20, h.y, null, null); continue; }
         const items = app.index.walk.filter((p) => app.get(p)?.core === h.c);
         const done = items.filter((p) => app.isReviewed(p)).length;
         place(`ch:${h.c.id}`, `chead ${app.level > 0 && !h.current ? "other" : ""}`, `${app.graph.cores.indexOf(h.c) + 1} · ${esc(h.c.title)} <small>${done}/${items.length}${h.current || app.level === 0 ? ` · ${esc(h.c.summary)}` : ""}</small>`, h.x, h.y, null, null, { core: h.c.id });
