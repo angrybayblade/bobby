@@ -98,7 +98,8 @@ const CSS = `
 .dv .ln { grid-template-columns: 3px 34px 34px 14px 1fr; }
 .dv .srow > .ln { grid-template-columns: 3px 34px 14px minmax(0, 1fr); }
 .dv .ln .no { padding-right: 8px; }
-.dv .dfocus .lines { font-size: calc(var(--code-size) - 1px); }
+.dv .dfocus .lines { font-size: calc(var(--code-size) - 2px); }
+.dv .dfocus .ln .no { font-size: calc(var(--code-size) - 3px); }
 `;
 
 const BAND_LABEL = { upUnchanged: "relies on · untouched", upChanged: "relies on · changed", core: "core", downChanged: "affects · changed", downUnchanged: "affects · untouched" };
