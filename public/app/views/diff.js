@@ -25,7 +25,7 @@ const CSS = `
 .dv.engaged .fv.w-none { opacity: .3; }
 .dv .fv.w-none:hover, .dv.engaged .fv.w-semi:hover { opacity: .9; }
 .dv .fv.w-focus { box-shadow: var(--shadow), 0 2px 12px rgba(0,0,0,.2); z-index: 3; }
-.dv .fv.active { border-color: var(--muted); border-style: solid; z-index: 3; } /* neutral: weight, not colour, says where you are */
+.dv .fv.active { border-style: solid; z-index: 3; } /* no border of its own: weight (opacity, shadow) says where you are */
 .dv .fvh { display: flex; gap: 10px; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--line-soft); font: 12.5px var(--font-code); color: var(--muted); cursor: grab; user-select: none; background: var(--raised); }
 .dv .fvh b { font-weight: 600; }
 .dv .fvh .p { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
