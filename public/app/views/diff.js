@@ -540,7 +540,7 @@ export default {
       pan = { x: 0, y: 0 };
       apply();
     }
-    // Shift+F: the focused file fills the canvas, flush with its top-left. The viewer keeps its width, takes the canvas's
+    // f: the focused file fills the canvas, flush with its top-left. The viewer keeps its width, takes the canvas's
     // proportions, and is zoomed to fill it; its contents shrink by as much, so code reads at FILL_ZOOM× its canvas size
     // and more of each line fits. Again to go back.
     const FILL_ZOOM = 1.1;
@@ -740,7 +740,7 @@ export default {
     const keys = {
       ArrowLeft: () => moveFile(-1, 0), ArrowRight: () => moveFile(1, 0),
       ArrowUp: () => moveFile(0, -1), ArrowDown: () => moveFile(0, 1),
-      F: () => { if (app.level < 2) return fill(); app.setLevel(1); setTimeout(fill, 60); }, // from the page, back to the canvas, filled
+      f: () => { if (app.level < 2) return fill(); app.setLevel(1); setTimeout(fill, 60); }, // from the page, back to the canvas, filled
     };
 
     return { update, keys, destroy() { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); } };

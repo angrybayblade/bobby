@@ -64,8 +64,8 @@ The breadcrumb bar shows where you are (`repo #n › core › page`) and the cur
 | Key | |
 |---|---|
 | `a` | Looks good: mark reviewed and go to the next unreviewed page |
-| `f` | Flag to come back to (press again to clear) |
-| `F` | Next flagged page (in Diff: fill the screen with the current file) |
+| `f` | Flag to come back to (press again to clear). In Diff, `f` is focus instead: the file fills the screen. |
+| `F` | Next flagged page |
 | `u` | Un-mark |
 | **Viewed** (Diff) | Toggle one section viewed, without moving on. ✓ in a file's header marks or clears the whole file. |
 

@@ -110,7 +110,8 @@ const HINTS_BY_LEVEL = {
 function renderKeys() {
   const mode = app.settings.hints;
   const uses = app.settings.hintUses ?? {};
-  const list = (HINTS_BY_LEVEL[app.level] ?? HINTS).filter(([ks]) => mode === "always" || (mode === "fade" && ks.some((k) => (uses[k] ?? 0) < 5)));
+  const diff = ([ks, label]) => [ks, app.viewId === "diff" && ks[0] === "f" ? "focus file" : label]; // in Diff, f fills the screen
+  const list = (HINTS_BY_LEVEL[app.level] ?? HINTS).map(diff).filter(([ks]) => mode === "always" || (mode === "fade" && ks.some((k) => (uses[k] ?? 0) < 5)));
   $("#keys").innerHTML = mode === "never" ? `<span><kbd>?</kbd> keys</span>`
     : [...list, [["?"], "all keys"]].map(([ks, label]) => `<span>${ks.map((k) => `<kbd>${k}</kbd>`).join(" ")} ${label}</span>`).join("");
 }
@@ -136,9 +137,8 @@ export function help() {
       ${r("n", "next unreviewed")}
       ${r("a", "looks good: mark reviewed and move on")}
       ${r("u", "un-mark")}
-      ${r("f", "flag to come back to")}
+      ${r("f", "flag to come back to · in Diff: focus, the file fills the screen; again to go back")}
       ${r("F", "next flagged: skim and flag first, then go deep")}
-      ${r("F", "in Diff: fill the screen with this file, centred; again to go back")}
       ${r("c", "comment (click a line first, or it picks one)")}
       ${r("m", "private note on a line: only you see it, never posted")}
       ${r("M", "your notes: on the whole PR, plus a list of all of them")}
