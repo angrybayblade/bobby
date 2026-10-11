@@ -84,7 +84,7 @@ Details:
 
 ## Views
 
-A view is an ES module in `app/views/` registered in `app/views/index.js`. The contract is in [SPEC.md › Writing a view](../SPEC.md#writing-a-view): `{ id, name, hint, mount(el, app) → { update(reason), destroy(), keys? } }`. Views inject their own CSS once with `injectCss(id, css)` (exported by `flow.js`) and use the theme's CSS variables.
+A view is an ES module in `app/views/` registered in `app/views/index.js`. The contract is in [SPEC.md › Writing a view](../SPEC.md#writing-a-view): `{ id, name, hint, mount(el, app) → { update(reason), destroy(), keys? } }`. Each view mounts into its own slot inside `#view`. Switching away destroys a view, except Diff, which is costly to build and is kept alive: its slot is parked with `content-visibility: hidden` (not drawn, layout kept), `hide()` notes where you were, and on return `update("resume")` catches up on what changed elsewhere (focus, level, comments and notes, settings), rebuilding only if what its viewers are built from changed. Switching back to Diff is a repaint, not a rebuild; the cost is that its memory stays held while you're in another view. Views inject their own CSS once with `injectCss(id, css)` (exported by `flow.js`) and use the theme's CSS variables.
 
 All four canvases follow the same pattern: a `.stage` (viewport, receives input) containing a `.world` (absolutely positioned content, moved by one CSS `transform` for pan and zoom). Edges are an SVG inside the world, so they move with it.
 

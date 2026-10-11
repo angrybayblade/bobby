@@ -210,11 +210,11 @@ export default {
       }
       layout();
       for (const [p, top] of keep) if (views.has(p)) views.get(p).body.scrollTop = top;
-      builtFrom = buildSig(); fileSigs = new Map(M.files.map((f) => [f.path, fileSig(f.path)]));
+      builtFrom = buildSig(); builtGraph = app.graph; fileSigs = new Map(M.files.map((f) => [f.path, fileSig(f.path)]));
     }
     // What a viewer's content depends on. Settings outside buildSig (theme, motion, hints, edges…) are pure CSS or
     // a redraw, so they never rebuild; a change inside one file (its layout, its comments and notes) re-renders that file.
-    let builtFrom = "", fileSigs = new Map();
+    let builtFrom = "", builtGraph = null, fileSigs = new Map();
     const buildSig = () => JSON.stringify(["diffLayout", "size", "font", "spacing", "palette", "prComments"].map((k) => app.settings[k]));
     const fileSig = (path) => {
       const on = (x) => x.path === path;
@@ -618,7 +618,8 @@ export default {
         lastLevel = app.level;
       }
       dfocus.hidden = app.level !== 2;
-      if (reason === "settings" && M && buildSig() === builtFrom) { // nothing the viewers are built from: at most one file's layout
+      if (reason === "resume") return resume();
+      if (reason === "settings" && M && buildSig() === builtFrom && app.graph === builtGraph) { // nothing the viewers are built from: at most one file's layout
         const changed = refresh();
         if (app.level === 2) showFocus(changed.includes(bigPath) ? "settings" : "same");
         restyle(); redraw();
@@ -645,6 +646,16 @@ export default {
       if (reason === "level" && app.level === 1 && beforePage) { cam = beforePage.cam; pan = beforePage.pan; beforePage = null; apply(); }
       else if (reason === "level" || reason === "resize") { beforePage = null; frame(); }
       redraw();
+    }
+
+    // Kept alive while another view is shown: on return, catch up on what changed there without reframing the camera.
+    let away = null;
+    function resume() {
+      const was = away; away = null;
+      update("settings"); // rebuilds only if what the viewers are built from changed; otherwise re-renders changed files
+      if (!was) return;
+      if (app.level !== was.level) update("level");
+      else if (M.canon(app.focus) !== M.canon(was.focus)) update("focus");
     }
 
     // ---- interaction: scroll inside a viewer reads focus; drag or wheel on the background pans.
@@ -787,6 +798,6 @@ export default {
       g: () => { if (app.level === 2) return app.setLevel(1); const act = activeFile(); if (act) openFocus(act.path); }, // full screen and back
     };
 
-    return { update, keys, destroy() { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); } };
+    return { update, keys, hide() { away = { focus: app.focus, level: app.level }; }, destroy() { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); } };
   },
 };

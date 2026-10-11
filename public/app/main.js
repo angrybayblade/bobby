@@ -35,15 +35,28 @@ applySettings();
 app.on((why) => why === "settings" && applySettings());
 
 // ---- views
+// Each view mounts into its own slot. Diff is costly to build, so it's kept alive when you switch away: its slot is
+// parked (content-visibility: hidden keeps its layout, so showing it again is a repaint, not a rebuild) and it catches
+// up on return ("resume"). The others are cheap and are rebuilt each time.
+const KEEP = new Set(["diff"]);
 const el = document.getElementById("view");
+const alive = new Map(); // view id → { inst, slot }
 let current = null, currentId = null;
 function mount(id) {
   const view = views.find((v) => v.id === id) ?? views[0];
-  current?.destroy?.();
-  el.innerHTML = "";
+  if (current) {
+    const a = alive.get(currentId);
+    if (KEEP.has(currentId)) { current.hide?.(); a.slot.classList.add("parked"); }
+    else { current.destroy?.(); a.slot.remove(); alive.delete(currentId); }
+  }
+  app.pageEl = null; // c / m / e act on the new view's page, never a parked one
   el.className = `view-${view.id}`;
   currentId = app.viewId = view.id;
-  current = view.mount(el, app);
+  const kept = alive.get(view.id);
+  if (kept) { kept.slot.classList.remove("parked"); current = kept.inst; current.update?.("resume"); return; }
+  const slot = el.appendChild(Object.assign(document.createElement("div"), { className: "vslot" }));
+  current = view.mount(slot, app);
+  alive.set(view.id, { inst: current, slot });
 }
 app.switchView = (id) => {
   if (id === currentId) return;

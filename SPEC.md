@@ -95,8 +95,9 @@ export default {
   hint: "Node-link canvas",   // tooltip
   mount(el, app) {            // el: the view's container; app: shared runtime (below)
     return {
-      update(reason) {},      // "focus" | "level" | "marks" | "graph" | "settings" | "resize"
+      update(reason) {},      // "focus" | "level" | "marks" | "comments" | "graph" | "settings" | "resize" | "resume"
       destroy() {},
+      hide() {},              // optional, kept views only: switched away from; "resume" follows when shown again
     };
   },
 };
