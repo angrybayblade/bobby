@@ -74,9 +74,10 @@ Until you're in a viewer, changed files stay at full strength and untouched file
 | Double-click a header, or ⤢ | Expand that file to full screen |
 | ✓ in a header | Mark every section in the file viewed (or clear them) |
 | ✎ in a header | Private note on the whole file |
-| **Mark viewed** on a section | Mark that section viewed (or clear it) |
+| **Viewed** on a section | Mark that section viewed (or clear it) |
+| `Shift`+`F` | Fill the screen with the file you're reading: as large as fits the width, centred. Again to go back. From a page, returns to the canvas. |
 
-Code on the canvas is a size smaller than on a page, so more of each file fits. Pinch or `ctrl`+scroll to zoom a viewer up to a comfortable reading size; moving around keeps that zoom.
+Code in Diff is compact, like GitHub's diff: one box per file, slim hunk rows and a tight gutter, a size smaller on the canvas and the page alike. `d` switches between an **inline** diff and a **split** one, old code beside new, with long lines wrapped so both sides stay level; viewers widen in split layout. Pinch or `ctrl`+scroll to zoom a viewer up to a comfortable reading size; moving around keeps that zoom.
 
 **Zoom levels in Diff.**
 - **Overview:** all files fit on screen.

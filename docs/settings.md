@@ -10,6 +10,7 @@ Open settings with `,` or the gear in the header. Changes apply immediately and 
 | Word spacing | Normal · Wide · Wider | Normal |
 | Motion | System · On · Off | System |
 | Key hints | Fade when learned · Always · Hidden | Fade when learned |
+| Diff layout | Inline · Split | Inline |
 | Diff edges | All, faint · Focused only | All, faint |
 | Break reminder | Off · 15m · 25m · 45m | Off |
 | Rabbit-hole nudge | Off · 8m · 12m · 20m | 12m |

@@ -54,6 +54,7 @@ The breadcrumb bar shows where you are (`repo #n › core › page`) and the cur
 | `n` | Next page you haven't reviewed |
 | `m` / `M` | Private note on a line / your notes panel |
 | `v` | Switch view (Flow → Outline → Lens → Diff) |
+| `d` | Diff layout: inline or split (old beside new) |
 | `?` | All keys |
 
 "Next" always follows the same walk, so switching views never changes what comes next.
@@ -64,9 +65,9 @@ The breadcrumb bar shows where you are (`repo #n › core › page`) and the cur
 |---|---|
 | `a` | Looks good: mark reviewed and go to the next unreviewed page |
 | `f` | Flag to come back to (press again to clear) |
-| `F` | Next flagged page |
+| `F` | Next flagged page (in Diff: fill the screen with the current file) |
 | `u` | Un-mark |
-| **Mark viewed** (Diff) | Toggle one section viewed, without moving on. ✓ in a file's header marks or clears the whole file. |
+| **Viewed** (Diff) | Toggle one section viewed, without moving on. ✓ in a file's header marks or clears the whole file. |
 
 The header shows progress through the core you're in (`core 3 ▬ 2/5`) next to the whole PR (`12/40`, with a rough time left).
 
