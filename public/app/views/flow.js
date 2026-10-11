@@ -37,6 +37,10 @@ const CSS = `
 .flow .card.done.focus { opacity: 1; }
 .flow .card.rep { opacity: .45; border-style: dotted; }
 .flow .card.other { opacity: .32; }
+.flow .card.aside { opacity: .55; } /* in the current core, not the focus or its neighbours */
+.flow .card.pinned { z-index: 6; border-radius: 0; border-width: 0; box-shadow: none; padding: 10px 14px; } /* f: fills the canvas */
+.flow .card.pinned > * { zoom: var(--fill, 1); }
+.flow .card.pinned .nbody { max-height: none; flex: 1; min-height: 0; }
 .flow .card.agg { background: none; border-style: dashed; color: var(--muted); font-size: 13px; justify-content: center; }
 .flow .lbl { font: 11.5px var(--font-ui); color: var(--muted); background: var(--bg); padding: 1px 6px; border-radius: 1px; white-space: nowrap; transform-origin: 50% 50%; }
 .flow .chead { font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; display: flex; gap: 10px; align-items: baseline; max-width: 1400px; }
@@ -67,7 +71,10 @@ export default {
     const intentEl = root.querySelector(".intent");
     const els = new Map(); // key → element (reused so moves animate)
     const expanded = new Set(); // "coreId:band" opened by the user
-    let pan = { x: 0, y: 0 }, lastPagePid = null;
+    let lastPagePid = null;
+    // The camera: auto-framed for the focus and level, until you pan or zoom; then yours until the focus or level moves.
+    let view = { tx: 0, ty: 0, s: 1 }, mine = false, lastL = null;
+    const apply = () => { world.style.transform = `translate(${view.tx}px, ${view.ty}px) scale(${view.s})`; };
     let bodyH = 420; // last measured height of the focused card with its code
     const withBody = () => (app.level === 1 && app.get(app.focus) ? app.focus : null);
 
@@ -163,7 +170,7 @@ export default {
       const html = `<div class="t"><i class="glyph ${glyph}"></i><span>${esc(pl.title)}</span>${status}${chip}</div>`
         + (size === "focus" || size === "near" ? `<div class="w">${esc(pl.why)}</div>${it.body ? "" : `<div class="m">${esc(meta)}</div>`}` : "")
         + (it.body ? `<div class="nbody"></div>` : "");
-      const cls = [it.body ? "withbody" : "", node.kind, pl.band === "core" ? "core" : "", size === "focus" ? "focus" : "", done ? "done" : "", pl.repeatOf ? "rep" : "", !current && app.level > 0 ? "other" : ""].join(" ");
+      const cls = [it.body ? "withbody" : "", node.kind, pl.band === "core" ? "core" : "", size === "focus" ? "focus" : "", done ? "done" : "", pl.repeatOf ? "rep" : "", !current && app.level > 0 ? "other" : "", current && size === "far" && app.level === 1 ? "aside" : ""].join(" ");
       return { cls, html, data: { go: pl.id }, title: `${BAND_CHIP[pl.band]} · ${pl.why}` };
     }
 
@@ -210,11 +217,21 @@ export default {
         const cur = loc?.core._box ?? (focusItem && { y: focusItem.y, h: focusItem.h });
         if (cur) ty = Math.min(ty, sh * 0.45 - (cur.y + cur.h / 2) * s);
       }
-      world.style.transform = `translate(${tx + pan.x}px, ${ty + pan.y}px) scale(${s})`;
+      if (filled) return fillCam();
+      if (!mine) { view = { tx, ty, s }; apply(); }
     }
 
+    // Leaving the canvas for a page (g, enter) keeps the camera; coming back restores it.
+    let lastLevel = app.level, beforePage = null;
     function update(reason) {
-      if (reason === "focus" || reason === "level" || reason === "graph") pan = { x: 0, y: 0 };
+      if (reason === "level") {
+        if (app.level === 2 && lastLevel < 2) beforePage = { view: { ...view }, mine };
+        const back = app.level === 1 && lastLevel === 2 && beforePage;
+        if (back) { view = beforePage.view; mine = true; } else mine = false; // back from a page: as you left it; else reframe
+        if (app.level !== 2) beforePage = null;
+        lastLevel = app.level;
+      }
+      if (reason === "focus" || reason === "graph") mine = false;
       const paged = app.level === 2;
       root.classList.toggle("paged", paged);
       pane.hidden = !paged;
@@ -229,8 +246,8 @@ export default {
       if (body) {
         const n = els.get(body.pl.id);
         if (reason !== "measure") app.renderNode(n.querySelector(".nbody"), app.focus);
-        observe(n);
-        if (Math.abs(n.offsetHeight - bodyH) > 2) { bodyH = n.offsetHeight; L = layout(); placeAll(L); }
+        if (filled) observe(null); else observe(n);
+        if (!filled && Math.abs(n.offsetHeight - bodyH) > 2) { bodyH = n.offsetHeight; L = layout(); placeAll(L); }
       } else observe(null);
 
       svg.setAttribute("width", L.width); svg.setAttribute("height", L.height);
@@ -242,7 +259,9 @@ export default {
       // Labels sit centred on their point; measure after insertion.
       for (const l of L.labels) { const n = els.get(`lbl:${l.key}`); n.style.transform = `translate(${l.x - n.offsetWidth / 2}px, ${l.y - 11}px)`; }
 
-      requestAnimationFrame(() => camera(L));
+      lastL = L;
+      if (filled && (app.level !== 1 || !L.items.some((i) => i.body))) unfill(false); // f only holds on the canvas, with code showing
+      requestAnimationFrame(() => (mine && !filled ? apply() : camera(L)));
       if (paged && (reason !== "marks" || lastPagePid !== app.focus)) {
         const fresh = lastPagePid !== app.focus;
         app.renderPage(pane, app.focus);
@@ -272,7 +291,8 @@ export default {
       for (const it of L.items) {
         const c = card(it);
         const key = it.kind === "pl" ? it.pl.id : it.kind === "agg" ? `agg:${it.key}` : "low";
-        place(key, `card ${c.cls}`, c.html, it.x, it.y, it.w, it.body ? null : it.h, c.data, c.title);
+        const pin = filled?.h && it.body; // the filled card keeps its size through updates
+        place(key, `card ${c.cls}${pin ? " pinned" : ""}`, c.html, it.x, it.y, it.w, pin ? filled.h : it.body ? null : it.h, c.data, c.title);
       }
       for (const l of L.labels) place(`lbl:${l.key}`, "lbl", esc(l.text), l.x - 40, l.y - 11, null, null);
       for (const [k, n] of els) if (!n._seen) { n.remove(); els.delete(k); }
@@ -293,28 +313,93 @@ export default {
     stage.addEventListener("pointerdown", (ev) => {
       if (app.level === 2 || ev.target.closest(".nbody")) return; // code in a card stays selectable
       if (ev.pointerType === "mouse") ev.preventDefault(); // a press-and-drag pans; it must not start a text selection
-      drag = { x: ev.clientX, y: ev.clientY, p: { ...pan } }; moved = false;
+      drag = { x: ev.clientX, y: ev.clientY, v: { ...view } }; moved = false;
     });
     window.addEventListener("pointermove", (ev) => {
       if (!drag) return;
       const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
       if (!moved && Math.hypot(dx, dy) < 4) return;
       moved = true; root.classList.add("dragging");
-      pan = { x: drag.p.x + dx, y: drag.p.y + dy };
-      requestAnimationFrame(() => camera(layout()));
+      if (filled) unfill(false);
+      view = { ...drag.v, tx: drag.v.tx + dx, ty: drag.v.ty + dy }; mine = true;
+      requestAnimationFrame(apply);
     });
     window.addEventListener("pointerup", () => { drag = null; root.classList.remove("dragging"); setTimeout(() => (moved = false)); });
     stage.addEventListener("wheel", (ev) => {
-      if (app.level === 2 || ev.target.closest(".nbody")) return; // let the code scroll
+      if (app.level === 2) return;
+      const r = stage.getBoundingClientRect();
+      if (ev.ctrlKey) { // pinch, or ctrl+scroll: zoom around the pointer
+        ev.preventDefault(); if (filled) unfill(false);
+        const k = Math.exp(-ev.deltaY * 0.01), s = Math.max(0.15, Math.min(Math.max(2, view.s), view.s * k)), px = ev.clientX - r.left, py = ev.clientY - r.top;
+        view = { s, tx: px - ((px - view.tx) / view.s) * s, ty: py - ((py - view.ty) / view.s) * s }; mine = true;
+        root.classList.add("dragging"); apply();
+        clearTimeout(stage._w); stage._w = setTimeout(() => root.classList.remove("dragging"), 120);
+        return;
+      }
+      if (filled) { ev.preventDefault(); els.get(app.focus)?.querySelector(".nbody")?.scrollBy(ev.deltaX / view.s, ev.deltaY / view.s); return; } // filled: the canvas is this card
+      if (ev.target.closest(".nbody")) return; // let the code scroll
       ev.preventDefault();
-      pan = { x: pan.x - ev.deltaX, y: pan.y - ev.deltaY };
+      view = { ...view, tx: view.tx - ev.deltaX, ty: view.ty - ev.deltaY }; mine = true;
       root.classList.add("dragging");
-      camera(layout());
+      apply();
       clearTimeout(stage._w); stage._w = setTimeout(() => root.classList.remove("dragging"), 120);
     }, { passive: false });
 
+    // ---- f: the focused card, with its code, fills the canvas. Its contents are scaled back down to a reading size.
+    const FILL_ZOOM = 1.1;
+    let filled = null; // { prev view, prev mine }
+    function fillCam() {
+      const n = els.get(app.focus), it = lastL?.items.find((i) => i.kind === "pl" && i.pl.id === app.focus);
+      if (!n || !it) return;
+      const sw = stage.clientWidth, sh = stage.clientHeight, s = sw / it.w;
+      observe(null); // its size is ours while filled
+      n.classList.add("pinned");
+      filled.h = sh / s;
+      n.style.height = `${filled.h}px`;
+      n.style.setProperty("--fill", Math.min(1, FILL_ZOOM / s));
+      view = { s, tx: -it.x * s, ty: -it.y * s }; apply();
+    }
+    function fill() {
+      if (filled) return unfill(true);
+      if (app.level !== 1 || !lastL?.items.some((i) => i.body)) { app.setLevel(1); return setTimeout(fill, 60); }
+      filled = { view: { ...view }, mine };
+      fillCam();
+    }
+    function unfill(restore) {
+      const was = filled; filled = null;
+      for (const n of world.querySelectorAll(".card.pinned")) { n.classList.remove("pinned"); n.style.removeProperty("--fill"); }
+      if (restore && was) { view = was.view; mine = was.mine; apply(); }
+      update("measure"); // its own height again
+    }
+
+    // ---- arrows follow edges: → to what this leads into, ← to what leads into it, ↑/↓ within its column
+    function move(dc, dr) {
+      const its = (lastL?.items ?? []).filter((i) => i.kind === "pl");
+      const at = its.find((i) => i.pl.id === app.focus);
+      if (!at) return;
+      const cx = (i) => i.x + i.w / 2, cy = (i) => i.y + i.h / 2;
+      const dist = (i) => Math.abs(cx(i) - cx(at)) + Math.abs(cy(i) - cy(at)) * 2;
+      let to;
+      if (dr) {
+        const col = its.filter((i) => Math.abs(cx(i) - cx(at)) < 2).sort((a, b) => a.y - b.y);
+        to = col[col.indexOf(at) + dr];
+      } else {
+        const nb = app.neighbours(app.focus), ids = new Set((dc > 0 ? nb.down.map((e) => e.to) : nb.up.map((e) => e.from)));
+        const linked = its.filter((i) => ids.has(i.pl.id));
+        const beside = its.filter((i) => (dc > 0 ? cx(i) > cx(at) + 2 : cx(i) < cx(at) - 2) && i.current === at.current);
+        to = [...(linked.length ? linked : beside)].sort((a, b) => dist(a) - dist(b))[0];
+      }
+      if (to) app.setFocus(to.pl.id);
+    }
+    const keys = {
+      ArrowLeft: () => move(-1, 0), ArrowRight: () => move(1, 0), ArrowUp: () => move(0, -1), ArrowDown: () => move(0, 1),
+      f: () => fill(),
+      g: () => app.setLevel(app.level === 2 ? 1 : 2),
+      Escape: () => (filled ? unfill(true) : app.setLevel(app.level - 1)),
+    };
+
     update("mount");
-    return { update, destroy() { ro.disconnect(); } };
+    return { update, keys, destroy() { ro.disconnect(); } };
   },
 };
 
