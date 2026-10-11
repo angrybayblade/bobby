@@ -587,7 +587,13 @@ export default {
     }
     const still = () => { world.classList.add("still"); clearTimeout(stage._w); stage._w = setTimeout(() => world.classList.remove("still"), 120); };
 
+    // Leaving the canvas for a page (enter, ⤢, double-click) keeps the camera, and coming back restores it.
+    let lastLevel = app.level, beforePage = null;
     function update(reason) {
+      if (reason === "level") {
+        if (app.level === 2 && lastLevel < 2) beforePage = { cam: { ...cam }, pan: { ...pan } };
+        lastLevel = app.level;
+      }
       dfocus.hidden = app.level !== 2;
       if (reason === "mount" || reason === "graph" || reason === "settings") {
         build(); bigPath = null;
@@ -607,7 +613,8 @@ export default {
       if (reason === "comments") { for (const v of views.values()) { const t = v.body.scrollTop; app.renderFile(v.body, v.f.sections.map((s) => s.pid)); v.body.scrollTop = t; } }
       restyle();
       if (reason === "focus" && !selfFocus) { reveal(true); track(); setTimeout(follow, 350); } // after the smooth scroll settles
-      if (reason === "level" || reason === "resize") frame();
+      if (reason === "level" && app.level === 1 && beforePage) { cam = beforePage.cam; pan = beforePage.pan; beforePage = null; apply(); }
+      else if (reason === "level" || reason === "resize") { beforePage = null; frame(); }
       redraw();
     }
 
@@ -747,6 +754,7 @@ export default {
       ArrowLeft: () => moveFile(-1, 0), ArrowRight: () => moveFile(1, 0),
       ArrowUp: () => moveFile(0, -1), ArrowDown: () => moveFile(0, 1),
       f: () => { if (app.level < 2) return fill(); app.setLevel(1); setTimeout(fill, 60); }, // from the page, back to the canvas, filled
+      Escape: () => (filled && app.level < 2 ? fill() : app.setLevel(app.level - 1)), // focus mode: back to the canvas as it was
     };
 
     return { update, keys, destroy() { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); } };
