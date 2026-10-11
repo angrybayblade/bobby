@@ -15,6 +15,7 @@
 }
 
 [data-theme="dark"] {
+  --veil: #0b0a09; /* Diff: the code of files that don't bear on the one you're in */
   --bg: #1a1815;
   --surface: #211f1b;
   --raised: #2a2722;
@@ -42,6 +43,7 @@
 }
 
 [data-theme="light"] {
+  --veil: #e4ddd0; /* Diff: the code of files that don't bear on the one you're in */
   --bg: #f6f2ea;
   --surface: #fffcf6;
   --raised: #efe9de;
@@ -74,6 +76,7 @@
   --font-code: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 }
 [data-palette="github"][data-theme="dark"] {
+  --veil: #010409; /* Diff: the code of files that don't bear on the one you're in */
   --bg: #0d1117;
   --surface: #0d1117;
   --raised: #151b23;
@@ -99,6 +102,7 @@
   --hunk: rgba(56, 139, 253, .1);
 }
 [data-palette="github"][data-theme="light"] {
+  --veil: #d1d9e0; /* Diff: the code of files that don't bear on the one you're in */
   --bg: #ffffff;
   --surface: #ffffff;
   --raised: #f6f8fa;

@@ -24,11 +24,10 @@ const CSS = `
 .dv.engaged .fv.w-semi { box-shadow: none; }
 .dv .fv.w-none:hover, .dv.engaged .fv.w-semi:hover { opacity: .9; }
 .dv .fv.w-focus { box-shadow: var(--shadow), 0 2px 12px rgba(0,0,0,.2); z-index: 3; }
-/* In a file (you clicked it, or stepped into it): only it and the files it relates to show code. The rest shrink to their
-   title bars, in place, and the faint lines between them go, so what's left is what bears on the file you're reading. */
-.dv.engaged .fv:not(.w-focus):not(.active) { height: auto !important; }
-.dv.engaged .fv:not(.w-focus):not(.active) > .fvb { display: none; }
-.dv.engaged .fv:not(.w-focus):not(.active) > .fvh { border-bottom: 0; }
+/* In a file (you clicked it, or stepped into it): only it and the files it relates to show code. The rest keep their place
+   and size, title bar included, but their code goes dark: content-visibility skips drawing it, so nothing re-lays out or
+   re-renders as you move. The faint lines between them go too, so what's left is what bears on the file you're reading. */
+.dv.engaged .fv:not(.w-focus):not(.active) > .fvb { content-visibility: hidden; background: var(--veil); }
 .dv.engaged .fv.w-semi { opacity: .85; }
 .dv.engaged .fv.w-none { opacity: .6; }
 .dv.engaged svg.edges .bg { display: none; }
