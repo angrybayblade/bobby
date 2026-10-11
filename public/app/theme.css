@@ -132,7 +132,7 @@ kbd {
 #view { position: relative; overflow: hidden; min-height: 0; }
 
 /* ---------- footer ---------- */
-#keys { display: flex; gap: 18px; padding: 8px 20px; border-top: 1px solid var(--line-soft); font-size: 12px; color: var(--faint); min-height: 36px; align-items: center; }
+#keys { display: flex; flex-wrap: wrap; gap: 2px 18px; padding: 8px 20px; border-top: 1px solid var(--line-soft); font-size: 12px; color: var(--faint); min-height: 36px; align-items: center; }
 #keys span { white-space: nowrap; }
 
 /* ---------- shared glyphs: shape encodes changed vs untouched ---------- */
