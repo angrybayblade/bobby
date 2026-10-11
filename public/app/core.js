@@ -24,6 +24,7 @@ export const DEFAULT_SETTINGS = {
   rabbit: 12, // minutes on one page before offering to flag it and move on; 0 = off
   drift: "on", // on | off: after 90s idle on a page, offer to park a thought
   prComments: "hide", // hide | show: other reviewers' comments, behind a per-page toggle when hidden
+  untouched: "show", // show | hide: untouched code the changes rely on, in every view (the top bar's switch)
   diffLayout: "split", // split | inline: old beside new, or changed lines in one column
   palette: "github", // github | warm: colours (and, for github, fonts); theme picks dark or light
   hintUses: {},
@@ -35,7 +36,10 @@ export const inline = (s) => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
 export const api = (url, body, method = body ? "POST" : "GET") =>
   fetch(url, { method, headers: body ? { "content-type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined }).then((r) => r.json());
 
-export function indexGraph(g) {
+// Untouched code a change relies on can be switched off (settings.untouched): then it leaves the walk, the edges and
+// every view, as if the graph never had it.
+const hiddenBand = (b, hide) => hide && b === "upUnchanged";
+export function indexGraph(g, hide = false) {
   const ix = { placement: new Map(), node: new Map(), hunk: new Map(), core: new Map(), edgesByCore: new Map(), walkPos: new Map() };
   for (const n of g.nodes) ix.node.set(n.id, n);
   for (const h of g.hunks) ix.hunk.set(h.id, h);
@@ -43,8 +47,10 @@ export function indexGraph(g) {
     ix.core.set(c.id, { core: c, ci });
     for (const b of BANDS) for (const pl of c.bands[b]) ix.placement.set(pl.id, { pl, core: c, ci });
   });
-  for (const e of g.edges) (ix.edgesByCore.get(e.core) ?? ix.edgesByCore.set(e.core, []).get(e.core)).push(e);
-  ix.walk = [...g.walk, ...(g.lowSignal.length ? [LOW] : []), DONE];
+  const shown = (pid) => !hiddenBand(ix.placement.get(pid)?.pl.band, hide);
+  for (const e of g.edges) if (shown(e.from) && shown(e.to)) (ix.edgesByCore.get(e.core) ?? ix.edgesByCore.set(e.core, []).get(e.core)).push(e);
+  ix.walk = [...g.walk.filter(shown), ...(g.lowSignal.length ? [LOW] : []), DONE];
+  ix.hide = hide;
   ix.walk.forEach((id, i) => ix.walkPos.set(id, i));
   return ix;
 }
@@ -54,7 +60,7 @@ export function createApp({ graph, session }) {
   session.state.notes ??= [];
   const app = {
     graph,
-    index: indexGraph(graph),
+    index: indexGraph(graph, session.settings?.untouched === "hide"),
     state: session.state,
     settings: { ...DEFAULT_SETTINGS, ...session.settings },
     caps: session.caps,
@@ -87,7 +93,9 @@ export function createApp({ graph, session }) {
       for (const h of app.hunksOf(pid)) for (const l of h.lines) l.t === "+" ? a++ : l.t === "-" ? d++ : 0;
       return { a, d };
     },
-    corePlacements(c) { return BANDS.flatMap((b) => c.bands[b]); },
+    /** A core's placements in one band, without any the untouched switch hides. */
+    band(c, b) { return hiddenBand(b, app.index.hide) ? [] : c.bands[b]; },
+    corePlacements(c) { return BANDS.flatMap((b) => app.band(c, b)); },
 
     // ---- review marks (keyed by content, so they survive re-pushes and tree regeneration)
     markKeys(pid) {
@@ -233,6 +241,7 @@ export function createApp({ graph, session }) {
       if ("diffLayout" in patch) app.fileLayout.clear(); // the global layout applies to every file again
       Object.assign(app.settings, patch);
       api("/api/settings", patch);
+      if ("untouched" in patch && (patch.untouched === "hide") !== app.index.hide) return app.reindex();
       app.emit("settings");
     },
     useKey(k) {
@@ -241,10 +250,21 @@ export function createApp({ graph, session }) {
       if (u[k] === 5) app.saveSettings({ hintUses: u });
     },
 
+    /** Rebuild the index for the untouched switch, keeping the focus (or, if it was hidden, the page it feeds). */
+    reindex() {
+      const was = app.focus, loc = app.get(was);
+      app.index = indexGraph(graph, app.settings.untouched === "hide");
+      if (!app.index.walkPos.has(was)) {
+        const to = graph.edges.find((e) => e.from === was)?.to; // a hidden page: go to what it fed
+        app.focus = (to && app.index.walkPos.has(to) ? to : null) ?? (loc && app.band(loc.core, "core")[0]?.id) ?? app.index.walk[0];
+      }
+      app.emit("settings");
+      app.emit("graph");
+    },
     replaceGraph(g) {
       const keepNode = app.nodeOf(app.focus)?.id;
       app.graph = graph = g;
-      app.index = indexGraph(g);
+      app.index = indexGraph(g, app.settings.untouched === "hide");
       const pid = keepNode && [...app.index.placement.values()].find((x) => x.pl.node === keepNode && !x.pl.repeatOf)?.pl.id;
       app.focus = pid ?? app.index.walk[0];
       app.emit("graph");

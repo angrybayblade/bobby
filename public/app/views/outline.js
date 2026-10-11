@@ -147,7 +147,7 @@ export default {
       if (!loc) return overviewDoc();
       const c = loc.core;
       return `<div class="story"><div class="eyebrow">Core ${loc.ci + 1} of ${app.graph.cores.length}</div><h1>${esc(c.title)}</h1><p class="lede">${esc(c.summary)}</p>${c.hook ? `<p class="hook">${inline(c.hook)}</p>` : ""}
-        ${BANDS.filter((b) => c.bands[b].length).map((b) => `<div class="bandh">${BAND_TEXT[b]}</div>` + c.bands[b].map((pl) => {
+        ${BANDS.filter((b) => app.band(c, b).length).map((b) => `<div class="bandh">${BAND_TEXT[b]}</div>` + app.band(c, b).map((pl) => {
           const node = app.nodeOf(pl.id);
           return `<div class="step ${pl.id === app.focus ? "cur" : ""} ${app.isReviewed(pl.id) ? "done" : ""}" data-open="${pl.id}"><i class="glyph ${b === "core" ? "core" : node.kind}"></i><b>${esc(pl.title)}${app.isReviewed(pl.id) ? " ✓" : ""}${pl.repeatOf ? " ↺" : ""}</b><p>${esc(pl.why)}</p>${pl.id === app.focus ? `<div class="nbody"></div>` : ""}</div>`;
         }).join("")).join("")}</div>`;

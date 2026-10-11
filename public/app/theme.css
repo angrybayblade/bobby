@@ -242,6 +242,7 @@ kbd {
 .code .fh .lay { margin-left: 4px; padding: 0 7px; font: 500 11px/18px var(--font-ui); color: var(--faint); border: 1px solid var(--line-soft); border-radius: 1px; }
 .code .fh .lay:hover { color: var(--text); border-color: var(--muted); }
 #where .seg.lay { margin-left: auto; padding: 2px; }
+#top .pill.tog[aria-pressed="false"] { color: var(--faint); border-style: dashed; text-decoration: line-through; text-decoration-color: var(--faint); }
 #where .seg.lay button { padding: 1px 9px; font-size: 12px; max-width: none; }
 #where .seg.lay + .levels { margin-left: 14px; }
 /* Split diff: old on the left, new on the right; long lines wrap so the two sides stay in step. */

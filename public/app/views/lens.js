@@ -103,7 +103,7 @@ export default {
       let meta;
       if (node.kind === "context") meta = `${node.location.path}:${node.location.line} · untouched`;
       else { const { a, d } = app.stat(pl.id); meta = `${node.file} · +${a} −${d}`; }
-      const items = BANDS.map((b) => core.bands[b]);
+      const items = BANDS.map((b) => app.band(core, b));
       const orbit = items.map((list, bi) => list.map((p) => {
         const n = app.nodeOf(p.id);
         const tgt = app.canonical(p.id);
