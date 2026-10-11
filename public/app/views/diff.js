@@ -536,7 +536,7 @@ export default {
       pan = { x: 0, y: 0 };
       apply();
     }
-    // Shift+F: the focused file as large as it goes while it still fits the width, top-aligned and centred. Again to go back.
+    // Shift+F: the focused file exactly the canvas's width, its top edge at the canvas's top. Again to go back.
     let filled = null;
     function fill() {
       const act = activeFile(), v = act && views.get(act.path);
@@ -546,8 +546,8 @@ export default {
         if (back.path === act.path) { cam = back; return apply(); }
         cam = { ...cam, s: back.s }; return track();
       }
-      const sw = stage.clientWidth, PAD = 24;
-      const s = Math.max(0.15, Math.min(2, (sw - PAD * 2) / W));
+      const s = stage.clientWidth / W; // edge to edge: may go past the wheel's 2× limit on a wide screen
+      const sw = stage.clientWidth;
       const prev = { s: cam.s, tx: cam.tx + pan.x, ty: cam.ty + pan.y, path: act.path };
       cam = { s, tx: sw / 2 - (v.x + W / 2) * s, ty: -v.y * s }; // top edge flush with the stage, centred across
       pan = { x: 0, y: 0 };
@@ -557,7 +557,7 @@ export default {
     function apply() { world.style.transform = `translate(${cam.tx + pan.x}px, ${cam.ty + pan.y}px) scale(${cam.s})`; }
     // Zoom by k around a point on the stage, keeping whatever is under it in place.
     function zoomAt(k, px, py) {
-      const s = Math.max(0.15, Math.min(2, cam.s * k));
+      const s = Math.max(0.15, Math.min(Math.max(2, cam.s), cam.s * k)); // never jumps down from a filled view past 2×
       const wx = (px - cam.tx - pan.x) / cam.s, wy = (py - cam.ty - pan.y) / cam.s;
       cam = { s, tx: px - wx * s - pan.x, ty: py - wy * s - pan.y };
       apply();
