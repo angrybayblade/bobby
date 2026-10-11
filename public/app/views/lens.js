@@ -50,6 +50,12 @@ const CSS = `
 @keyframes slideL { from { transform: translateX(60px); opacity: .2; } }
 @keyframes slideR { from { transform: translateX(-60px); opacity: .2; } }
 .lens .grid { position: absolute; inset: 0; overflow: auto; padding: 30px 40px 60px; }
+/* f: the focus fills the stage with its code; the sides and the orbit step away */
+.lens.filled .ring { grid-template-columns: 1fr; padding: 0; gap: 0; align-items: stretch; height: 100%; }
+.lens.filled .side, .lens.filled .orbit, .lens.filled svg, .lens.filled .elbl, .lens.filled .center h4 { display: none; }
+.lens.filled .center { height: 100%; min-height: 0; }
+.lens.filled .focus { height: 100%; display: flex; flex-direction: column; border-radius: 0; border-width: 0; box-shadow: none; padding: 12px 16px; cursor: default; }
+.lens.filled .focus .nbody { max-height: none; flex: 1; min-height: 0; }
 .lens .grid .intent { max-width: 70ch; font: 600 calc(var(--size) * 1.4)/1.35 var(--font-prose); margin: 0 auto 26px; }
 .lens .grid .intent small { display: block; font: 12px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); margin-bottom: 6px; }
 .lens .planets { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; max-width: 1100px; margin: 0 auto; }
@@ -70,7 +76,7 @@ export default {
     injectCss("lens", CSS);
     el.innerHTML = `<div class="lens"></div>`;
     const root = el.firstElementChild;
-    let prevFocus = null, prevSides = { left: [], right: [] };
+    let prevFocus = null, prevSides = { left: [], right: [] }, filled = false;
 
     const nbCard = (e, id) => {
       const loc = app.get(id); const pl = loc.pl, node = app.nodeOf(id);
@@ -142,7 +148,9 @@ export default {
     function update(reason) {
       const loc = app.get(app.focus);
       const paged = app.level === 2;
+      if (app.level !== 1) filled = false; // f holds at the core level, where the focus shows its code
       root.classList.toggle("paged", paged);
+      root.classList.toggle("filled", filled);
       if (app.level === 0 || !loc) {
         if (!loc && paged) { root.innerHTML = `<div class="pane"></div>`; app.renderPage(root.firstElementChild, app.focus); return; }
         app.pageEl = null;
@@ -181,7 +189,28 @@ export default {
       app.setFocus(t.dataset.go);
     });
 
+    // ---- arrows follow edges: → to what the focus affects, ← to what it relies on, ↑/↓ to its siblings
+    // (the other pages hanging off the same neighbour), in walk order.
+    function move(dc, dr) {
+      const loc = app.get(app.focus);
+      if (!loc) return;
+      const nb = app.neighbours(app.focus);
+      if (dc) { const e = dc > 0 ? nb.down[0] : nb.up[0]; return e && app.setFocus(dc > 0 ? e.to : e.from); }
+      const order = app.corePlacements(loc.core).map((pl) => pl.id);
+      const via = nb.up[0] ? app.neighbours(nb.up[0].from).down.map((e) => e.to) : nb.down[0] ? app.neighbours(nb.down[0].to).up.map((e) => e.from) : [];
+      const sib = [...new Set([app.focus, ...via])].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+      const to = sib[sib.indexOf(app.focus) + dr];
+      if (to) app.setFocus(to);
+    }
+    const fill = () => { if (app.level !== 1) { app.setLevel(1); return setTimeout(fill, 60); } filled = !filled; update("fill"); };
+    const keys = {
+      ArrowLeft: () => move(-1, 0), ArrowRight: () => move(1, 0), ArrowUp: () => move(0, -1), ArrowDown: () => move(0, 1),
+      f: () => fill(),
+      g: () => app.setLevel(app.level === 2 ? 1 : 2),
+      Escape: () => (filled ? fill() : app.setLevel(app.level - 1)),
+    };
+
     update("mount");
-    return { update: (r) => (r === "resize" ? wire() : update(r)), destroy() { ro.disconnect(); } };
+    return { update: (r) => (r === "resize" ? wire() : update(r)), keys, destroy() { ro.disconnect(); } };
   },
 };
