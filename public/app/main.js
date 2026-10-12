@@ -1,6 +1,7 @@
 import { DONE, api, createApp } from "./core.js";
 import { expandAll, renderFile, renderNode, renderPage, startComment, startFileNote } from "./code.js";
 import * as chrome from "./chrome.js";
+import * as palette from "./palette.js";
 import views from "./views/index.js";
 
 const [graph, session] = await Promise.all([api("/api/graph"), api("/api/session")]);
@@ -138,7 +139,36 @@ function press(k, { learn = true } = {}) {
   act();
   return true;
 }
+// ---- command palette: every key's action by name, plus what has no key of its own
+const KEYED = [
+  ["Next page", "j"], ["Previous page", "k"], ["Next core", "J"], ["Previous core", "K"],
+  ["Next unreviewed page", "n"], ["Next flagged page", "F"], ["Back to the entry point", "!"],
+  ["Looks good: mark reviewed and move on", "a"], ["Un-mark this page", "u"], ["Flag or unflag this page", "x"],
+  ["Comment on a line", "c"], ["Private note on a line", "m"], ["Your notes", "M"], ["Park a thought", "p"],
+  ["Open collapsed code, then more context", "e"], ["Zoom in", "Enter"], ["Zoom out", "Escape"],
+  ["Focus mode", "f"], ["Full screen page", "g"], ["Next view", "v"], ["Diff layout: inline or split", "d"],
+  ["Show or hide the file tree", "t"], ["Submit review", "s"], ["Settings", ","], ["All keys", "?"],
+];
+const KEY_TEXT = { Enter: "enter", Escape: "esc", "!": "shift 1" };
+function commands() {
+  const s = app.settings, flip = (k, a, b) => app.saveSettings({ [k]: s[k] === a ? b : a });
+  return [
+    ...KEYED.map(([title, k]) => ({ id: `key:${k}`, title, keys: (KEY_TEXT[k] ?? k).split(" "), run: () => press(k, { learn: false }) })),
+    ...(app.claudeReady && app.graph.generator.tree !== "claude" ? [{ id: "key:R", title: "Switch to Claude's tree", keys: ["R"], run: () => app.switchTree() }] : []),
+    ...views.filter((v) => v.id !== currentId).map((v) => ({ id: `view:${v.id}`, title: `${v.name} view`, sub: v.hint, run: () => app.switchView(v.id) })),
+    { id: "set:tests", title: `${s.tests === "show" ? "Hide" : "Show"} tests and generated files`, run: () => flip("tests", "show", "hide") },
+    { id: "set:untouched", title: `${s.untouched === "hide" ? "Show" : "Hide"} untouched code`, run: () => flip("untouched", "hide", "show") },
+    ...[["system", "System"], ["dark", "Dark"], ["light", "Light"]].filter(([v]) => v !== s.theme).map(([v, t]) => ({ id: `theme:${v}`, title: `Theme: ${t}`, run: () => app.saveSettings({ theme: v }) })),
+  ];
+}
+
 document.addEventListener("keydown", (ev) => {
+  if ((ev.metaKey || ev.ctrlKey) && !ev.altKey && !ev.shiftKey && ev.key.toLowerCase() === "k") {
+    if (palette.isOpen()) { ev.preventDefault(); return palette.close(); }
+    if (chrome.isOpen() || ev.target.matches?.("textarea, [contenteditable]")) return; // never over a modal or a half-written comment
+    ev.preventDefault();
+    return palette.open(app, commands());
+  }
   if (typing(ev.target) || ev.metaKey || ev.ctrlKey || ev.altKey) return;
   if (chrome.isOpen()) {
     if (ev.key === "Escape" || ev.key === "Enter") { ev.preventDefault(); chrome.close(); }

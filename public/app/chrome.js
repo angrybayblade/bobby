@@ -1,7 +1,9 @@
 // Everything around the view: header, where-am-I bar, key hints, overlays, toasts, settings.
 import { BAND_TEXT, DONE, LEVELS, LOW, api, esc, inline } from "./core.js";
+import { MOD } from "./palette.js";
 
 const $ = (q) => document.querySelector(q);
+const PALETTE_KEY = MOD === "⌘" ? "⌘K" : "ctrl k";
 let app, views;
 
 export function init(a, viewList) {
@@ -203,7 +205,7 @@ function renderKeys() {
   const uses = app.settings.hintUses ?? {};
   const list = (HINTS_BY_LEVEL[app.level] ?? HINTS).filter(([ks]) => mode === "always" || (mode === "fade" && ks.some((k) => (uses[k] ?? 0) < 5)));
   $("#keys").innerHTML = mode === "never" ? `<span><kbd>?</kbd> keys</span>`
-    : [...list, [["?"], "all keys"]].map(([ks, label]) => `<span>${ks.map((k) => `<kbd>${k}</kbd>`).join(" ")} ${label}</span>`).join("");
+    : [...list, [["?"], "all keys"], [PALETTE_KEY.split(" "), "commands"]].map(([ks, label]) => `<span>${ks.map((k) => `<kbd>${k}</kbd>`).join(" ")} ${label}</span>`).join("");
 }
 
 // ---------------------------------------------------------------- overlays
@@ -243,6 +245,7 @@ export function help() {
       ${r("d", "diff layout: inline or split")}
       ${r("s", "submit review")}
       ${r(",", "settings")}
+      ${r(PALETTE_KEY, "command palette: search every command, core, file and page")}
     </table>
     <div class="row"><button class="btn primary" data-act="close">Got it</button></div>`);
 }
