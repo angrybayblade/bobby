@@ -50,7 +50,11 @@ The UI in `public/` is plain ES modules with no build step and no framework. `in
 
 ## Keyboard (`app/main.js`)
 
-One `keydown` handler. It ignores typing in inputs and any modified keys, and lets an open modal take `esc`/`enter`. A view can claim keys by returning `keys: { [key]: fn }` from `mount`; those win over the global map. Every handled key calls `useKey`.
+One `keydown` handler. It ignores typing in inputs and any modified keys, and lets an open modal take `esc`/`enter`. A view can claim keys by returning `keys: { [key]: fn }` from `mount`; those win over the global map. Both go through `press(key)`, and every handled key calls `useKey`.
+
+The one modified key is `⌘K` / `Ctrl+K`, which toggles the command palette (`app/palette.js`). It doesn't open over another modal or while you're writing in a textarea. The palette shows in `#overlay` like any modal and searches four kinds of item: commands, cores, files and pages. Commands come from `commands()` in `main.js`: every key in `KEYED`, run by name through `press(key, { learn: false })` so view keys like `f` and `g` do what they do in the current view, without counting toward fading their hints. There are also commands with no key of their own (switch to a view, the Tests and Untouched switches, theme). Cores, files and pages are read from the walk each time it opens, so the switches decide what it finds. Matching is per word against the title, then the subtitle (a file's folder, a page's core and path). Substrings beat scattered letters, and word starts count extra. With nothing typed, it lists what you ran last, then every command and core.
+
+To add a command with a key, add a row to `KEYED`; for one without a key, add it to `commands()`.
 
 ## Chrome (`app/chrome.js`)
 

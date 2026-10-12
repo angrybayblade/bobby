@@ -61,6 +61,7 @@ The breadcrumb bar shows where you are (`repo #n › core › page`) and the cur
 | `t` | File tree on the right: show or hide |
 | `d` | Diff layout for every file: inline or split (old beside new). Also the **Inline / Split** switch under the header; a file's own button switches just that file. |
 | `?` | All keys |
+| `⌘K` / `Ctrl+K` | Command palette: search every command, core, file and page by name, then `enter` to run or jump. Each command shows its key, so it's also a way to learn them. |
 
 "Next" always follows the same walk, so switching views never changes what comes next.
 
