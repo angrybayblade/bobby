@@ -9,7 +9,7 @@ There are four views of the same review. Switch with `v` or the toggle in the he
 | [Lens](#lens) | The focus in the centre, its neighbours either side | Maximum focus |
 | [Diff](#diff) | One diff viewer per file, laid out as a graph | Reading real diffs without losing the thread |
 
-All views share the three zoom levels (Overview → Core → Page) described in [Reviewing](reviewing.md#zoom-levels), the same compact, GitHub-like code, and the same keys: `f` focus mode, `g` full screen, `esc` back exactly as you were, and arrows that follow the view's shape (edges in Flow, Lens and Diff; the tree in Outline).
+Two switches in the top bar apply to every view: **⚗ Tests** (test and generated files, hidden by default) and **○ Untouched** (untouched code the changes rely on). All views share the three zoom levels (Overview → Core → Page) described in [Reviewing](reviewing.md#zoom-levels), the same compact, GitHub-like code, and the same keys: `f` focus mode, `g` full screen, `esc` back exactly as you were, and arrows that follow the view's shape (edges in Flow, Lens and Diff; the tree in Outline).
 
 ## Flow
 

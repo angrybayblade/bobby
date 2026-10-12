@@ -49,6 +49,7 @@ function renderTop() {
     <div class="prog" title="${done} of ${total} pages reviewed"><div class="bar"><i style="width:${pct}%"></i></div>${done}/${total}${mins && done < total ? ` · ~${mins}m` : ""}</div>
     <div class="seg" role="group" aria-label="View">${views.map((v) => `<button data-view="${v.id}" aria-pressed="${app.viewId === v.id}" title="${esc(v.hint)} (v)">${esc(v.name)}</button>`).join("")}</div>
     ${drafts ? `<button class="pill signal" data-act="submit">${drafts} draft${drafts > 1 ? "s" : ""} · S</button>` : ""}
+    <button class="pill tog" data-act="tests" aria-pressed="${app.settings.tests === "show"}" title="Test files and generated files, in every view: ${app.settings.tests === "show" ? "shown. Click to hide" : "hidden. Click to show"}">⚗ Tests</button>
     <button class="pill tog" data-act="untouched" aria-pressed="${app.settings.untouched !== "hide"}" title="Untouched code the changes rely on, in every view: ${app.settings.untouched === "hide" ? "hidden. Click to show" : "shown. Click to hide"}">○ Untouched</button>
     <button class="pill" data-act="notes" title="Your private notes (M). Never posted to GitHub.">✎ Notes${app.state.notes.length ? ` · ${app.state.notes.length}` : ""}</button>
     <button class="iconbtn" data-act="settings" title="Settings (,)" aria-label="Settings">${GEAR}</button>`;
@@ -171,6 +172,7 @@ const SETTINGS = [
   ["drift", "Drift prompt", [["on", "On"], ["off", "Off"]]],
   ["prComments", "PR comments", [["hide", "Hidden, show per page"], ["show", "Always shown"]]],
   ["untouched", "Untouched code it relies on", [["show", "Shown"], ["hide", "Hidden"]]],
+  ["tests", "Tests & generated files", [["hide", "Hidden"], ["show", "Shown"]]],
 ];
 export function settings() {
   open(`<h2>Settings</h2><p>Changes apply immediately and are remembered.</p>
@@ -367,6 +369,7 @@ function onClick(ev) {
     "drift-park": () => parkDrift(),
     layout: () => app.saveSettings({ diffLayout: ds.val }),
     untouched: () => app.saveSettings({ untouched: app.settings.untouched === "hide" ? "show" : "hide" }),
+    tests: () => app.saveSettings({ tests: app.settings.tests === "show" ? "hide" : "show" }),
   })[ds.act]?.();
 }
 

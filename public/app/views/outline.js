@@ -94,6 +94,7 @@ export default {
     function renderRail() {
       const focusCore = app.get(app.focus)?.core;
       rail.innerHTML = app.graph.cores.map((c, ci) => {
+        if (!app.coreShown(c)) return "";
         const items = app.index.walk.filter((p) => app.get(p)?.core === c);
         const done = items.filter((p) => app.isReviewed(p)).length;
         const open = c === focusCore && app.level > 0;
@@ -137,6 +138,7 @@ export default {
       return `<div class="story"><div class="eyebrow">What this PR does</div><h1>${esc(app.graph.intent)}</h1>
         <p class="lede">${app.graph.cores.length} core change${app.graph.cores.length > 1 ? "s" : ""} · ${done}/${total} reviewed${mins ? ` · about ${mins} min left` : ""}. Press <kbd>enter</kbd> to open the highlighted one.</p>
         ${app.graph.cores.map((c, ci) => {
+          if (!app.coreShown(c)) return "";
           const items = app.index.walk.filter((p) => app.get(p)?.core === c);
           return `<section class="${c === fc ? "cur" : ""}" data-core="${c.id}"><h3>${ci + 1} · ${esc(c.title)}<small>${items.filter((p) => app.isReviewed(p)).length}/${items.length}</small></h3><p>${esc(c.summary)}</p></section>`;
         }).join("")}</div>`;

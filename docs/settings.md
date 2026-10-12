@@ -17,8 +17,12 @@ Open settings with `,` or the gear in the header. Changes apply immediately and 
 | Rabbit-hole nudge | Off · 8m · 12m · 20m | 12m |
 | Drift prompt | On · Off | On |
 | PR comments | Hidden, show per page · Always shown | Hidden, show per page |
+| Untouched code it relies on | Shown · Hidden (also the top bar's **○ Untouched**) | Shown |
+| Tests & generated files | Hidden · Shown (also the top bar's **⚗ Tests**) | Hidden |
 
 **Style** picks the colours. GitHub is the default. Warm is the alternative: warm neutrals with one amber signal colour. GitHub uses GitHub's colours and fonts: its accent blue as the signal, its diff greens and reds, blue hunk rows, its syntax colours, and the system UI and monospace fonts. Either comes in dark and light.
+
+**Tests & generated files** are skipped by default: test files (`*.test.*`, `*.spec.*`, `__tests__/`, `tests/`, fixtures, `test_*.py`, `*_test.go`, …) and generated files (`__generated__/`, `*.generated.*`, `*_pb2.py`, OpenAPI specs, or code carrying a generated-file marker such as `@generated` or "DO NOT EDIT"). Hidden, they leave every view, `j`/`k` and progress; the **⚗ Tests** switch in the top bar brings them back. **Untouched code it relies on** works the same way, with **○ Untouched**. Lockfiles, `dist/` and the like are already set aside on the low-signal page.
 
 "System" follows your OS: light/dark preference for the theme, and the reduced-motion preference for motion. With motion off, every transition and animation is disabled.
 

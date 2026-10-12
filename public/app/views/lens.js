@@ -88,6 +88,7 @@ export default {
     function planets() {
       const fc = app.get(app.focus)?.core;
       return `<div class="grid"><div class="intent"><small>What this PR does</small>${esc(app.graph.intent)}</div><div class="planets">${app.graph.cores.map((c, ci) => {
+        if (!app.coreShown(c)) return "";
         const items = app.index.walk.filter((p) => app.get(p)?.core === c);
         return `<button class="planet ${c === fc ? "cur" : ""}" data-core="${c.id}"><h3>${ci + 1} · ${esc(c.title)}</h3><p>${esc(c.summary)}</p><div class="dots">${items.map((p) => `<i class="${app.isReviewed(p) ? "d" : ""}"></i>`).join("")}</div></button>`;
       }).join("")}</div></div>`;

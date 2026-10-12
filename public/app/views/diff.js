@@ -215,7 +215,7 @@ export default {
     // What a viewer's content depends on. Settings outside buildSig (theme, motion, hints, edges…) are pure CSS or
     // a redraw, so they never rebuild; a change inside one file (its layout, its comments and notes) re-renders that file.
     let builtFrom = "", builtGraph = null, fileSigs = new Map();
-    const buildSig = () => JSON.stringify(["diffLayout", "size", "font", "spacing", "palette", "prComments", "untouched"].map((k) => app.settings[k]));
+    const buildSig = () => JSON.stringify(["diffLayout", "size", "font", "spacing", "palette", "prComments", "untouched", "tests"].map((k) => app.settings[k]));
     const fileSig = (path) => {
       const on = (x) => x.path === path;
       return JSON.stringify([app.layoutOf(path), app.state.comments.filter(on).map((c) => [c.id, c.line, c.body]),
