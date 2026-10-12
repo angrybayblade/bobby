@@ -77,139 +77,133 @@ export default {
     const expanded = new Set(); // "coreId:band" opened by the user
     let lastPagePid = null;
     // The camera: auto-framed for the focus and level, until you pan or zoom; then yours until the focus or level moves.
-    let view = { tx: 0, ty: 0, s: 1 }, mine = false, lastL = null;
+    let view = { tx: 0, ty: 0, s: 1 }, mine = false, lastL = null, G = null;
     const apply = () => { world.style.transform = `translate(${view.tx}px, ${view.ty}px) scale(${view.s})`; };
     let bodyH = 420; // last measured height of the focused card with its code
     const withBody = () => (app.level === 1 && app.get(app.focus) ? app.focus : null);
 
     function layout() {
-      const focusLoc = app.get(app.focus);
       const body = withBody();
       const items = [], heads = [];
-      let y = 0, width = 0;
-      const lowY = () => y;
-      app.graph.cores.forEach((c) => {
-        const current = focusLoc?.core === c && app.level > 0;
-        const nb = current ? app.neighbours(app.focus) : { up: [], down: [] };
-        // Neighbours get medium cards, but only the first few each way: a core change with dozens would fill the screen.
-        const near = new Set([...nb.up.slice(0, MAX_COL).map((e) => e.from), ...nb.down.slice(0, MAX_COL).map((e) => e.to)]);
-        const pls = app.corePlacements(c), byId = new Map(pls.map((pl) => [pl.id, pl])), order = new Map(pls.map((pl, i) => [pl.id, i]));
-        const es = app.edgesOf(c.id);
-        const isUp = (pl) => pl.band.startsWith("up");
-        const sizeOf = (pl) => (!current ? "far" : pl.id === app.focus ? "focus" : near.has(pl.id) ? "near" : "far");
-        const dims = (pl) => (sizeOf(pl) === "focus" && body ? [BODY_W, bodyH] : SIZES[sizeOf(pl)]);
+      // One graph for the whole PR, keyed by each node's own (non-repeat) placement, so code that several cores share
+      // appears once. It reads left to right from the changes: ① every core change, then everything they affect
+      // (1st order), what that affects (2nd order), … Each page hangs off a page one order before it; any other
+      // links to it are drawn as well. What the changes rely on sits in lanes to the left, beside what it feeds.
+      const canon = (pid) => app.canonical(pid);
+      const pls = [], byId = new Map(), order = new Map();
+      for (const c of app.graph.cores) for (const pl of app.corePlacements(c)) {
+        const id = canon(pl.id);
+        if (!byId.has(id)) { byId.set(id, app.get(id)?.pl ?? pl); order.set(id, pls.length); pls.push(id); }
+      }
+      const roots = [...new Set(app.graph.cores.flatMap((c) => app.band(c, "core").map((pl) => canon(pl.id))))].filter((id) => byId.has(id));
+      const succ = new Map(), pred = new Map(), link = (m, a, b) => { const l = m.get(a) ?? m.set(a, []).get(a); if (!l.includes(b)) l.push(b); };
+      for (const c of app.graph.cores) for (const e of app.edgesOf(c.id)) {
+        const a = canon(e.from), b = canon(e.to);
+        if (a !== b && byId.has(a) && byId.has(b)) { link(succ, a, b); link(pred, b, a); }
+      }
+      // Order: shortest distance from any core change along what-it-affects edges.
+      const depth = new Map(roots.map((r) => [r, 0])), queue = [...roots];
+      while (queue.length) { const a = queue.shift(); for (const b of succ.get(a) ?? []) if (!depth.has(b)) { depth.set(b, depth.get(a) + 1); queue.push(b); } }
+      const parentOf = new Map(), kids = new Map(), feeds = new Map();
+      for (const id of pls) {
+        if (!depth.has(id)) { const t = (succ.get(id) ?? [])[0]; if (t) feeds.set(id, t); continue; } // relied on: a lane
+        if (depth.get(id) === 0) continue;
+        const p = (pred.get(id) ?? []).filter((q) => depth.get(q) === depth.get(id) - 1).sort((a, b) => order.get(a) - order.get(b))[0];
+        if (p) { parentOf.set(id, p); (kids.get(p) ?? kids.set(p, []).get(p)).push(id); }
+      }
+      for (const list of kids.values()) list.sort((a, b) => order.get(a) - order.get(b));
+      const fid = app.focus && byId.has(canon(app.focus)) ? canon(app.focus) : null;
+      const near = new Set(fid && app.level > 0 ? [...(pred.get(fid) ?? []).slice(0, MAX_COL), ...(succ.get(fid) ?? []).slice(0, MAX_COL)] : []);
+      const sizeOf = (id) => (app.level === 0 ? "far" : id === fid ? "focus" : near.has(id) ? "near" : "far");
+      const dims = (id) => (sizeOf(id) === "focus" && body ? [BODY_W, bodyH] : SIZES[sizeOf(id)]);
 
-        // The flow is a tree rooted at the core change: every affected page hangs off the page it's reached from, so
-        // each column is one order further from the change. What the core relies on isn't part of the flow: it sits
-        // in lanes to the left (changed, then untouched), each card beside the page it feeds.
-        const roots = pls.filter((pl) => pl.band === "core").map((pl) => pl.id);
-        const parentOf = new Map(), feeds = new Map(), kids = new Map();
-        for (const pl of pls) {
-          if (pl.band === "core") continue;
-          if (isUp(pl)) { const e = es.find((x) => x.from === pl.id); if (e && byId.has(e.to)) feeds.set(pl.id, e.to); continue; }
-          const e = es.find((x) => x.to === pl.id), p = e?.from;
-          if (p && byId.has(p) && !isUp(byId.get(p))) parentOf.set(pl.id, p);
-        }
-        const addKid = (p, k) => (kids.get(p) ?? kids.set(p, []).get(p)).push(k);
-        for (const [k, p] of parentOf) addKid(p, k);
-        const depth = new Map();
-        const reach = (id, d) => { if (depth.has(id)) return; depth.set(id, d); for (const k of kids.get(id) ?? []) reach(k, d + 1); };
-        roots.forEach((r) => reach(r, 0));
-        for (const pl of pls) if (!isUp(pl) && !depth.has(pl.id)) { // on a cycle, or cut off: hang it off the first root
-          if (roots[0]) { const old = parentOf.get(pl.id); if (old) kids.set(old, kids.get(old).filter((k) => k !== pl.id)); parentOf.set(pl.id, roots[0]); addKid(roots[0], pl.id); reach(pl.id, 1); }
-          else { roots.push(pl.id); reach(pl.id, 0); }
-        }
-        for (const list of kids.values()) list.sort((a, b) => order.get(a) - order.get(b));
-
-        // Fold long lists of children into "+N", keeping the path to the focus and its neighbours.
-        const onPath = new Set(); for (let q = current ? app.focus : null; q; q = parentOf.get(q) ?? feeds.get(q)) { if (onPath.has(q)) break; onPath.add(q); }
-        const foldTo = new Map(), aggs = new Map(), shownKids = new Map();
-        for (const [p, list] of kids) {
-          const key = `${c.id}:k:${p}`;
-          let shown = list;
-          if (list.length > MAX_COL + 1 && !expanded.has(key)) {
-            const keep = (id) => onPath.has(id) || near.has(id);
-            const must = list.filter(keep), rest = list.filter((id) => !keep(id));
-            const pick = new Set([...must, ...rest.slice(0, Math.max(0, MAX_COL - must.length))]);
-            shown = list.filter((id) => pick.has(id));
-            const folded = list.filter((id) => !pick.has(id));
-            if (folded.length) {
-              const agg = `agg:${key}`;
-              aggs.set(agg, { key, n: folded.length });
-              const hide = (id) => { foldTo.set(id, agg); for (const k of kids.get(id) ?? []) hide(k); };
-              folded.forEach(hide);
-              shown = [...shown, agg];
-            }
-          }
-          shownKids.set(p, shown);
-        }
-        const hOf = (id) => (aggs.has(id) ? SIZES.agg[1] : dims(byId.get(id))[1]);
-        const wOf = (id) => (aggs.has(id) ? SIZES.agg[0] : dims(byId.get(id))[0]);
-
-        // Tidy tree: leaves stack down the page, each parent centred on its children.
-        const top = y + HEAD + (current ? 34 : 0);
-        const at = new Map(), colOf = new Map(), colBottom = new Map();
-        let cursor = top;
-        const lay = (id, d) => {
-          colOf.set(id, d);
-          const ch = shownKids.get(id) ?? [], h = hOf(id);
-          let cy;
-          if (!ch.length) cy = Math.max(cursor, colBottom.get(d) ?? top);
-          else { const mids = ch.map((k) => lay(k, d + 1)); cy = Math.max((mids[0] + mids[mids.length - 1]) / 2 - h / 2, colBottom.get(d) ?? top); }
-          at.set(id, cy);
-          colBottom.set(d, cy + h + GAP_Y);
-          cursor = Math.max(cursor, cy + h + GAP_Y);
-          return cy + h / 2;
-        };
-        for (const r of roots) lay(r, 0);
-        // The lanes: changed code it relies on (column -1), untouched (-2), beside what each one feeds.
-        for (const lane of [-1, -2]) {
-          const list = pls.filter((pl) => isUp(pl) && (lane === -1 ? pl.band === "upChanged" : pl.band === "upUnchanged"))
-            .map((pl) => pl.id).sort((a, b) => (at.get(feeds.get(a)) ?? 1e9) - (at.get(feeds.get(b)) ?? 1e9) || order.get(a) - order.get(b));
-          let bottom = top;
-          for (const id of list) {
-            const t = feeds.get(id), want = at.has(t) ? at.get(t) + hOf(t) / 2 - hOf(id) / 2 : bottom;
-            const cy = Math.max(want, bottom);
-            at.set(id, cy); colOf.set(id, lane); bottom = cy + hOf(id) + GAP_Y;
+      // Fold long lists of children into "+N", keeping the path to the focus and its neighbours.
+      const onPath = new Set(); for (let q = fid; q && !onPath.has(q); q = parentOf.get(q) ?? feeds.get(q)) onPath.add(q);
+      const foldTo = new Map(), aggs = new Map(), shownKids = new Map();
+      for (const [p, list] of kids) {
+        const key = `k:${p}`;
+        let shown = list;
+        if (list.length > MAX_COL + 1 && !expanded.has(key)) {
+          const keep = (id) => onPath.has(id) || near.has(id);
+          const must = list.filter(keep), rest = list.filter((id) => !keep(id));
+          const pick = new Set([...must, ...rest.slice(0, Math.max(0, MAX_COL - must.length))]);
+          const folded = list.filter((id) => !pick.has(id));
+          shown = list.filter((id) => pick.has(id));
+          if (folded.length) {
+            const agg = `agg:${key}`;
+            aggs.set(agg, { key, n: folded.length });
+            const hide = (id) => { foldTo.set(id, agg); for (const k of kids.get(id) ?? []) hide(k); };
+            folded.forEach(hide);
+            shown.push(agg);
           }
         }
-        // Columns as wide as their widest card, from the leftmost lane in use.
-        const cols = [...new Set(colOf.values())].sort((a, b) => a - b), colW = new Map();
-        for (const [id, d] of colOf) colW.set(d, Math.max(colW.get(d) ?? 0, wOf(id)));
-        const colX = new Map(); let acc = 0;
-        for (const d of cols) { colX.set(d, acc); acc += colW.get(d) + GUTTER; }
-        heads.push({ c, x: 0, y, current });
-        if (current) for (const d of cols) heads.push({ col: d, x: colX.get(d), y: y + HEAD - 6, w: colW.get(d) });
+        shownKids.set(p, shown);
+      }
+      const hOf = (id) => (aggs.has(id) ? SIZES.agg[1] : dims(id)[1]);
+      const wOf = (id) => (aggs.has(id) ? SIZES.agg[0] : dims(id)[0]);
+
+      // Tidy tree: leaves stack down the page, each parent centred on its children.
+      const top = HEAD + 34;
+      const at = new Map(), colOf = new Map(), colBottom = new Map();
+      let cursor = top;
+      const lay = (id, d) => {
+        colOf.set(id, d);
+        const ch = shownKids.get(id) ?? [], h = hOf(id);
+        let cy;
+        if (!ch.length) cy = Math.max(cursor, colBottom.get(d) ?? top);
+        else { const mids = ch.map((k) => lay(k, d + 1)); cy = Math.max((mids[0] + mids[mids.length - 1]) / 2 - h / 2, colBottom.get(d) ?? top); }
+        at.set(id, cy);
+        colBottom.set(d, cy + h + GAP_Y);
+        cursor = Math.max(cursor, cy + h + GAP_Y);
+        return cy + h / 2;
+      };
+      for (const r of roots.sort((a, b) => order.get(a) - order.get(b))) lay(r, 0);
+      for (const id of pls) if (depth.has(id) && !colOf.has(id) && !foldTo.has(id)) lay(id, depth.get(id)); // reached only through a fold or a cycle
+      for (const lane of [-1, -2]) {
+        const list = pls.filter((id) => !depth.has(id) && (app.nodeOf(id)?.kind === "change") === (lane === -1))
+          .sort((a, b) => (at.get(feeds.get(a)) ?? 1e9) - (at.get(feeds.get(b)) ?? 1e9) || order.get(a) - order.get(b));
         let bottom = top;
-        for (const [id, d] of colOf) {
-          const w = wOf(id), h = hOf(id), x = colX.get(d) + (colW.get(d) - w) / 2, cy = at.get(id);
-          bottom = Math.max(bottom, cy + h);
-          if (aggs.has(id)) { const a = aggs.get(id); items.push({ kind: "agg", key: a.key, n: a.n, size: "agg", w, h, x, y: cy, current }); continue; }
-          const pl = byId.get(id), size = sizeOf(pl);
-          items.push({ kind: "pl", pl, size, body: size === "focus" && !!body, w, h, x, y: cy, current, col: d });
+        for (const id of list) {
+          const t = feeds.get(id), want = at.has(t) ? at.get(t) + hOf(t) / 2 - hOf(id) / 2 : bottom;
+          const cy = Math.max(want, bottom);
+          at.set(id, cy); colOf.set(id, lane); bottom = cy + hOf(id) + GAP_Y;
         }
-        width = Math.max(width, acc);
-        c._box = { x: -20, y, w: Math.max(acc, 400), h: bottom - y + 10 };
-        c._foldTo = foldTo;
-        c._tree = { parentOf, feeds, kids: shownKids, roots };
-        y = bottom + CORE_GAP;
-      });
+      }
+      const cols = [...new Set(colOf.values())].sort((a, b) => a - b), colW = new Map();
+      for (const [id, d] of colOf) colW.set(d, Math.max(colW.get(d) ?? 0, wOf(id)));
+      const colX = new Map(); let acc = 0;
+      for (const d of cols) { colX.set(d, acc); acc += colW.get(d) + GUTTER; }
+      for (const d of cols) heads.push({ col: d, x: colX.get(d), y: HEAD - 6, w: colW.get(d) });
+      let y = top;
+      for (const [id, d] of colOf) {
+        const w = wOf(id), h = hOf(id), x = colX.get(d) + (colW.get(d) - w) / 2, cy = at.get(id);
+        y = Math.max(y, cy + h);
+        if (aggs.has(id)) { const a = aggs.get(id); items.push({ kind: "agg", key: a.key, n: a.n, size: "agg", w, h, x, y: cy, current: true }); continue; }
+        const size = sizeOf(id);
+        items.push({ kind: "pl", pl: byId.get(id), size, body: size === "focus" && !!body, w, h, x, y: cy, current: true, col: d, root: depth.get(id) === 0 });
+      }
+      const width = acc;
+      y += CORE_GAP;
+      G = { parentOf, feeds, kids: shownKids, pred, succ, foldTo };
       if (app.graph.lowSignal.length) {
         const sel = app.focus === LOW;
-        items.push({ kind: "low", size: sel ? "near" : "far", w: 260, h: 38, x: 0, y: lowY(), current: sel });
+        items.push({ kind: "low", size: sel ? "near" : "far", w: 260, h: 38, x: 0, y, current: sel });
         y += 38 + CORE_GAP;
       }
       // Edges between visible cards (folded endpoints route to the "+N" card).
       const pos = new Map(items.filter((i) => i.kind === "pl").map((i) => [i.pl.id, i]));
-      const aggOf = (pid) => { const loc = app.get(pid); const a = loc && loc.core._foldTo?.get(pid); return a && items.find((i) => i.kind === "agg" && `agg:${i.key}` === a); };
-      const edges = [];
-      for (const e of app.graph.edges) {
-        const a = pos.get(e.from) ?? aggOf(e.from), b = pos.get(e.to) ?? aggOf(e.to);
-        if (!a || !b) continue;
-        const hot = app.level > 0 && (e.from === app.focus || e.to === app.focus);
-        edges.push({ e, a, b, hot, dim: !a.current, rep: !!(app.get(e.from).pl.repeatOf || app.get(e.to).pl.repeatOf) });
+      const aggOf = (id) => { const a = G.foldTo.get(id); return a && items.find((i) => i.kind === "agg" && `agg:${i.key}` === a); };
+      const edges = [], seen = new Set();
+      for (const [a0, bs] of G.succ) for (const b0 of bs) {
+        const a = pos.get(a0) ?? aggOf(a0), b = pos.get(b0) ?? aggOf(b0);
+        if (!a || !b || a === b) continue;
+        const k = `${a.x},${a.y}>${b.x},${b.y}`; if (seen.has(k)) continue; seen.add(k);
+        const hot = app.level > 0 && (a0 === fid || b0 === fid);
+        const tree = G.parentOf.get(b0) === a0 || G.feeds.get(a0) === b0;
+        if (!tree && !hot) continue; // links beyond the tree only show for the focus, dashed: shared code would tangle the rest
+        edges.push({ a, b, hot, dim: false, rep: !tree });
       }
-      return { items, heads, edges, height: y, width };
+      return { items, heads, edges, height: y, width: Math.max(width, 400) };
     }
 
     function card(it) {
@@ -225,7 +219,7 @@ export default {
         if (node.kind === "context") meta = `${node.location.path}:${node.location.line}`;
         else { const { a, d } = app.stat(pl.id); meta = `${node.file} · +${a} −${d}`; }
       }
-      const chip = size === "focus" || size === "near" ? `<span class="bandc">${BAND_CHIP[pl.band]}</span>` : "";
+      const chip = size === "focus" || size === "near" ? `<span class="bandc">${it.root ? `core ${app.get(pl.id).ci + 1}` : BAND_CHIP[pl.band]}</span>` : "";
       const html = `<div class="t"><i class="glyph ${glyph}"></i><span>${esc(pl.title)}</span>${status}${chip}</div>`
         + (size === "focus" || size === "near" ? `<div class="w">${esc(pl.why)}</div>${it.body ? "" : `<div class="m">${esc(meta)}</div>`}` : "")
         + (it.body ? `<div class="nbody"></div>` : "");
@@ -249,18 +243,17 @@ export default {
     function camera(L) {
       const sw = stage.clientWidth, sh = stage.clientHeight;
       let box, maxScale = 1, minScale = 0.4;
-      const focusItem = L.items.find((i) => i.kind === "pl" && i.pl.id === app.focus) ?? L.items.find((i) => i.kind === "low" && app.focus === LOW);
+      const focusItem = L.items.find((i) => i.kind === "pl" && i.pl.id === app.canonical(app.focus)) ?? L.items.find((i) => i.kind === "low" && app.focus === LOW);
       const loc = app.get(app.focus);
       const top = app.level === 0 ? intentEl.offsetHeight + 30 : 0;
-      if (app.level === 0 || !loc) box = { x: -20, y: -10, w: L.width, h: L.height };
-      else if (app.level === 1 && !withBody()) box = loc.core._box;
+      if (app.level === 0 || !loc || !focusItem) box = { x: -20, y: -10, w: L.width, h: L.height };
       else {
-        // Page mode (a rail above the code), or a code-bearing focus card: frame the focus and its neighbours.
-        const nb = app.neighbours(app.focus);
-        const ids = new Set([app.focus, ...nb.up.map((e) => e.from), ...nb.down.map((e) => e.to)]);
+        // Core or page level: frame the focus and its neighbours in the graph.
+        const f = app.canonical(app.focus);
+        const ids = new Set([f, ...(G.pred.get(f) ?? []), ...(G.succ.get(f) ?? [])]);
         const its = L.items.filter((i) => i.kind === "pl" && ids.has(i.pl.id));
         const xs = its.flatMap((i) => [i.x, i.x + i.w]), ys = its.flatMap((i) => [i.y, i.y + i.h]);
-        box = its.length ? { x: Math.min(...xs) - 20, y: Math.min(...ys) - 16, w: Math.max(...xs) - Math.min(...xs) + 40, h: Math.max(...ys) - Math.min(...ys) + 32 } : loc.core._box;
+        box = { x: Math.min(...xs) - 20, y: Math.min(...ys) - 16, w: Math.max(...xs) - Math.min(...xs) + 40, h: Math.max(...ys) - Math.min(...ys) + 32 };
         if (app.level === 2) { maxScale = 0.9; minScale = 0.3; } else { maxScale = 1; minScale = 0.6; }
       }
       let s = Math.min(maxScale, (sw - PAD * 2) / box.w, (sh - PAD * 2) / box.h);
@@ -273,7 +266,7 @@ export default {
       }
       if (app.level === 0 && box.h * s > sh - top - PAD) {
         ty = top - box.y * s; // too tall to fit: start under the intent, keep the current core in view
-        const cur = loc?.core._box ?? (focusItem && { y: focusItem.y, h: focusItem.h });
+        const cur = focusItem && { y: focusItem.y, h: focusItem.h };
         if (cur) ty = Math.min(ty, sh * 0.45 - (cur.y + cur.h / 2) * s);
       }
       if (filled) return fillCam();
@@ -432,17 +425,17 @@ export default {
     // ---- arrows follow the flow: → one order deeper (the first page reached from this one), ← back toward the core
     // change (and from it, to what it relies on), ↑/↓ the page above or below in the same column.
     function move(dc, dr) {
-      const loc = app.get(app.focus), t = loc?.core._tree;
-      const its = (lastL?.items ?? []).filter((i) => i.kind === "pl" && i.current);
-      const at = its.find((i) => i.pl.id === app.focus);
+      const t = G, f = app.canonical(app.focus);
+      const its = (lastL?.items ?? []).filter((i) => i.kind === "pl");
+      const at = its.find((i) => i.pl.id === f);
       if (!t || !at) return;
       const shown = (id) => its.some((i) => i.pl.id === id);
       let to;
       if (dr) {
         const col = its.filter((i) => i.col === at.col).sort((a, b) => a.y - b.y);
         to = col[col.indexOf(at) + dr]?.pl.id;
-      } else if (dc > 0) to = t.feeds.get(app.focus) ?? (t.kids.get(app.focus) ?? []).find(shown);
-      else to = t.parentOf.get(app.focus) ?? [...t.feeds].find(([, f]) => f === app.focus)?.[0];
+      } else if (dc > 0) to = t.feeds.get(f) ?? (t.kids.get(f) ?? []).find(shown) ?? (t.succ.get(f) ?? []).find(shown);
+      else to = t.parentOf.get(f) ?? (t.pred.get(f) ?? []).find(shown);
       if (to && shown(to)) app.setFocus(to);
     }
     const keys = {

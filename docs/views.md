@@ -13,12 +13,12 @@ All views share the three zoom levels (Overview → Core → Page) described in 
 
 ## Flow
 
-Each core as a tree that reads left to right from the change: **① core change** → **1st order** (what the change affects) → **2nd order** (what that affects) → …. Every page hangs off the page it's reached from, so a column is one order further from the change, and the flow starts at the highlighted core-change column and ends at the rightmost one. What the core relies on isn't part of the flow: it sits in lanes to the left (*relies on · changed*, then *relies on · untouched*, which the top bar's **○ Untouched** switch hides), each card beside the page it feeds.
+The whole PR as one graph that reads left to right from the changes: **① core change** (every core change in the PR) → **1st order** (what they affect) → **2nd order** (what that affects) → …. Code that several cores share appears once. Every page hangs off a page one order before it, so a column is one order further from the changes: the flow starts at the highlighted core-change column and ends at the rightmost one. Other links show, dashed, around the focus. What the changes rely on isn't part of the flow: it sits in lanes to the left (*relies on · changed*, then *relies on · untouched*, which the top bar's **○ Untouched** switch hides), each card beside the page it feeds. A root card names its core.
 
 - Nodes are **sized by relevance**: the focus is big, its first few neighbours are medium, and the rest are small and sit back. Long lists of children fold into "+N", always keeping the path to the focus.
 - Each card says how it relates in its own text ("Uses `retryMethods` and was changed too"); the band is a chip on it.
 - At **Core**, the focused card shows its comments and code. At **Page**, the page takes over the stage.
-- The camera glides between levels. Drag the background or scroll to pan, pinch or `ctrl`+scroll to zoom. Click a node to focus it, click it again to zoom in, click a core's heading to open that core, and click "+N" to unfold.
+- The camera glides between levels. Drag the background or scroll to pan, pinch or `ctrl`+scroll to zoom. Click a node to focus it, click it again to zoom in, and click "+N" to unfold. At **Core** the camera frames the focus and what it links to.
 - Arrows follow the flow: → one order deeper (the first page reached from this one), ← back toward the core change (and from it, to what it relies on), ↑ / ↓ the page above or below in the same column.
 - `f` fills the canvas with the focused card and its code at a reading size; scrolling reads its code, and `j`/`k` keep it filled.
 
