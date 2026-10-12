@@ -108,7 +108,8 @@ export function startServer(s: Session, port: number) {
       if (req.method === "POST" && p === "/api/submit") {
         const { event, body } = (await req.json()) as { event: "COMMENT" | "APPROVE" | "REQUEST_CHANGES"; body: string };
         if (pr().provider === "local") return json({ ok: false, error: "This is a local review with no PR, so there's nowhere to post. Your drafts stay here." }, 400);
-        const outside = s.state.comments.filter((c) => !c.inDiff);
+        const ready = s.state.comments.filter((c) => !c.wip && c.kind !== "note"); // unfinished drafts stay behind
+        const outside = ready.filter((c) => !c.inDiff);
         const fullBody = [
           body.trim(),
           outside.length ? "**Notes on code this PR doesn't touch**\n" + outside.map((c) => `- \`${c.path}:${c.startLine ? `${c.startLine}-` : ""}${c.line}\`: ${c.body}`).join("\n") : "",
@@ -118,14 +119,14 @@ export function startServer(s: Session, port: number) {
           event,
           body: fullBody,
           // A range goes as start_line/start_side to line/side, as GitHub's multi-line review comments do.
-          comments: s.state.comments.filter((c) => c.inDiff).map(({ path, line, side, body, startLine, startSide }) => ({ path, line, side, body, ...(startLine ? { start_line: startLine, start_side: startSide ?? side } : {}) })),
+          comments: ready.filter((c) => c.inDiff).map(({ path, line, side, body, startLine, startSide }) => ({ path, line, side, body, ...(startLine ? { start_line: startLine, start_side: startSide ?? side } : {}) })),
         };
         try {
           const out = await run(
             ["gh", "api", "--method", "POST", `repos/${pr().owner}/${pr().repo}/pulls/${pr().number}/reviews`, "--input", "-"],
             { input: JSON.stringify(payload) },
           );
-          s.state.comments = [];
+          s.state.comments = s.state.comments.filter((c) => c.wip); // what was posted is gone; unfinished drafts remain
           persist();
           return json({ ok: true, url: JSON.parse(out).html_url });
         } catch (e) {

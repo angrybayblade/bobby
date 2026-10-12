@@ -102,6 +102,8 @@ export interface Comment {
   startLine?: number;
   startSide?: "LEFT" | "RIGHT";
   body: string;
+  wip?: boolean; // unfinished: the composer was closed with text in it; never posted until you finish it
+  kind?: "note"; // an unfinished private note (finished notes live in ReviewState.notes)
   inDiff: boolean; // false → goes into the review body, GitHub rejects inline comments outside the diff
 }
 
