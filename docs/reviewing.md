@@ -58,6 +58,7 @@ The breadcrumb bar shows where you are (`repo #n › core › page`) and the cur
 | `v` | Switch view (Flow → Outline → Lens → Diff) |
 | `f` | Focus: what you're on fills the screen with its code (Flow, Lens and Diff: the card or file; Outline: the reading pane takes the full width). Again, or `esc`, to go back exactly as you were. |
 | `g` | Full screen page for what you're on; again, or `esc`, to go back exactly as you were |
+| `t` | File tree on the right: show or hide |
 | `d` | Diff layout for every file: inline or split (old beside new). Also the **Inline / Split** switch under the header; a file's own button switches just that file. |
 | `?` | All keys |
 

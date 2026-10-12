@@ -132,6 +132,7 @@ document.addEventListener("keydown", (ev) => {
     v: () => app.switchView(views[(views.findIndex((v) => v.id === currentId) + 1) % views.length].id),
     s: () => chrome.submit(), "?": () => chrome.help(), ",": () => chrome.settings(), p: () => chrome.park(), M: () => chrome.notes(),
     R: () => app.switchTree(),
+    t: () => chrome.toggleFiles(),
     "!": () => { const e = app.entryPoint(); if (e) app.setFocus(e.pid, { level: 1 }); }, // back to the entry point
     d: () => app.toggleLayout(),
   }[k];

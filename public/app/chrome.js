@@ -30,7 +30,81 @@ export function init(a, viewList) {
 }
 
 export function render() {
-  renderTop(); renderWhere(); renderKeys();
+  renderTop(); renderWhere(); renderKeys(); renderFiles();
+}
+
+// ---------------------------------------------------------------- file tree
+// The PR's files as a folder tree (single-child folder chains merged, like GitHub's), with +/− counts, comments and
+// notes, and ✓ once every page in the file is reviewed. The file you're on is highlighted; a click goes to its first
+// unreviewed page. Follows the Tests and Untouched switches: it lists the files the walk has.
+const closedDirs = new Set();
+let fileFilter = "";
+export function toggleFiles() {
+  app.saveSettings({ fileTree: app.settings.fileTree === "hide" ? "show" : "hide" });
+  window.dispatchEvent(new Event("resize")); // the view's width changed
+}
+function filesOf() {
+  const files = new Map();
+  for (const pid of app.index.walk) {
+    const loc = app.get(pid);
+    if (!loc || loc.pl.repeatOf) continue;
+    const n = app.nodeOf(pid), path = n.kind === "change" ? n.file : n.location.path;
+    const f = files.get(path) ?? files.set(path, { path, pids: [], a: 0, d: 0, changed: false, core: false, nodes: new Set() }).get(path);
+    f.pids.push(pid);
+    if (loc.pl.band === "core") f.core = true;
+    if (n.kind === "change") { f.changed = true; if (!f.nodes.has(n.id)) { f.nodes.add(n.id); const s = app.stat(pid); f.a += s.a; f.d += s.d; } }
+  }
+  return files;
+}
+function renderFiles() {
+  const el = $("#files");
+  if (!el) return;
+  el.hidden = app.settings.fileTree === "hide";
+  if (el.hidden) return;
+  if (!el.querySelector(".flist")) {
+    el.innerHTML = `<div class="fhd"><input type="search" placeholder="Filter files…" aria-label="Filter files"><span class="fn"></span></div><div class="flist"></div>`;
+    el.querySelector("input").addEventListener("input", (ev) => { fileFilter = ev.target.value; renderFiles(); });
+    el.addEventListener("click", (ev) => {
+      const t = ev.target.closest("[data-fdir],[data-ffile]");
+      if (!t) return;
+      if (t.dataset.fdir != null) { closedDirs.has(t.dataset.fdir) ? closedDirs.delete(t.dataset.fdir) : closedDirs.add(t.dataset.fdir); return renderFiles(); }
+      const f = filesOf().get(t.dataset.ffile);
+      const to = f && (f.pids.find((p) => !app.isReviewed(p)) ?? f.pids[0]);
+      if (to) app.setFocus(to, { level: Math.max(1, app.level) });
+    });
+  }
+  const files = filesOf();
+  const cur = app.nodeOf(app.focus), curPath = cur && (cur.kind === "change" ? cur.file : cur.location.path);
+  const q = fileFilter.trim().toLowerCase();
+  const talk = (path) => app.state.comments.filter((c) => c.path === path).length + app.state.notes.filter((n) => n.path === path).length + (app.graph.discussion ?? []).filter((c) => c.path === path).length;
+  // Build the folder tree, then merge single-child chains.
+  const root = { dirs: new Map(), files: [] };
+  for (const f of files.values()) {
+    if (q && !f.path.toLowerCase().includes(q)) continue;
+    const parts = f.path.split("/"), name = parts.pop();
+    let d = root;
+    for (const p of parts) d = d.dirs.get(p) ?? d.dirs.set(p, { dirs: new Map(), files: [] }).get(p);
+    d.files.push({ name, f });
+  }
+  const rows = [];
+  const walk = (d, depth, prefix) => {
+    for (const [name0, sub0] of [...d.dirs].sort((a, b) => a[0].localeCompare(b[0]))) {
+      let name = name0, sub = sub0;
+      while (sub.dirs.size === 1 && !sub.files.length) { const [n, s] = [...sub.dirs][0]; name += `/${n}`; sub = s; }
+      const path = prefix + name, closed = closedDirs.has(path) && !(curPath ?? "").startsWith(path + "/");
+      const count = (x) => x.files.length + [...x.dirs.values()].reduce((n, y) => n + count(y), 0);
+      rows.push(`<button class="fdir" data-fdir="${esc(path)}" style="--d:${depth}" title="${esc(path)}"><span class="car">${closed ? "▸" : "▾"}</span><span>${esc(name)}</span>${closed ? `<small>${count(sub)}</small>` : ""}</button>`);
+      if (!closed) walk(sub, depth + 1, path + "/");
+    }
+    for (const { name, f } of d.files.sort((a, b) => a.name.localeCompare(b.name))) {
+      const done = f.pids.every((p) => app.isReviewed(p)), n = talk(f.path);
+      rows.push(`<button class="ffile ${f.path === curPath ? "cur" : ""} ${done ? "done" : ""}" data-ffile="${esc(f.path)}" style="--d:${depth}" title="${esc(f.path)}"><i class="glyph ${f.core ? "core" : f.changed ? "change" : "context"}"></i><span class="nm">${esc(name)}</span>${n ? `<span class="fc">◂ ${n}</span>` : ""}${f.changed ? `<span class="fs"><span class="a">+${f.a}</span> <span class="d">−${f.d}</span></span>` : ""}${done ? `<span class="ok">✓</span>` : ""}</button>`);
+    }
+  };
+  walk(root, 0, "");
+  el.querySelector(".fn").textContent = `${files.size} file${files.size === 1 ? "" : "s"}`;
+  el.querySelector(".flist").innerHTML = rows.join("") || `<div class="none">No files match</div>`;
+  el.querySelector(".ffile.cur")?.scrollIntoView({ block: "nearest" });
 }
 
 function renderTop() {
@@ -52,6 +126,7 @@ function renderTop() {
     <button class="pill tog" data-act="tests" aria-pressed="${app.settings.tests === "show"}" title="Test files and generated files, in every view: ${app.settings.tests === "show" ? "shown. Click to hide" : "hidden. Click to show"}">⚗ Tests</button>
     <button class="pill tog" data-act="untouched" aria-pressed="${app.settings.untouched !== "hide"}" title="Untouched code the changes rely on or affect, in every view: ${app.settings.untouched === "hide" ? "hidden. Click to show" : "shown. Click to hide"}">○ Untouched</button>
     <button class="pill" data-act="notes" title="Your private notes (M). Never posted to GitHub.">✎ Notes${app.state.notes.length ? ` · ${app.state.notes.length}` : ""}</button>
+    <button class="iconbtn" data-act="files" aria-pressed="${app.settings.fileTree !== "hide"}" title="File tree (t)" aria-label="File tree">▤</button>
     <button class="iconbtn" data-act="settings" title="Settings (,)" aria-label="Settings">${GEAR}</button>`;
 }
 
@@ -142,6 +217,7 @@ export function help() {
       ${r("f", "focus: what you're on fills the screen with its code; again (or esc) to go back as you were")}
       ${r("g", "full screen page; again (or esc) to go back as you were")}
       ${r("x", "flag to come back to")}
+      ${r("t", "file tree: the PR's files, right of the view")}
       ${r("F", "next flagged: skim and flag first, then go deep")}
       ${r("c", "comment (click a line first, or it picks one)")}
       ${r("m", "private note on a line: only you see it, never posted")}
@@ -172,6 +248,7 @@ const SETTINGS = [
   ["drift", "Drift prompt", [["on", "On"], ["off", "Off"]]],
   ["prComments", "PR comments", [["hide", "Hidden, show per page"], ["show", "Always shown"]]],
   ["untouched", "Untouched code", [["hide", "Hidden"], ["show", "Shown"]]],
+  ["fileTree", "File tree", [["show", "Shown"], ["hide", "Hidden"]]],
   ["tests", "Tests & generated files", [["hide", "Hidden"], ["show", "Shown"]]],
 ];
 export function settings() {
@@ -370,6 +447,7 @@ function onClick(ev) {
     layout: () => app.saveSettings({ diffLayout: ds.val }),
     untouched: () => app.saveSettings({ untouched: app.settings.untouched === "hide" ? "show" : "hide" }),
     tests: () => app.saveSettings({ tests: app.settings.tests === "show" ? "hide" : "show" }),
+    files: () => toggleFiles(),
   })[ds.act]?.();
 }
 
