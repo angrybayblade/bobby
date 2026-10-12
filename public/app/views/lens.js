@@ -224,11 +224,21 @@ export default {
       const { lvl, order } = levels(loc.core), here = lvl.get(app.focus);
       const same = order.filter((id) => lvl.get(id) === here && app.index.walkPos.has(id));
       const to = same[same.indexOf(app.focus) + dr];
-      if (to) app.setFocus(to);
+      if (to) return app.setFocus(to);
+      if (here === 0) switchCore(dr); // at the root, past its last core change: the lens moves to the next core
+    }
+    /** The previous / next core that has something to show, at its core change. */
+    function switchCore(d) {
+      const cores = app.graph.cores, ci = app.get(app.focus)?.ci ?? (d > 0 ? -1 : cores.length);
+      for (let i = ci + d; i >= 0 && i < cores.length; i += d) {
+        const c = cores[i], root = app.band(c, "core")[0] ?? app.corePlacements(c).find((pl) => app.index.walkPos.has(pl.id));
+        if (root && app.index.walkPos.has(root.id)) return app.setFocus(root.id);
+      }
     }
     const fill = () => { if (app.level !== 1) { app.setLevel(1); return setTimeout(fill, 60); } filled = !filled; update("fill"); };
     const keys = {
-      ArrowLeft: () => move(-1, 0), ArrowRight: () => move(1, 0), ArrowUp: () => move(0, -1), ArrowDown: () => move(0, 1),
+      ArrowLeft: () => (app.level === 0 ? switchCore(-1) : move(-1, 0)), ArrowRight: () => (app.level === 0 ? switchCore(1) : move(1, 0)),
+      ArrowUp: () => (app.level === 0 ? switchCore(-1) : move(0, -1)), ArrowDown: () => (app.level === 0 ? switchCore(1) : move(0, 1)),
       f: () => fill(),
       g: () => app.setLevel(app.level === 2 ? 1 : 2),
       Escape: () => (filled ? fill() : app.setLevel(app.level - 1)),
