@@ -213,7 +213,9 @@ kbd {
 #files .ffile .fs { font-family: var(--font-code); font-size: 11px; flex: none; }
 #files .ffile .fs .a { color: var(--ok); } #files .ffile .fs .d { color: var(--risk); }
 #files .ffile .fc { color: var(--signal); font-size: 11px; flex: none; }
-#files .ffile .ok { color: var(--ok); flex: none; }
+#files .ffile .ok { color: var(--faint); flex: none; opacity: 0; padding: 0 2px; border-radius: 2px; }
+#files .ffile:hover .ok { opacity: 1; } #files .ffile .ok:hover { color: var(--text); background: var(--bg); }
+#files .ffile.done .ok { opacity: 1; color: var(--ok); }
 #files .none { padding: 10px 12px; color: var(--faint); }
 @media (max-width: 900px) { #files { display: none; } }
 #view > .vslot { position: absolute; inset: 0; }

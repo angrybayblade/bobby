@@ -72,7 +72,7 @@ The breadcrumb bar shows where you are (`repo #n › core › page`) and the cur
 | `x` | Flag to come back to (press again to clear) |
 | `F` | Next flagged page |
 | `u` | Un-mark |
-| **Viewed** (Diff) | Toggle one section viewed, without moving on. ✓ in a file's header marks or clears the whole file. |
+| **Viewed** (Diff) | Toggle one section viewed, without moving on. ✓ in a file's header (in Diff, Flow and Outline) or beside it in the file tree marks or clears the whole file, and a read file shows **✓ File read** in its header. |
 
 The header shows progress through the core you're in (`core 3 ▬ 2/5`) next to the whole PR (`12/40`, with a rough time left).
 

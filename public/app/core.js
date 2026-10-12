@@ -137,6 +137,19 @@ export function createApp({ graph, session }) {
       api("/api/mark", { keys, mark });
       app.emit("marks");
     },
+    // ---- whole files: every page of the walk that shows code in a file
+    filePages(path) {
+      const at = (p) => { const n = app.nodeOf(p); return n && (n.kind === "change" ? n.file : n.location.path); };
+      return app.index.walk.filter((p) => app.get(p) && !app.get(p).pl.repeatOf && at(p) === path);
+    },
+    isFileRead(path) { const ps = app.filePages(path); return ps.length > 0 && ps.every((p) => app.isReviewed(p)); },
+    /** Marks a whole file read, or clears it when it already is: one save, one re-render. */
+    markFile(path, on = !app.isFileRead(path)) {
+      const keys = [...new Set(app.filePages(path).flatMap((p) => app.markKeys(p)))];
+      for (const k of keys) on ? (app.state.marks[k] = "reviewed") : delete app.state.marks[k];
+      api("/api/mark", { keys, mark: on ? "reviewed" : null });
+      app.emit("marks");
+    },
     progress() {
       const pages = app.index.walk.filter((p) => p !== DONE);
       const left = pages.filter((p) => !app.isReviewed(p));

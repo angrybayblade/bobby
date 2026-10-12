@@ -9,7 +9,7 @@ There are four views of the same review. Switch with `v` or the toggle in the he
 | [Lens](#lens) | The focus in the centre, its neighbours either side | Maximum focus |
 | [Diff](#diff) | One diff viewer per file, laid out as a graph | Reading real diffs without losing the thread |
 
-A **file tree** on the right lists the PR's files as folders, like GitHub's: +/− counts, ◂ comments and notes, ✓ once a file's pages are all reviewed, and the file you're on highlighted. Click a file to go to its first unreviewed page, filter by name, fold folders, and toggle the whole panel with `t` or ▤ in the top bar. ⇄ in its header (or the *File tree side* setting) moves it to the left or right. Two switches in the top bar apply to every view: **⚗ Tests** (test and generated files, hidden by default) and **○ Untouched** (untouched code the changes rely on or affect). All views share the three zoom levels (Overview → Core → Page) described in [Reviewing](reviewing.md#zoom-levels), the same compact, GitHub-like code, and the same keys: `f` focus mode, `g` full screen, `esc` back exactly as you were, and arrows that follow the view's shape (edges in Flow, Lens and Diff; the tree in Outline).
+A **file tree** on the right lists the PR's files as folders, like GitHub's: +/− counts, ◂ comments and notes, ✓ once a file's pages are all reviewed, and the file you're on highlighted. Click a file to go to its first unreviewed page, its ✓ to mark the whole file read, filter by name, fold folders, and toggle the whole panel with `t` or ▤ in the top bar. ⇄ in its header (or the *File tree side* setting) moves it to the left or right. Two switches in the top bar apply to every view: **⚗ Tests** (test and generated files, hidden by default) and **○ Untouched** (untouched code the changes rely on or affect). All views share the three zoom levels (Overview → Core → Page) described in [Reviewing](reviewing.md#zoom-levels), the same compact, GitHub-like code, and the same keys: `f` focus mode, `g` full screen, `esc` back exactly as you were, and arrows that follow the view's shape (edges in Flow, Lens and Diff; the tree in Outline).
 
 ## Flow
 
@@ -81,7 +81,7 @@ Once you're in a viewer (you clicked it, or stepped into it with `j`/`k`), every
 | Drag a viewer's header | Move the viewer (kept until you reload) |
 | Click a header | Make that file the one you're reading (drag the header to move it instead) |
 | Double-click a header, ⤢, or `g` | Expand that file to full screen (`g` again, or `esc`, goes back) |
-| ✓ in a header | Mark every section in the file viewed (or clear them) |
+| ✓ in a header | Mark the whole file read (or clear it); a read file shows **✓ File read** in its header |
 | ✎ in a header | Private note on the whole file |
 | **Viewed** on a section | Mark that section viewed (or clear it) |
 | `f` (focus) | Fill the screen with the file you're reading: edge to edge across the canvas, its top edge at the top, and down to the bottom: the viewer keeps its width, takes the canvas's proportions, and is zoomed to fill it, while its contents are scaled back down so code stays at a reading size and long lines fit. It becomes the file you're reading, and any scroll on the canvas scrolls its code; zooming or dragging ends the fill. Moving to other files stays filled and aligned the same way. Again, or `esc`, to go back to the canvas as it was (on the file you're on, if you moved). From a page, returns to the canvas. In Diff `f` focuses rather than flags; flag from another view. |
