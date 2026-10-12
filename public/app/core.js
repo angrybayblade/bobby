@@ -241,7 +241,7 @@ export function createApp({ graph, session }) {
       const changed = pid !== app.focus;
       app.focus = pid;
       const fileNote = app.page.composing?.file ? app.page.composing : null; // a note on the whole file outlives moving within it
-      app.page = { exp: app.page.exp, open: app.page.open, kind: app.page.kind, sel: null, composing: fileNote };
+      app.page = { exp: app.page.exp, open: app.page.open, kind: app.page.kind, sel: null, selKeys: null, anchor: null, composing: fileNote };
       if (level !== undefined && level !== app.level) { app.level = level; app.emit("level"); }
       if (changed) {
         app.emit("focus");

@@ -92,7 +92,7 @@ Marks are stored by the **content** of each hunk, not its position. After a forc
 
 ## Comments
 
-1. Click a line to select it, then click it again (or press `c`) to open the composer. Pressing `c` with nothing selected picks the most relevant line on the page.
+1. Click a line to select it, then click it again (or press `c`) to open the composer. Pressing `c` with nothing selected picks the most relevant line on the page. For several lines, like GitHub's diff, click the first line, then shift-click the last (or drag down the line numbers): the comment or note covers the whole range, shows as `L12–L18`, and posts to GitHub as a multi-line comment.
 2. Write your comment. `cmd/ctrl+enter` saves it as a **draft**, and `esc` cancels.
 3. Drafts show on their page and in a **"N drafts · S"** pill in the header. Delete one with its ✕.
 

@@ -274,7 +274,9 @@ kbd {
 .ln.del { background: var(--del-tint); } .ln.del .bar { background: var(--risk); } .ln.del .sg { color: var(--risk); }
 .ln.exp code { opacity: .7; }
 .ln.target { background: var(--target); } .ln.target .bar { background: var(--signal); }
-.ln.sel { box-shadow: inset 0 0 0 1px var(--signal); }
+.ln.sel { background: var(--signal-soft); } .ln.sel .bar { background: var(--signal); } /* a selected line or range, like GitHub's */
+.ln .no { cursor: pointer; } /* click a number to select, shift-click or drag down them for a range */
+.cmt .crange { font: 500 11.5px var(--font-ui); color: var(--muted); margin-bottom: 6px; }
 .ln:hover .no { color: var(--muted); }
 .code .fh .lay { margin-left: 4px; padding: 0 7px; font: 500 11px/18px var(--font-ui); color: var(--faint); border: 1px solid var(--line-soft); border-radius: 1px; }
 .code .fh .lay:hover { color: var(--text); border-color: var(--muted); }

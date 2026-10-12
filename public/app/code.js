@@ -121,7 +121,8 @@ function row(app, { t, o, n }, html, target, half) {
   const count = mirror ? 0 : app.state.comments.filter(at).length + (app.graph.discussion ?? []).filter(at).length + app.state.notes.filter(at).length;
   const nums = half === "L" ? `<span class="no">${o ?? ""}</span>` : half === "R" ? `<span class="no">${n ?? ""}</span>` : `<span class="no">${o ?? ""}</span><span class="no">${n ?? ""}</span>`;
   const composing = !half && app.page.composing?.key === key;
-  return `<div class="ln ${cls}${count ? " hasc" : ""}${!mirror && app.page.sel?.key === key ? " sel" : ""}${!mirror && target.hi === n && t !== "-" ? " target" : ""}" data-key="${esc(key)}" data-path="${esc(target.path)}" data-line="${line}" data-side="${side}" data-indiff="${target.inDiff && t !== "x" ? 1 : 0}">
+  const sel = !mirror && (app.page.selKeys ? app.page.selKeys.has(key) : app.page.sel?.key === key);
+  return `<div class="ln ${cls}${count ? " hasc" : ""}${sel ? " sel" : ""}${!mirror && target.hi === n && t !== "-" ? " target" : ""}" data-key="${esc(key)}" data-path="${esc(target.path)}" data-line="${line}" data-side="${side}" data-indiff="${target.inDiff && t !== "x" ? 1 : 0}">
     <span class="bar"></span>${nums}<span class="sg">${t === "+" ? "+" : t === "-" ? "−" : ""}</span><code${count ? ` data-cn="${count}"` : ""}>${html}</code></div>`
     + (composing ? composer(app.page.composing) : "");
 }
@@ -147,11 +148,33 @@ function diffRows(app, lines, html, target) {
 // A line can take a GitHub draft or a private note; c.file composes a note on a whole file (notes only).
 function composer(c) {
   const note = c.kind === "note";
+  const lines = c.start && !c.file ? `<div class="crange">${note ? "Note" : "Comment"} on ${rangeLabel({ side: c.side, line: c.line, startLine: Number(c.start.line), startSide: c.start.side })}</div>` : "";
   const kinds = c.file ? "" : `<div class="ckind" role="group" aria-label="Kind">${[["comment", "GitHub draft"], ["note", "Private note"]].map(([k, t]) =>
     `<button data-ckind="${k}" aria-pressed="${c.kind === k}">${t}</button>`).join("")}</div>`;
   const hint = note ? "A private note: only you see it, and it's never posted to GitHub." : "Draft a comment for your GitHub review.";
-  return `<div class="cmt${note ? " private" : ""}">${kinds}<textarea data-composer placeholder="${hint}  ⌘/Ctrl+Enter to save · Esc to cancel">${esc(c.text ?? "")}</textarea></div>`;
+  return `<div class="cmt${note ? " private" : ""}">${kinds}${lines}<textarea data-composer placeholder="${hint}  ⌘/Ctrl+Enter to save · Esc to cancel">${esc(c.text ?? "")}</textarea></div>`;
 }
+
+// ---- selecting lines: click one, shift-click (or drag down the line numbers) for a range, like GitHub's diff.
+/** Selects the lines from the anchor row to `end` (same file; in split view, the end's side unless the ends differ). */
+function selectRange(app, el, anchor, end) {
+  const rows = [...el.querySelectorAll(".ln[data-key]")];
+  let i = rows.findIndex((r) => r.dataset.key === anchor?.key && r.dataset.path === end.path), j = rows.findIndex((r) => r.dataset.key === end.key);
+  if (j < 0) return;
+  if (i < 0) i = j;
+  if (i > j) [i, j] = [j, i];
+  const a = rows[i].dataset, b = rows[j].dataset;
+  const keys = new Set(rows.slice(i, j + 1).filter((r) => r.dataset.path === b.path && (a.side !== b.side || r.dataset.side === b.side)).map((r) => r.dataset.key));
+  app.page.sel = { ...b, ...(i < j && a.key !== b.key ? { start: { line: a.line, side: a.side, key: a.key, indiff: a.indiff } } : {}) };
+  app.page.selKeys = keys;
+  for (const r of el.querySelectorAll(".ln[data-key]")) r.classList.toggle("sel", keys.has(r.dataset.key));
+}
+const rangeLabel = (c) => {
+  const old = (s) => (s === "LEFT" ? "old " : "");
+  if (!c.startLine || c.startLine === c.line) return `${old(c.side)}L${c.line}`;
+  return (c.startSide ?? c.side) === c.side ? `${old(c.side)}L${c.startLine}–L${c.line}` : `${old(c.startSide)}L${c.startLine}–${old(c.side)}L${c.line}`;
+};
+const jumpKey = (c) => `${c.path}|${c.side}|${c.line}${c.startLine && c.startLine !== c.line ? `|${c.startSide ?? c.side}|${c.startLine}` : ""}`;
 
 // ---- comments: your drafts plus existing GitHub discussion on the lines this node shows.
 function spans(app, pid) {
@@ -187,8 +210,8 @@ function notesHtml(app, pid) {
     ? `<button class="ghtoggle" data-ghshow="${pid}">${shown ? "Hide" : "Show"} ${gh} comment${gh > 1 ? "s" : ""} from the PR</button>` : "";
   if (!list.length) return `<section class="notes">${toggle}</section>`;
   return `<section class="notes"><h4>${list.some((c) => c.private) ? "Comments & notes" : "Comments"} · ${list.length}</h4>${toggle}${list.map((c) => {
-    const key = esc(`${c.path}|${c.side}|${c.line}`);
-    const where = `${c.side === "LEFT" ? "old " : ""}L${c.line}`;
+    const key = esc(jumpKey(c));
+    const where = rangeLabel(c);
     if (c.private) return privateNote(c, where, key);
     if (c.url) {
       const link = /^https:\/\//.test(c.url) ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">${where} ↗</a>` : where;
@@ -406,13 +429,12 @@ function bind(app, el, rerender) {
       app.page.open.has(ds.fold) ? app.page.open.delete(ds.fold) : app.page.open.add(ds.fold);
       again();
     } else if (ds.jump) {
-      let ln = el.querySelector(`.ln[data-key="${CSS.escape(ds.jump)}"]`);
-      if (!ln) { unfoldAll(app); again(); ln = el.querySelector(`.ln[data-key="${CSS.escape(ds.jump)}"]`); }
+      const [path, side, line, startSide, startLine] = ds.jump.split("|"), endKey = `${path}|${side}|${line}`, startKey = startLine ? `${path}|${startSide}|${startLine}` : endKey;
+      let ln = el.querySelector(`.ln[data-key="${CSS.escape(endKey)}"]`);
+      if (!ln) { unfoldAll(app); again(); ln = el.querySelector(`.ln[data-key="${CSS.escape(endKey)}"]`); }
       if (!ln) return;
-      el.querySelectorAll(".ln.sel").forEach((x) => x.classList.remove("sel"));
-      ln.classList.add("sel");
-      app.page.sel = { ...ln.dataset };
-      ln.scrollIntoView({ block: "center", behavior: "smooth" });
+      selectRange(app, el, { key: startKey }, { ...ln.dataset });
+      el.querySelector(`.ln[data-key="${CSS.escape(startKey)}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" });
     } else if (ds.exp) {
       const i = ds.exp.lastIndexOf(":"), id = ds.exp.slice(0, i), dir = ds.exp.slice(i + 1);
       if (id.startsWith("ctx:")) {
@@ -434,11 +456,30 @@ function bind(app, el, rerender) {
       open.has(ds.low) ? open.delete(ds.low) : open.add(ds.low);
       again();
     } else if (ds.key) {
-      if (app.page.sel?.key === ds.key && !app.page.composing) { app.page.composing = { ...ds, kind: app.page.kind ?? "comment" }; return again(); }
-      el.querySelectorAll(".ln.sel").forEach((x) => x.classList.remove("sel"));
-      t.classList.add("sel");
-      app.page.sel = { ...ds };
+      if (el._dragged) return; // the end of a drag across line numbers, not a click
+      if (ev.shiftKey && app.page.anchor) return selectRange(app, el, app.page.anchor, { ...ds });
+      if (app.page.sel?.key === ds.key && !app.page.composing) { app.page.composing = { ...app.page.sel, kind: app.page.kind ?? "comment" }; return again(); }
+      app.page.anchor = { ...ds };
+      selectRange(app, el, app.page.anchor, { ...ds });
     }
+  });
+  // Drag down the line numbers to select several lines (the code itself stays selectable as text).
+  el.addEventListener("mousedown", (ev) => {
+    const gutter = ev.target.closest(".ln .no, .ln .bar, .ln .sg"), row = gutter?.closest(".ln[data-key]");
+    if (!row || ev.button !== 0 || ev.shiftKey) return;
+    ev.preventDefault(); // a press on the numbers drags a range; it mustn't start a text selection
+    const start = { ...row.dataset };
+    let last = row.dataset.key;
+    const move = (e) => { // only a drag onto another line selects here; a plain click is the click handler's
+      const over = document.elementFromPoint(e.clientX, e.clientY)?.closest?.(".ln[data-key]");
+      if (!over || !el.contains(over) || over.dataset.key === last) return;
+      last = over.dataset.key;
+      if (!el._dragged) { el._dragged = true; app.page.anchor = start; }
+      selectRange(app, el, start, { ...over.dataset });
+    };
+    const up = () => { window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); setTimeout(() => (el._dragged = false)); };
+    window.addEventListener("mousemove", move);
+    window.addEventListener("mouseup", up);
   });
   el.addEventListener("keydown", (ev) => {
     if (!ev.target.matches("textarea[data-composer]")) return;
@@ -452,8 +493,10 @@ async function saveComment(app, text) {
   const t = app.page.composing;
   app.page.composing = null;
   if (!t || !text.trim()) return;
-  if (t.kind === "note") return void (await app.addNote({ body: text.trim(), path: t.path, ...(t.line ? { line: Number(t.line), side: t.side } : {}) }));
-  const c = await api("/api/comment", { path: t.path, line: Number(t.line), side: t.side, body: text.trim(), inDiff: t.indiff === "1" });
+  const range = t.start ? { startLine: Number(t.start.line), startSide: t.start.side } : {};
+  if (t.kind === "note") return void (await app.addNote({ body: text.trim(), path: t.path, ...(t.line ? { line: Number(t.line), side: t.side, ...range } : {}) }));
+  // GitHub only takes inline comments inside the diff: a range counts when both ends are.
+  const c = await api("/api/comment", { path: t.path, line: Number(t.line), side: t.side, body: text.trim(), inDiff: t.indiff === "1" && (!t.start || t.start.indiff === "1"), ...range });
   app.state.comments.push(c);
   app.emit("comments");
 }
@@ -466,6 +509,7 @@ export function startComment(app, el, kind = "comment") {
     const pick = rows.find((r) => r.classList.contains("target")) ?? rows.find((r) => r.classList.contains("add") || r.classList.contains("del")) ?? rows[0];
     if (!pick) return;
     app.page.sel = { ...pick.dataset };
+    app.page.selKeys = new Set([pick.dataset.key]);
   }
   app.page.composing = { ...app.page.sel, kind };
   bound.get(el)?.();
