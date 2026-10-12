@@ -248,7 +248,9 @@ export default {
     // Framing a viewer scales it to the stage's width (FRAME_PAD each side); the cap is the height that then fills
     // the stage's height too, so a full viewer and the stage share one aspect ratio (its band label sits in the margin).
     const FRAME_PAD = 40;
-    const fitScale = () => Math.max(0.3, ((stage.clientWidth || 1440) - FRAME_PAD * 2) / W);
+    // Code is never drawn larger than in focus mode (FILL_ZOOM× its canvas size): the canvas zooms in no further.
+    const MAX_ZOOM = 1.1;
+    const fitScale = () => Math.max(0.3, Math.min(MAX_ZOOM, ((stage.clientWidth || 1440) - FRAME_PAD * 2) / W));
     const capH = () => Math.round(Math.max(240, ((stage.clientHeight || 900) - FRAME_PAD * 2) / fitScale()));
     let builtCap = 0;
     new ResizeObserver(() => { if (M && stage.clientWidth) update("resize"); }).observe(stage);
@@ -645,7 +647,7 @@ export default {
     }
     // Zoom by k around a point on the stage, keeping whatever is under it in place.
     function zoomAt(k, px, py) {
-      const s = Math.max(0.15, Math.min(Math.max(2, cam.s), cam.s * k)); // never jumps down from a filled view past 2×
+      const s = Math.max(0.15, Math.min(Math.max(MAX_ZOOM, cam.s), cam.s * k)); // capped where code reaches focus mode's size; never jumps down from a filled view
       const wx = (px - cam.tx - pan.x) / cam.s, wy = (py - cam.ty - pan.y) / cam.s;
       cam = { s, tx: px - wx * s - pan.x, ty: py - wy * s - pan.y };
       apply();
