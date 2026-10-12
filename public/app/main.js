@@ -1,5 +1,5 @@
 import { DONE, api, createApp } from "./core.js";
-import { expandAll, renderFile, renderNode, renderPage, startComment, startFileNote } from "./code.js";
+import { escapeCode, expandAll, renderFile, renderNode, renderPage, startComment, startFileNote } from "./code.js";
 import * as chrome from "./chrome.js";
 import * as palette from "./palette.js";
 import * as tour from "./tour.js";
@@ -181,6 +181,8 @@ document.addEventListener("keydown", (ev) => {
     return;
   }
   if (tour.key(ev.key)) return ev.preventDefault(); // the callout's own keys; every other key still works under it
+  // Esc works on what's innermost: an open composer, then a line selection, then the view (focus mode), then the level.
+  if (ev.key === "Escape" && escapeCode(app)) return ev.preventDefault();
   const k = ev.shiftKey && ev.code === "Digit1" ? "!" : ev.key; // shift+1, whatever the layout prints
   if (press(k)) ev.preventDefault();
 });

@@ -130,7 +130,7 @@ function renderTop() {
   const g = app.graph;
   const llm = app.llm === "pending" ? `<span class="pill pulse" title="The static tree is usable now">Claude is organising…</span>`
     : app.claudeReady && g.generator.tree !== "claude" ? `<button class="pill signal" data-act="switch-tree">Smarter tree ready · R</button>` : "";
-  const drafts = app.state.comments.length;
+  const drafts = app.state.comments.filter((c) => !c.wip && c.kind !== "note").length; // unfinished drafts aren't ready to post
   $("#top").innerHTML = `
     <div class="brand"><img src="/bobby.svg" alt="" width="22" height="22">bobby</div>
     ${g.pr.provider === "local" ? `<span class="prtitle" title="Local review: ${esc(g.pr.branch)} compared with ${esc(g.pr.baseRef)}">⎇ ${esc(g.pr.branch)} → ${esc(g.pr.baseRef)} · ${esc(g.pr.title)}</span>`
@@ -278,13 +278,14 @@ export function settings() {
 }
 
 export function submit(msg) {
-  const cs = app.state.comments;
+  const cs = app.state.comments.filter((c) => !c.wip && c.kind !== "note");
+  const wip = app.state.comments.length - cs.length;
   if (app.graph.pr.provider === "local") return open(`<h2>Nothing to post to</h2>
     <p>This is a local review of <b>⎇ ${esc(app.graph.pr.branch)}</b>, with no PR behind it, so your ${cs.length ? `${cs.length} draft(s)` : "drafts"} and notes stay here. Open a PR and review it with <code>bobby &lt;number&gt;</code> to post a review on GitHub.</p>
     <div style="font-size:13px;color:var(--muted);margin-top:10px">${cs.map((c) => `· <code>${esc(c.path)}:${c.line}</code> ${esc(c.body.slice(0, 70))}`).join("<br>")}</div>
     <div class="row"><button class="btn" data-act="close" style="margin-left:auto">Close</button></div>`);
   open(`<h2>Submit review</h2>
-    <p>${cs.length ? `${cs.length} draft comment(s) will be posted together.` : "No draft comments."}${app.state.notes.length ? ` Your ${app.state.notes.length} private note(s) stay here and aren't posted.` : ""}</p>
+    <p>${cs.length ? `${cs.length} draft comment(s) will be posted together.` : "No draft comments."}${app.state.notes.length ? ` Your ${app.state.notes.length} private note(s) stay here and aren't posted.` : ""}${wip ? ` ${wip} unfinished draft${wip > 1 ? "s" : ""} stay${wip > 1 ? "" : "s"} behind: finish ${wip > 1 ? "them" : "it"} with <i>Continue</i> to include ${wip > 1 ? "them" : "it"}.` : ""}</p>
     <textarea id="rbody" placeholder="Summary (optional for Approve)"></textarea>
     <div style="font-size:13px;color:var(--muted);margin-top:10px">${cs.map((c) => `· <code>${esc(c.path)}:${c.line}</code> ${esc(c.body.slice(0, 70))}${c.inDiff ? "" : " <i>(goes in summary)</i>"}`).join("<br>")}</div>
     <div class="row">
@@ -297,7 +298,7 @@ export function submit(msg) {
 async function doSubmit(event) {
   const r = await api("/api/submit", { event, body: $("#rbody").value });
   if (!r.ok) return submit(r.error);
-  app.state.comments = [];
+  app.state.comments = app.state.comments.filter((c) => c.wip || c.kind === "note"); // unfinished drafts remain
   app.emit("comments");
   open(`<h2>Review posted ✓</h2><p><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url)}</a></p><div class="row"><button class="btn primary" data-act="close">Close</button></div>`);
 }

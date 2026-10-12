@@ -92,7 +92,7 @@ Marks are stored by the **content** of each hunk, not its position. After a forc
 
 ## Comments
 
-1. Click a line to select it, then click it again (or press `c`) to open the composer. Pressing `c` with nothing selected picks the most relevant line on the page. For several lines, like GitHub's diff, click the first line, then shift-click the last (or drag down the line numbers): the comment or note covers the whole range, shows as `L12–L18`, and posts to GitHub as a multi-line comment.
+1. Click a line to select it, then click it again (or press `c`) to open the composer. Pressing `c` with nothing selected picks the most relevant line on the page. For several lines, like GitHub's diff, click the first line, then shift-click the last (or drag down the line numbers): the comment or note covers the whole range, shows as `L12–L18`, and posts to GitHub as a multi-line comment. Selecting shows a small popover on the last selected line: **Comment** (a GitHub draft) or **Private note**.
 2. Write your comment. `cmd/ctrl+enter` saves it as a **draft**, and `esc` cancels.
 3. Drafts show on their page and in a **"N drafts · S"** pill in the header. Delete one with its ✕.
 
@@ -133,3 +133,13 @@ The **static tree** comes from static analysis: deterministic, instant, one core
 While Claude works, the header shows "Claude is organising…". When it's ready, press `R` (or click the pill) to switch. You stay on the same code. Claude's tree is cached per head commit, so it's ready immediately next time.
 
 Next: [Views](views.md) · [Settings](settings.md).
+
+## Esc
+
+`Esc` works on what's innermost, one layer per press:
+
+1. a dialog, or the tour's callout;
+2. an open comment or note box: it closes, and anything you wrote is kept as an **unfinished draft** on the same lines. It's listed with the page's comments (dashed), with **Continue** to pick it up again and ✕ to discard it. Unfinished drafts aren't counted in the drafts pill or posted with your review until you finish them;
+3. a line selection: it clears;
+4. focus mode (`f`): back to the view as it was;
+5. full screen (`g`) or a page: back to where you were, and from there up a zoom level.

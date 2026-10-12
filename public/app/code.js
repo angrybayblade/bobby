@@ -188,7 +188,37 @@ function syncPop(app, el) {
   const below = top + row.offsetHeight + 2;
   pop.style.top = `${below + pop.offsetHeight <= box.clientHeight ? below : Math.max(0, top - pop.offsetHeight - 2)}px`; // above the line when it's the box's last
 }
-
+/** Esc on the code, innermost first: an open composer closes (its text kept as an unfinished draft), then a line
+ *  selection clears. Returns whether it did either. */
+export function escapeCode(app) {
+  const ta = document.querySelector("textarea[data-composer]");
+  if (app.page.composing && ta) { closeComposer(app, ta); return true; }
+  if (app.page.sel && document.querySelector(".ln.sel")) {
+    app.page.sel = app.page.selKeys = app.page.anchor = null;
+    document.querySelectorAll(".ln.sel").forEach((r) => r.classList.remove("sel"));
+    document.querySelectorAll(".selpop").forEach((p) => p.remove());
+    return true;
+  }
+  return false;
+}
+const owner = (node) => { for (let n = node; n; n = n.parentElement) if (bound.has(n)) return n; return null; };
+/** Closes the composer. Anything written in it is kept as an unfinished draft on the same lines, to continue later. */
+async function closeComposer(app, ta) {
+  const el = owner(ta), c = app.page.composing, text = ta.value.trim();
+  app.page.composing = null;
+  if (text && c && !c.file) {
+    if (c.editing) await dropDraft(app, c.editing);
+    const range = c.start ? { startLine: Number(c.start.line), startSide: c.start.side } : {};
+    const d = await api("/api/comment", { path: c.path, line: Number(c.line), side: c.side, body: text, inDiff: c.indiff === "1" && (!c.start || c.start.indiff === "1"), wip: true, ...(c.kind === "note" ? { kind: "note" } : {}), ...range });
+    app.state.comments.push(d);
+    app.emit("comments");
+  }
+  if (el) bound.get(el)?.();
+}
+async function dropDraft(app, id) {
+  await api(`/api/comment/${id}`, null, "DELETE");
+  app.state.comments = app.state.comments.filter((c) => c.id !== id);
+}
 const rangeLabel = (c) => {
   const old = (s) => (s === "LEFT" ? "old " : "");
   if (!c.startLine || c.startLine === c.line) return `${old(c.side)}L${c.line}`;
@@ -237,6 +267,7 @@ function notesHtml(app, pid) {
       const link = /^https:\/\//.test(c.url) ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">${where} ↗</a>` : where;
       return `<div class="note gh${c.replyTo ? " reply" : ""}" data-jump="${key}"><div class="who">@${esc(c.author)} · ${link}</div><div class="body">${esc(c.body)}</div></div>`;
     }
+    if (c.wip) return `<div class="note draft wip" data-jump="${key}"><div class="who">You · unfinished ${c.kind === "note" ? "private note" : "comment"} · ${where}<button class="cont" data-wip="${c.id}" title="Open it again to finish">Continue</button><button class="x" data-del="${c.id}" title="Discard">✕</button></div><div class="body">${esc(c.body)}</div></div>`;
     return `<div class="note draft" data-jump="${key}"><div class="who">You · draft · ${where}<button class="x" data-del="${c.id}" title="Delete draft">✕</button></div><div class="body">${esc(c.body)}</div>${c.inDiff ? "" : `<div class="hint">Outside the diff, so this goes into the review summary.</div>`}</div>`;
   }).join("")}</section>`;
 }
@@ -434,11 +465,20 @@ function bind(app, el, rerender) {
   el.dataset.bound = "1";
   el.addEventListener("click", (ev) => {
     if (ev.target.closest("a")) return;
-    const t = ev.target.closest("[data-compose],[data-ghshow],[data-ckind],[data-delnote],[data-viewed],[data-exp],[data-del],[data-low],[data-go],[data-jump],[data-fold],.ln[data-key]");
+    const t = ev.target.closest("[data-compose],[data-wip],[data-ghshow],[data-ckind],[data-delnote],[data-viewed],[data-exp],[data-del],[data-low],[data-go],[data-jump],[data-fold],.ln[data-key]");
     if (!t || !el.contains(t)) return;
     const again = () => bound.get(el)();
     const ds = t.dataset;
     if (ds.compose) { if (app.page.sel) { app.page.composing = { ...app.page.sel, kind: ds.compose }; app.page.kind = ds.compose; } return again(); }
+    if (ds.wip) { // continue an unfinished draft: its lines selected, its text back in the composer
+      const d = app.state.comments.find((c) => c.id === ds.wip);
+      if (!d) return;
+      const key = `${d.path}|${d.side}|${d.line}`, row = el.querySelector(`.ln[data-key="${CSS.escape(key)}"]`);
+      app.page.sel = { ...(row?.dataset ?? { key, path: d.path, side: d.side, line: String(d.line), indiff: d.inDiff ? "1" : "0" }), ...(d.startLine ? { start: { line: String(d.startLine), side: d.startSide ?? d.side, key: `${d.path}|${d.startSide ?? d.side}|${d.startLine}`, indiff: d.inDiff ? "1" : "0" } } : {}) };
+      app.page.selKeys = null;
+      app.page.composing = { ...app.page.sel, kind: d.kind === "note" ? "note" : "comment", text: d.body, editing: d.id };
+      return again();
+    }
     if (ds.ckind) { // switch the composer between a GitHub draft and a private note, keeping the text
       app.page.composing.text = el.querySelector("textarea[data-composer]")?.value ?? "";
       app.page.composing.kind = app.page.kind = ds.ckind;
@@ -507,7 +547,7 @@ function bind(app, el, rerender) {
   el.addEventListener("keydown", (ev) => {
     if (!ev.target.matches("textarea[data-composer]")) return;
     ev.stopPropagation();
-    if (ev.key === "Escape") { app.page.composing = null; bound.get(el)(); }
+    if (ev.key === "Escape") { ev.preventDefault(); closeComposer(app, ev.target); }
     if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); saveComment(app, ev.target.value).then(() => bound.get(el)()); }
   });
 }
@@ -516,6 +556,7 @@ async function saveComment(app, text) {
   const t = app.page.composing;
   app.page.composing = null;
   if (!t || !text.trim()) return;
+  if (t.editing) await dropDraft(app, t.editing); // a continued draft becomes the real thing
   const range = t.start ? { startLine: Number(t.start.line), startSide: t.start.side } : {};
   if (t.kind === "note") return void (await app.addNote({ body: text.trim(), path: t.path, ...(t.line ? { line: Number(t.line), side: t.side, ...range } : {}) }));
   // GitHub only takes inline comments inside the diff: a range counts when both ends are.
