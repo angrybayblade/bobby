@@ -92,8 +92,8 @@ export function startServer(s: Session, port: number) {
 
       // Private notes: kept in the state file only, never sent to GitHub.
       if (req.method === "POST" && p === "/api/notes") {
-        const { body, path, line, side } = (await req.json()) as Omit<PrivateNote, "id" | "createdAt">;
-        const n: PrivateNote = { id: crypto.randomUUID().slice(0, 8), body, createdAt: new Date().toISOString(), ...(path ? { path } : {}), ...(line ? { line, side } : {}) };
+        const { body, path, line, side, startLine, startSide } = (await req.json()) as Omit<PrivateNote, "id" | "createdAt">;
+        const n: PrivateNote = { id: crypto.randomUUID().slice(0, 8), body, createdAt: new Date().toISOString(), ...(path ? { path } : {}), ...(line ? { line, side } : {}), ...(line && startLine ? { startLine, startSide } : {}) };
         (s.state.notes ??= []).push(n);
         persist();
         return json(n);
@@ -111,13 +111,14 @@ export function startServer(s: Session, port: number) {
         const outside = s.state.comments.filter((c) => !c.inDiff);
         const fullBody = [
           body.trim(),
-          outside.length ? "**Notes on code this PR doesn't touch**\n" + outside.map((c) => `- \`${c.path}:${c.line}\`: ${c.body}`).join("\n") : "",
+          outside.length ? "**Notes on code this PR doesn't touch**\n" + outside.map((c) => `- \`${c.path}:${c.startLine ? `${c.startLine}-` : ""}${c.line}\`: ${c.body}`).join("\n") : "",
         ].filter(Boolean).join("\n\n");
         const payload = {
           commit_id: pr().headSha,
           event,
           body: fullBody,
-          comments: s.state.comments.filter((c) => c.inDiff).map(({ path, line, side, body }) => ({ path, line, side, body })),
+          // A range goes as start_line/start_side to line/side, as GitHub's multi-line review comments do.
+          comments: s.state.comments.filter((c) => c.inDiff).map(({ path, line, side, body, startLine, startSide }) => ({ path, line, side, body, ...(startLine ? { start_line: startLine, start_side: startSide ?? side } : {}) })),
         };
         try {
           const out = await run(

@@ -97,8 +97,10 @@ export interface PrInfo {
 export interface Comment {
   id: string;
   path: string;
-  line: number;
+  line: number; // the last line; a range starts at startLine
   side: "LEFT" | "RIGHT";
+  startLine?: number;
+  startSide?: "LEFT" | "RIGHT";
   body: string;
   inDiff: boolean; // false → goes into the review body, GitHub rejects inline comments outside the diff
 }
@@ -111,6 +113,8 @@ export interface PrivateNote {
   path?: string;
   line?: number;
   side?: "LEFT" | "RIGHT";
+  startLine?: number;
+  startSide?: "LEFT" | "RIGHT";
 }
 
 export interface ReviewState {
