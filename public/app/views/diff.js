@@ -339,12 +339,18 @@ export default {
       return act && views.get(act.path)?.body;
     }
     // j/k: bring the focused section to the top of its viewer
+    // A node you've read before opens where you left it; a new one at its section, unless that's already in view.
+    const scrollKey = () => `diff${app.level === 2 ? 2 : 1}:${M.canon(app.focus)}`;
+    const remember = (body) => app.scrolls.set(scrollKey(), body.scrollTop);
     function reveal(smooth) {
       const body = readingBody(), cur = M.canon(app.focus);
       const sec = body?.querySelector(`.sec[data-pid="${cur}"]`);
       if (!sec) return;
+      const saved = app.scrolls.get(scrollKey());
+      const inView = sec.offsetTop >= body.scrollTop && sec.offsetTop < body.scrollTop + body.clientHeight - 40;
+      if (saved == null && inView) return;
       quietUntil = Date.now() + (smooth ? 700 : 200);
-      body.scrollTo({ top: sec.offsetTop - 6, behavior: smooth ? "smooth" : "auto" });
+      body.scrollTo({ top: saved ?? sec.offsetTop - 6, behavior: smooth ? "smooth" : "auto" });
     }
     // Scrolling a viewer: the section under its top third becomes the focus.
     function readFocus(v) {
@@ -562,7 +568,7 @@ export default {
     dfocus.addEventListener("scroll", (ev) => {
       if (!ev.target.matches?.(".big .fvb")) return;
       clearTimeout(big._t);
-      big._t = setTimeout(() => { readFocus({ body: ev.target }); rails(); }, 90);
+      big._t = setTimeout(() => { if (Date.now() >= quietUntil) { readFocus({ body: ev.target }); remember(ev.target); } rails(); }, 90);
     }, true);
     // ✓ in a header: mark every section of the file viewed, or clear them all if they already are.
     function viewFile(path) { app.markFile(path); }
@@ -701,7 +707,7 @@ export default {
     stage.addEventListener("scroll", (ev) => {
       const v = views.get(ev.target.closest?.(".fv")?.dataset.file);
       redraw();
-      if (v && v.f === activeFile()) { clearTimeout(v._t); v._t = setTimeout(() => { readFocus(v); follow(); }, 90); }
+      if (v && v.f === activeFile()) { clearTimeout(v._t); v._t = setTimeout(() => { if (Date.now() >= quietUntil) { readFocus(v); remember(v.body); } follow(); }, 90); }
     }, true);
     stage.addEventListener("pointerdown", (ev) => {
       const fv = ev.target.closest(".fv");
@@ -827,7 +833,7 @@ export default {
       } else {
         to = nearest(fileLinks[dc > 0 ? "next" : "prev"].get(act) ?? []) ?? (columns[ci + dc] && nearest(columns[ci + dc]));
       }
-      if (to) app.setFocus(to.sections[0].pid);
+      if (to) { const tv = views.get(to.path); app.setFocus((tv && visible(tv)[0]) ?? to.sections[0].pid); } // what's showing there: its scroll stays
     }
     const keys = {
       ArrowLeft: () => moveFile(-1, 0), ArrowRight: () => moveFile(1, 0),
