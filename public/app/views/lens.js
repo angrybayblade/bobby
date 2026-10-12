@@ -25,11 +25,11 @@ const CSS = `
 .lens.paged .nb .w { display: none; }
 .lens .nb.done { opacity: .55; }
 .lens .center { position: relative; z-index: 1; }
-.lens .focus { border: 2px solid var(--signal); border-radius: 4px; padding: 18px 22px; background: var(--surface); box-shadow: 0 0 0 8px var(--signal-soft), var(--shadow); cursor: pointer; }
+.lens .focus { border: 2px solid var(--line); border-radius: 4px; padding: 18px 22px; background: var(--surface); box-shadow: var(--shadow); cursor: pointer; } /* weight, not colour */
 .lens .focus.context { border-style: dashed; }
 .lens .focus .t { display: flex; gap: 10px; align-items: center; font: 650 calc(var(--size) * 1.1) var(--font-code); }
 .lens .focus .w { font: calc(var(--size) * 1.02)/1.55 var(--font-prose); margin-top: 8px; }
-.lens.paged .focus { padding: 10px 16px; box-shadow: 0 0 0 5px var(--signal-soft); }
+.lens.paged .focus { padding: 10px 16px; box-shadow: none; }
 .lens.paged .focus .w { display: none; }
 .lens .focus .m { font: 12px var(--font-code); color: var(--faint); margin-top: 10px; }
 .lens .none { color: var(--faint); font-size: 13px; padding: 8px 4px; }
@@ -41,7 +41,7 @@ const CSS = `
 .lens .orbit i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--muted); cursor: pointer; }
 .lens .orbit i.change, .lens .orbit i.core { background: var(--muted); }
 .lens .orbit i.done { opacity: .35; }
-.lens .orbit i.cur { border-color: var(--signal); background: var(--signal); box-shadow: 0 0 0 4px var(--signal-soft); }
+.lens .orbit i.cur { border-color: var(--signal); background: var(--signal); }
 .lens .orbit .sep { width: 1px; height: 12px; background: var(--line); margin: 0 6px; }
 .lens .orbit .lab { margin: 0 10px; }
 .lens .pane { overflow: auto; }
@@ -60,7 +60,7 @@ const CSS = `
 .lens .grid .intent small { display: block; font: 12px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); margin-bottom: 6px; }
 .lens .planets { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; max-width: 1100px; margin: 0 auto; }
 .lens .planet { min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-start; text-align: left; border: 1px solid var(--line); border-radius: 4px; padding: 16px 18px; background: var(--surface); }
-.lens .planet.cur { border-color: var(--signal); box-shadow: 0 0 0 5px var(--signal-soft); }
+.lens .planet.cur { border-color: var(--muted); }
 .lens .planet h3 { margin: 0 0 6px; font-size: calc(var(--size) * 1.02); display: flex; gap: 6px; min-width: 0; }
 .lens .planet h3 .n { flex: none; color: var(--faint); }
 .lens .planet h3 .tt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
