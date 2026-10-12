@@ -10,7 +10,7 @@ import { BANDS } from "./types.ts";
 
 export const GRAPH_SCHEMA = "bobby.review-graph/v1" as const;
 export const LEGACY_SCHEMAS = ["prfocus.review-graph/v1"]; // the same contract under its old name; still opens
-export const VERSION = "0.4.0"; // bump when extraction output changes: cached graphs from other versions are rebuilt
+export const VERSION = "0.5.0"; // bump when extraction output changes: cached graphs from other versions are rebuilt
 const SNIPPET_RADIUS = 10;
 
 export interface ReviewGraph {
