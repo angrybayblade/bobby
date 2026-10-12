@@ -94,9 +94,7 @@ export async function analyze(cwd: string, pr: PrInfo, files: FileDiff[]): Promi
   // 2. Downstream: every usage of a changed symbol at head.
   const syms = [...symbolOwner.keys()];
   if (syms.length) {
-    const args = ["grep", "-n", "-w", "-F", "-I"];
-    for (const s of syms) args.push("-e", s);
-    const out = await git(cwd, [...args, pr.headSha, "--", "."], true);
+    const out = await grepWords(cwd, pr.headSha, syms);
     const hits = parseGrep(out, pr.headSha);
     const perSymbol = new Map<string, typeof hits>();
     for (const hit of hits) {
@@ -164,6 +162,18 @@ export async function analyze(cwd: string, pr: PrInfo, files: FileDiff[]): Promi
   }
 
   return { units, refs, edges, hunkById };
+}
+
+// Many words at once. Passed as separate -F patterns, git checks each pattern against every line in turn
+// (minutes on a large repo); one alternation is a single pass. PCRE (-P) is fastest; builds without it get -E.
+const reEscape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+export async function grepWords(cwd: string, sha: string, words: string[], extra: string[] = []): Promise<string> {
+  const alt = words.map(reEscape).join("|");
+  const base = ["git", "-c", "core.quotePath=false", "grep", "-n", "-I", ...extra];
+  const p = Bun.spawn([...base, "-P", "-e", `\\b(?:${alt})\\b`, sha, "--", "."], { cwd, stdout: "pipe", stderr: "pipe" });
+  const [out, code] = await Promise.all([new Response(p.stdout).text(), p.exited]);
+  if (code === 0 || code === 1) return out; // 1: no matches
+  return git(cwd, base.slice(3).concat(["-w", "-E", "-e", `(${alt})`, sha, "--", "."]), true); // no PCRE in this git
 }
 
 function parseGrep(out: string, sha: string) {
