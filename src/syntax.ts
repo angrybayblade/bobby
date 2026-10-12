@@ -29,8 +29,9 @@ export function langOf(path: string): Lang | null {
 }
 const WASM: Record<Lang, string> = { ts: wasmTs, tsx: wasmTsx, js: wasmJs, py: wasmPy, go: wasmGo, java: wasmJava, rust: wasmRust };
 
-/** A name a file declares. Lines are 1-based; start..end spans the whole declaration. top: module level, not a member. */
-export interface Decl { name: string; line: number; start: number; end: number; top: boolean }
+/** A name a file declares. Lines are 1-based; start..end spans the whole declaration. top: module level; member: a
+ *  method or field of a class, struct, trait or interface (reached through a value, x.name). Neither: a local. */
+export interface Decl { name: string; line: number; start: number; end: number; top: boolean; member?: boolean }
 /** A use of a name. qual is what it's reached through, "db" in db.create(), "pkg" in pkg.Name. */
 export interface Ref { name: string; line: number; qual?: string }
 /** A name an import binds. name is what the module exports it as ("default" or "*" for the module itself). */
@@ -82,10 +83,10 @@ const unquote = (s: string) => s.replace(/^[`'"]|[`'"]$/g, "");
 function walk(lang: Lang, root: N): Syntax {
   const out: Syntax = { lang, decls: [], refs: [], imports: [], reexports: [] };
   const declNames = new Set<number>(); // node ids already counted as a declaration's name
-  const decl = (nameNode: N | null, whole: N, top: boolean) => {
+  const decl = (nameNode: N | null, whole: N, top: boolean, member = false) => {
     if (!nameNode) return;
     declNames.add(nameNode.id);
-    out.decls.push({ name: nameNode.text, line: line(nameNode), start: line(whole), end: whole.endPosition.row + 1, top });
+    out.decls.push({ name: nameNode.text, line: line(nameNode), start: line(whole), end: whole.endPosition.row + 1, top, ...(member ? { member } : {}) });
   };
   const ref = (n: N, qual?: N | null) => {
     if (declNames.has(n.id)) return;
@@ -110,7 +111,7 @@ const BODY = new Set([
   "interface_body", "enum_body", "object_type", "arrow_function", "function_expression", "lambda", "func_literal",
   "constructor_body", "impl_item", "trait_item",
 ]);
-interface Ctx { decl: (name: N | null, whole: N, top: boolean) => void; ref: (n: N, qual?: N | null) => void; out: Syntax }
+interface Ctx { decl: (name: N | null, whole: N, top: boolean, member?: boolean) => void; ref: (n: N, qual?: N | null) => void; out: Syntax }
 type Res = void | "skip" | "import";
 
 // ---- TypeScript / TSX / JavaScript
@@ -120,8 +121,8 @@ function jsNode(n: N, depth: number, imp: boolean, c: Ctx): Res {
     case "function_declaration": case "generator_function_declaration": case "class_declaration": case "abstract_class_declaration":
     case "interface_declaration": case "type_alias_declaration": case "enum_declaration": case "module":
       c.decl(n.childForFieldName("name"), n, top); return;
-    case "method_definition": case "method_signature": case "abstract_method_signature": case "public_field_definition":
-      c.decl(n.childForFieldName("name"), n, false); return;
+    case "method_definition": case "method_signature": case "abstract_method_signature": case "public_field_definition": case "property_signature":
+      c.decl(n.childForFieldName("name"), n, false, true); return;
     case "variable_declarator": {
       const name = n.childForFieldName("name"), value = n.childForFieldName("value");
       if (value?.type === "call_expression" && value.childForFieldName("function")?.text === "require") { // const x = require("y")
@@ -188,8 +189,11 @@ function pushInner(n: N, c: Ctx) {
 function pyNode(n: N, depth: number, imp: boolean, c: Ctx): Res {
   const top = depth === 0;
   switch (n.type) {
-    case "function_definition": case "class_definition":
-      c.decl(n.childForFieldName("name"), n, top); return;
+    case "function_definition": case "class_definition": {
+      const host = n.parent?.type === "decorated_definition" ? n.parent.parent : n.parent; // block
+      c.decl(n.childForFieldName("name"), n, top, !top && host?.parent?.type === "class_definition");
+      return;
+    }
     case "assignment": {
       const left = n.childForFieldName("left");
       if (top && left?.type === "identifier") c.decl(left, n, true);
@@ -234,7 +238,8 @@ function goNode(n: N, depth: number, imp: boolean, c: Ctx): Res {
   switch (n.type) {
     case "package_clause": c.out.pkg = n.namedChildren[0]?.text; return "skip";
     case "function_declaration": case "type_spec": c.decl(n.childForFieldName("name"), n, top); return;
-    case "method_declaration": c.decl(n.childForFieldName("name"), n, false); return;
+    case "method_declaration": c.decl(n.childForFieldName("name"), n, false, true); return;
+    case "field_declaration": for (const x of n.namedChildren) if (x.type === "field_identifier") c.decl(x, n, false, true); return;
     case "const_spec": case "var_spec": for (const x of n.namedChildren) if (x.type === "identifier") c.decl(x, n, top); return;
     case "import_spec": {
       const path = unquote(n.childForFieldName("path")?.text ?? ""), name = n.childForFieldName("name")?.text;
@@ -268,8 +273,8 @@ function javaNode(n: N, depth: number, imp: boolean, c: Ctx): Res {
     case "package_declaration": c.out.pkg = n.namedChildren[0]?.text; return "skip";
     case "class_declaration": case "interface_declaration": case "enum_declaration": case "record_declaration": case "annotation_type_declaration":
       c.decl(n.childForFieldName("name"), n, depth === 0); return;
-    case "method_declaration": case "constructor_declaration": c.decl(n.childForFieldName("name"), n, false); return;
-    case "variable_declarator": if (n.parent?.type === "field_declaration") c.decl(n.childForFieldName("name"), n, false); return;
+    case "method_declaration": case "constructor_declaration": c.decl(n.childForFieldName("name"), n, false, true); return;
+    case "variable_declarator": if (n.parent?.type === "field_declaration") c.decl(n.childForFieldName("name"), n, false, true); return;
     case "import_declaration": {
       const path = n.namedChildren.find((x) => x.type === "scoped_identifier" || x.type === "identifier")?.text ?? "";
       if (n.namedChildren.some((x) => x.type === "asterisk")) c.out.imports.push({ local: "*", name: "*", source: path });
@@ -297,8 +302,12 @@ function javaInner(n: N, c: Ctx) {
 // ---- Rust
 function rustNode(n: N, depth: number, imp: boolean, c: Ctx): Res {
   switch (n.type) {
-    case "function_item": case "function_signature_item":
-      c.decl(n.childForFieldName("name"), n, depth === 0); return;
+    case "function_item": case "function_signature_item": { // inside impl or trait: a method
+      const owner = n.parent?.parent?.type;
+      c.decl(n.childForFieldName("name"), n, depth === 0, owner === "impl_item" || owner === "trait_item");
+      return;
+    }
+    case "field_declaration": c.decl(n.childForFieldName("name"), n, false, true); return;
     case "struct_item": case "enum_item": case "trait_item": case "type_item": case "const_item": case "static_item":
     case "mod_item": case "union_item": case "macro_definition":
       c.decl(n.childForFieldName("name"), n, depth === 0); return;
