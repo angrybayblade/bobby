@@ -127,7 +127,7 @@ export function fileViewer(app, pid) {
   const { a, d } = app.stat(pid), split = app.layoutOf(path) === "split", done = app.isFileRead(path);
   const stat = n.kind === "change" ? `<span style="color:var(--ok)">+${a}</span> <span style="color:var(--risk)">−${d}</span>` : "untouched";
   return `<div class="fvw ${done ? "viewed" : ""}"><div class="fvh"><i class="glyph ${n.kind}"></i><span class="p">${esc(dir)}<b>${esc(path.split("/").pop())}</b></span><span class="band ${pl.band}">${BAND_LABEL[pl.band]}</span><span class="st">${stat}</span>`
-    + `<button class="frd" data-pfile="${esc(path)}" aria-label="Mark the whole file read" title="Every page of this file, at once · local only"><i class="cb"></i><span>File read</span></button>`
+    + `<button class="frd" data-pfile="${esc(path)}" aria-label="Mark the whole file viewed" title="Every page of this file, at once · local only"><i class="cb"></i><span>Mark viewed</span></button>`
     + `<button class="max lay" data-flayout="${esc(path)}" aria-label="Inline or split" data-tip="${split ? "Show this file inline" : "Show this file split"} · d for every file">${split ? "▤" : "◫"}</button>`
     + `<button class="max" data-pnote="${esc(path)}" aria-label="Note on this file" data-tip="Private note on this file · only you see it">✎</button>`
     + `<button class="max" data-pmax="1" aria-label="Full screen" data-tip="Full screen · g">⤢</button></div><div class="fvb nbody"></div></div>`;
@@ -211,7 +211,7 @@ export default {
     function header(f, exit = false) {
       const dir = f.path.includes("/") ? f.path.slice(0, f.path.lastIndexOf("/") + 1) : "";
       return `<i class="glyph ${f.changed ? "change" : "context"}"></i><span class="p">${esc(dir)}<b>${esc(f.path.split("/").pop())}</b></span><span class="band ${f.band}">${BAND_LABEL[f.band]}</span><span class="st">${stat(f)}</span>`
-        + `<button class="frd" data-fviewed="${esc(f.path)}" aria-label="Mark the whole file read" title="Every page of this file, at once · local only"><i class="cb"></i><span>File read</span></button>`
+        + `<button class="frd" data-fviewed="${esc(f.path)}" aria-label="Mark the whole file viewed" title="Every page of this file, at once · local only"><i class="cb"></i><span>Mark viewed</span></button>`
         + `<button class="max lay" data-flayout="${esc(f.path)}" aria-label="Inline or split" data-tip="${app.layoutOf(f.path) === "split" ? "Show this file inline" : "Show this file split"} · d for every file">${app.layoutOf(f.path) === "split" ? "▤" : "◫"}</button>`
         + `<button class="max" data-fnote="${esc(f.path)}" aria-label="Note on this file" data-tip="Private note on this file · only you see it">✎</button>`
         + (exit ? `<button class="max" data-exit="1" aria-label="Back to all files" data-tip="Back to all files · esc">⤡</button>`

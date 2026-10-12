@@ -112,7 +112,7 @@ function renderFiles() {
     }
     for (const { name, f } of d.files.sort((a, b) => a.name.localeCompare(b.name))) {
       const done = f.pids.every((p) => app.isReviewed(p)), n = talk(f.path);
-      rows.push(`<button class="ffile ${f.path === curPath ? "cur" : ""} ${done ? "done" : ""}" data-ffile="${esc(f.path)}" style="--d:${depth}" title="${esc(f.path)}"><i class="glyph ${f.core ? "core" : f.changed ? "change" : "context"}"></i><span class="nm">${esc(name)}</span>${lvlTag(f.path)}${n ? `<span class="fc">◂ ${n}</span>` : ""}${f.changed ? `<span class="fs"><span class="a">+${f.a}</span> <span class="d">−${f.d}</span></span>` : ""}<span class="ok" data-fread="${esc(f.path)}" role="checkbox" aria-checked="${done}" title="${done ? "Unmark the whole file" : "Mark the whole file read"}">${done ? "✓" : ""}</span></button>`);
+      rows.push(`<button class="ffile ${f.path === curPath ? "cur" : ""} ${done ? "done" : ""}" data-ffile="${esc(f.path)}" style="--d:${depth}" title="${esc(f.path)}"><i class="glyph ${f.core ? "core" : f.changed ? "change" : "context"}"></i><span class="nm">${esc(name)}</span>${lvlTag(f.path)}${n ? `<span class="fc">◂ ${n}</span>` : ""}${f.changed ? `<span class="fs"><span class="a">+${f.a}</span> <span class="d">−${f.d}</span></span>` : ""}<span class="ok" data-fread="${esc(f.path)}" role="checkbox" aria-checked="${done}" title="${done ? "Unmark the whole file" : "Mark the whole file viewed"}">${done ? "✓" : ""}</span></button>`);
     }
   };
   walk(root, 0, "");

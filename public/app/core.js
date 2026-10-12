@@ -190,7 +190,7 @@ export function createApp({ graph, session }) {
       return app.index.walk.filter((p) => app.get(p) && !app.get(p).pl.repeatOf && at(p) === path);
     },
     isFileRead(path) { const ps = app.filePages(path); return ps.length > 0 && ps.every((p) => app.isReviewed(p)); },
-    /** Marks a whole file read, or clears it when it already is: one save, one re-render. */
+    /** Marks a whole file viewed, or clears it when it already is: one save, one re-render. */
     markFile(path, on = !app.isFileRead(path)) {
       const keys = [...new Set(app.filePages(path).flatMap((p) => app.markKeys(p)))];
       for (const k of keys) on ? (app.state.marks[k] = "reviewed") : delete app.state.marks[k];
