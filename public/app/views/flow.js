@@ -15,7 +15,7 @@ const CSS = `
 .flow svg path.hot { stroke: var(--muted); stroke-width: 2; }
 .flow svg path.dim { opacity: .35; }
 .flow svg path.rep { stroke-dasharray: 4 4; }
-.flow .card, .flow .chead, .flow .colh { position: absolute; left: 0; top: 0; transition: transform var(--dur) var(--ease), width var(--dur) var(--ease), height var(--dur) var(--ease), opacity var(--dur); }
+.flow .card, .flow .chead { position: absolute; left: 0; top: 0; transition: transform var(--dur) var(--ease), width var(--dur) var(--ease), height var(--dur) var(--ease), opacity var(--dur); }
 .flow .card { border-radius: 3px; background: var(--surface); border: 1px solid var(--line); padding: 8px 12px; overflow: hidden; cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
 .flow .card:hover { border-color: var(--muted); }
 .flow .card .t { display: flex; align-items: center; gap: 8px; font: 500 13px/1.3 var(--font-code); white-space: nowrap; }
@@ -51,9 +51,6 @@ const CSS = `
 .flow .card.grp .t small { color: var(--faint); font-weight: 400; flex: none; }
 .flow .card.grp.open { border-color: var(--signal); }
 .flow .card.grp.done { opacity: .55; }
-.flow .colh { z-index: 4; font: 600 10.5px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); white-space: nowrap; text-align: center; }
-.flow .colh.root { color: var(--signal); }
-.flow .colh.lane { opacity: .7; font-weight: 500; }
 .flow .card .t .bandc { font: 500 9.5px var(--font-ui); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); white-space: nowrap; padding: 0 5px; border: 1px solid var(--line-soft); border-radius: 1px; flex: none; }
 .flow .card.core .t .bandc { color: var(--text); border-color: var(--muted); }
 .flow .pane { overflow: auto; border-top: 1px solid var(--line); background: var(--bg); }
@@ -67,8 +64,6 @@ const MAX_GROUPS = 15;
 const GUTTER = 90, PAD = 40, GAP_Y = 12, CORE_GAP = 80, HEAD = 40, MAX_COL = 5;
 const SIZES = { focus: [290, 172], near: [250, 100], far: [230, 38], agg: [230, 34] };
 const BODY_W = 720; // focused card when it shows its code (core level only)
-const ORD = (n) => `${n}${n % 10 === 1 && n % 100 !== 11 ? "st" : n % 10 === 2 && n % 100 !== 12 ? "nd" : n % 10 === 3 && n % 100 !== 13 ? "rd" : "th"}`;
-const COL_HEAD = (d) => (d === "pr" ? "this PR" : d === "g" ? "concerns" : d === -2 ? "relies on · untouched" : d === -1 ? "relies on · changed" : d === 0 ? "① core change" : `${ORD(d)} order`);
 const BAND_CHIP = { upUnchanged: "relies on · untouched", upChanged: "relies on · changed", core: "core", downChanged: "affects · changed", downUnchanged: "affects · untouched" };
 
 export default {
@@ -203,7 +198,7 @@ export default {
       const kidsOf = (id) => (id === PR ? gids.map(GK) : isG(id) ? (id.slice(4) === openG ? groups.get(openG).roots : []) : shownKids.get(id) ?? []);
       const hO = (id) => (id === PR ? SZ.pr[1] : isG(id) ? SZ.grp[1] : hOf(id)), wO = (id) => (id === PR ? SZ.pr[0] : isG(id) ? SZ.grp[0] : wOf(id));
       const colKids = (col) => (col === "pr" ? "g" : col === "g" ? 0 : col + 1);
-      const top = HEAD + 34;
+      const top = 20;
       const at = new Map(), colOf = new Map(), colBottom = new Map();
       let cursor = top;
       const lay = (id, col) => {
@@ -230,15 +225,18 @@ export default {
           at.set(id, cy); colOf.set(id, lane); bottom = cy + hO(id) + GAP_Y;
         }
       }
-      const rank = (c) => (c === "pr" ? -10 : c === "g" ? -9 : c);
-      const cols = [...new Set(colOf.values())].sort((a, b) => rank(a) - rank(b)), colW = new Map();
-      for (const [id, d] of colOf) colW.set(d, Math.max(colW.get(d) ?? 0, wO(id)));
-      const colX = new Map(); let acc = 0;
-      for (const d of cols) { colX.set(d, acc); acc += colW.get(d) + GUTTER; }
-      for (const d of cols) heads.push({ col: d, x: colX.get(d), y: HEAD - 6, w: colW.get(d) });
-      let y = top;
+      // Free-flowing: no columns. Each card sits a gutter right of its own parent; what's relied on sits a gutter left
+      // of what it feeds, and an open concern leaves room for those lanes before its core changes.
+      const laneW = (lane) => Math.max(0, ...[...colOf].filter(([, c]) => c === lane).map(([id]) => wO(id)));
+      const laneSpan = [-1, -2].reduce((n, l) => n + (laneW(l) ? laneW(l) + GUTTER : 0), 0);
+      const xs = new Map();
+      const setX = (id, x) => { xs.set(id, x); for (const k of kidsOf(id)) setX(k, x + wO(id) + GUTTER + (isG(id) ? laneSpan : 0)); };
+      setX(PR, 0);
+      for (const lane of [-1, -2]) for (const [id, c] of colOf) if (c === lane) { const t = feeds.get(id); xs.set(id, (xs.get(t) ?? laneSpan) - GUTTER - wO(id)); }
+      let y = top, width = 0;
       for (const [id, d] of colOf) {
-        const w = wO(id), h = hO(id), x = colX.get(d) + (colW.get(d) - w) / 2, cy = at.get(id);
+        const w = wO(id), h = hO(id), x = xs.get(id) ?? 0, cy = at.get(id);
+        width = Math.max(width, x + w);
         y = Math.max(y, cy + h);
         if (id === PR) { items.push({ kind: "pr", w, h, x, y: cy }); continue; }
         if (isG(id)) { const g = groups.get(id.slice(4)); items.push({ kind: "grp", g, open: g.id === openG, w, h, x, y: cy }); continue; }
@@ -246,7 +244,6 @@ export default {
         const size = sizeOf(id);
         items.push({ kind: "pl", pl: byId.get(id), size, body: size === "focus" && !!body, w, h, x, y: cy, current: true, col: d, root: depth.get(id) === 0 });
       }
-      const width = acc;
       y += CORE_GAP;
       G = { parentOf, feeds, kids: shownKids, pred, succ, foldTo, openG }; lastGroups = groups;
       if (app.graph.lowSignal.length) {
@@ -412,7 +409,6 @@ export default {
     function placeAll(L) {
       for (const n of els.values()) n._seen = false;
       for (const h of L.heads) {
-        if (h.col != null) { place(`col:${h.col}`, `colh ${h.col === 0 ? "root" : typeof h.col === "number" && h.col < 0 ? "lane" : ""}`, COL_HEAD(h.col), h.x, h.y, h.w, null); continue; }
         const items = app.index.walk.filter((p) => app.get(p)?.core === h.c);
         const done = items.filter((p) => app.isReviewed(p)).length;
         place(`ch:${h.c.id}`, `chead ${app.level > 0 && !h.current ? "other" : ""}`, `${app.graph.cores.indexOf(h.c) + 1} · ${esc(h.c.title)} <small>${done}/${items.length}${h.current || app.level === 0 ? ` · ${esc(h.c.summary)}` : ""}</small>`, h.x, h.y, null, null, { core: h.c.id });

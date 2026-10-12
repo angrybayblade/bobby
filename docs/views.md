@@ -13,7 +13,7 @@ All views share the three zoom levels (Overview → Core → Page) described in 
 
 ## Flow
 
-The whole PR as one tree that reads left to right: **this PR** → its **concerns** → a concern's **① core changes** → **1st order** (what they affect) → **2nd order** → ….
+The whole PR as one free-flowing tree on a canvas, reading left to right, each card just right of its parent (no columns): **this PR** → its **concerns** → a concern's **① core changes** → **1st order** (what they affect) → **2nd order** → ….
 
 - **Zoomed out** (Overview), you see the PR and its concerns: each a card with its module, its lead change, how many core changes it holds and your progress.
 - **Zoom into a concern** (click it, or move into it at the Core level) and it opens into its subtree, while the other concerns stay single cards. Every page hangs off a page one order before it, code that several changes share appears once, and other links show, dashed, around the focus.
@@ -24,7 +24,7 @@ The whole PR as one tree that reads left to right: **this PR** → its **concern
 - Each card says how it relates in its own text ("Uses `retryMethods` and was changed too"); the band is a chip on it.
 - At **Core**, the focused card shows its comments and code. At **Page**, the page takes over the stage.
 - The camera glides between levels. Drag the background or scroll to pan, pinch or `ctrl`+scroll to zoom. Click a node to focus it, click it again to zoom in, and click "+N" to unfold. At **Core** the camera frames the focus and what it links to.
-- Arrows follow the flow: → one order deeper (the first page reached from this one), ← back toward the core change (and from it, to what it relies on), ↑ / ↓ the page above or below in the same column.
+- Arrows follow the flow: → one order deeper (the first page reached from this one), ← back toward the core change (and from it, to what it relies on), ↑ / ↓ the page above or below at the same depth.
 - `f` fills the canvas with the focused card and its code at a reading size; scrolling reads its code, and `j`/`k` keep it filled.
 
 ## Outline
