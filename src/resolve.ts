@@ -65,7 +65,14 @@ export class Repo {
 
   // ---- imports → files
   /** The files an import in `from` refers to: one file, or a package's files (Go, Java a.b.*). Empty: outside the repo. */
-  async resolve(from: string, imp: { source: string; level?: number; name?: string }, lang: Lang): Promise<string[]> {
+  private resolved = new Map<string, Promise<string[]>>();
+  resolve(from: string, imp: { source: string; level?: number; name?: string }, lang: Lang): Promise<string[]> {
+    const key = `${family(lang)}|${from}|${imp.source}|${imp.level ?? 0}|${imp.name ?? ""}`;
+    let p = this.resolved.get(key);
+    if (!p) this.resolved.set(key, (p = this.resolveOnce(from, imp, lang)));
+    return p;
+  }
+  private async resolveOnce(from: string, imp: { source: string; level?: number; name?: string }, lang: Lang): Promise<string[]> {
     switch (family(lang)) {
       case "js": return this.resolveJs(from, imp.source);
       case "py": return this.resolvePy(from, imp.source, imp.level ?? 0, imp.name);
@@ -257,8 +264,15 @@ export class Repo {
     return null;
   }
   /** Whether `files` are, or re-export from, `target`. */
-  async reaches(files: string[], target: string, depth = 0): Promise<boolean> {
-    if (files.includes(target)) return true;
+  private reach = new Map<string, Promise<boolean>>();
+  reaches(files: string[], target: string, depth = 0): Promise<boolean> {
+    if (files.includes(target)) return Promise.resolve(true);
+    const key = `${files.join(",")}>${target}`;
+    let p = this.reach.get(key);
+    if (!p) this.reach.set(key, (p = this.reachesOnce(files, target, depth)));
+    return p;
+  }
+  private async reachesOnce(files: string[], target: string, depth: number): Promise<boolean> {
     if (depth >= 4) return false;
     for (const f of files) {
       const s = await this.syntax(f);

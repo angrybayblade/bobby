@@ -1,4 +1,7 @@
+import { dirname } from "node:path/posix";
 import { git } from "./git.ts";
+import { Repo } from "./resolve.ts";
+import { family, langOf, type Ref, type Syntax, syntaxReady } from "./syntax.ts";
 import type { Band, ChangeTree, CodeRef, Core, FileDiff, Hunk, PrInfo, TreeNode, Unit } from "./types.ts";
 import { BANDS } from "./types.ts";
 
@@ -58,26 +61,35 @@ export interface Analysis {
 export async function analyze(cwd: string, pr: PrInfo, files: FileDiff[]): Promise<Analysis> {
   const hunkById = new Map<string, Hunk>();
   for (const f of files) for (const h of f.hunks) hunkById.set(h.id, h);
+  // The repo at head, parsed with tree-sitter where the language is supported; null if tree-sitter can't run here,
+  // and then every file goes through text search, as before.
+  const repo = (await syntaxReady()) ? await Repo.open(cwd, pr.headSha) : null;
+  const synOf = async (path: string, status?: string) => (repo && status !== "deleted" ? repo.syntax(path) : null);
+  if (repo) await repo.readMany(files.filter((f) => f.status !== "deleted" && langOf(f.path)).map((f) => f.path));
 
   // 1. Units: hunks grouped by file + primary symbol.
   const unitsByKey = new Map<string, Unit>();
   const unitOfHunk = new Map<string, Unit>();
   for (const f of files) {
+    const syn = await synOf(f.path, f.status);
     for (const h of f.hunks) {
       if (h.noise) continue;
-      const sym = primarySymbol(h);
+      const declared = syn ? declaredIn(h, syn) : [];
+      const prose = NOT_CODE.test(f.path); // docs and data: named after the file, no "declarations" read from prose
+      const sym = prose ? f.path.split("/").pop()! : declared[0] ?? (syn && enclosing(h, syn)) ?? primarySymbol(h);
       const key = `${f.path}::${sym}`;
       let u = unitsByKey.get(key);
       if (!u) unitsByKey.set(key, (u = { id: `u${unitsByKey.size + 1}`, file: f.path, symbols: [sym], hunkIds: [] }));
       u.hunkIds.push(h.id);
-      for (const d of declsIn(h.lines.filter((l) => l.t !== " ").map((l) => l.s).join("\n")))
-        if (!u.symbols.includes(d)) u.symbols.push(d);
+      // What it declares: from the syntax tree for added code; removed declarations by pattern (their callers matter).
+      const names = syn ? [...declared, ...declsIn(h.lines.filter((l) => l.t === "-").map((l) => l.s).join("\n"))] : declsIn(h.lines.filter((l) => l.t !== " ").map((l) => l.s).join("\n"));
+      if (!prose) for (const d of names) if (!u.symbols.includes(d)) u.symbols.push(d);
       unitOfHunk.set(h.id, u);
     }
   }
   const units = [...unitsByKey.values()];
 
-  // Where each added line lives, so grep hits can be classified as changed vs unchanged code.
+  // Where each added line lives, so hits can be classified as changed vs unchanged code.
   const addedAt = new Map<string, Unit>();
   for (const u of units)
     for (const hid of u.hunkIds)
@@ -90,40 +102,175 @@ export async function analyze(cwd: string, pr: PrInfo, files: FileDiff[]): Promi
   const edges: Analysis["edges"] = [];
   const edgeKeys = new Set<string>();
   const addRef = (r: Omit<CodeRef, "id">) => refs.push({ ...r, id: `r${refs.length + 1}` });
+  const parsed = (u: Unit) => !!repo && !!langOf(u.file);
 
-  // 2. Downstream: every usage of a changed symbol at head.
+  // 2. Downstream: every use of a changed symbol at head. A hit on another unit's added line is an edge; one in
+  // untouched code is a downstream ref (at most 10 per symbol, 2 per file; none for a symbol used more than 120 times).
+  const perSymbol = new Map<string, Hit[]>();
+  const add = (s: string, hit: Hit) => (perSymbol.get(s) ?? perSymbol.set(s, []).get(s)!).push(hit);
   const syms = [...symbolOwner.keys()];
-  if (syms.length) {
-    const out = await grepWords(cwd, pr.headSha, syms);
-    const hits = parseGrep(out, pr.headSha);
-    const perSymbol = new Map<string, typeof hits>();
-    for (const hit of hits) {
+  const textSyms = syms.filter((s) => !parsed(symbolOwner.get(s)!) && !NOT_CODE.test(symbolOwner.get(s)!.file));
+  const treeSyms = syms.filter((s) => parsed(symbolOwner.get(s)!));
+  if (textSyms.length) { // unsupported languages: every whole-word match that isn't a declaration or an import line
+    for (const hit of parseGrep(await grepWords(cwd, pr.headSha, textSyms), pr.headSha)) {
+      if (NOT_CODE.test(hit.path)) continue;
       const toks = new Set(hit.text.match(IDENT) ?? []);
-      for (const s of syms) if (toks.has(s)) (perSymbol.get(s) ?? perSymbol.set(s, []).get(s)!).push(hit);
+      for (const s of textSyms) if (toks.has(s) && !declsIn(hit.text).includes(s) && !IMPORT_LINE.test(hit.text)) add(s, hit);
     }
-    for (const [s, list] of perSymbol) {
-      const owner = symbolOwner.get(s)!;
-      const generic = list.length > 120;
-      const seenFiles = new Map<string, number>();
-      let unchangedCount = 0;
-      for (const hit of list) {
-        if (declsIn(hit.text).includes(s) || IMPORT_LINE.test(hit.text)) continue;
-        const at = addedAt.get(`${hit.path}:${hit.line}`);
-        if (at) {
-          if (at !== owner && !edgeKeys.has(`${owner.id}>${at.id}`)) {
-            edgeKeys.add(`${owner.id}>${at.id}`);
-            edges.push({ from: owner.id, to: at.id, symbol: s });
-          }
-        } else if (!generic && unchangedCount < 10 && (seenFiles.get(hit.path) ?? 0) < 2) {
-          seenFiles.set(hit.path, (seenFiles.get(hit.path) ?? 0) + 1);
-          unchangedCount++;
-          addRef({ path: hit.path, line: hit.line, text: hit.text.trim(), dir: "down", symbol: s, forUnit: owner.id });
+  }
+  if (treeSyms.length && repo) { // supported languages: uses in the syntax tree that resolve, through imports, to the owner
+    const cands = [...new Set(parseGrep(await grepWords(cwd, pr.headSha, treeSyms), pr.headSha).map((h) => h.path))];
+    await repo.readMany(cands.filter((p) => langOf(p)));
+    const wanted = new Set(treeSyms);
+    for (const path of cands) {
+      const lang = langOf(path);
+      if (!lang) continue;
+      const syn = await repo.syntax(path), text = await repo.read(path);
+      if (!syn || text == null) continue;
+      const lines = text.split("\n");
+      for (const r of syn.refs) {
+        if (!wanted.has(r.name)) continue;
+        const owner = symbolOwner.get(r.name)!;
+        if (family(lang) !== family(langOf(owner.file)!)) continue;
+        if (!(await binds(repo, path, syn, r, owner))) continue;
+        add(r.name, { path, line: r.line, text: (lines[r.line - 1] ?? "").slice(0, 300) });
+      }
+    }
+    for (const [s, list] of perSymbol) if (wanted.has(s)) { // one hit per line, in file order
+      const seen = new Set<string>();
+      perSymbol.set(s, list.filter((h) => !seen.has(`${h.path}:${h.line}`) && seen.add(`${h.path}:${h.line}`)).sort((a, b) => a.path.localeCompare(b.path) || a.line - b.line));
+    }
+  }
+  for (const [s, list] of perSymbol) {
+    const owner = symbolOwner.get(s)!;
+    const generic = list.length > 120;
+    const seenFiles = new Map<string, number>();
+    let unchangedCount = 0;
+    for (const hit of list) {
+      const at = addedAt.get(`${hit.path}:${hit.line}`);
+      if (at) {
+        if (at !== owner && !edgeKeys.has(`${owner.id}>${at.id}`)) {
+          edgeKeys.add(`${owner.id}>${at.id}`);
+          edges.push({ from: owner.id, to: at.id, symbol: s });
         }
+      } else if (!generic && unchangedCount < 10 && (seenFiles.get(hit.path) ?? 0) < 2) {
+        seenFiles.set(hit.path, (seenFiles.get(hit.path) ?? 0) + 1);
+        unchangedCount++;
+        addRef({ path: hit.path, line: hit.line, text: hit.text.trim(), dir: "down", symbol: s, forUnit: owner.id });
       }
     }
   }
 
-  // 3. Upstream: unchanged definitions of identifiers the added code relies on.
+  // 3. Upstream: the unchanged definitions the added code relies on. Supported languages: each name used on an added
+  // line, resolved through the file's imports (or its own module, or its Go/Java package) to its one declaration.
+  // Others: identifiers with exactly one definition-looking line in the repo.
+  const usedBy = new Map<string, Map<string, number>>(); // def key → unit → count
+  const defAt = new Map<string, { path: string; line: number; symbol: string }>();
+  for (const u of units.filter((x) => parsed(x))) {
+    const syn = await repo!.syntax(u.file);
+    if (!syn) continue;
+    const added = new Set(u.hunkIds.flatMap((h) => hunkById.get(h)!.lines.filter((l) => l.t === "+").map((l) => l.n)));
+    for (const r of syn.refs) {
+      if (!added.has(r.line) || r.name.length < 3 || u.symbols.includes(r.name) || KEYWORDS.has(r.name)) continue;
+      const d = await resolveDef(repo!, u.file, syn, r);
+      if (!d || addedAt.has(`${d.path}:${d.line}`)) continue; // changed code: an edge, found downstream
+      const key = `${d.path}:${d.line}`;
+      defAt.set(key, { ...d, symbol: r.name });
+      const m = usedBy.get(key) ?? usedBy.set(key, new Map()).get(key)!;
+      m.set(u.id, (m.get(u.id) ?? 0) + 1);
+    }
+  }
+  for (const u of units.filter((x) => parsed(x))) {
+    const top = [...usedBy.entries()].filter(([, m]) => m.has(u.id)).sort((a, b) => b[1].get(u.id)! - a[1].get(u.id)!).slice(0, 6);
+    for (const [key] of top) {
+      const d = defAt.get(key)!, lines = (await repo!.read(d.path))?.split("\n") ?? [];
+      addRef({ path: d.path, line: d.line, text: (lines[d.line - 1] ?? "").trim().slice(0, 300), dir: "up", symbol: d.symbol, forUnit: u.id });
+    }
+  }
+  await textUpstream(cwd, pr, units.filter((x) => !parsed(x) && !NOT_CODE.test(x.file)), hunkById, addedAt, symbolOwner, addRef);
+
+  return { units, refs, edges, hunkById };
+}
+
+type Hit = { path: string; line: number; text: string };
+/** Docs and data: a word there isn't a use of code. */
+const NOT_CODE = /\.(md|mdx|markdown|txt|rst|adoc|json|jsonc|ya?ml|toml|ini|csv|tsv|svg|html?|xml|lock|snap|log)$/i;
+
+/** Names a hunk's added lines declare, by the syntax tree of the file at head. */
+function declaredIn(h: Hunk, syn: Syntax): string[] {
+  const added = new Set(h.lines.filter((l) => l.t === "+").map((l) => l.n));
+  // Module-level declarations first, then methods; a one-line member is a field, whose name is too generic to follow.
+  const pick = syn.decls.filter((d) => added.has(d.line) && (d.top || (d.member && d.end > d.start)));
+  return [...new Set([...pick.filter((d) => d.top), ...pick.filter((d) => !d.top)].map((d) => d.name))];
+}
+/** The innermost module-level declaration or member around a hunk's first change: what the hunk changes. */
+function enclosing(h: Hunk, syn: Syntax): string | null {
+  const i = h.lines.findIndex((l) => l.t !== " ");
+  const at = h.lines.slice(i).find((l) => l.t !== "-")?.n ?? h.lines.slice(0, i).reverse().find((l) => l.t !== "-")?.n;
+  if (at == null) return null;
+  const around = syn.decls.filter((d) => (d.top || d.member) && d.end > d.start && d.start <= at && at <= d.end).sort((a, b) => (a.end - a.start) - (b.end - b.start));
+  return around[0]?.name ?? null;
+}
+
+const rootOf = (qual: string) => qual.split(/\.|::/)[0];
+/** Whether a use of a symbol in `path` refers to the owner's declaration: same file, or bound through an import (or
+ *  the same Go/Java package) to the owner's file. A member (x.method) counts when the file imports the owner's file. */
+async function binds(repo: Repo, path: string, syn: Syntax, r: Ref, owner: Unit): Promise<boolean> {
+  const O = owner.file;
+  if (path === O) return true;
+  const fam = family(syn.lang);
+  const ownerSyn = await repo.syntax(O);
+  const isMember = !ownerSyn || ownerSyn.decls.some((d) => d.name === r.name && d.member) || !ownerSyn.decls.some((d) => d.name === r.name && d.top);
+  const samePkg = (fam === "go" || fam === "java") && dirname(path) === dirname(O);
+  // value.member: the file must import what declares the member (the class around it), not merely the owner's file.
+  const decl = ownerSyn?.decls.find((d) => d.name === r.name && d.member);
+  const container = decl && ownerSyn!.decls.filter((d) => d.top && d.start <= decl.line && decl.line <= d.end).sort((a, b) => (a.end - a.start) - (b.end - b.start))[0]?.name;
+  const importsOwner = async () => {
+    for (const imp of syn.imports) {
+      if (container && imp.name !== container && imp.name !== "default" && imp.name !== "*") continue;
+      if (await repo.reaches(await repo.resolve(path, imp, syn.lang), O)) return true;
+    }
+    return false;
+  };
+  if (r.qual) {
+    const imp = syn.imports.find((i) => i.local === rootOf(r.qual!));
+    if (imp) return repo.reaches(await repo.resolve(path, imp, syn.lang), O); // ns.name, pkg.Name, mod.name, Class.static
+    return isMember && (samePkg || (await importsOwner())); // value.member
+  }
+  if (samePkg) return true;
+  const imp = syn.imports.find((i) => i.local === r.name);
+  if (imp) return repo.reaches(await repo.resolve(path, imp, syn.lang), O);
+  for (const w of syn.imports.filter((i) => i.local === "*")) if (await repo.reaches(await repo.resolve(path, w, syn.lang), O)) return true; // from x import *
+  return false;
+}
+
+/** Where a name used in `path` is declared, if it's somewhere in the repo: through an import, the file itself, its
+ *  Go/Java package, or a wildcard import. Members reached through a value (x.name) aren't resolved. */
+async function resolveDef(repo: Repo, path: string, syn: Syntax, r: Ref): Promise<{ path: string; line: number } | null> {
+  const fam = family(syn.lang);
+  if (r.qual) {
+    const imp = syn.imports.find((i) => i.local === rootOf(r.qual!));
+    if (!imp || (imp.name !== "*" && fam !== "rust")) return null; // a member of a value or of an imported class
+    return repo.findDecl(await repo.resolve(path, imp, syn.lang), r.name);
+  }
+  const imp = syn.imports.find((i) => i.local === r.name);
+  if (imp) {
+    const files = await repo.resolve(path, imp, syn.lang);
+    return files.length ? repo.findDecl(files, imp.name === "default" || imp.name === "*" ? r.name : imp.name) : null;
+  }
+  const own = syn.decls.find((d) => d.name === r.name && d.top);
+  if (own) return { path, line: own.line };
+  if (fam === "go") return repo.findDecl(repo.goFilesIn(dirname(path)).filter((f) => f !== path), r.name);
+  if (fam === "java") return repo.findDecl(repo.javaPackage(path).filter((f) => f !== path), r.name);
+  for (const w of syn.imports.filter((i) => i.local === "*")) { const d = await repo.findDecl(await repo.resolve(path, w, syn.lang), r.name); if (d) return d; }
+  return null;
+}
+
+/** Upstream refs by text search, for files tree-sitter doesn't parse: identifiers used on added lines with exactly one
+ *  definition-looking line elsewhere in the repo. */
+async function textUpstream(cwd: string, pr: PrInfo, units: Unit[], hunkById: Map<string, Hunk>, addedAt: Map<string, Unit>,
+  symbolOwner: Map<string, Unit>, addRef: (r: Omit<CodeRef, "id">) => void) {
+  if (!units.length) return;
   const usedBy = new Map<string, Map<string, number>>(); // ident → unit → count
   for (const u of units)
     for (const hid of u.hunkIds)
@@ -142,7 +289,7 @@ export async function analyze(cwd: string, pr: PrInfo, files: FileDiff[]): Promi
     const pattern = `(function|def|class|interface|type|enum|struct|trait|fn|func|const|let|var|val)[[:space:]]+(${chunk.join("|")})`;
     const out = await git(cwd, ["grep", "-n", "-I", "-w", "-E", "-e", pattern, pr.headSha, "--", "."], true);
     for (const hit of parseGrep(out, pr.headSha)) {
-      if (addedAt.has(`${hit.path}:${hit.line}`)) continue;
+      if (addedAt.has(`${hit.path}:${hit.line}`) || NOT_CODE.test(hit.path)) continue;
       for (const d of declsIn(hit.text)) {
         if (!usedBy.has(d)) continue;
         const list = defs.get(d) ?? defs.set(d, []).get(d)!;
@@ -160,8 +307,6 @@ export async function analyze(cwd: string, pr: PrInfo, files: FileDiff[]): Promi
       addRef({ path: d.path, line: d.line, text: d.text.trim(), dir: "up", symbol: id, forUnit: u.id });
     }
   }
-
-  return { units, refs, edges, hunkById };
 }
 
 // Many words at once. Passed as separate -F patterns, git checks each pattern against every line in turn
