@@ -171,7 +171,7 @@ const SETTINGS = [
   ["rabbit", "Rabbit-hole nudge", [[0, "Off"], [8, "8m"], [12, "12m"], [20, "20m"]]],
   ["drift", "Drift prompt", [["on", "On"], ["off", "Off"]]],
   ["prComments", "PR comments", [["hide", "Hidden, show per page"], ["show", "Always shown"]]],
-  ["untouched", "Untouched code", [["show", "Shown"], ["hide", "Hidden"]]],
+  ["untouched", "Untouched code", [["hide", "Hidden"], ["show", "Shown"]]],
   ["tests", "Tests & generated files", [["hide", "Hidden"], ["show", "Shown"]]],
 ];
 export function settings() {

@@ -24,7 +24,7 @@ export const DEFAULT_SETTINGS = {
   rabbit: 12, // minutes on one page before offering to flag it and move on; 0 = off
   drift: "on", // on | off: after 90s idle on a page, offer to park a thought
   prComments: "hide", // hide | show: other reviewers' comments, behind a per-page toggle when hidden
-  untouched: "show", // show | hide: untouched code the changes rely on or affect, in every view (the top bar's switch)
+  untouched: "hide", // hide | show: untouched code the changes rely on or affect, in every view (the top bar's switch)
   tests: "hide", // hide | show: test files and generated files, in every view (the top bar's switch)
   diffLayout: "split", // split | inline: old beside new, or changed lines in one column
   palette: "github", // github | warm: colours (and, for github, fonts); theme picks dark or light
