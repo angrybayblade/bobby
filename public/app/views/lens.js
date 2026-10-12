@@ -192,17 +192,38 @@ export default {
       app.setFocus(t.dataset.go);
     });
 
-    // ---- arrows follow edges: → to what the focus affects, ← to what it relies on, ↑/↓ to its siblings
-    // (the other pages hanging off the same neighbour), in walk order.
+    // ---- arrows: ← / → move a dependency level (to what the focus relies on / affects, along an edge); ↑ / ↓ stay on
+    // the level and move to the previous / next page there, in walk order. A page's level is its distance from the core
+    // change: 0 for the core change, +1, +2… for what it affects, −1, −2… for what it relies on.
+    function levels(core) {
+      const es = app.edgesOf(core.id), pls = app.corePlacements(core), lvl = new Map();
+      for (const pl of pls) if (pl.band === "core") lvl.set(pl.id, 0);
+      for (let changed = true, n = 0; changed && n < pls.length; n++) {
+        changed = false;
+        for (const e of es) {
+          const a = app.get(e.from)?.pl, b = app.get(e.to)?.pl;
+          if (!a || !b) continue;
+          if (lvl.has(e.from) && !lvl.has(e.to) && !b.band.startsWith("up")) { lvl.set(e.to, lvl.get(e.from) + 1); changed = true; }
+          if (lvl.has(e.to) && !lvl.has(e.from) && a.band.startsWith("up")) { lvl.set(e.from, lvl.get(e.to) - 1); changed = true; }
+        }
+      }
+      const bandLvl = { upUnchanged: -2, upChanged: -1, core: 0, downChanged: 1, downUnchanged: 2 }; // not linked: by its band
+      for (const pl of pls) if (!lvl.has(pl.id)) lvl.set(pl.id, bandLvl[pl.band]);
+      return { lvl, order: pls.map((pl) => pl.id) };
+    }
     function move(dc, dr) {
       const loc = app.get(app.focus);
       if (!loc) return;
-      const nb = app.neighbours(app.focus);
-      if (dc) { const e = dc > 0 ? nb.down[0] : nb.up[0]; return e && app.setFocus(dc > 0 ? e.to : e.from); }
-      const order = app.corePlacements(loc.core).map((pl) => pl.id);
-      const via = nb.up[0] ? app.neighbours(nb.up[0].from).down.map((e) => e.to) : nb.down[0] ? app.neighbours(nb.down[0].to).up.map((e) => e.from) : [];
-      const sib = [...new Set([app.focus, ...via])].sort((a, b) => order.indexOf(a) - order.indexOf(b));
-      const to = sib[sib.indexOf(app.focus) + dr];
+      if (dc) {
+        const nb = app.neighbours(app.focus), e = dc > 0 ? nb.down[0] : nb.up[0];
+        if (e) return app.setFocus(dc > 0 ? e.to : e.from);
+        const { lvl, order } = levels(loc.core); // no edge that way: the first page one level over
+        const to = order.find((id) => lvl.get(id) === lvl.get(app.focus) + dc && app.index.walkPos.has(id));
+        return to && app.setFocus(to);
+      }
+      const { lvl, order } = levels(loc.core), here = lvl.get(app.focus);
+      const same = order.filter((id) => lvl.get(id) === here && app.index.walkPos.has(id));
+      const to = same[same.indexOf(app.focus) + dr];
       if (to) app.setFocus(to);
     }
     const fill = () => { if (app.level !== 1) { app.setLevel(1); return setTimeout(fill, 60); } filled = !filled; update("fill"); };

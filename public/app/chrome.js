@@ -209,7 +209,7 @@ export function help() {
     <p>Each core change comes with its surroundings, in this order: <b>untouched code it relies on</b> → <b>changed code it relies on</b> → <b>the core</b> → <b>changed code it affects</b> → <b>untouched code it affects</b>. Solid dots ● are changed code, hollow ○ are untouched, and ◆ is the core.</p>
     <table>
       ${r("j k", "next / previous page (space too)")}
-      ${r("← → ↑ ↓", "follow the shape: → / ← along edges to what this leads into / comes from (Outline: first nested page / parent), ↑ ↓ within the column (Lens: siblings; Outline: rows)")}
+      ${r("← → ↑ ↓", "follow the shape: → / ← along edges to what this leads into / comes from (Outline: first nested page / parent), ↑ ↓ to the previous / next page at the same level (Outline: rows)")}
       ${r("J K", "next / previous core")}
       ${r("shift 1", "back to the entry point: the unreviewed core with the least around it, where a load starts")}
       ${r("n", "next unreviewed")}

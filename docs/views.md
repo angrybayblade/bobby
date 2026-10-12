@@ -41,7 +41,7 @@ At **Core**, the focused step's code is a file viewer like Diff's (file header w
 
 ## Lens
 
-The focused page sits dead centre. What it relies on fans in from the left, and what it affects fans out to the right. Everything else is hidden. Walking re-centres the lens. At **Core**, the centre card shows the focus's comments and code. Click a neighbour to step to it. `f` gives the centre card the whole stage.
+The focused page sits dead centre. What it relies on fans in from the left, and what it affects fans out to the right. Everything else is hidden. Walking re-centres the lens. At **Core**, the centre card shows the focus's comments and code. Click a neighbour to step to it. `f` gives the centre card the whole stage. ← / → move a dependency level (what the focus relies on / affects); ↑ / ↓ move to the previous / next page at the same level, its distance from the core change.
 
 ## Diff
 
