@@ -168,7 +168,27 @@ function selectRange(app, el, anchor, end) {
   app.page.sel = { ...b, ...(i < j && a.key !== b.key ? { start: { line: a.line, side: a.side, key: a.key, indiff: a.indiff } } : {}) };
   app.page.selKeys = keys;
   for (const r of el.querySelectorAll(".ln[data-key]")) r.classList.toggle("sel", keys.has(r.dataset.key));
+  syncPop(app, el);
 }
+/** The popover on a selection: comment on it (a GitHub draft) or keep a private note. Sits on the selection's last
+ *  line, at the right of its code box, and goes away while a composer is open. */
+function syncPop(app, el) {
+  el.querySelectorAll(".selpop").forEach((p) => p.remove());
+  const sel = app.page.sel;
+  if (!sel || app.page.composing) return;
+  const rows = [...el.querySelectorAll(`.ln[data-key="${CSS.escape(sel.key)}"]`)].filter((r) => r.classList.contains("sel"));
+  const row = rows.at(-1), box = row?.closest(".code");
+  if (!row || !box) return;
+  const n = app.page.selKeys?.size ?? 1;
+  const pop = document.createElement("div");
+  pop.className = "selpop";
+  pop.innerHTML = `<button data-compose="comment" title="A draft for your GitHub review (c)">💬 Comment${n > 1 ? ` on ${n} lines` : ""}</button><button data-compose="note" title="Only you see it, never posted (m)">✎ Private note</button>`;
+  box.appendChild(pop);
+  const top = row.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop;
+  const below = top + row.offsetHeight + 2;
+  pop.style.top = `${below + pop.offsetHeight <= box.clientHeight ? below : Math.max(0, top - pop.offsetHeight - 2)}px`; // above the line when it's the box's last
+}
+
 const rangeLabel = (c) => {
   const old = (s) => (s === "LEFT" ? "old " : "");
   if (!c.startLine || c.startLine === c.line) return `${old(c.side)}L${c.line}`;
@@ -384,6 +404,7 @@ export function renderNode(app, el, pid, { head = true } = {}) {
   el.innerHTML = `<div class="node ${head ? "page" : "body"}">${body}</div>`;
   const ta = el.querySelector("textarea[data-composer]");
   if (ta) ta.focus({ preventScroll: !head });
+  syncPop(app, el);
 }
 export const renderPage = (app, el, pid) => renderNode(app, el, pid);
 
@@ -402,6 +423,7 @@ export function renderFile(app, el, pids) {
   }).join("")}</div>`;
   const ta = el.querySelector("textarea[data-composer]");
   if (ta) ta.focus({ preventScroll: true });
+  syncPop(app, el);
 }
 
 // One delegated listener per container.
@@ -412,10 +434,11 @@ function bind(app, el, rerender) {
   el.dataset.bound = "1";
   el.addEventListener("click", (ev) => {
     if (ev.target.closest("a")) return;
-    const t = ev.target.closest("[data-ghshow],[data-ckind],[data-delnote],[data-viewed],[data-exp],[data-del],[data-low],[data-go],[data-jump],[data-fold],.ln[data-key]");
+    const t = ev.target.closest("[data-compose],[data-ghshow],[data-ckind],[data-delnote],[data-viewed],[data-exp],[data-del],[data-low],[data-go],[data-jump],[data-fold],.ln[data-key]");
     if (!t || !el.contains(t)) return;
     const again = () => bound.get(el)();
     const ds = t.dataset;
+    if (ds.compose) { if (app.page.sel) { app.page.composing = { ...app.page.sel, kind: ds.compose }; app.page.kind = ds.compose; } return again(); }
     if (ds.ckind) { // switch the composer between a GitHub draft and a private note, keeping the text
       app.page.composing.text = el.querySelector("textarea[data-composer]")?.value ?? "";
       app.page.composing.kind = app.page.kind = ds.ckind;

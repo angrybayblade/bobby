@@ -276,6 +276,11 @@ kbd {
 .ln.target { background: var(--target); } .ln.target .bar { background: var(--signal); }
 .ln.sel { background: var(--signal-soft); } .ln.sel .bar { background: var(--signal); } /* a selected line or range, like GitHub's */
 .ln .no { cursor: pointer; } /* click a number to select, shift-click or drag down them for a range */
+.code { position: relative; }
+.selpop { position: absolute; right: 10px; z-index: 6; display: flex; gap: 4px; padding: 3px; border-radius: 4px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.selpop button { font: 500 12px var(--font-ui); padding: 3px 9px; border-radius: 3px; color: var(--text); white-space: nowrap; }
+.selpop button:hover { background: var(--raised); }
+.selpop button[data-compose="comment"] { color: var(--signal); }
 .cmt .crange { font: 500 11.5px var(--font-ui); color: var(--muted); margin-bottom: 6px; }
 .ln:hover .no { color: var(--muted); }
 .code .fh .lay { margin-left: 4px; padding: 0 7px; font: 500 11px/18px var(--font-ui); color: var(--faint); border: 1px solid var(--line-soft); border-radius: 1px; }
