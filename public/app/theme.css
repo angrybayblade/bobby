@@ -277,9 +277,9 @@ kbd {
 .ln.sel { background: var(--signal-soft); } .ln.sel .bar { background: var(--signal); } /* a selected line or range, like GitHub's */
 .ln .no { cursor: pointer; } /* click a number to select, shift-click or drag down them for a range */
 .code { position: relative; }
-.selpop { position: absolute; right: 10px; z-index: 6; display: flex; gap: 4px; padding: 3px; border-radius: 4px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
-.selpop button { font: 500 12px var(--font-ui); padding: 3px 9px; border-radius: 3px; color: var(--text); white-space: nowrap; }
-.selpop button:hover { background: var(--raised); }
+.selpop { position: absolute; right: 8px; z-index: 6; display: flex; gap: 2px; } /* flat: two icons beside the selection */
+.selpop button { display: grid; place-items: center; width: 22px; height: 20px; border-radius: 3px; color: var(--muted); background: var(--surface); }
+.selpop button:hover { color: var(--text); background: var(--raised); }
 .selpop button[data-compose="comment"] { color: var(--signal); }
 .note.wip { border-left-style: dashed; opacity: .9; }
 .note.wip .who .cont { margin-left: auto; font: 500 11.5px var(--font-ui); color: var(--signal); padding: 0 6px; }
