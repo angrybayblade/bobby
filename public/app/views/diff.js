@@ -216,8 +216,13 @@ export default {
     // a redraw, so they never rebuild; a change inside one file (its layout, its comments and notes) re-renders that file.
     // A viewer is as wide as W and at most as tall as the stage's shape allows (W × stage height / width), so framing
     // one fills the stage; a file with less to show is only as tall as its code.
-    const capH = () => { const sw = stage.clientWidth || 1440, sh = stage.clientHeight || 900; return Math.round(Math.max(240, (W * (sh - TOP - 80)) / Math.max(1, sw - 80))); };
+    // Framing a viewer scales it to the stage's width (FRAME_PAD each side); the cap is the height that then fills
+    // the stage's height too, so a full viewer and the stage share one aspect ratio (its band label sits in the margin).
+    const FRAME_PAD = 40;
+    const fitScale = () => Math.max(0.3, ((stage.clientWidth || 1440) - FRAME_PAD * 2) / W);
+    const capH = () => Math.round(Math.max(240, ((stage.clientHeight || 900) - FRAME_PAD * 2) / fitScale()));
     let builtCap = 0;
+    new ResizeObserver(() => { if (M && stage.clientWidth) update("resize"); }).observe(stage);
     let builtFrom = "", builtGraph = null, fileSigs = new Map();
     const buildSig = () => JSON.stringify(["diffLayout", "size", "font", "spacing", "palette", "prComments", "untouched", "tests"].map((k) => app.settings[k]));
     const fileSig = (path) => {
@@ -556,7 +561,7 @@ export default {
       const act = activeFile(), v = act && views.get(act.path);
       let box, s;
       if (app.level === 0 || !v) { box = bounds(all); s = Math.max(0.2, Math.min(1, (sw - PAD * 2) / box.w, (sh - PAD * 2) / box.h)); }
-      else { box = bounds([v]); s = Math.max(0.6, Math.min(1, (sw - PAD * 2) / box.w, (sh - PAD * 2) / box.h)); } // fits the width too: the file tree can narrow the stage
+      else { box = { x: v.x, y: v.y, w: W, h: v.h }; s = Math.min(fitScale(), (sh - PAD * 2) / box.h); } // a full-height viewer fills the stage exactly
       cam = { s, tx: sw / 2 - (box.x + box.w / 2) * s, ty: box.h * s > sh - PAD * 2 ? PAD - box.y * s : sh / 2 - (box.y + box.h / 2) * s };
       pan = { x: 0, y: 0 };
       apply();
@@ -570,7 +575,8 @@ export default {
       const left = (v.x * s) + cam.tx + pan.x, top = (v.y - TOP) * s + cam.ty + pan.y, w = W * s, h = (v.h + TOP) * s;
       if (app.level === 0 && left >= 0 && top >= 0 && left + w <= sw && top + h <= sh) return;
       if (filled && filled.s === s) { filled.path = act.path; cam = { s, tx: -v.x * s, ty: -v.y * s }; pan = { x: 0, y: 0 }; pin(v); return apply(); } // still filled: same alignment
-      cam = { s, tx: sw / 2 - (v.x + W / 2) * s, ty: h > sh - PAD * 2 ? PAD - (v.y - TOP) * s : sh / 2 - (v.y - TOP + (v.h + TOP) / 2) * s };
+      const vh = v.h * s; // centred on the viewer itself; its band label sits in the margin above
+      cam = { s, tx: sw / 2 - (v.x + W / 2) * s, ty: vh > sh - PAD * 2 ? PAD - v.y * s : sh / 2 - (v.y + v.h / 2) * s };
       pan = { x: 0, y: 0 };
       apply();
     }
