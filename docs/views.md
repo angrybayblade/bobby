@@ -26,6 +26,7 @@ The whole PR as one free-flowing tree on a canvas, reading left to right: **this
 - At **Core**, the focused card shows its comments and code. At **Page**, the page takes over the stage.
 - The camera glides between levels. Drag the background or scroll to pan, pinch or `ctrl`+scroll to zoom. Click a node to focus it, click it again to zoom in, and click "+N" to unfold. At **Core** the camera frames the focus and what it links to.
 - Arrows follow the tree: → its first child, ← its parent (from a core change, to what it relies on), ↑ / ↓ the previous or next page at the same level, in pre-order.
+- At **Core**, the focused card holds a file viewer like the Diff canvas's: the file's header (path, band, +/−, ✓ viewed, inline/split, ✎ note, ⤢ full screen), a sticky section heading with its **Viewed** box, and the same compact code. The card is as wide as a Diff viewer and framed to fill the stage, its code scrolling inside.
 - `f` fills the canvas with the focused card and its code at a reading size; scrolling reads its code, and `j`/`k` keep it filled.
 
 ## Outline

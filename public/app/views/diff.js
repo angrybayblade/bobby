@@ -32,33 +32,33 @@ const CSS = `
 .dv.engaged .fv.w-none { opacity: .6; }
 .dv.engaged svg.edges .bg { display: none; }
 .dv .fv.active { border-style: solid; z-index: 3; } /* no border of its own: weight (opacity, shadow) says where you are */
-.dv .fvh { display: flex; gap: 10px; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--line-soft); font: 12.5px var(--font-code); color: var(--muted); cursor: grab; user-select: none; background: var(--raised); }
-.dv .fvh b { font-weight: 600; }
-.dv .fvh .p { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dv .fvh .st { white-space: nowrap; }
-.dv .fvh .band { font: 500 10.5px var(--font-ui); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); white-space: nowrap; padding: 1px 7px; border: 1px solid var(--line-soft); border-radius: 1px; }
-.dv .fvh .band.core { color: var(--text); border-color: var(--muted); }
-.dv .fvh .max { width: 26px; height: 22px; border-radius: 1px; color: var(--muted); font-size: 14px; line-height: 1; }
-.dv .fvh .max:hover { background: var(--bg); color: var(--text); }
-.dv .fvh .lay { font-size: 13px; }
+:is(.dv, .fvw) .fvh { display: flex; gap: 10px; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--line-soft); font: 12.5px var(--font-code); color: var(--muted); cursor: grab; user-select: none; background: var(--raised); }
+:is(.dv, .fvw) .fvh b { font-weight: 600; }
+:is(.dv, .fvw) .fvh .p { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:is(.dv, .fvw) .fvh .st { white-space: nowrap; }
+:is(.dv, .fvw) .fvh .band { font: 500 10.5px var(--font-ui); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); white-space: nowrap; padding: 1px 7px; border: 1px solid var(--line-soft); border-radius: 1px; }
+:is(.dv, .fvw) .fvh .band.core { color: var(--text); border-color: var(--muted); }
+:is(.dv, .fvw) .fvh .max { width: 26px; height: 22px; border-radius: 1px; color: var(--muted); font-size: 14px; line-height: 1; }
+:is(.dv, .fvw) .fvh .max:hover { background: var(--bg); color: var(--text); }
+:is(.dv, .fvw) .fvh .lay { font-size: 13px; }
 /* Header tooltips: quick, below the button, right-aligned so they stay inside the viewer. */
-.dv .fvh [data-tip] { position: relative; }
-.dv .fvh [data-tip]::after { content: attr(data-tip); position: absolute; top: calc(100% + 8px); right: 0; z-index: 6; padding: 4px 9px; border-radius: 1px; background: var(--text); color: var(--bg); font: 500 12px var(--font-ui); white-space: nowrap; pointer-events: none; opacity: 0; transform: translateY(-2px); transition: opacity .12s, transform .12s; }
-.dv .fvh [data-tip]:hover::after { opacity: 1; transform: none; transition-delay: .25s; }
-.dv .viewed .fvh .vwf::after { content: attr(data-tip-on); }
-.dv .viewed .fvh .vwf { color: var(--ok); }
-.dv .fvb { position: relative; overflow: auto; overscroll-behavior: contain; cursor: auto; flex: 1; min-height: 0; }
-.dv .sec { padding: 10px 12px 2px; border-bottom: 1px solid var(--line-soft); }
-.dv .sec:last-child { border-bottom: 0; }
-.dv .sec.cur { box-shadow: inset 3px 0 0 var(--muted); }
-.dv .sech { display: flex; gap: 8px; align-items: center; font: 600 12.5px var(--font-code); color: var(--muted); padding: 0 2px 8px; }
-.dv .sec.cur .sech { color: var(--text); }
-.dv .sec.done .sech span:first-of-type { color: var(--faint); }
-.dv .sec .code { margin-bottom: 10px; }
-.dv .world .lines { font-size: calc(var(--code-size) - 2px); } /* a size down from the page: more fits, and zoom brings it back */
-.dv .world .ln .no { font-size: calc(var(--code-size) - 3px); }
-.dv .sec .notes { margin-bottom: 10px; }
-.dv .sec.rel { box-shadow: inset 3px 0 0 var(--line); }
+:is(.dv, .fvw) .fvh [data-tip] { position: relative; }
+:is(.dv, .fvw) .fvh [data-tip]::after { content: attr(data-tip); position: absolute; top: calc(100% + 8px); right: 0; z-index: 6; padding: 4px 9px; border-radius: 1px; background: var(--text); color: var(--bg); font: 500 12px var(--font-ui); white-space: nowrap; pointer-events: none; opacity: 0; transform: translateY(-2px); transition: opacity .12s, transform .12s; }
+:is(.dv, .fvw) .fvh [data-tip]:hover::after { opacity: 1; transform: none; transition-delay: .25s; }
+:is(.dv, .fvw) .viewed .fvh .vwf::after { content: attr(data-tip-on); }
+:is(.dv, .fvw) .viewed .fvh .vwf { color: var(--ok); }
+:is(.dv, .fvw) .fvb { position: relative; overflow: auto; overscroll-behavior: contain; cursor: auto; flex: 1; min-height: 0; }
+:is(.dv, .fvw) .sec { padding: 10px 12px 2px; border-bottom: 1px solid var(--line-soft); }
+:is(.dv, .fvw) .sec:last-child { border-bottom: 0; }
+:is(.dv, .fvw) .sec.cur { box-shadow: inset 3px 0 0 var(--muted); }
+:is(.dv, .fvw) .sech { display: flex; gap: 8px; align-items: center; font: 600 12.5px var(--font-code); color: var(--muted); padding: 0 2px 8px; }
+:is(.dv, .fvw) .sec.cur .sech { color: var(--text); }
+:is(.dv, .fvw) .sec.done .sech span:first-of-type { color: var(--faint); }
+:is(.dv, .fvw) .sec .code { margin-bottom: 10px; }
+:is(.dv .world, .fvw) .lines { font-size: calc(var(--code-size) - 2px); } /* a size down from the page: more fits, and zoom brings it back */
+:is(.dv .world, .fvw) .ln .no { font-size: calc(var(--code-size) - 3px); }
+:is(.dv, .fvw) .sec .notes { margin-bottom: 10px; }
+:is(.dv, .fvw) .sec.rel { box-shadow: inset 3px 0 0 var(--line); }
 .dv svg.edges { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; z-index: 1; } /* under the viewers: edges live in the gaps */
 .dv svg.edges path { fill: none; stroke: var(--muted); stroke-width: 2; }
 .dv svg.edges marker path { fill: var(--muted); stroke: none; }
@@ -69,7 +69,7 @@ const CSS = `
 .dv svg.edges .bg path.hit { stroke: transparent; stroke-width: 12px !important; opacity: 1; pointer-events: stroke; } /* hover target: names what a line connects */
 .dv svg.edges .bg path.hit.out { pointer-events: none; }
 .dv .elbl { position: absolute; z-index: 4; font: 11.5px var(--font-ui); color: var(--muted); background: var(--bg); border: 1px solid var(--line-soft); padding: 1px 7px; border-radius: 1px; white-space: nowrap; transform: translate(-50%, -50%); pointer-events: none; }
-.dv .fvh:active { cursor: grabbing; }
+:is(.dv, .fvw) .fvh:active { cursor: grabbing; }
 .dv .fv.held { box-shadow: 0 12px 40px rgba(0,0,0,.25); }
 .dv .dfocus { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(180px, 260px) minmax(0, 1fr) minmax(180px, 260px); gap: 22px; padding: 18px 22px; background: var(--bg); z-index: 5; }
 .dv .dfocus[hidden] { display: none; }
@@ -91,22 +91,22 @@ const CSS = `
 .dv .fv.pinned { border: 0; border-radius: 0; box-shadow: none; z-index: 5; } /* filled: square, borderless, over edge labels */
 .dv .fv.pinned > .fvh, .dv .fv.pinned > .fvb { zoom: var(--fill, 1); } /* filled: the viewer is zoomed up, its contents back down */
 /* Compact, GitHub-like code: one box per file, slim hunk rows, a tight gutter. */
-.dv .fvh { gap: 8px; padding: 5px 6px 5px 10px; font-size: 12px; }
-.dv .fvh .band { font-size: 9.5px; padding: 0 5px; }
-.dv .fvh .max { width: 22px; height: 20px; font-size: 12.5px; }
-.dv .sec { padding: 0; }
-.dv .sec .notes { margin: 6px 10px; }
-.dv .sech { position: sticky; top: 0; z-index: 2; gap: 7px; padding: 4px 8px 4px 10px; font: 600 12px var(--font-ui); background: var(--surface); border-bottom: 1px solid var(--line-soft); }
-.dv .sech .vw { font-size: 11px; padding: 0 7px; line-height: 18px; }
-.dv .sec .code { margin: 0; border: 0; border-radius: 0; background: none; }
-.dv .sec .code + .code { border-top: 1px solid var(--line-soft); }
-.dv .code .fh { padding: 2px 10px 2px 72px; font-size: 11.5px; line-height: 18px; border-bottom: 0; color: var(--faint); background: var(--hunk); }
-.dv .code .fh b { color: var(--muted); font-weight: 500; }
-.dv .code .more { padding: 0 10px 0 72px; font-size: 11px; line-height: 18px; background: var(--hunk); opacity: .85; }
-.dv .lines { line-height: 1.55; }
-.dv .ln { grid-template-columns: 3px 34px 34px 14px 1fr; }
-.dv .srow > .ln { grid-template-columns: 3px 34px 14px minmax(0, 1fr); }
-.dv .ln .no { padding-right: 8px; }
+:is(.dv, .fvw) .fvh { gap: 8px; padding: 5px 6px 5px 10px; font-size: 12px; }
+:is(.dv, .fvw) .fvh .band { font-size: 9.5px; padding: 0 5px; }
+:is(.dv, .fvw) .fvh .max { width: 22px; height: 20px; font-size: 12.5px; }
+:is(.dv, .fvw) .sec { padding: 0; }
+:is(.dv, .fvw) .sec .notes { margin: 6px 10px; }
+:is(.dv, .fvw) .sech { position: sticky; top: 0; z-index: 2; gap: 7px; padding: 4px 8px 4px 10px; font: 600 12px var(--font-ui); background: var(--surface); border-bottom: 1px solid var(--line-soft); }
+:is(.dv, .fvw) .sech .vw { font-size: 11px; padding: 0 7px; line-height: 18px; }
+:is(.dv, .fvw) .sec .code { margin: 0; border: 0; border-radius: 0; background: none; }
+:is(.dv, .fvw) .sec .code + .code { border-top: 1px solid var(--line-soft); }
+:is(.dv, .fvw) .code .fh { padding: 2px 10px 2px 72px; font-size: 11.5px; line-height: 18px; border-bottom: 0; color: var(--faint); background: var(--hunk); }
+:is(.dv, .fvw) .code .fh b { color: var(--muted); font-weight: 500; }
+:is(.dv, .fvw) .code .more { padding: 0 10px 0 72px; font-size: 11px; line-height: 18px; background: var(--hunk); opacity: .85; }
+:is(.dv, .fvw) .lines { line-height: 1.55; }
+:is(.dv, .fvw) .ln { grid-template-columns: 3px 34px 34px 14px 1fr; }
+:is(.dv, .fvw) .srow > .ln { grid-template-columns: 3px 34px 14px minmax(0, 1fr); }
+:is(.dv, .fvw) .ln .no { padding-right: 8px; }
 .dv .dfocus .lines { font-size: calc(var(--code-size) - 2px); }
 .dv .dfocus .ln .no { font-size: calc(var(--code-size) - 3px); }
 `;
@@ -114,6 +114,9 @@ const CSS = `
 const BAND_LABEL = { upUnchanged: "relies on · untouched", upChanged: "relies on · changed", core: "core", downChanged: "affects · changed", downUnchanged: "affects · untouched" };
 let W = 840; // a viewer's width: wider in split layout, so each side keeps room
 const GX = 200, GY = 64, TOP = 34;
+
+/** Diff's viewer styles (header, sections, compact code), for other views that show a file the same way (.fvw). */
+export const useViewerCss = () => injectCss("diff", CSS);
 
 export default {
   id: "diff",

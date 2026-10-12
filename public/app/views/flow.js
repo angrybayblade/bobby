@@ -3,6 +3,7 @@
 // interest sizing (focus big, its first few neighbours medium, the rest small, long lists folded into "+N"), and a
 // camera that glides between overview → core → page.
 import { DONE, LOW, esc } from "../core.js";
+import { useViewerCss } from "./diff.js";
 
 const CSS = `
 .flow { position: absolute; inset: 0; display: grid; grid-template-rows: 1fr; }
@@ -30,9 +31,11 @@ const CSS = `
 .flow .card.withbody { cursor: default; z-index: 3; transition: transform var(--dur) var(--ease), opacity var(--dur); } /* no width/height easing: it is measured */
 .flow .card.withbody .t { cursor: zoom-in; }
 .flow .card.withbody .w { display: block; }
-.flow .card .nbody { margin-top: 8px; max-height: 560px; overflow: auto; overscroll-behavior: contain; cursor: auto; }
-.flow .card .nbody .code { margin-bottom: 10px; }
-.flow .card .nbody .notes { margin-bottom: 10px; }
+/* The focused card's code is a viewer like the Diff canvas's: file header, sticky section heads, compact code. */
+.flow .card .fvw { margin: 8px -12px -8px; display: flex; flex-direction: column; min-height: 0; border-top: 1px solid var(--line-soft); cursor: auto; }
+.flow .card.focus .fvw { margin: 10px -16px -12px; }
+.flow .card .fvw .fvh { cursor: default; }
+.flow .card .nbody { max-height: var(--viewer-h, 560px); overflow: auto; overscroll-behavior: contain; }
 .flow .card.done { opacity: .5; }
 .flow .card.done.focus { opacity: 1; }
 .flow .card.rep { opacity: .45; border-style: dotted; }
@@ -40,6 +43,7 @@ const CSS = `
 .flow .card.aside { opacity: .55; } /* in the current core, not the focus or its neighbours */
 .flow .card.pinned { z-index: 6; border-radius: 0; border-width: 0; box-shadow: none; padding: 10px 14px; } /* f: fills the canvas */
 .flow .card.pinned > * { zoom: var(--fill, 1); }
+.flow .card.pinned .fvw { flex: 1; min-height: 0; }
 .flow .card.pinned .nbody { max-height: none; flex: 1; min-height: 0; }
 .flow .card.agg { background: none; border-style: dashed; color: var(--muted); font-size: 13px; justify-content: center; }
 .flow .chead { font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; display: flex; gap: 10px; align-items: baseline; max-width: 1400px; }
@@ -63,7 +67,8 @@ const CSS = `
 const MAX_GROUPS = 15;
 const GUTTER = 90, PAD = 40, GAP_Y = 12, CORE_GAP = 80, HEAD = 40, MAX_COL = 5;
 const SIZES = { focus: [290, 172], near: [250, 100], far: [230, 38], agg: [230, 34] };
-const BODY_W = 720; // focused card when it shows its code (core level only)
+// The focused card when it shows its code (core level only): as wide as a Diff viewer of its file.
+const bodyW = (app, pid) => { const n = app.nodeOf(pid), path = n?.kind === "change" ? n.file : n?.location.path; return app.layoutOf(path) === "split" ? 1280 : 840; };
 const BAND_CHIP = { upUnchanged: "relies on · untouched", upChanged: "relies on · changed", core: "core", downChanged: "affects · changed", downUnchanged: "affects · untouched" };
 
 export default {
@@ -71,7 +76,7 @@ export default {
   name: "Flow",
   hint: "Node-link canvas: relies on ← core → affects",
   mount(el, app) {
-    injectCss("flow", CSS);
+    injectCss("flow", CSS); useViewerCss();
     el.innerHTML = `<div class="flow"><div class="stage"><div class="intent"></div><div class="world"><svg class="edges"></svg></div></div><div class="pane" hidden></div></div>`;
     const root = el.firstElementChild, stage = root.querySelector(".stage"), world = root.querySelector(".world"), svg = root.querySelector("svg"), pane = root.querySelector(".pane");
     const intentEl = root.querySelector(".intent");
@@ -133,7 +138,7 @@ export default {
       const nb = fid ? app.neighbours(fid) : { up: [], down: [] };
       const near = new Set([...nb.up.slice(0, MAX_COL).map((e) => e.from), ...nb.down.slice(0, MAX_COL).map((e) => e.to)]);
       const sizeOf = (pl) => (pl.repeatOf || app.level === 0 ? "far" : pl.id === fid ? "focus" : near.has(pl.id) ? "near" : "far");
-      const dims = (pl) => (sizeOf(pl) === "focus" && body ? [BODY_W, bodyH] : SIZES[sizeOf(pl)]);
+      const dims = (pl) => (sizeOf(pl) === "focus" && body ? [bodyW(app, pl.id), bodyH] : SIZES[sizeOf(pl)]);
 
       // ---- the cells: rows of cards; each card knows its row, x, size and level.
       const rows = [], cells = [], edgesIds = [];
@@ -264,15 +269,26 @@ export default {
         if (node.kind === "context") meta = `${node.location.path}:${node.location.line}`;
         else { const { a, d } = app.stat(pl.id); meta = `${node.file} · +${a} −${d}`; }
       }
-      const chip = size === "focus" || size === "near" ? `<span class="bandc">${it.root ? `core ${app.get(pl.id).ci + 1}` : BAND_CHIP[pl.band]}</span>` : "";
+      const chip = !it.body && (size === "focus" || size === "near") ? `<span class="bandc">${it.root ? `core ${app.get(pl.id).ci + 1}` : BAND_CHIP[pl.band]}</span>` : "";
       const html = `<div class="t"><i class="glyph ${glyph}"></i><span>${esc(pl.title)}</span>${status}${chip}</div>`
         + (size === "focus" || size === "near" ? `<div class="w">${esc(pl.why)}</div>${it.body ? "" : `<div class="m">${esc(meta)}</div>`}` : "")
-        + (it.body ? `<div class="nbody"></div>` : "");
+        + (it.body ? viewer(pl) : "");
       const cls = [it.body ? "withbody" : "", node.kind, pl.band === "core" ? "core" : "", size === "focus" ? "focus" : "", done ? "done" : "", pl.repeatOf ? "rep" : "", !current && app.level > 0 ? "other" : "", current && size === "far" && app.level === 1 ? "aside" : ""].join(" ");
       return { cls, html, data: { go: pl.id }, title: `${BAND_CHIP[pl.band]} · ${pl.why}` };
     }
 
     const byIdAll = (id) => app.get(id)?.pl;
+    // The Diff viewer's header for the focused page's file: path, band, +/−, ✓ viewed, inline/split, note, full screen.
+    function viewer(pl) {
+      const n = app.nodeOf(pl.id), path = n.kind === "change" ? n.file : n.location.path, dir = path.includes("/") ? path.slice(0, path.lastIndexOf("/") + 1) : "";
+      const { a, d } = app.stat(pl.id), split = app.layoutOf(path) === "split", done = app.isReviewed(pl.id);
+      const stat = n.kind === "change" ? `<span style="color:var(--ok)">+${a}</span> <span style="color:var(--risk)">−${d}</span>` : "untouched";
+      return `<div class="fvw ${done ? "viewed" : ""}"><div class="fvh"><i class="glyph ${n.kind}"></i><span class="p">${esc(dir)}<b>${esc(path.split("/").pop())}</b></span><span class="band ${pl.band}">${BAND_CHIP[pl.band]}</span><span class="st">${stat}</span>`
+        + `<button class="max vwf" data-pviewed="1" aria-label="Mark viewed" data-tip="Mark viewed · local only" data-tip-on="Unmark viewed">✓</button>`
+        + `<button class="max lay" data-flayout="${esc(path)}" aria-label="Inline or split" data-tip="${split ? "Show this file inline" : "Show this file split"} · d for every file">${split ? "▤" : "◫"}</button>`
+        + `<button class="max" data-pnote="${esc(path)}" aria-label="Note on this file" data-tip="Private note on this file · only you see it">✎</button>`
+        + `<button class="max" data-pmax="1" aria-label="Full screen" data-tip="Full screen · g">⤢</button></div><div class="fvb nbody"></div></div>`;
+    }
     function place(key, cls, html, x, y, w, h, data = {}, title = "") {
       let n = els.get(key);
       if (!n) { n = document.createElement("div"); world.appendChild(n); els.set(key, n); }
@@ -306,9 +322,9 @@ export default {
       s = Math.max(minScale, s);
       if (top) s = Math.max(minScale, Math.min(s, (sh - top - PAD) / box.h));
       let tx = sw / 2 - (box.x + box.w / 2) * s, ty = top + (sh - top) / 2 - (box.y + box.h / 2) * s;
-      if (app.level === 1 && focusItem?.body) {
-        if (box.w * s > sw - PAD * 2) tx = sw / 2 - (focusItem.x + focusItem.w / 2) * s; // too wide: the code wins the centre
-        if (box.h * s > sh - PAD * 2) ty = PAD - focusItem.y * s;
+      if (app.level === 1 && focusItem?.body) { // like Diff: the card with its code fills the stage, at the scale that fits its width
+        s = Math.min((sw - PAD * 2) / focusItem.w, (sh - PAD * 2) / focusItem.h);
+        tx = sw / 2 - (focusItem.x + focusItem.w / 2) * s; ty = sh / 2 - (focusItem.y + focusItem.h / 2) * s;
       }
       if (app.level === 0 && box.h * s > sh - top - PAD) {
         ty = top - box.y * s; // too tall to fit: start under the intent, keep the current core in view
@@ -321,7 +337,14 @@ export default {
 
     // Leaving the canvas for a page (g, enter) keeps the camera; coming back restores it.
     let lastLevel = app.level, beforePage = null;
+    // The focused card's viewer is at most as tall as the stage allows once the card is scaled to fit its width.
+    function sizeViewer() {
+      const sw = stage.clientWidth || 1440, sh = stage.clientHeight || 900, w = bodyW(app, app.focus), s = (sw - PAD * 2) / w;
+      root.style.setProperty("--viewer-h", `${Math.max(200, Math.round((sh - PAD * 2) / s - 150))}px`);
+    }
+    new ResizeObserver(() => { const was = root.style.getPropertyValue("--viewer-h"); sizeViewer(); if (root.style.getPropertyValue("--viewer-h") !== was && app.level === 1) update("measure"); }).observe(stage);
     function update(reason) {
+      sizeViewer();
       if (reason === "level") {
         if (app.level === 2 && lastLevel < 2) beforePage = { view: { ...view }, mine };
         const back = app.level === 1 && lastLevel === 2 && beforePage;
@@ -342,7 +365,7 @@ export default {
       const body = L.items.find((i) => i.body);
       if (body) {
         const n = els.get(body.pl.id);
-        if (reason !== "measure") app.renderNode(n.querySelector(".nbody"), app.focus);
+        if (reason !== "measure") { const nb = n.querySelector(".nbody"); app.renderFile(nb, [app.focus]); app.pageEl = nb; }
         if (filled) observe(null); else observe(n);
         if (!filled && Math.abs(n.offsetHeight - bodyH) > 2) { bodyH = n.offsetHeight; L = layout(); placeAll(L); }
       } else observe(null);
@@ -394,7 +417,13 @@ export default {
 
     // ---- interaction
     world.addEventListener("click", (ev) => {
-      if (moved || ev.target.closest(".nbody")) return;
+      const hb = ev.target.closest("[data-pviewed],[data-pnote],[data-pmax]");
+      if (hb) {
+        if (hb.dataset.pviewed) return app.mark(app.focus, app.isReviewed(app.focus) ? null : "reviewed");
+        if (hb.dataset.pnote) return app.noteOnFile(els.get(app.canonical(app.focus))?.querySelector(".nbody"), hb.dataset.pnote);
+        return app.setLevel(2);
+      }
+      if (moved || ev.target.closest(".fvw")) return;
       const t = ev.target.closest("[data-go],[data-expand],[data-core],[data-group],[data-pr]");
       if (!t) return;
       if (t.dataset.expand) { expanded.add(t.dataset.expand); return update("expand"); }
@@ -410,7 +439,7 @@ export default {
     });
     let drag = null, moved = false;
     stage.addEventListener("pointerdown", (ev) => {
-      if (app.level === 2 || ev.target.closest(".nbody")) return; // code in a card stays selectable
+      if (app.level === 2 || ev.target.closest(".fvw")) return; // code in a card stays selectable
       if (ev.pointerType === "mouse") ev.preventDefault(); // a press-and-drag pans; it must not start a text selection
       drag = { x: ev.clientX, y: ev.clientY, v: { ...view } }; moved = false;
     });
