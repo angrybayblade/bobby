@@ -551,7 +551,7 @@ export default {
       const act = activeFile(), v = act && views.get(act.path);
       let box, s;
       if (app.level === 0 || !v) { box = bounds(all); s = Math.max(0.2, Math.min(1, (sw - PAD * 2) / box.w, (sh - PAD * 2) / box.h)); }
-      else { box = bounds([v]); s = Math.max(0.75, Math.min(1, (sh - PAD * 2) / box.h)); }
+      else { box = bounds([v]); s = Math.max(0.6, Math.min(1, (sw - PAD * 2) / box.w, (sh - PAD * 2) / box.h)); } // fits the width too: the file tree can narrow the stage
       cam = { s, tx: sw / 2 - (box.x + box.w / 2) * s, ty: box.h * s > sh - PAD * 2 ? PAD - box.y * s : sh / 2 - (box.y + box.h / 2) * s };
       pan = { x: 0, y: 0 };
       apply();
