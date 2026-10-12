@@ -107,15 +107,11 @@ else if (entry && !hash.has("p")) {
 
 // ---- keys
 const typing = (t) => t.matches?.("input, textarea, [contenteditable]");
-document.addEventListener("keydown", (ev) => {
-  if (typing(ev.target) || ev.metaKey || ev.ctrlKey || ev.altKey) return;
-  if (chrome.isOpen()) {
-    if (ev.key === "Escape" || ev.key === "Enter") { ev.preventDefault(); chrome.close(); }
-    return;
-  }
-  const k = ev.shiftKey && ev.code === "Digit1" ? "!" : ev.key; // shift+1, whatever the layout prints
-  if (current?.keys?.[k]) { ev.preventDefault(); app.useKey(k === "Escape" ? "esc" : k); current.keys[k](); return; } // counted, so its hint fades too
-  const page = () => app.pageEl?.isConnected; // the focused node's code is on screen (page or card)
+const page = () => app.pageEl?.isConnected; // the focused node's code is on screen (page or card)
+/** Does what key k does here: the view's own binding first, then the global one. Returns whether k does anything. */
+function press(k, { learn = true } = {}) {
+  const hint = k === "Enter" ? "enter" : k === "Escape" ? "esc" : k;
+  if (current?.keys?.[k]) { if (learn) app.useKey(hint); current.keys[k](); return true; } // counted, so its hint fades too
   const act = {
     j: () => app.step(1), ArrowDown: () => app.step(1), ArrowRight: () => app.step(1), " ": () => app.step(1),
     k: () => app.step(-1), ArrowUp: () => app.step(-1), ArrowLeft: () => app.step(-1),
@@ -137,7 +133,19 @@ document.addEventListener("keydown", (ev) => {
     "!": () => { const e = app.entryPoint(); if (e) app.setFocus(e.pid, { level: 1 }); }, // back to the entry point
     d: () => app.toggleLayout(),
   }[k];
-  if (act) { ev.preventDefault(); app.useKey(k === "Enter" ? "enter" : k === "Escape" ? "esc" : k); act(); }
+  if (!act) return false;
+  if (learn) app.useKey(hint);
+  act();
+  return true;
+}
+document.addEventListener("keydown", (ev) => {
+  if (typing(ev.target) || ev.metaKey || ev.ctrlKey || ev.altKey) return;
+  if (chrome.isOpen()) {
+    if (ev.key === "Escape" || ev.key === "Enter") { ev.preventDefault(); chrome.close(); }
+    return;
+  }
+  const k = ev.shiftKey && ev.code === "Digit1" ? "!" : ev.key; // shift+1, whatever the layout prints
+  if (press(k)) ev.preventDefault();
 });
 
 window.bobby = app; // handy for debugging and tests
