@@ -299,6 +299,7 @@ async function doSubmit(event) {
   const r = await api("/api/submit", { event, body: $("#rbody").value });
   if (!r.ok) return submit(r.error);
   app.state.comments = app.state.comments.filter((c) => c.wip || c.kind === "note"); // unfinished drafts remain
+  if (r.discussion) app.graph.discussion = r.discussion; // what was just posted, now on GitHub
   app.emit("comments");
   open(`<h2>Review posted ✓</h2><p><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url)}</a></p><div class="row"><button class="btn primary" data-act="close">Close</button></div>`);
 }
