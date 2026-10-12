@@ -87,187 +87,157 @@ export default {
     function layout() {
       const body = withBody();
       const items = [], heads = [];
-      // One graph for the whole PR, keyed by each node's own (non-repeat) placement, so code that several cores share
-      // appears once. It reads left to right from the changes: ① every core change, then everything they affect
-      // (1st order), what that affects (2nd order), … Each page hangs off a page one order before it; any other
-      // links to it are drawn as well. What the changes rely on sits in lanes to the left, beside what it feeds.
-      const canon = (pid) => app.canonical(pid);
-      const pls = [], byId = new Map(), order = new Map();
-      for (const c of app.graph.cores) for (const pl of app.corePlacements(c)) {
-        const id = canon(pl.id);
-        if (!byId.has(id)) { byId.set(id, app.get(id)?.pl ?? pl); order.set(id, pls.length); pls.push(id); }
-      }
-      const roots = [...new Set(app.graph.cores.flatMap((c) => app.band(c, "core").map((pl) => canon(pl.id))))].filter((id) => byId.has(id));
-      const succ = new Map(), pred = new Map(), link = (m, a, b) => { const l = m.get(a) ?? m.set(a, []).get(a); if (!l.includes(b)) l.push(b); };
-      for (const c of app.graph.cores) for (const e of app.edgesOf(c.id)) {
-        const a = canon(e.from), b = canon(e.to);
-        if (a !== b && byId.has(a) && byId.has(b)) { link(succ, a, b); link(pred, b, a); }
-      }
-      // Order: shortest distance from any core change along what-it-affects edges.
-      const depth = new Map(roots.map((r) => [r, 0])), queue = [...roots];
-      while (queue.length) { const a = queue.shift(); for (const b of succ.get(a) ?? []) if (!depth.has(b)) { depth.set(b, depth.get(a) + 1); queue.push(b); } }
-      const parentOf = new Map(), kids = new Map(), feeds = new Map();
-      for (const id of pls) {
-        if (!depth.has(id)) { const t = (succ.get(id) ?? [])[0]; if (t) feeds.set(id, t); continue; } // relied on: a lane
-        if (depth.get(id) === 0) continue;
-        const p = (pred.get(id) ?? []).filter((q) => depth.get(q) === depth.get(id) - 1).sort((a, b) => order.get(a) - order.get(b))[0];
-        if (p) { parentOf.set(id, p); (kids.get(p) ?? kids.set(p, []).get(p)).push(id); }
-      }
-      for (const list of kids.values()) list.sort((a, b) => order.get(a) - order.get(b));
-      const fid = app.focus && byId.has(canon(app.focus)) ? canon(app.focus) : null;
-      const near = new Set(fid && app.level > 0 ? [...(pred.get(fid) ?? []).slice(0, MAX_COL), ...(succ.get(fid) ?? []).slice(0, MAX_COL)] : []);
-      const sizeOf = (id) => (app.level === 0 ? "far" : id === fid ? "focus" : near.has(id) ? "near" : "far");
-      const dims = (id) => (sizeOf(id) === "focus" && body ? [BODY_W, bodyH] : SIZES[sizeOf(id)]);
+      // The tree is the review graph's own: each core change is a root, and every page hangs off the one page its
+      // core's edges attach it to (what it's reached from; what's relied on, beside what it feeds). Code that several
+      // changes reach appears under each of them: the original once, the rest as small ↺ repeats. Laid out in
+      // pre-order: the level runs left to right, a parent shares its first child's row, and each further child starts
+      // on the next free row, so reading down a level follows the tree depth-first. Zoomed out, cores are grouped into
+      // concerns (by module), and only the open concern's trees are drawn.
+      const fid = app.get(app.focus) ? app.canonical(app.focus) : null;
+      const floc = fid && app.get(fid);
+      const cores = app.graph.cores.filter((c) => app.coreShown(c));
+      const isUp = (pl) => pl.band.startsWith("up");
 
-      // Fold long lists of children into "+N", keeping the path to the focus and its neighbours.
-      const onPath = new Set(); for (let q = fid; q && !onPath.has(q); q = parentOf.get(q) ?? feeds.get(q)) onPath.add(q);
-      const foldTo = new Map(), aggs = new Map(), shownKids = new Map();
-      for (const [p, list] of kids) {
-        const key = `k:${p}`;
-        let shown = list;
-        if (list.length > MAX_COL + 1 && !expanded.has(key)) {
-          const keep = (id) => onPath.has(id) || near.has(id);
-          const must = list.filter(keep), rest = list.filter((id) => !keep(id));
-          const pick = new Set([...must, ...rest.slice(0, Math.max(0, MAX_COL - must.length))]);
-          const folded = list.filter((id) => !pick.has(id));
-          shown = list.filter((id) => pick.has(id));
-          if (folded.length) {
-            const agg = `agg:${key}`;
-            aggs.set(agg, { key, n: folded.length });
-            const hide = (id) => { foldTo.set(id, agg); for (const k of kids.get(id) ?? []) hide(k); };
-            folded.forEach(hide);
-            shown.push(agg);
-          }
-        }
-        shownKids.set(p, shown);
-      }
-      const hOf = (id) => (aggs.has(id) ? SIZES.agg[1] : dims(id)[1]);
-      const wOf = (id) => (aggs.has(id) ? SIZES.agg[0] : dims(id)[0]);
-
-      // Concern groups. Core changes are grouped by module: the deepest folder level (below what every file shares)
-      // that gives at most MAX_GROUPS groups. A change alone in its module joins the group holding most of what it's
-      // linked to (connectivity: changes that affect the same code). Everything else belongs to the group its tree
-      // branch starts from; what's relied on, to the group of what it feeds. (Claude-made groups can replace this.)
-      const fileOf = (id) => { const n = app.nodeOf(id); return n?.kind === "change" ? n.file : n?.location.path ?? ""; };
-      const parts = new Map(roots.map((r) => [r, fileOf(r).split("/").slice(0, -1)]));
+      // ---- concerns: cores by module (the deepest folder level, below what every file shares, giving at most
+      // MAX_GROUPS groups); a core alone in its module joins the module it shares the most code with.
+      const coreFile = (c) => { const pl = app.band(c, "core")[0] ?? app.corePlacements(c)[0]; const n = pl && app.nodeOf(pl.id); return n ? (n.kind === "change" ? n.file : n.location.path) : ""; };
+      const parts = new Map(cores.map((c) => [c, coreFile(c).split("/").slice(0, -1)]));
       let common = 0;
-      while (roots.length && [...parts.values()].every((ps) => ps.length > common && ps[common] === parts.get(roots[0])[common])) common++;
-      const keyAt = (r, d) => parts.get(r).slice(0, d).join("/") || ".";
+      while (cores.length && [...parts.values()].every((ps) => ps.length > common && ps[common] === parts.get(cores[0])[common])) common++;
+      const keyAt = (c, d) => parts.get(c).slice(0, d).join("/") || ".";
       let depthG = common + 1;
-      for (let d = common + 1; d <= Math.max(...[...parts.values()].map((ps) => ps.length), common + 1); d++) {
-        if (new Set(roots.map((r) => keyAt(r, d))).size > MAX_GROUPS) break;
+      for (let d = common + 1; d <= Math.max(common + 1, ...[...parts.values()].map((ps) => ps.length)); d++) {
+        if (new Set(cores.map((c) => keyAt(c, d))).size > MAX_GROUPS) break;
         depthG = d;
       }
-      const moduleOf = new Map(roots.map((r) => [r, keyAt(r, depthG)]));
-      // Connectivity, for the loners.
-      const uf = new Map(roots.map((r) => [r, r]));
-      const find = (x) => { while (uf.get(x) !== x) { uf.set(x, uf.get(uf.get(x))); x = uf.get(x); } return x; };
-      const owner = new Map();
-      for (const r of roots) {
-        const seen = new Set([r]), q = [r];
-        while (q.length) {
-          const a = q.shift();
-          for (const b of succ.get(a) ?? []) {
-            if (seen.has(b)) continue; seen.add(b);
-            if (uf.has(b)) { uf.set(find(b), find(r)); continue; }
-            if (owner.has(b)) uf.set(find(owner.get(b)), find(r)); else owner.set(b, r);
-            q.push(b);
-          }
-        }
+      const moduleOf = new Map(cores.map((c) => [c, keyAt(c, depthG)]));
+      const linked = new Map(cores.map((c) => [c, new Map()]));
+      for (const c of cores) for (const pl of app.corePlacements(c)) {
+        const o = pl.repeatOf && app.get(pl.repeatOf)?.core;
+        if (o && o !== c && linked.has(o)) { linked.get(c).set(o, (linked.get(c).get(o) ?? 0) + 1); linked.get(o).set(c, (linked.get(o).get(c) ?? 0) + 1); }
       }
-      const count = (m) => roots.filter((r) => moduleOf.get(r) === m).length;
-      for (const r of roots) {
-        if (count(moduleOf.get(r)) > 1) continue;
-        const peers = roots.filter((q) => q !== r && find(q) === find(r));
-        if (!peers.length) continue;
-        const tally = new Map(); for (const q of peers) tally.set(moduleOf.get(q), (tally.get(moduleOf.get(q)) ?? 0) + 1);
-        moduleOf.set(r, [...tally].sort((a, b) => b[1] - a[1])[0][0]);
+      for (const c of cores) {
+        if (cores.filter((q) => moduleOf.get(q) === moduleOf.get(c)).length > 1 || !linked.get(c).size) continue;
+        const tally = new Map(); for (const [o, n] of linked.get(c)) tally.set(moduleOf.get(o), (tally.get(moduleOf.get(o)) ?? 0) + n);
+        moduleOf.set(c, [...tally].sort((a, b) => b[1] - a[1])[0][0]);
       }
-      const rootOf = (id, hops = 0) => (moduleOf.has(id) ? id : parentOf.has(id) && hops < 64 ? rootOf(parentOf.get(id), hops + 1) : feeds.has(id) && hops < 64 ? rootOf(feeds.get(id), hops + 1) : null);
-      const groupOf = (id) => { const r = rootOf(id); return r ? moduleOf.get(r) : null; };
       const groups = new Map();
-      for (const r of roots.slice().sort((a, b) => order.get(a) - order.get(b))) { const g = moduleOf.get(r); (groups.get(g) ?? groups.set(g, { id: g, roots: [], ids: [] }).get(g)).roots.push(r); }
-      for (const id of pls) { const g = groupOf(id); if (g) groups.get(g).ids.push(id); }
-      const gids = [...groups.keys()].sort((a, b) => groups.get(b).roots.length - groups.get(a).roots.length || order.get(groups.get(a).roots[0]) - order.get(groups.get(b).roots[0]));
-      const openG = app.level > 0 && fid ? groupOf(fid) : null;
+      for (const c of cores) {
+        const g = groups.get(moduleOf.get(c)) ?? groups.set(moduleOf.get(c), { id: moduleOf.get(c), cores: [], roots: [], ids: [] }).get(moduleOf.get(c));
+        g.cores.push(c); g.roots.push(...app.band(c, "core").map((pl) => pl.id)); g.ids.push(...app.corePlacements(c).map((pl) => app.canonical(pl.id)));
+      }
+      const gids = [...groups.keys()].sort((a, b) => groups.get(b).cores.length - groups.get(a).cores.length || app.graph.cores.indexOf(groups.get(a).cores[0]) - app.graph.cores.indexOf(groups.get(b).cores[0]));
+      const openG = app.level > 0 && floc ? moduleOf.get(floc.core) : null;
 
-      // One tree, left to right: the PR → its concern groups → (the open group's) core changes → 1st order → …
-      const PR = "pr", GK = (g) => `grp:${g}`;
-      const SZ = { pr: [300, 96], grp: [270, 64] };
-      const isG = (id) => id.startsWith("grp:");
-      const kidsOf = (id) => (id === PR ? gids.map(GK) : isG(id) ? (id.slice(4) === openG ? groups.get(openG).roots : []) : shownKids.get(id) ?? []);
-      const hO = (id) => (id === PR ? SZ.pr[1] : isG(id) ? SZ.grp[1] : hOf(id)), wO = (id) => (id === PR ? SZ.pr[0] : isG(id) ? SZ.grp[0] : wOf(id));
-      const colKids = (col) => (col === "pr" ? "g" : col === "g" ? 0 : col + 1);
-      const top = 20;
-      const at = new Map(), colOf = new Map(), colBottom = new Map();
-      let cursor = top;
-      const lay = (id, col) => {
-        colOf.set(id, col);
-        const ch = kidsOf(id), h = hO(id);
-        let cy;
-        if (!ch.length) cy = Math.max(cursor, colBottom.get(col) ?? top);
-        else { const mids = ch.map((k) => lay(k, colKids(col))); cy = Math.max((mids[0] + mids[mids.length - 1]) / 2 - h / 2, colBottom.get(col) ?? top); }
-        at.set(id, cy);
-        colBottom.set(col, cy + h + GAP_Y * (isG(id) ? 2 : 1));
-        cursor = Math.max(cursor, cy + h + GAP_Y * (isG(id) ? 2 : 1));
-        return cy + h / 2;
-      };
-      lay(PR, "pr");
-      // What the open group relies on: lanes just before its core changes, beside what each card feeds.
-      for (const lane of [-1, -2]) {
-        if (!openG) break;
-        const list = pls.filter((id) => !depth.has(id) && groupOf(id) === openG && (app.nodeOf(id)?.kind === "change") === (lane === -1))
-          .sort((a, b) => (at.get(feeds.get(a)) ?? 1e9) - (at.get(feeds.get(b)) ?? 1e9) || order.get(a) - order.get(b));
-        let bottom = top;
-        for (const id of list) {
-          const t = feeds.get(id), want = at.has(t) ? at.get(t) + hO(t) / 2 - hO(id) / 2 : bottom;
-          const cy = Math.max(want, bottom);
-          at.set(id, cy); colOf.set(id, lane); bottom = cy + hO(id) + GAP_Y;
+      // ---- sizes: the focus big (with its code at the core level), its first few neighbours medium, the rest small.
+      const nb = fid ? app.neighbours(fid) : { up: [], down: [] };
+      const near = new Set([...nb.up.slice(0, MAX_COL).map((e) => e.from), ...nb.down.slice(0, MAX_COL).map((e) => e.to)]);
+      const sizeOf = (pl) => (pl.repeatOf || app.level === 0 ? "far" : pl.id === fid ? "focus" : near.has(pl.id) ? "near" : "far");
+      const dims = (pl) => (sizeOf(pl) === "focus" && body ? [BODY_W, bodyH] : SIZES[sizeOf(pl)]);
+
+      // ---- the cells: rows of cards; each card knows its row, x, size and level.
+      const rows = [], cells = [], edgesIds = [];
+      const tree = { parent: new Map(), kids: new Map(), feeds: new Map(), foldTo: new Map() };
+      const fit = (r, h) => (rows[r] = Math.max(rows[r] ?? 0, h));
+      const cell = (c) => { cells.push(c); fit(c.row, c.h); return c; };
+      let row = 0;
+      const PRW = 300, PRH = 96, GW = 270, GH = 64;
+      cell({ key: "pr", kind: "pr", row: 0, x: 0, w: PRW, h: PRH });
+      const gx = PRW + GUTTER;
+      for (const gid of gids) {
+        const g = groups.get(gid);
+        cell({ key: `grp:${gid}`, kind: "grp", g, open: gid === openG, row, x: gx, w: GW, h: GH });
+        edgesIds.push(["pr", `grp:${gid}`]);
+        if (gid !== openG) { row++; continue; }
+        // The open concern: what its cores rely on in lanes, then each core change's tree.
+        const ups = g.cores.flatMap((c) => app.corePlacements(c).filter(isUp));
+        const laneW = (band) => Math.max(0, ...ups.filter((pl) => pl.band === band).map((pl) => dims(pl)[0]));
+        const x2 = gx + GW + GUTTER, w2 = laneW("upUnchanged"), x1 = x2 + (w2 ? w2 + GUTTER : 0), w1 = laneW("upChanged"), rootX = x1 + (w1 ? w1 + GUTTER : 0);
+        for (const c of g.cores) {
+          const pls = app.corePlacements(c), byId = new Map(pls.map((pl) => [pl.id, pl])), order = new Map(pls.map((pl, i) => [pl.id, i]));
+          const es = app.edgesOf(c.id), roots = app.band(c, "core").map((pl) => pl.id);
+          const kids = new Map();
+          for (const pl of pls) {
+            if (pl.band === "core") continue;
+            if (isUp(pl)) { const e = es.find((x) => x.from === pl.id && byId.has(x.to)); tree.feeds.set(pl.id, e?.to ?? roots[0]); continue; }
+            const e = es.find((x) => x.to === pl.id && byId.has(x.from) && !isUp(byId.get(x.from)) && x.from !== pl.id);
+            const p = e?.from ?? roots[0]; // cut off from its parent (hidden by a switch): under the core change
+            if (!p) continue;
+            tree.parent.set(pl.id, p); (kids.get(p) ?? kids.set(p, []).get(p)).push(pl.id);
+          }
+          for (const list of kids.values()) list.sort((a, b) => order.get(a) - order.get(b));
+          // Fold long lists of children into "+N", keeping the path to the focus and its neighbours.
+          const onPath = new Set(); for (let q = fid; q && byId.has(q) && !onPath.has(q); q = tree.parent.get(q)) onPath.add(q);
+          const shownKids = (p) => {
+            const list = kids.get(p) ?? [], key = `k:${c.id}:${p}`;
+            if (list.length <= MAX_COL + 1 || expanded.has(key)) return list;
+            const keep = (id) => onPath.has(id) || near.has(id);
+            const must = list.filter(keep), rest = list.filter((id) => !keep(id));
+            const pick = new Set([...must, ...rest.slice(0, Math.max(0, MAX_COL - must.length))]);
+            const folded = list.filter((id) => !pick.has(id));
+            for (const id of folded) tree.foldTo.set(id, `agg:${key}`);
+            return [...list.filter((id) => pick.has(id)), { agg: key, n: folded.length }];
+          };
+          const seen = new Set();
+          const place = (id, x, r, depth) => { // returns the last row its subtree used
+            if (typeof id === "object") { cell({ key: `agg:${id.agg}`, kind: "agg", aggKey: id.agg, n: id.n, row: r, x, w: SIZES.agg[0], h: SIZES.agg[1], depth }); return r; }
+            seen.add(id);
+            const pl = byId.get(id), [w, h] = dims(pl);
+            cell({ key: id, kind: "pl", pl, row: r, x, w, h, depth, root: depth === 0 });
+            const ks = shownKids(id).filter((k) => typeof k === "object" || !seen.has(k));
+            tree.kids.set(id, ks.filter((k) => typeof k !== "object"));
+            let last = r;
+            ks.forEach((k, i) => {
+              const kr = i === 0 ? r : last + 1;
+              edgesIds.push([id, typeof k === "object" ? `agg:${k.agg}` : k]);
+              last = Math.max(last, place(k, x + w + GUTTER, kr, depth + 1));
+            });
+            return last;
+          };
+          const top0 = row;
+          let last = row - 1;
+          for (const r of roots) { last = place(r, rootX, last + 1, 0); edgesIds.push([`grp:${gid}`, r]); }
+          // Lanes: each relied-on card on the row of what it feeds, or the next free row in its lane.
+          const rowOf = (id) => cells.find((x) => x.key === id)?.row;
+          for (const [band, lx, depth] of [["upChanged", x1, -1], ["upUnchanged", x2, -2]]) {
+            let free = top0;
+            for (const pl of pls.filter((q) => q.band === band)) {
+              const r = Math.max(rowOf(tree.feeds.get(pl.id)) ?? free, free), [w, h] = dims(pl);
+              cell({ key: pl.id, kind: "pl", pl, row: r, x: lx + (band === "upChanged" ? w1 - w : w2 - w), w, h, depth });
+              edgesIds.push([pl.id, tree.feeds.get(pl.id)]);
+              free = r + 1; last = Math.max(last, r);
+            }
+          }
+          row = last + 2; // a spare row between core changes
         }
       }
-      // Free-flowing: no columns. Each card sits a gutter right of its own parent; what's relied on sits a gutter left
-      // of what it feeds, and an open concern leaves room for those lanes before its core changes.
-      const laneW = (lane) => Math.max(0, ...[...colOf].filter(([, c]) => c === lane).map(([id]) => wO(id)));
-      const laneSpan = [-1, -2].reduce((n, l) => n + (laneW(l) ? laneW(l) + GUTTER : 0), 0);
-      const xs = new Map();
-      const setX = (id, x) => { xs.set(id, x); for (const k of kidsOf(id)) setX(k, x + wO(id) + GUTTER + (isG(id) ? laneSpan : 0)); };
-      setX(PR, 0);
-      for (const lane of [-1, -2]) for (const [id, c] of colOf) if (c === lane) { const t = feeds.get(id); xs.set(id, (xs.get(t) ?? laneSpan) - GUTTER - wO(id)); }
-      let y = top, width = 0;
-      for (const [id, d] of colOf) {
-        const w = wO(id), h = hO(id), x = xs.get(id) ?? 0, cy = at.get(id);
-        width = Math.max(width, x + w);
-        y = Math.max(y, cy + h);
-        if (id === PR) { items.push({ kind: "pr", w, h, x, y: cy }); continue; }
-        if (isG(id)) { const g = groups.get(id.slice(4)); items.push({ kind: "grp", g, open: g.id === openG, w, h, x, y: cy }); continue; }
-        if (aggs.has(id)) { const a = aggs.get(id); items.push({ kind: "agg", key: a.key, n: a.n, size: "agg", w, h, x, y: cy, current: true }); continue; }
-        const size = sizeOf(id);
-        items.push({ kind: "pl", pl: byId.get(id), size, body: size === "focus" && !!body, w, h, x, y: cy, current: true, col: d, root: depth.get(id) === 0 });
+      // Rows to y, top-aligned.
+      const top = 20, rowY = []; let acc = top;
+      for (let r = 0; r < rows.length; r++) { rowY[r] = acc; acc += (rows[r] ?? 0) + (rows[r] ? GAP_Y : GAP_Y * 2); }
+      let y = acc + CORE_GAP, width = 0;
+      for (const c of cells) {
+        const it = { ...c, y: rowY[c.row] };
+        width = Math.max(width, c.x + c.w);
+        if (c.kind === "pl") Object.assign(it, { size: sizeOf(c.pl), body: c.pl.id === fid && sizeOf(c.pl) === "focus" && !!body, current: true });
+        if (c.kind === "agg") Object.assign(it, { key: c.aggKey, size: "agg", current: true });
+        items.push(it);
       }
-      y += CORE_GAP;
-      G = { parentOf, feeds, kids: shownKids, pred, succ, foldTo, openG }; lastGroups = groups;
+      const succ = new Map(), pred = new Map();
+      for (const [a, b] of edgesIds) { (succ.get(a) ?? succ.set(a, []).get(a)).push(b); (pred.get(b) ?? pred.set(b, []).get(b)).push(a); }
+      G = { parent: tree.parent, kids: tree.kids, feeds: tree.feeds, foldTo: tree.foldTo, succ, pred, openG }; lastGroups = groups;
       if (app.graph.lowSignal.length) {
         const sel = app.focus === LOW;
         items.push({ kind: "low", size: sel ? "near" : "far", w: 260, h: 38, x: 0, y, current: sel });
         y += 38 + CORE_GAP;
       }
-      // Edges between visible cards (folded endpoints route to the "+N" card).
-      const pos = new Map(items.filter((i) => i.kind === "pl").map((i) => [i.pl.id, i]));
-      const aggOf = (id) => { const a = G.foldTo.get(id); return a && items.find((i) => i.kind === "agg" && `agg:${i.key}` === a); };
-      const edges = [], seen = new Set();
-      for (const [a0, bs] of G.succ) for (const b0 of bs) {
-        const a = pos.get(a0) ?? aggOf(a0), b = pos.get(b0) ?? aggOf(b0);
+      // Edges: the tree's own, plus the PR to its concerns and the open concern to its core changes.
+      const byKey = new Map(items.map((i) => [i.kind === "pl" ? i.pl.id : i.kind === "agg" ? `agg:${i.key}` : i.kind === "grp" ? `grp:${i.g.id}` : i.kind, i]));
+      const edges = [];
+      for (const [a0, b0] of edgesIds) {
+        const a = byKey.get(a0), b = byKey.get(b0);
         if (!a || !b || a === b) continue;
-        const k = `${a.x},${a.y}>${b.x},${b.y}`; if (seen.has(k)) continue; seen.add(k);
         const hot = app.level > 0 && (a0 === fid || b0 === fid);
-        const tree = G.parentOf.get(b0) === a0 || G.feeds.get(a0) === b0;
-        if (!tree && !hot) continue; // links beyond the tree only show for the focus, dashed: shared code would tangle the rest
-        edges.push({ a, b, hot, dim: false, rep: !tree });
-      }
-      const prIt = items.find((i) => i.kind === "pr");
-      for (const gi of items.filter((i) => i.kind === "grp")) {
-        edges.push({ a: prIt, b: gi, hot: false, dim: !gi.open && app.level > 0, rep: false });
-        if (gi.open) for (const r of gi.g.roots) { const b = pos.get(r); if (b) edges.push({ a: gi, b, hot: false, dim: false, rep: false }); }
+        edges.push({ a, b, hot, dim: a.kind === "pr" && b.kind === "grp" && !b.open && app.level > 0, rep: b.kind === "pl" && !!b.pl.repeatOf });
       }
       return { items, heads, edges, height: y, width: Math.max(width, 400) };
     }
@@ -280,7 +250,7 @@ export default {
       if (it.kind === "grp") {
         const g = it.g, lead = byIdAll(g.roots[0]), pages = app.index.walk.filter((p) => g.ids.includes(app.canonical(p))), done = pages.filter((p) => app.isReviewed(p)).length;
         const name = g.id.split("/").slice(-2).join("/");
-        return { cls: `grp ${it.open ? "open" : ""} ${done === pages.length && pages.length ? "done" : ""}`, html: `<div class="t"><i class="glyph core"></i><span>${esc(name)}</span><small>${g.roots.length} change${g.roots.length > 1 ? "s" : ""}</small></div><div class="m">${esc(lead?.title ?? "")}${g.roots.length > 1 ? ` +${g.roots.length - 1}` : ""} · ${done}/${pages.length} reviewed</div>`, data: { group: g.id }, title: g.roots.map((r) => byIdAll(r)?.title).join(" · ") };
+        return { cls: `grp ${it.open ? "open" : ""} ${done === pages.length && pages.length ? "done" : ""}`, html: `<div class="t"><i class="glyph core"></i><span>${esc(name)}</span><small>${g.cores.length} change${g.cores.length > 1 ? "s" : ""}</small></div><div class="m">${esc(lead?.title ?? "")}${g.cores.length > 1 ? ` +${g.cores.length - 1}` : ""} · ${done}/${pages.length} reviewed</div>`, data: { group: g.id }, title: g.roots.map((r) => byIdAll(r)?.title).join(" · ") };
       }
       if (it.kind === "agg") return { cls: "agg", html: `+${it.n} more`, data: { expand: it.key } };
       if (it.kind === "low") return { cls: `${it.current ? "focus" : ""} ${app.isReviewed(LOW) ? "done" : ""}`, html: `<div class="t"><i class="glyph context"></i><span>Low-signal changes</span>${app.isReviewed(LOW) ? "✓" : ""}</div>`, data: { go: LOW } };
@@ -504,17 +474,17 @@ export default {
     // ---- arrows follow the flow: → one order deeper (the first page reached from this one), ← back toward the core
     // change (and from it, to what it relies on), ↑/↓ the page above or below in the same column.
     function move(dc, dr) {
-      const t = G, f = app.canonical(app.focus);
+      const f = app.canonical(app.focus);
       const its = (lastL?.items ?? []).filter((i) => i.kind === "pl");
       const at = its.find((i) => i.pl.id === f);
-      if (!t || !at) return;
+      if (!G || !at) return;
       const shown = (id) => its.some((i) => i.pl.id === id);
       let to;
-      if (dr) {
-        const col = its.filter((i) => i.col === at.col).sort((a, b) => a.y - b.y);
-        to = col[col.indexOf(at) + dr]?.pl.id;
-      } else if (dc > 0) to = t.feeds.get(f) ?? (t.kids.get(f) ?? []).find(shown) ?? (t.succ.get(f) ?? []).find(shown);
-      else to = t.parentOf.get(f) ?? (t.pred.get(f) ?? []).find(shown);
+      if (dr) { // the previous / next page at the same level, in pre-order (top to bottom)
+        const lvl = its.filter((i) => i.depth === at.depth).sort((a, b) => a.y - b.y || a.x - b.x);
+        to = lvl[lvl.indexOf(at) + dr]?.pl.id;
+      } else if (dc > 0) to = G.feeds.get(f) ?? (G.kids.get(f) ?? []).find(shown);
+      else to = G.parent.get(f) ?? [...G.feeds].find(([, t]) => t === f)?.[0];
       if (to && shown(to)) app.setFocus(to);
     }
     const keys = {
