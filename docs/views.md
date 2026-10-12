@@ -37,7 +37,7 @@ A rail on the left lists the cores in order, with the open core as a tree: each 
 - at **Core**: the current core's story;
 - at **Page**: the code page.
 
-Click any entry in the rail to focus it, or a core's heading to jump to its first unreviewed page. `f` hides the rail so the reading pane takes the full width.
+At **Core**, the focused step's code is a file viewer like Diff's (file header with ✓, inline/split, note and full screen; sticky section heading with its **Viewed** box; compact code), with no tint around it. Click any entry in the rail to focus it, or a core's heading to jump to its first unreviewed page. `f` hides the rail so the reading pane takes the full width.
 
 ## Lens
 

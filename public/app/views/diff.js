@@ -115,6 +115,27 @@ const BAND_LABEL = { upUnchanged: "relies on · untouched", upChanged: "relies o
 let W = 840; // a viewer's width: wider in split layout, so each side keeps room
 const GX = 200, GY = 64, TOP = 34;
 
+/** A page shown in a file viewer like Diff's, for other views (wrap: .fvw): the file's header (path, band, +/−,
+ *  ✓ viewed, inline/split, note, full screen), then a .nbody to renderFile the page into. */
+export function fileViewer(app, pid) {
+  const pl = app.get(pid).pl, n = app.nodeOf(pid), path = n.kind === "change" ? n.file : n.location.path, dir = path.includes("/") ? path.slice(0, path.lastIndexOf("/") + 1) : "";
+  const { a, d } = app.stat(pid), split = app.layoutOf(path) === "split", done = app.isReviewed(pid);
+  const stat = n.kind === "change" ? `<span style="color:var(--ok)">+${a}</span> <span style="color:var(--risk)">−${d}</span>` : "untouched";
+  return `<div class="fvw ${done ? "viewed" : ""}"><div class="fvh"><i class="glyph ${n.kind}"></i><span class="p">${esc(dir)}<b>${esc(path.split("/").pop())}</b></span><span class="band ${pl.band}">${BAND_LABEL[pl.band]}</span><span class="st">${stat}</span>`
+    + `<button class="max vwf" data-pviewed="1" aria-label="Mark viewed" data-tip="Mark viewed · local only" data-tip-on="Unmark viewed">✓</button>`
+    + `<button class="max lay" data-flayout="${esc(path)}" aria-label="Inline or split" data-tip="${split ? "Show this file inline" : "Show this file split"} · d for every file">${split ? "▤" : "◫"}</button>`
+    + `<button class="max" data-pnote="${esc(path)}" aria-label="Note on this file" data-tip="Private note on this file · only you see it">✎</button>`
+    + `<button class="max" data-pmax="1" aria-label="Full screen" data-tip="Full screen · g">⤢</button></div><div class="fvb nbody"></div></div>`;
+}
+/** Handles a click on a fileViewer's header buttons; true if it was one. */
+export function viewerAction(app, ev) {
+  const hb = ev.target.closest(".fvw [data-pviewed], .fvw [data-pnote], .fvw [data-pmax]");
+  if (!hb) return false;
+  if (hb.dataset.pviewed) app.mark(app.focus, app.isReviewed(app.focus) ? null : "reviewed");
+  else if (hb.dataset.pnote) app.noteOnFile(hb.closest(".fvw").querySelector(".nbody"), hb.dataset.pnote);
+  else app.setLevel(2);
+  return true;
+}
 /** Diff's viewer styles (header, sections, compact code), for other views that show a file the same way (.fvw). */
 export const useViewerCss = () => injectCss("diff", CSS);
 

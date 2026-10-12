@@ -3,7 +3,7 @@
 // interest sizing (focus big, its first few neighbours medium, the rest small, long lists folded into "+N"), and a
 // camera that glides between overview → core → page.
 import { DONE, LOW, esc } from "../core.js";
-import { useViewerCss } from "./diff.js";
+import { fileViewer, useViewerCss, viewerAction } from "./diff.js";
 
 const CSS = `
 .flow { position: absolute; inset: 0; display: grid; grid-template-rows: 1fr; }
@@ -272,23 +272,12 @@ export default {
       const chip = !it.body && (size === "focus" || size === "near") ? `<span class="bandc">${it.root ? `core ${app.get(pl.id).ci + 1}` : BAND_CHIP[pl.band]}</span>` : "";
       const html = `<div class="t"><i class="glyph ${glyph}"></i><span>${esc(pl.title)}</span>${status}${chip}</div>`
         + (size === "focus" || size === "near" ? `<div class="w">${esc(pl.why)}</div>${it.body ? "" : `<div class="m">${esc(meta)}</div>`}` : "")
-        + (it.body ? viewer(pl) : "");
+        + (it.body ? fileViewer(app, pl.id) : "");
       const cls = [it.body ? "withbody" : "", node.kind, pl.band === "core" ? "core" : "", size === "focus" ? "focus" : "", done ? "done" : "", pl.repeatOf ? "rep" : "", !current && app.level > 0 ? "other" : "", current && size === "far" && app.level === 1 ? "aside" : ""].join(" ");
       return { cls, html, data: { go: pl.id }, title: `${BAND_CHIP[pl.band]} · ${pl.why}` };
     }
 
     const byIdAll = (id) => app.get(id)?.pl;
-    // The Diff viewer's header for the focused page's file: path, band, +/−, ✓ viewed, inline/split, note, full screen.
-    function viewer(pl) {
-      const n = app.nodeOf(pl.id), path = n.kind === "change" ? n.file : n.location.path, dir = path.includes("/") ? path.slice(0, path.lastIndexOf("/") + 1) : "";
-      const { a, d } = app.stat(pl.id), split = app.layoutOf(path) === "split", done = app.isReviewed(pl.id);
-      const stat = n.kind === "change" ? `<span style="color:var(--ok)">+${a}</span> <span style="color:var(--risk)">−${d}</span>` : "untouched";
-      return `<div class="fvw ${done ? "viewed" : ""}"><div class="fvh"><i class="glyph ${n.kind}"></i><span class="p">${esc(dir)}<b>${esc(path.split("/").pop())}</b></span><span class="band ${pl.band}">${BAND_CHIP[pl.band]}</span><span class="st">${stat}</span>`
-        + `<button class="max vwf" data-pviewed="1" aria-label="Mark viewed" data-tip="Mark viewed · local only" data-tip-on="Unmark viewed">✓</button>`
-        + `<button class="max lay" data-flayout="${esc(path)}" aria-label="Inline or split" data-tip="${split ? "Show this file inline" : "Show this file split"} · d for every file">${split ? "▤" : "◫"}</button>`
-        + `<button class="max" data-pnote="${esc(path)}" aria-label="Note on this file" data-tip="Private note on this file · only you see it">✎</button>`
-        + `<button class="max" data-pmax="1" aria-label="Full screen" data-tip="Full screen · g">⤢</button></div><div class="fvb nbody"></div></div>`;
-    }
     function place(key, cls, html, x, y, w, h, data = {}, title = "") {
       let n = els.get(key);
       if (!n) { n = document.createElement("div"); world.appendChild(n); els.set(key, n); }
@@ -417,12 +406,7 @@ export default {
 
     // ---- interaction
     world.addEventListener("click", (ev) => {
-      const hb = ev.target.closest("[data-pviewed],[data-pnote],[data-pmax]");
-      if (hb) {
-        if (hb.dataset.pviewed) return app.mark(app.focus, app.isReviewed(app.focus) ? null : "reviewed");
-        if (hb.dataset.pnote) return app.noteOnFile(els.get(app.canonical(app.focus))?.querySelector(".nbody"), hb.dataset.pnote);
-        return app.setLevel(2);
-      }
+      if (viewerAction(app, ev)) return;
       if (moved || ev.target.closest(".fvw")) return;
       const t = ev.target.closest("[data-go],[data-expand],[data-core],[data-group],[data-pr]");
       if (!t) return;

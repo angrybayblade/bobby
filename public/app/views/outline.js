@@ -4,6 +4,7 @@ import { BANDS, BAND_TEXT, DONE, LOW, esc, inline } from "../core.js";
 
 const BAND_CHIP = { upUnchanged: "relies on · untouched", upChanged: "relies on · changed", core: "core", downChanged: "affects · changed", downUnchanged: "affects · untouched" };
 import { injectCss } from "./flow.js";
+import { fileViewer, useViewerCss, viewerAction } from "./diff.js";
 
 const CSS = `
 .outline { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(300px, 380px) 1fr; }
@@ -37,20 +38,21 @@ const CSS = `
 .outline .story h1 { font: 650 calc(var(--size) * 1.9)/1.25 var(--font-prose); letter-spacing: -.015em; margin: 8px 0 14px; }
 .outline .story .hook { margin: -14px 0 28px; max-width: 65ch; }
 .outline .story .lede { font: calc(var(--size) * 1.12)/1.65 var(--font-prose); color: var(--muted); max-width: 65ch; margin: 0 0 28px; }
-.outline .story section { border: 1px solid var(--line-soft); border-radius: 4px; padding: 16px 18px; margin-bottom: 10px; cursor: pointer; background: var(--surface); }
-.outline .story section.cur { border-color: var(--signal); }
-.outline .story section h3 { margin: 0 0 4px; font-size: calc(var(--size) * 1.05); display: flex; gap: 10px; }
-.outline .story section h3 small { margin-left: auto; color: var(--faint); font-weight: 400; font-size: 12px; }
-.outline .story section p { margin: 0; color: var(--muted); font-family: var(--font-prose); }
-.outline .step { display: grid; grid-template-columns: 18px 1fr; gap: 4px 12px; padding: 12px 10px; border-radius: 3px; cursor: pointer; }
+.outline .story > section { border: 1px solid var(--line-soft); border-radius: 4px; padding: 16px 18px; margin-bottom: 10px; cursor: pointer; background: var(--surface); }
+.outline .story > section.cur { border-color: var(--signal); }
+.outline .story > section h3 { margin: 0 0 4px; font-size: calc(var(--size) * 1.05); display: flex; gap: 10px; }
+.outline .story > section h3 small { margin-left: auto; color: var(--faint); font-weight: 400; font-size: 12px; }
+.outline .story > section p { margin: 0; color: var(--muted); font-family: var(--font-prose); }
+.outline .step { display: grid; grid-template-columns: 18px 1fr; gap: 2px 10px; padding: 8px 10px; border-radius: 3px; cursor: pointer; }
 .outline .step:hover { background: var(--surface); }
-.outline .step.cur { background: var(--signal-soft); }
-.outline .step .glyph { margin-top: 6px; }
-.outline .step b { font: 600 calc(var(--size) * .95) var(--font-code); }
-.outline .step p { grid-column: 2; margin: 0; font: var(--size)/1.6 var(--font-prose); color: var(--muted); max-width: 65ch; }
-.outline .step.done b { color: var(--faint); }
-.outline .step .nbody { grid-column: 2; margin-top: 10px; cursor: auto; min-width: 0; }
-.outline .step .nbody .code { margin-bottom: 10px; }
+.outline .step.cur { cursor: default; } /* no tint: the viewer says where you are */
+.outline .step > .glyph { margin-top: 6px; }
+.outline .step > b { font: 600 calc(var(--size) * .95) var(--font-code); }
+.outline .step > p { grid-column: 2; margin: 0; font: var(--size)/1.6 var(--font-prose); color: var(--muted); max-width: 65ch; }
+.outline .step.done > b { color: var(--faint); }
+/* The focused step's code: a viewer like Diff's, running the width of the story column. */
+.outline .step .fvw { grid-column: 1 / 3; margin-top: 8px; min-width: 0; cursor: auto; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+.outline .step .fvw .fvh { cursor: default; }
 .outline .story .bandh { font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--faint); margin: 22px 0 4px 10px; }
 `;
 const MAX_KIDS = 6;
@@ -60,7 +62,7 @@ export default {
   name: "Outline",
   hint: "Document outline + reading pane",
   mount(el, app) {
-    injectCss("outline", CSS);
+    injectCss("outline", CSS); useViewerCss();
     el.innerHTML = `<div class="outline"><nav class="rail" aria-label="Change tree"></nav><div class="doc"></div></div>`;
     const rail = el.querySelector(".rail"), doc = el.querySelector(".doc");
     const expanded = new Set();
@@ -151,7 +153,7 @@ export default {
       return `<div class="story"><div class="eyebrow">Core ${loc.ci + 1} of ${app.graph.cores.length}</div><h1>${esc(c.title)}</h1><p class="lede">${esc(c.summary)}</p>${c.hook ? `<p class="hook">${inline(c.hook)}</p>` : ""}
         ${BANDS.filter((b) => app.band(c, b).length).map((b) => `<div class="bandh">${BAND_TEXT[b]}</div>` + app.band(c, b).map((pl) => {
           const node = app.nodeOf(pl.id);
-          return `<div class="step ${pl.id === app.focus ? "cur" : ""} ${app.isReviewed(pl.id) ? "done" : ""}" data-open="${pl.id}"><i class="glyph ${b === "core" ? "core" : node.kind}"></i><b>${esc(pl.title)}${app.isReviewed(pl.id) ? " ✓" : ""}${pl.repeatOf ? " ↺" : ""}</b><p>${esc(pl.why)}</p>${pl.id === app.focus ? `<div class="nbody"></div>` : ""}</div>`;
+          return `<div class="step ${pl.id === app.focus ? "cur" : ""} ${app.isReviewed(pl.id) ? "done" : ""}" data-open="${pl.id}"><i class="glyph ${b === "core" ? "core" : node.kind}"></i><b>${esc(pl.title)}${app.isReviewed(pl.id) ? " ✓" : ""}${pl.repeatOf ? " ↺" : ""}</b><p>${esc(pl.why)}</p>${pl.id === app.focus ? fileViewer(app, pl.id) : ""}</div>`;
         }).join("")).join("")}</div>`;
     }
 
@@ -167,7 +169,7 @@ export default {
         const top = doc.scrollTop;
         doc.innerHTML = app.level === 0 || app.focus === DONE || app.focus === LOW ? overviewDoc() : coreDoc();
         const body = doc.querySelector(".step.cur .nbody"); // only the focused step shows its comments + code
-        if (body) app.renderNode(body, app.focus);
+        if (body) { app.renderFile(body, [app.focus]); app.pageEl = body; }
         if (key !== lastDoc) doc.scrollTop = 0;
         if (reason === "marks" || reason === "comments") doc.scrollTop = top;
         else doc.querySelector(".step.cur")?.scrollIntoView({ block: "start", behavior: "smooth" });
@@ -176,6 +178,8 @@ export default {
     }
 
     el.addEventListener("click", (ev) => {
+      if (viewerAction(app, ev)) return;
+      if (ev.target.closest(".fvw")) return; // code, comments and Viewed boxes handle themselves
       const t = ev.target.closest("[data-go],[data-core],[data-expand],[data-open]");
       if (!t || ev.target.closest(".node")) return;
       const ds = t.dataset;
