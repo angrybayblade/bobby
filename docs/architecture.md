@@ -42,6 +42,7 @@ public/                  the UI: plain ES modules, no build step
   app/main.js            boot, settings → CSS, view mounting, keyboard
   app/chrome.js          everything around the view: header, breadcrumbs, hints, modals, toasts
   app/palette.js         command palette (⌘K): commands, cores, files and pages in one search
+  app/tour.js            callouts pointing at the UI: the first-run tour and what's-new notes
   app/code.js            code rendering: pages, cards, whole files, folding, context, comments
   app/theme.css          design tokens (dark and light) and shared styles
   app/views/             one module per view, plus index.js (the registry)

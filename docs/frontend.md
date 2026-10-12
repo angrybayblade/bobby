@@ -9,7 +9,7 @@ The UI in `public/` is plain ES modules with no build step and no framework. `in
 3. Apply settings to the document: `data-theme`, `data-motion`, and CSS variables for font, size and word spacing.
 4. Pick the starting focus. Resume on the stored `lastNodeId` at the stored `lastLevel` (default Page). On a first visit, use `app.entryPoint()` (the core with the fewest dependency pages, then the fewest changed lines, preferring linked cores) at the Core level, with the core's intro toast. Fall back to the first unreviewed page at Overview.
 5. Mount the view: from the URL hash if present, otherwise the last one used (`settings.view`).
-6. Start the chrome. Show the welcome-back card if there's progress or a parked thought.
+6. Start the tour module and the chrome. On a first launch (`/api/session` returned no saved settings), run the tour first; then show the welcome-back card if there's progress or a parked thought, or else the entry point's intro toast.
 7. If Claude is pending, poll `/api/status` every 4s and toast when its tree is ready.
 
 **Deep links for testing**: `#view=lens&level=1&p=5` picks the view, level and walk position (1-based). `window.bobby` exposes the runtime in the console.
@@ -64,6 +64,15 @@ Everything outside the view: the header (title, Claude status pill, progress, vi
 - the drift prompt (90s idle on a page), the back-after-a-while recap (over 8 minutes away, with a trail of the last few pages), the rabbit-hole nudge (`settings.rabbit` active minutes on one page) and the break reminder. It re-renders on `focus`, `level`, `marks`, `graph`, `settings`, `comments` and `llm`.
 
 To add a setting, add its default to `DEFAULT_SETTINGS` in `core.js` and a row to `SETTINGS` in `chrome.js`. Settings are free-form on the server.
+
+## Tour and what's new (`app/tour.js`)
+
+A callout is a card plus a ring around what it points at (a CSS selector). The ring's oversized shadow dims the rest of the page but takes no clicks, and the main key handler gives the callout only `enter`, `esc` and `←`/`→`, so the app keeps working underneath. It follows its target as the app re-renders, and skips steps whose target isn't on screen.
+
+- **Tour.** `TOUR` runs once, on a first launch, and sets `settings.tour` to `seen`. Anyone upgrading is marked seen without being shown it. `start()` replays it from the `?` sheet and the palette.
+- **What's new.** `NEWS` lists one note per feature, oldest first. Each launch offers the first unseen one as a chip at the end of `#keys`. Opening it adds its id to `settings.news`. A first launch marks every note seen, since the tour covers the app as it is.
+
+To announce a feature, append `{ id, title, body, act? }` to `NEWS`; `act: { label, run }` adds a button that does something, like opening the tour.
 
 ## Code rendering (`app/code.js`)
 

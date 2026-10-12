@@ -26,6 +26,7 @@ If the same code is relevant to two cores, you review it once. Later appearances
 
 ## Where you start
 
+- **First time using Bobby:** a short tour points at the breadcrumbs, the walk, the views and the key hints, one at a time. It doesn't block anything: keys still work underneath, `enter` goes on, `esc` skips. It shows once; take it again from **Take the tour** in the `?` sheet or the command palette. After an update, new features show up one at a time as a **New** chip at the end of the key hints; click it to read about the feature, and it won't show again.
 - **First time on a PR:** you start in the **easiest core**: the one with the least around it (fewest pages it relies on or affects), then the fewest changed lines. Cores linked to nothing are only used when every core is like that. You land on its first page at the Core level, with a toast saying why and what to look for. `esc` takes you to the overview.
 - **Coming back:** you resume on the page and zoom level you were last on. If you've made progress or parked a thought, the welcome-back card shows first.
 
