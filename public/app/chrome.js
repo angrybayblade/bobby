@@ -205,8 +205,8 @@ function renderKeys() {
   const mode = app.settings.hints;
   const uses = app.settings.hintUses ?? {};
   const list = (HINTS_BY_LEVEL[app.level] ?? HINTS).filter(([ks]) => mode === "always" || (mode === "fade" && ks.some((k) => (uses[k] ?? 0) < 5)));
-  $("#keys").innerHTML = mode === "never" ? `<span><kbd>?</kbd> keys</span>`
-    : [...list, [["?"], "all keys"], [PALETTE_KEY.split(" "), "commands"]].map(([ks, label]) => `<span>${ks.map((k) => `<kbd>${k}</kbd>`).join(" ")} ${label}</span>`).join("");
+  $("#keys").innerHTML = (mode === "never" ? `<span><kbd>?</kbd> keys</span>`
+    : [...list, [["?"], "all keys"], [PALETTE_KEY.split(" "), "commands"]].map(([ks, label]) => `<span>${ks.map((k) => `<kbd>${k}</kbd>`).join(" ")} ${label}</span>`).join("")) + tour.newsChip();
 }
 
 // ---------------------------------------------------------------- overlays

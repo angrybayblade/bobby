@@ -16,13 +16,25 @@ const TOUR = [
   { at: "#keys", title: "Keys when you need them", body: `These hints fade once you've used them. ${kbd("?")} lists every key, ${PALETTE_KEY} searches every command, and ${kbd("s")} submits your review.`, next: "Start reviewing" },
 ];
 
+// What's new, oldest first. Each is offered once, as a chip at the end of the key hints, one per launch; opening it
+// marks it seen. A first launch marks them all seen: the tour covers the app as it is.
+const NEWS = [
+  { id: "palette", title: "Command palette", body: `${PALETTE_KEY} searches every command, core, file and page, and runs what you pick.` },
+  { id: "tour", title: "A tour of Bobby", body: `Four quick tips on how the walk, the views and the keys fit together. It's on ${kbd("?")} whenever you want it again.`, act: { label: "Take the tour", run: () => start() } },
+];
+let news = null;
+
 export const isOpen = () => at >= 0;
 
 /** `fresh`: nothing saved yet, so this is a first launch. The tour is offered once, then left to `?` and the palette. */
 export function init(a, { fresh = false } = {}) {
   app = a;
   firstRun = fresh && app.settings.tour !== "seen";
-  if (app.settings.tour !== "seen") app.saveSettings({ tour: "seen" });
+  const seen = app.settings.news ?? [];
+  news = firstRun ? null : NEWS.find((n) => !seen.includes(n.id)) ?? null;
+  const patch = { ...(app.settings.tour !== "seen" ? { tour: "seen" } : {}), ...(firstRun ? { news: NEWS.map((n) => n.id) } : {}) };
+  if (Object.keys(patch).length) app.saveSettings(patch);
+  document.addEventListener("click", (ev) => ev.target.closest("[data-tour=news]") && openNews());
   ring = document.body.appendChild(Object.assign(document.createElement("div"), { className: "tour-ring", hidden: true }));
   card = document.body.appendChild(Object.assign(document.createElement("div"), { className: "tour", hidden: true }));
   card.setAttribute("role", "dialog");
@@ -39,12 +51,21 @@ export function welcome(then) {
   start(then);
 }
 
+/** The chip for what's new, for the end of the key hints; empty once it's been seen. */
+export const newsChip = () => (news ? `<button class="newchip" data-tour="news" title="What's new">New · ${esc(news.title)}</button>` : "");
+function openNews() {
+  const n = news;
+  if (!n) return;
+  show([{ at: ".newchip", ...n }], { then: () => { news = null; app.saveSettings({ news: [...(app.settings.news ?? []), n.id] }); } });
+}
+
 /**
  * Shows steps in order. Each is { at?: selector, title, body: html, next?: label, act?: { label, run } }; with no
  * `at` the callout is centred. Steps pointing at something not on screen are skipped. `then` runs when it ends.
  */
 export function show(list, { then } = {}) {
   end();
+  $("#toast").hidden = true; // it sits where callouts at the foot go
   steps = list; onEnd = then ?? null;
   go("next");
 }

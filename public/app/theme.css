@@ -228,6 +228,9 @@ kbd {
 /* ---------- footer ---------- */
 #keys { display: flex; flex-wrap: wrap; gap: 2px 18px; padding: 8px 20px; border-top: 1px solid var(--line-soft); font-size: 12px; color: var(--faint); min-height: 36px; align-items: center; }
 #keys span { white-space: nowrap; }
+#keys .newchip { margin-left: auto; padding: 2px 9px; border-radius: 99px; border: 1px solid var(--signal); color: var(--signal); font-size: 12px; white-space: nowrap; }
+#keys .newchip::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 6px; border-radius: 50%; background: var(--signal); vertical-align: 1px; }
+#keys .newchip:hover { background: var(--signal-soft); }
 
 /* ---------- shared glyphs: shape encodes changed vs untouched ---------- */
 .glyph { display: inline-block; width: 9px; height: 9px; border-radius: 50%; flex: none; }

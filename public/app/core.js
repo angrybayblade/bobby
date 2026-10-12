@@ -32,6 +32,7 @@ export const DEFAULT_SETTINGS = {
   palette: "github", // github | warm: colours (and, for github, fonts); theme picks dark or light
   hintUses: {},
   tour: "unseen", // unseen | seen: the first-run tour is offered once
+  news: [], // ids of the what's-new notes already seen
 };
 
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
