@@ -105,11 +105,12 @@ export async function fileLines(cwd: string, sha: string, path: string): Promise
   return lines;
 }
 
-/** Existing inline review comments still anchored to a line of the current diff (outdated ones are dropped). */
-export async function reviewComments(pr: Pick<PrInfo, "owner" | "repo" | "number">) {
+/** Existing inline review comments still anchored to a line of the current diff (outdated ones are dropped).
+ *  strict: a failed fetch throws instead of reading as no comments. */
+export async function reviewComments(pr: Pick<PrInfo, "owner" | "repo" | "number">, strict = false) {
   type Raw = { id: number; path: string; line: number | null; side: "LEFT" | "RIGHT"; in_reply_to_id?: number; start_line?: number | null; start_side?: "LEFT" | "RIGHT" | null; user: { login: string } | null; body: string; html_url: string; created_at: string };
   // --jq '.[]' prints one compact object per line, so paginated pages concatenate cleanly.
-  const out = await run(["gh", "api", "--paginate", "--jq", ".[]", `repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/comments?per_page=100`], { allowFail: true });
+  const out = await run(["gh", "api", "--paginate", "--jq", ".[]", `repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/comments?per_page=100`], { allowFail: !strict });
   const raw = out.split("\n").filter((l) => l.startsWith("{")).map((l) => JSON.parse(l) as Raw);
   return raw.filter((c) => c.line != null).map((c) => ({
     id: String(c.id), path: c.path, line: c.line!, side: c.side, author: c.user?.login ?? "ghost",

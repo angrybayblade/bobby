@@ -1,6 +1,6 @@
 import { join, normalize } from "node:path";
 import { embeddedAsset } from "./assets.ts";
-import { fileLines, run } from "./git.ts";
+import { fileLines, reviewComments, run } from "./git.ts";
 import type { ReviewGraph } from "./graph.ts";
 import { loadSettings, saveSettings, saveState } from "./state.ts";
 import type { Comment, PrivateNote, ReviewState } from "./types.ts";
@@ -128,7 +128,10 @@ export function startServer(s: Session, port: number) {
           );
           s.state.comments = s.state.comments.filter((c) => c.wip); // what was posted is gone; unfinished drafts remain
           persist();
-          return json({ ok: true, url: JSON.parse(out).html_url });
+          // Re-read the PR's comments so what was just posted shows on its lines; if that fails they show next start.
+          const discussion = await reviewComments(pr(), true).catch(() => null);
+          if (discussion) for (const g of [s.staticGraph, s.claudeGraph]) if (g) g.discussion = discussion;
+          return json({ ok: true, url: JSON.parse(out).html_url, ...(discussion ? { discussion } : {}) });
         } catch (e) {
           return json({ ok: false, error: String((e as Error).message) }, 400);
         }
