@@ -25,7 +25,7 @@ const CSS = `
 .flow .card .m { font: 11.5px var(--font-code); color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: auto; }
 .flow .card.context { border-style: dashed; }
 .flow .card.core { border-color: color-mix(in srgb, var(--signal) 45%, var(--line)); }
-.flow .card.focus { border: 2px solid var(--signal); background: var(--surface); box-shadow: 0 0 0 6px var(--signal-soft), var(--shadow); padding: 12px 16px; z-index: 2; }
+.flow .card.focus { border: 2px solid var(--line); background: var(--surface); box-shadow: var(--shadow); padding: 12px 16px; z-index: 2; } /* weight, not colour: like a Diff viewer */
 .flow .card.focus .t { font-size: 15px; font-weight: 600; }
 .flow .card.focus .w { font-size: 14px; color: var(--text); -webkit-line-clamp: 4; }
 .flow .card.withbody { cursor: default; z-index: 3; transition: transform var(--dur) var(--ease), opacity var(--dur); } /* no width/height easing: it is measured */
