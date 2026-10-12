@@ -160,6 +160,7 @@ function commands() {
   return [
     ...KEYED.map(([title, k]) => ({ id: `key:${k}`, title, keys: (KEY_TEXT[k] ?? k).split(" "), run: () => press(k, { learn: false }) })),
     ...(app.claudeReady && app.graph.generator.tree !== "claude" ? [{ id: "key:R", title: "Switch to Claude's tree", keys: ["R"], run: () => app.switchTree() }] : []),
+    { id: "tour", title: "Take the tour", sub: "how the walk, the views and the keys fit together", run: () => tour.start() },
     ...views.filter((v) => v.id !== currentId).map((v) => ({ id: `view:${v.id}`, title: `${v.name} view`, sub: v.hint, run: () => app.switchView(v.id) })),
     { id: "set:tests", title: `${s.tests === "show" ? "Hide" : "Show"} tests and generated files`, run: () => flip("tests", "show", "hide") },
     { id: "set:untouched", title: `${s.untouched === "hide" ? "Show" : "Hide"} untouched code`, run: () => flip("untouched", "hide", "show") },

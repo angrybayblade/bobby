@@ -1,6 +1,7 @@
 // Everything around the view: header, where-am-I bar, key hints, overlays, toasts, settings.
 import { BAND_TEXT, DONE, LEVELS, LOW, api, esc, inline } from "./core.js";
 import { MOD } from "./palette.js";
+import * as tour from "./tour.js";
 
 const $ = (q) => document.querySelector(q);
 const PALETTE_KEY = MOD === "⌘" ? "⌘K" : "ctrl k";
@@ -247,7 +248,7 @@ export function help() {
       ${r(",", "settings")}
       ${r(PALETTE_KEY, "command palette: search every command, core, file and page")}
     </table>
-    <div class="row"><button class="btn primary" data-act="close">Got it</button></div>`);
+    <div class="row"><button class="btn primary" data-act="close">Got it</button><button class="btn" data-act="tour">Take the tour</button></div>`);
 }
 
 const SETTINGS = [
@@ -457,6 +458,7 @@ function onClick(ev) {
     overview: () => { close(); app.setLevel(0); },
     resume: () => { close(); if (resumeTo) app.setFocus(resumeTo.pid, { level: resumeTo.level }); },
     "switch-tree": () => app.switchTree(),
+    tour: () => { close(); tour.start(); },
     "save-note": () => saveNote($("#note").value.trim()),
     "clear-note": () => saveNote(""),
     "toast-close": () => ($("#toast").hidden = true),
