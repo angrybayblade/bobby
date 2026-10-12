@@ -137,6 +137,20 @@ export function createApp({ graph, session }) {
       api("/api/mark", { keys, mark });
       app.emit("marks");
     },
+    // ---- scroll positions: each node's code remembers where you'd scrolled to, by zoom level (a card and a page lay
+    // out differently), so coming back to a node picks up where you left it instead of at the top.
+    scrolls: new Map(),
+    /** Restores el's scroll for this node and level, and keeps track of it from now on. */
+    keepScroll(el, pid = app.focus, level = app.level) {
+      if (!el) return;
+      const key = `${level}:${app.canonical(pid)}`;
+      el._scrollKey = key;
+      el.scrollTop = app.scrolls.get(key) ?? 0;
+      if (el._scrollKept) return;
+      el._scrollKept = true;
+      el.addEventListener("scroll", () => { if (el._scrollKey) app.scrolls.set(el._scrollKey, el.scrollTop); }, { passive: true });
+    },
+
     // ---- dependency levels: a page's distance from its core change along the core's edges. 0 is the core change,
     // 1, 2… what it affects, −1, −2… what it relies on; a page linked to nothing takes its band's level.
     coreLevels(core) {

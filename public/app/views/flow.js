@@ -353,7 +353,7 @@ export default {
       const body = L.items.find((i) => i.body);
       if (body) {
         const n = els.get(body.pl.id);
-        if (reason !== "measure") { const nb = n.querySelector(".nbody"); app.renderFile(nb, [app.focus]); app.pageEl = nb; }
+        if (reason !== "measure") { const nb = n.querySelector(".nbody"), top = nb.scrollTop; app.renderFile(nb, [app.focus]); app.pageEl = nb; app.keepScroll(nb); if (reason === "marks" || reason === "comments") nb.scrollTop = top; }
         if (filled) observe(null); else observe(n);
         if (!filled && Math.abs(n.offsetHeight - bodyH) > 2) { bodyH = n.offsetHeight; L = layout(); placeAll(L); }
       } else observe(null);
@@ -371,7 +371,7 @@ export default {
       if (paged && (reason !== "marks" || lastPagePid !== app.focus)) {
         const fresh = lastPagePid !== app.focus;
         app.renderPage(pane, app.focus);
-        if (fresh) pane.scrollTop = 0;
+        if (fresh) app.keepScroll(pane); // back to a page: where you'd scrolled to
         lastPagePid = app.focus;
       } else if (paged && reason === "marks") app.renderPage(pane, app.focus);
       if (!paged) lastPagePid = null;

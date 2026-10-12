@@ -163,9 +163,10 @@ export default {
       const key = `${app.level}:${app.level === 2 ? app.focus : app.get(app.focus)?.core.id ?? app.focus}`;
       if (app.level === 2) {
         app.renderPage(doc, app.focus);
-        if (key !== lastDoc) doc.scrollTop = 0;
+        if (key !== lastDoc) app.keepScroll(doc); // back to a page: where you'd scrolled to
       } else {
         app.pageEl = null;
+        if (lastDoc?.startsWith("2:")) doc._scrollKey = null; // leaving a page: the story's scroll isn't that page's
         const top = doc.scrollTop;
         doc.innerHTML = app.level === 0 || app.focus === DONE || app.focus === LOW ? overviewDoc() : coreDoc();
         const body = doc.querySelector(".step.cur .nbody"); // only the focused step shows its comments + code

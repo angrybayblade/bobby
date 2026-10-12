@@ -168,14 +168,15 @@ export default {
       const nb = app.neighbours(app.focus);
       prevSides = { left: nb.up.map((e) => e.from), right: nb.down.map((e) => e.to) };
       prevFocus = app.focus;
-      const keepScroll = reason === "marks" || reason === "comments";
+      const sameNode = reason === "marks" || reason === "comments";
       const oldPane = root.querySelector(".pane, .nbody");
-      const scroll = keepScroll && oldPane ? oldPane.scrollTop : 0;
+      const scroll = sameNode && oldPane ? oldPane.scrollTop : null;
       root.innerHTML = ring(slide) + (paged ? `<div class="pane"></div>` : "");
       const codeEl = root.querySelector(".pane, .nbody");
       if (paged) app.renderPage(codeEl, app.focus);
       else app.renderNode(codeEl, app.focus);
-      codeEl.scrollTop = scroll;
+      app.keepScroll(codeEl); // where you'd scrolled to on this node
+      if (scroll != null) codeEl.scrollTop = scroll;
       ro.disconnect();
       ro.observe(root.querySelector(".focus")); // folding/composing resizes the card: redraw the connectors
       requestAnimationFrame(wire);
