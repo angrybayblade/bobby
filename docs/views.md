@@ -9,7 +9,7 @@ There are four views of the same review. Switch with `v` or the toggle in the he
 | [Lens](#lens) | The focus in the centre, its neighbours either side | Maximum focus |
 | [Diff](#diff) | One diff viewer per file, laid out as a graph | Reading real diffs without losing the thread |
 
-Two switches in the top bar apply to every view: **⚗ Tests** (test and generated files, hidden by default) and **○ Untouched** (untouched code the changes rely on). All views share the three zoom levels (Overview → Core → Page) described in [Reviewing](reviewing.md#zoom-levels), the same compact, GitHub-like code, and the same keys: `f` focus mode, `g` full screen, `esc` back exactly as you were, and arrows that follow the view's shape (edges in Flow, Lens and Diff; the tree in Outline).
+Two switches in the top bar apply to every view: **⚗ Tests** (test and generated files, hidden by default) and **○ Untouched** (untouched code the changes rely on or affect). All views share the three zoom levels (Overview → Core → Page) described in [Reviewing](reviewing.md#zoom-levels), the same compact, GitHub-like code, and the same keys: `f` focus mode, `g` full screen, `esc` back exactly as you were, and arrows that follow the view's shape (edges in Flow, Lens and Diff; the tree in Outline).
 
 ## Flow
 
@@ -18,7 +18,7 @@ The whole PR as one free-flowing tree on a canvas, reading left to right: **this
 - **The tree is the review graph's own.** Each core change is a root, and every page hangs off the one page its core's edges attach it to. Code that several changes reach appears under each of them: the original once, the rest as small ↺ repeats you can click through.
 - **Laid out in pre-order.** The level runs left to right; a parent shares its first child's row and each further child starts on the next free row, so reading down a level follows the tree depth-first.
 - **Zoomed out** (Overview), you see the PR and its concerns: each a card with its module, its lead change, how many core changes it holds and your progress. **Zoom into a concern** (click it, or move into it at the Core level) and its core changes' trees open; the other concerns stay single cards.
-- **What a core change relies on** sits to its left, on the row of what each card feeds (*relies on · changed*, then *relies on · untouched*, which the top bar's **○ Untouched** switch hides).
+- **What a core change relies on** sits to its left, on the row of what each card feeds (*relies on · changed*, then *relies on · untouched*). The top bar's **○ Untouched** switch hides untouched code on both sides: what the changes rely on and what they affect.
 - **Concerns are grouped by module** for now: the deepest folder level (below what every file shares) that gives at most 15 groups, with a core change that's alone in its module joining the one it shares the most code with. Claude-made concerns can replace this later.
 
 - Nodes are **sized by relevance**: the focus is big, its first few neighbours are medium, and the rest are small and sit back. Long lists of children fold into "+N", always keeping the path to the focus.

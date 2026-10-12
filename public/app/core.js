@@ -24,7 +24,7 @@ export const DEFAULT_SETTINGS = {
   rabbit: 12, // minutes on one page before offering to flag it and move on; 0 = off
   drift: "on", // on | off: after 90s idle on a page, offer to park a thought
   prComments: "hide", // hide | show: other reviewers' comments, behind a per-page toggle when hidden
-  untouched: "show", // show | hide: untouched code the changes rely on, in every view (the top bar's switch)
+  untouched: "show", // show | hide: untouched code the changes rely on or affect, in every view (the top bar's switch)
   tests: "hide", // hide | show: test files and generated files, in every view (the top bar's switch)
   diffLayout: "split", // split | inline: old beside new, or changed lines in one column
   palette: "github", // github | warm: colours (and, for github, fonts); theme picks dark or light
@@ -37,7 +37,7 @@ export const inline = (s) => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
 export const api = (url, body, method = body ? "POST" : "GET") =>
   fetch(url, { method, headers: body ? { "content-type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined }).then((r) => r.json());
 
-// Some placements can be switched off: untouched code a change relies on (settings.untouched), and test or generated
+// Some placements can be switched off: untouched code a change relies on or affects (settings.untouched), and test or generated
 // files (settings.tests). Switched off, they leave the walk, the edges and every view, as if the graph never had them.
 const TEST_PATH = /(^|\/)(__tests__|__mocks__|tests?|specs?|e2e|fixtures?|testdata|test-?utils?)\/|[._-](test|spec|e2e)\.[a-z0-9]+$|(^|\/)test_[^/]+\.py$|_test\.(go|py|rb|exs?)$/i;
 const GENERATED_PATH = /(^|\/)(__generated__|generated|gen)\/|\.(generated|gen|g|pb)\.[a-z0-9]+$|_pb2(_grpc)?\.py$|(^|\/)openapi[^/]*\.(json|ya?ml)$/i;
@@ -50,7 +50,7 @@ export function isTestOrGenerated(node, ix) {
   const lines = node.kind === "change" ? (node.hunkIds ?? []).flatMap((h) => ix.hunk.get(h)?.lines.map((l) => l.s) ?? []) : node.snippet?.lines ?? [];
   return lines.some((s) => GENERATED_MARK.test(s));
 }
-export const hideOpts = (settings) => ({ up: settings?.untouched === "hide", tests: (settings?.tests ?? "hide") === "hide" });
+export const hideOpts = (settings) => ({ untouched: settings?.untouched === "hide", tests: (settings?.tests ?? "hide") === "hide" });
 export function indexGraph(g, hide = {}) {
   const ix = { placement: new Map(), node: new Map(), hunk: new Map(), core: new Map(), edgesByCore: new Map(), walkPos: new Map() };
   for (const n of g.nodes) ix.node.set(n.id, n);
@@ -63,7 +63,7 @@ export function indexGraph(g, hide = {}) {
   const shown = (pid) => {
     const pl = ix.placement.get(pid)?.pl;
     if (!pl) return true;
-    if (hide.up && pl.band === "upUnchanged") return false;
+    if (hide.untouched && (pl.band === "upUnchanged" || pl.band === "downUnchanged")) return false;
     if (hide.tests) { if (!quiet.has(pl.node)) quiet.set(pl.node, isTestOrGenerated(ix.node.get(pl.node), ix)); if (quiet.get(pl.node)) return false; }
     return true;
   };
@@ -264,7 +264,7 @@ export function createApp({ graph, session }) {
       Object.assign(app.settings, patch);
       api("/api/settings", patch);
       const h = hideOpts(app.settings);
-      if (h.up !== app.index.hide.up || h.tests !== app.index.hide.tests) return app.reindex();
+      if (h.untouched !== app.index.hide.untouched || h.tests !== app.index.hide.tests) return app.reindex();
       app.emit("settings");
     },
     useKey(k) {
@@ -273,12 +273,13 @@ export function createApp({ graph, session }) {
       if (u[k] === 5) app.saveSettings({ hintUses: u });
     },
 
-    /** Rebuild the index for the untouched switch, keeping the focus (or, if it was hidden, the page it feeds). */
+    /** Rebuild the index for the switches, keeping the focus (or, if it was hidden, the page it was attached to). */
     reindex() {
       const was = app.focus, loc = app.get(was);
       app.index = indexGraph(graph, hideOpts(app.settings));
       if (!app.index.walkPos.has(was)) {
-        const to = graph.edges.find((e) => e.from === was)?.to; // a hidden page: go to what it fed
+        const e = graph.edges.find((x) => x.from === was && app.index.walkPos.has(x.to)) ?? graph.edges.find((x) => x.to === was && app.index.walkPos.has(x.from));
+        const to = e && (e.from === was ? e.to : e.from); // a hidden page: go to what it fed, or what it hung off
         app.focus = (to && app.index.walkPos.has(to) ? to : null) ?? (loc && app.band(loc.core, "core")[0]?.id) ?? app.entryPoint()?.pid ?? app.index.walk[0];
       }
       app.emit("settings");
