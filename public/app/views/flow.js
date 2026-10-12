@@ -45,6 +45,12 @@ const CSS = `
 .flow .chead { font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; display: flex; gap: 10px; align-items: baseline; max-width: 1400px; }
 .flow .chead small { font-weight: 400; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
 .flow .chead.other { opacity: .45; }
+.flow .card.pr { border-color: var(--muted); padding: 12px 14px; }
+.flow .card.pr .t { white-space: normal; font: 600 13.5px/1.35 var(--font-prose); }
+.flow .card.pr .t span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.flow .card.grp .t small { color: var(--faint); font-weight: 400; flex: none; }
+.flow .card.grp.open { border-color: var(--signal); }
+.flow .card.grp.done { opacity: .55; }
 .flow .colh { z-index: 4; font: 600 10.5px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); white-space: nowrap; text-align: center; }
 .flow .colh.root { color: var(--signal); }
 .flow .colh.lane { opacity: .7; font-weight: 500; }
@@ -57,11 +63,12 @@ const CSS = `
 .flow .intent small { display: block; font: 12px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); margin-bottom: 6px; }
 `;
 
+const MAX_GROUPS = 15;
 const GUTTER = 90, PAD = 40, GAP_Y = 12, CORE_GAP = 80, HEAD = 40, MAX_COL = 5;
 const SIZES = { focus: [290, 172], near: [250, 100], far: [230, 38], agg: [230, 34] };
 const BODY_W = 720; // focused card when it shows its code (core level only)
 const ORD = (n) => `${n}${n % 10 === 1 && n % 100 !== 11 ? "st" : n % 10 === 2 && n % 100 !== 12 ? "nd" : n % 10 === 3 && n % 100 !== 13 ? "rd" : "th"}`;
-const COL_HEAD = (d) => (d === -2 ? "relies on · untouched" : d === -1 ? "relies on · changed" : d === 0 ? "① core change" : `${ORD(d)} order`);
+const COL_HEAD = (d) => (d === "pr" ? "this PR" : d === "g" ? "concerns" : d === -2 ? "relies on · untouched" : d === -1 ? "relies on · changed" : d === 0 ? "① core change" : `${ORD(d)} order`);
 const BAND_CHIP = { upUnchanged: "relies on · untouched", upChanged: "relies on · changed", core: "core", downChanged: "affects · changed", downUnchanged: "affects · untouched" };
 
 export default {
@@ -77,7 +84,7 @@ export default {
     const expanded = new Set(); // "coreId:band" opened by the user
     let lastPagePid = null;
     // The camera: auto-framed for the focus and level, until you pan or zoom; then yours until the focus or level moves.
-    let view = { tx: 0, ty: 0, s: 1 }, mine = false, lastL = null, G = null;
+    let view = { tx: 0, ty: 0, s: 1 }, mine = false, lastL = null, G = null, lastGroups = null;
     const apply = () => { world.style.transform = `translate(${view.tx}px, ${view.ty}px) scale(${view.s})`; };
     let bodyH = 420; // last measured height of the focused card with its code
     const withBody = () => (app.level === 1 && app.get(app.focus) ? app.focus : null);
@@ -142,49 +149,106 @@ export default {
       const hOf = (id) => (aggs.has(id) ? SIZES.agg[1] : dims(id)[1]);
       const wOf = (id) => (aggs.has(id) ? SIZES.agg[0] : dims(id)[0]);
 
-      // Tidy tree: leaves stack down the page, each parent centred on its children.
+      // Concern groups. Core changes are grouped by module: the deepest folder level (below what every file shares)
+      // that gives at most MAX_GROUPS groups. A change alone in its module joins the group holding most of what it's
+      // linked to (connectivity: changes that affect the same code). Everything else belongs to the group its tree
+      // branch starts from; what's relied on, to the group of what it feeds. (Claude-made groups can replace this.)
+      const fileOf = (id) => { const n = app.nodeOf(id); return n?.kind === "change" ? n.file : n?.location.path ?? ""; };
+      const parts = new Map(roots.map((r) => [r, fileOf(r).split("/").slice(0, -1)]));
+      let common = 0;
+      while (roots.length && [...parts.values()].every((ps) => ps.length > common && ps[common] === parts.get(roots[0])[common])) common++;
+      const keyAt = (r, d) => parts.get(r).slice(0, d).join("/") || ".";
+      let depthG = common + 1;
+      for (let d = common + 1; d <= Math.max(...[...parts.values()].map((ps) => ps.length), common + 1); d++) {
+        if (new Set(roots.map((r) => keyAt(r, d))).size > MAX_GROUPS) break;
+        depthG = d;
+      }
+      const moduleOf = new Map(roots.map((r) => [r, keyAt(r, depthG)]));
+      // Connectivity, for the loners.
+      const uf = new Map(roots.map((r) => [r, r]));
+      const find = (x) => { while (uf.get(x) !== x) { uf.set(x, uf.get(uf.get(x))); x = uf.get(x); } return x; };
+      const owner = new Map();
+      for (const r of roots) {
+        const seen = new Set([r]), q = [r];
+        while (q.length) {
+          const a = q.shift();
+          for (const b of succ.get(a) ?? []) {
+            if (seen.has(b)) continue; seen.add(b);
+            if (uf.has(b)) { uf.set(find(b), find(r)); continue; }
+            if (owner.has(b)) uf.set(find(owner.get(b)), find(r)); else owner.set(b, r);
+            q.push(b);
+          }
+        }
+      }
+      const count = (m) => roots.filter((r) => moduleOf.get(r) === m).length;
+      for (const r of roots) {
+        if (count(moduleOf.get(r)) > 1) continue;
+        const peers = roots.filter((q) => q !== r && find(q) === find(r));
+        if (!peers.length) continue;
+        const tally = new Map(); for (const q of peers) tally.set(moduleOf.get(q), (tally.get(moduleOf.get(q)) ?? 0) + 1);
+        moduleOf.set(r, [...tally].sort((a, b) => b[1] - a[1])[0][0]);
+      }
+      const rootOf = (id, hops = 0) => (moduleOf.has(id) ? id : parentOf.has(id) && hops < 64 ? rootOf(parentOf.get(id), hops + 1) : feeds.has(id) && hops < 64 ? rootOf(feeds.get(id), hops + 1) : null);
+      const groupOf = (id) => { const r = rootOf(id); return r ? moduleOf.get(r) : null; };
+      const groups = new Map();
+      for (const r of roots.slice().sort((a, b) => order.get(a) - order.get(b))) { const g = moduleOf.get(r); (groups.get(g) ?? groups.set(g, { id: g, roots: [], ids: [] }).get(g)).roots.push(r); }
+      for (const id of pls) { const g = groupOf(id); if (g) groups.get(g).ids.push(id); }
+      const gids = [...groups.keys()].sort((a, b) => groups.get(b).roots.length - groups.get(a).roots.length || order.get(groups.get(a).roots[0]) - order.get(groups.get(b).roots[0]));
+      const openG = app.level > 0 && fid ? groupOf(fid) : null;
+
+      // One tree, left to right: the PR → its concern groups → (the open group's) core changes → 1st order → …
+      const PR = "pr", GK = (g) => `grp:${g}`;
+      const SZ = { pr: [300, 96], grp: [270, 64] };
+      const isG = (id) => id.startsWith("grp:");
+      const kidsOf = (id) => (id === PR ? gids.map(GK) : isG(id) ? (id.slice(4) === openG ? groups.get(openG).roots : []) : shownKids.get(id) ?? []);
+      const hO = (id) => (id === PR ? SZ.pr[1] : isG(id) ? SZ.grp[1] : hOf(id)), wO = (id) => (id === PR ? SZ.pr[0] : isG(id) ? SZ.grp[0] : wOf(id));
+      const colKids = (col) => (col === "pr" ? "g" : col === "g" ? 0 : col + 1);
       const top = HEAD + 34;
       const at = new Map(), colOf = new Map(), colBottom = new Map();
       let cursor = top;
-      const lay = (id, d) => {
-        colOf.set(id, d);
-        const ch = shownKids.get(id) ?? [], h = hOf(id);
+      const lay = (id, col) => {
+        colOf.set(id, col);
+        const ch = kidsOf(id), h = hO(id);
         let cy;
-        if (!ch.length) cy = Math.max(cursor, colBottom.get(d) ?? top);
-        else { const mids = ch.map((k) => lay(k, d + 1)); cy = Math.max((mids[0] + mids[mids.length - 1]) / 2 - h / 2, colBottom.get(d) ?? top); }
+        if (!ch.length) cy = Math.max(cursor, colBottom.get(col) ?? top);
+        else { const mids = ch.map((k) => lay(k, colKids(col))); cy = Math.max((mids[0] + mids[mids.length - 1]) / 2 - h / 2, colBottom.get(col) ?? top); }
         at.set(id, cy);
-        colBottom.set(d, cy + h + GAP_Y);
-        cursor = Math.max(cursor, cy + h + GAP_Y);
+        colBottom.set(col, cy + h + GAP_Y * (isG(id) ? 2 : 1));
+        cursor = Math.max(cursor, cy + h + GAP_Y * (isG(id) ? 2 : 1));
         return cy + h / 2;
       };
-      for (const r of roots.sort((a, b) => order.get(a) - order.get(b))) lay(r, 0);
-      for (const id of pls) if (depth.has(id) && !colOf.has(id) && !foldTo.has(id)) lay(id, depth.get(id)); // reached only through a fold or a cycle
+      lay(PR, "pr");
+      // What the open group relies on: lanes just before its core changes, beside what each card feeds.
       for (const lane of [-1, -2]) {
-        const list = pls.filter((id) => !depth.has(id) && (app.nodeOf(id)?.kind === "change") === (lane === -1))
+        if (!openG) break;
+        const list = pls.filter((id) => !depth.has(id) && groupOf(id) === openG && (app.nodeOf(id)?.kind === "change") === (lane === -1))
           .sort((a, b) => (at.get(feeds.get(a)) ?? 1e9) - (at.get(feeds.get(b)) ?? 1e9) || order.get(a) - order.get(b));
         let bottom = top;
         for (const id of list) {
-          const t = feeds.get(id), want = at.has(t) ? at.get(t) + hOf(t) / 2 - hOf(id) / 2 : bottom;
+          const t = feeds.get(id), want = at.has(t) ? at.get(t) + hO(t) / 2 - hO(id) / 2 : bottom;
           const cy = Math.max(want, bottom);
-          at.set(id, cy); colOf.set(id, lane); bottom = cy + hOf(id) + GAP_Y;
+          at.set(id, cy); colOf.set(id, lane); bottom = cy + hO(id) + GAP_Y;
         }
       }
-      const cols = [...new Set(colOf.values())].sort((a, b) => a - b), colW = new Map();
-      for (const [id, d] of colOf) colW.set(d, Math.max(colW.get(d) ?? 0, wOf(id)));
+      const rank = (c) => (c === "pr" ? -10 : c === "g" ? -9 : c);
+      const cols = [...new Set(colOf.values())].sort((a, b) => rank(a) - rank(b)), colW = new Map();
+      for (const [id, d] of colOf) colW.set(d, Math.max(colW.get(d) ?? 0, wO(id)));
       const colX = new Map(); let acc = 0;
       for (const d of cols) { colX.set(d, acc); acc += colW.get(d) + GUTTER; }
       for (const d of cols) heads.push({ col: d, x: colX.get(d), y: HEAD - 6, w: colW.get(d) });
       let y = top;
       for (const [id, d] of colOf) {
-        const w = wOf(id), h = hOf(id), x = colX.get(d) + (colW.get(d) - w) / 2, cy = at.get(id);
+        const w = wO(id), h = hO(id), x = colX.get(d) + (colW.get(d) - w) / 2, cy = at.get(id);
         y = Math.max(y, cy + h);
+        if (id === PR) { items.push({ kind: "pr", w, h, x, y: cy }); continue; }
+        if (isG(id)) { const g = groups.get(id.slice(4)); items.push({ kind: "grp", g, open: g.id === openG, w, h, x, y: cy }); continue; }
         if (aggs.has(id)) { const a = aggs.get(id); items.push({ kind: "agg", key: a.key, n: a.n, size: "agg", w, h, x, y: cy, current: true }); continue; }
         const size = sizeOf(id);
         items.push({ kind: "pl", pl: byId.get(id), size, body: size === "focus" && !!body, w, h, x, y: cy, current: true, col: d, root: depth.get(id) === 0 });
       }
       const width = acc;
       y += CORE_GAP;
-      G = { parentOf, feeds, kids: shownKids, pred, succ, foldTo };
+      G = { parentOf, feeds, kids: shownKids, pred, succ, foldTo, openG }; lastGroups = groups;
       if (app.graph.lowSignal.length) {
         const sel = app.focus === LOW;
         items.push({ kind: "low", size: sel ? "near" : "far", w: 260, h: 38, x: 0, y, current: sel });
@@ -203,10 +267,24 @@ export default {
         if (!tree && !hot) continue; // links beyond the tree only show for the focus, dashed: shared code would tangle the rest
         edges.push({ a, b, hot, dim: false, rep: !tree });
       }
+      const prIt = items.find((i) => i.kind === "pr");
+      for (const gi of items.filter((i) => i.kind === "grp")) {
+        edges.push({ a: prIt, b: gi, hot: false, dim: !gi.open && app.level > 0, rep: false });
+        if (gi.open) for (const r of gi.g.roots) { const b = pos.get(r); if (b) edges.push({ a: gi, b, hot: false, dim: false, rep: false }); }
+      }
       return { items, heads, edges, height: y, width: Math.max(width, 400) };
     }
 
     function card(it) {
+      if (it.kind === "pr") {
+        const { done, total } = app.progress();
+        return { cls: "pr", html: `<div class="t"><span>${esc(app.graph.intent)}</span></div><div class="m">${done}/${total} reviewed · ${app.graph.cores.length} core changes</div>`, data: { pr: "1" }, title: app.graph.intent };
+      }
+      if (it.kind === "grp") {
+        const g = it.g, lead = byIdAll(g.roots[0]), pages = app.index.walk.filter((p) => g.ids.includes(app.canonical(p))), done = pages.filter((p) => app.isReviewed(p)).length;
+        const name = g.id.split("/").slice(-2).join("/");
+        return { cls: `grp ${it.open ? "open" : ""} ${done === pages.length && pages.length ? "done" : ""}`, html: `<div class="t"><i class="glyph core"></i><span>${esc(name)}</span><small>${g.roots.length} change${g.roots.length > 1 ? "s" : ""}</small></div><div class="m">${esc(lead?.title ?? "")}${g.roots.length > 1 ? ` +${g.roots.length - 1}` : ""} · ${done}/${pages.length} reviewed</div>`, data: { group: g.id }, title: g.roots.map((r) => byIdAll(r)?.title).join(" · ") };
+      }
       if (it.kind === "agg") return { cls: "agg", html: `+${it.n} more`, data: { expand: it.key } };
       if (it.kind === "low") return { cls: `${it.current ? "focus" : ""} ${app.isReviewed(LOW) ? "done" : ""}`, html: `<div class="t"><i class="glyph context"></i><span>Low-signal changes</span>${app.isReviewed(LOW) ? "✓" : ""}</div>`, data: { go: LOW } };
       const { pl, size, current } = it;
@@ -227,6 +305,7 @@ export default {
       return { cls, html, data: { go: pl.id }, title: `${BAND_CHIP[pl.band]} · ${pl.why}` };
     }
 
+    const byIdAll = (id) => app.get(id)?.pl;
     function place(key, cls, html, x, y, w, h, data = {}, title = "") {
       let n = els.get(key);
       if (!n) { n = document.createElement("div"); world.appendChild(n); els.set(key, n); }
@@ -245,7 +324,7 @@ export default {
       let box, maxScale = 1, minScale = 0.4;
       const focusItem = L.items.find((i) => i.kind === "pl" && i.pl.id === app.canonical(app.focus)) ?? L.items.find((i) => i.kind === "low" && app.focus === LOW);
       const loc = app.get(app.focus);
-      const top = app.level === 0 ? intentEl.offsetHeight + 30 : 0;
+      const top = 0;
       if (app.level === 0 || !loc || !focusItem) box = { x: -20, y: -10, w: L.width, h: L.height };
       else {
         // Core or page level: frame the focus and its neighbours in the graph.
@@ -289,8 +368,7 @@ export default {
       pane.hidden = !paged;
       let L = layout();
 
-      intentEl.innerHTML = `<small>What this PR does</small>${esc(app.graph.intent)}`;
-      intentEl.style.opacity = app.level === 0 ? 1 : 0;
+      intentEl.hidden = true; // the PR card at the root carries the intent
 
       placeAll(L);
       // The code-bearing card sizes itself; re-lay out around its real height in the same frame.
@@ -334,14 +412,14 @@ export default {
     function placeAll(L) {
       for (const n of els.values()) n._seen = false;
       for (const h of L.heads) {
-        if (h.col != null) { place(`col:${h.col}`, `colh ${h.col === 0 ? "root" : h.col < 0 ? "lane" : ""}`, COL_HEAD(h.col), h.x, h.y, h.w, null); continue; }
+        if (h.col != null) { place(`col:${h.col}`, `colh ${h.col === 0 ? "root" : typeof h.col === "number" && h.col < 0 ? "lane" : ""}`, COL_HEAD(h.col), h.x, h.y, h.w, null); continue; }
         const items = app.index.walk.filter((p) => app.get(p)?.core === h.c);
         const done = items.filter((p) => app.isReviewed(p)).length;
         place(`ch:${h.c.id}`, `chead ${app.level > 0 && !h.current ? "other" : ""}`, `${app.graph.cores.indexOf(h.c) + 1} · ${esc(h.c.title)} <small>${done}/${items.length}${h.current || app.level === 0 ? ` · ${esc(h.c.summary)}` : ""}</small>`, h.x, h.y, null, null, { core: h.c.id });
       }
       for (const it of L.items) {
         const c = card(it);
-        const key = it.kind === "pl" ? it.pl.id : it.kind === "agg" ? `agg:${it.key}` : "low";
+        const key = it.kind === "pl" ? it.pl.id : it.kind === "agg" ? `agg:${it.key}` : it.kind === "grp" ? `grp:${it.g.id}` : it.kind;
         const pin = filled?.h && it.body; // the filled card keeps its size through updates
         place(key, `card ${c.cls}${pin ? " pinned" : ""}`, c.html, it.x, it.y, it.w, pin ? filled.h : it.body ? null : it.h, c.data, c.title);
       }
@@ -351,9 +429,14 @@ export default {
     // ---- interaction
     world.addEventListener("click", (ev) => {
       if (moved || ev.target.closest(".nbody")) return;
-      const t = ev.target.closest("[data-go],[data-expand],[data-core]");
+      const t = ev.target.closest("[data-go],[data-expand],[data-core],[data-group],[data-pr]");
       if (!t) return;
       if (t.dataset.expand) { expanded.add(t.dataset.expand); return update("expand"); }
+      if (t.dataset.pr) return app.setLevel(0);
+      if (t.dataset.group) { // into the group: its first unreviewed core change
+        const g = lastGroups?.get(t.dataset.group); const to = g && (g.roots.find((r) => !app.isReviewed(r)) ?? g.roots[0]);
+        return to && app.setFocus(to, { level: 1 });
+      }
       if (t.dataset.core) { const first = app.index.walk.find((p) => app.get(p)?.core.id === t.dataset.core); app.setFocus(first, { level: 1 }); return; }
       const go = t.dataset.go;
       if (go === app.canonical(go) && go === app.focus) app.setLevel(app.level + 1);

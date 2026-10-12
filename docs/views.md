@@ -13,7 +13,12 @@ All views share the three zoom levels (Overview → Core → Page) described in 
 
 ## Flow
 
-The whole PR as one graph that reads left to right from the changes: **① core change** (every core change in the PR) → **1st order** (what they affect) → **2nd order** (what that affects) → …. Code that several cores share appears once. Every page hangs off a page one order before it, so a column is one order further from the changes: the flow starts at the highlighted core-change column and ends at the rightmost one. Other links show, dashed, around the focus. What the changes rely on isn't part of the flow: it sits in lanes to the left (*relies on · changed*, then *relies on · untouched*, which the top bar's **○ Untouched** switch hides), each card beside the page it feeds. A root card names its core.
+The whole PR as one tree that reads left to right: **this PR** → its **concerns** → a concern's **① core changes** → **1st order** (what they affect) → **2nd order** → ….
+
+- **Zoomed out** (Overview), you see the PR and its concerns: each a card with its module, its lead change, how many core changes it holds and your progress.
+- **Zoom into a concern** (click it, or move into it at the Core level) and it opens into its subtree, while the other concerns stay single cards. Every page hangs off a page one order before it, code that several changes share appears once, and other links show, dashed, around the focus.
+- **What the concern relies on** sits in lanes just before its core changes (*relies on · untouched*, which the top bar's **○ Untouched** switch hides, then *relies on · changed*), each card beside the page it feeds.
+- **Concerns are grouped by module** for now: the deepest folder level (below what every file shares) that gives at most 15 groups, with a change that's alone in its module joining the group holding most of what it's linked to. Claude-made concerns can replace this later.
 
 - Nodes are **sized by relevance**: the focus is big, its first few neighbours are medium, and the rest are small and sit back. Long lists of children fold into "+N", always keeping the path to the focus.
 - Each card says how it relates in its own text ("Uses `retryMethods` and was changed too"); the band is a chip on it.
