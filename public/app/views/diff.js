@@ -249,8 +249,8 @@ export default {
     // Framing a viewer scales it to the stage's width (FRAME_PAD each side); the cap is the height that then fills
     // the stage's height too, so a full viewer and the stage share one aspect ratio (its band label sits in the margin).
     const FRAME_PAD = 40;
-    // Zoom freely; code inside a viewer is never drawn larger than focus mode draws it (MAX_TEXT× its canvas size):
-    // past that, the viewer grows and shows more of its file at the same text size (its contents are zoomed back).
+    // Code inside a viewer is never drawn larger than focus mode draws it (MAX_TEXT× its canvas size): zoomed past
+    // that, the viewer grows and shows more of its file at the same text size (its contents are zoomed back).
     const MAX_TEXT = 1.1;
     const fitScale = () => Math.max(0.3, ((stage.clientWidth || 1440) - FRAME_PAD * 2) / W);
     const capH = () => Math.round(Math.max(240, ((stage.clientHeight || 900) - FRAME_PAD * 2) / fitScale()));
@@ -666,9 +666,10 @@ export default {
       clearTimeout(clampTimer);
       if (now) set(); else clampTimer = setTimeout(set, 160);
     }
-    // Zoom by k around a point on the stage, keeping whatever is under it in place.
+    // Zoom by k around a point on the stage, keeping whatever is under it in place. At most until a viewer fills
+    // the stage less FRAME_PAD (a full-height viewer shares the stage's shape, so its height fits then too).
     function zoomAt(k, px, py) {
-      const s = Math.max(0.15, Math.min(Math.max(4, cam.s), cam.s * k)); // never jumps down from a filled view
+      const s = Math.max(0.15, Math.min(Math.max(fitScale(), cam.s), cam.s * k)); // never jumps down from a filled view
       const wx = (px - cam.tx - pan.x) / cam.s, wy = (py - cam.ty - pan.y) / cam.s;
       cam = { s, tx: px - wx * s - pan.x, ty: py - wy * s - pan.y };
       apply();
