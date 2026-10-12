@@ -2,9 +2,11 @@ import { DONE, api, createApp } from "./core.js";
 import { expandAll, renderFile, renderNode, renderPage, startComment, startFileNote } from "./code.js";
 import * as chrome from "./chrome.js";
 import * as palette from "./palette.js";
+import * as tour from "./tour.js";
 import views from "./views/index.js";
 
 const [graph, session] = await Promise.all([api("/api/graph"), api("/api/session")]);
+const fresh = !Object.keys(session.settings).length; // nothing saved yet: a first launch
 const app = createApp({ graph, session });
 app.claudeReady = graph.generator.tree === "claude";
 app.renderPage = (el, pid) => { app.pageEl = el; renderPage(app, el, pid ?? app.focus); };
@@ -99,12 +101,15 @@ const hash = new URLSearchParams(location.hash.slice(1)); // deep links for test
 if (hash.has("level")) app.level = Number(hash.get("level"));
 if (hash.has("p")) app.focus = app.index.walk[Number(hash.get("p")) - 1] ?? app.focus;
 mount(hash.get("view") ?? app.settings.view);
+tour.init(app, { fresh });
 chrome.init(app, views);
-if (resume && resume !== app.focus && !hash.has("p") && (app.progress().done > 0 || session.state.note)) chrome.reentry(resume, session.state.lastLevel ?? 2);
-else if (entry && !hash.has("p")) {
-  const deps = entry.deps === 1 ? "1 thing" : `${entry.deps} things`;
-  chrome.coreIntro(app.get(entry.pid), `<span style="color:var(--muted);font-size:13px">Start here: the core with the least around it (${deps} it relies on or affects). <kbd>esc</kbd> for the overview.</span>`);
-}
+tour.welcome(() => {
+  if (resume && resume !== app.focus && !hash.has("p") && (app.progress().done > 0 || session.state.note)) chrome.reentry(resume, session.state.lastLevel ?? 2);
+  else if (entry && !hash.has("p")) {
+    const deps = entry.deps === 1 ? "1 thing" : `${entry.deps} things`;
+    chrome.coreIntro(app.get(entry.pid), `<span style="color:var(--muted);font-size:13px">Start here: the core with the least around it (${deps} it relies on or affects). <kbd>esc</kbd> for the overview.</span>`);
+  }
+});
 
 // ---- keys
 const typing = (t) => t.matches?.("input, textarea, [contenteditable]");
@@ -174,6 +179,7 @@ document.addEventListener("keydown", (ev) => {
     if (ev.key === "Escape" || ev.key === "Enter") { ev.preventDefault(); chrome.close(); }
     return;
   }
+  if (tour.key(ev.key)) return ev.preventDefault(); // the callout's own keys; every other key still works under it
   const k = ev.shiftKey && ev.code === "Digit1" ? "!" : ev.key; // shift+1, whatever the layout prints
   if (press(k)) ev.preventDefault();
 });

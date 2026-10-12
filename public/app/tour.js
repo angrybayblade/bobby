@@ -1,20 +1,42 @@
 // Callouts that point at the interface: one after another for a tour, or one on its own. They never block: the app
 // underneath keeps its keys and clicks, and the callout follows what it points at as the app re-renders.
 import { esc } from "./core.js";
+import { MOD } from "./palette.js";
 
 const $ = (q) => document.querySelector(q);
-let app, steps = [], at = -1, onEnd = null, card, ring;
+const kbd = (...ks) => ks.map((k) => `<kbd>${k}</kbd>`).join(" ");
+const PALETTE_KEY = MOD === "⌘" ? kbd("⌘K") : kbd("ctrl", "k");
+let app, steps = [], at = -1, onEnd = null, card, ring, firstRun = false;
+
+const TOUR = [
+  { title: "Welcome to Bobby", body: `Bobby shows a PR one page at a time, in dependency order: the code a change relies on, then the change, then what it affects. Four quick tips, or ${kbd("esc")} to skip.` },
+  { at: "#where", title: "Where you are", body: `The PR, the core change you're in, and the page you're on. ${kbd("enter")} zooms in and ${kbd("esc")} zooms out: overview, core, page.` },
+  { at: "#view", title: "The walk", body: `${kbd("j")} ${kbd("k")} step through it. <i class="glyph core"></i> is a core change, <i class="glyph change"></i> changed code, <i class="glyph context"></i> untouched code around it. ${kbd("a")} marks a page reviewed and moves on, ${kbd("x")} flags it for later, ${kbd("c")} comments on a line.` },
+  { at: '#top .seg[aria-label="View"]', title: "Four ways to see it", body: `Flow, Outline, Lens and Diff show the same walk. ${kbd("v")} switches, and you keep your place.` },
+  { at: "#keys", title: "Keys when you need them", body: `These hints fade once you've used them. ${kbd("?")} lists every key, ${PALETTE_KEY} searches every command, and ${kbd("s")} submits your review.`, next: "Start reviewing" },
+];
 
 export const isOpen = () => at >= 0;
 
-export function init(a) {
+/** `fresh`: nothing saved yet, so this is a first launch. The tour is offered once, then left to `?` and the palette. */
+export function init(a, { fresh = false } = {}) {
   app = a;
+  firstRun = fresh && app.settings.tour !== "seen";
+  if (app.settings.tour !== "seen") app.saveSettings({ tour: "seen" });
   ring = document.body.appendChild(Object.assign(document.createElement("div"), { className: "tour-ring", hidden: true }));
   card = document.body.appendChild(Object.assign(document.createElement("div"), { className: "tour", hidden: true }));
   card.setAttribute("role", "dialog");
   card.addEventListener("click", (ev) => { const b = ev.target.closest("[data-tstep]"); if (b) go(b.dataset.tstep); });
   window.addEventListener("resize", place);
   app.on(() => isOpen() && requestAnimationFrame(place));
+}
+
+export const start = (then) => show(TOUR, { then });
+/** Runs the tour on a first launch, then `then`; otherwise just `then`. */
+export function welcome(then) {
+  if (!firstRun) return then();
+  firstRun = false;
+  start(then);
 }
 
 /**

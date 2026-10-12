@@ -31,6 +31,7 @@ export const DEFAULT_SETTINGS = {
   diffLayout: "split", // split | inline: old beside new, or changed lines in one column
   palette: "github", // github | warm: colours (and, for github, fonts); theme picks dark or light
   hintUses: {},
+  tour: "unseen", // unseen | seen: the first-run tour is offered once
 };
 
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
