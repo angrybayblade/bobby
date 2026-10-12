@@ -58,6 +58,11 @@ const log = (m: string) => (cmd === "extract" && !values.out ? console.error(m) 
 if (cmd === "open") {
   const graph = JSON.parse(readFileSync(arg, "utf8")) as ReviewGraph;
   if (graph.schema !== GRAPH_SCHEMA && !LEGACY_SCHEMAS.includes(graph.schema)) throw new Error(`Unsupported graph schema: ${graph.schema}`);
+  // The file's comments are as of its extraction: read the PR's current ones, keeping the file's if GitHub can't be reached.
+  if (graph.pr.provider !== "local" && graph.pr.number) {
+    const discussion = await reviewComments(graph.pr, true).catch(() => null);
+    if (discussion) graph.discussion = discussion;
+  }
   await serve({ cwd: values.repo ?? null, staticGraph: graph, state: loadState({ ...graph.pr }), llm: "off" });
 } else {
   const t0 = Date.now();
