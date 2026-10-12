@@ -356,6 +356,23 @@ mark.wd { background: var(--del-word); color: inherit; border-radius: 0; }
 .reentry .parked { padding: 12px 16px; border-left: 3px solid var(--signal); background: var(--signal-soft); border-radius: 0 3px 3px 0; margin-bottom: 12px; font-family: var(--font-prose); }
 .err { color: var(--risk); font-size: 13px; margin-top: 10px; }
 
+/* ---------- command palette ---------- */
+#overlay:has(> .palette) { place-items: start center; padding-top: 12vh; }
+.modal.palette { width: min(680px, calc(100vw - 32px)); max-height: 72vh; padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+.palette input { width: 100%; padding: 15px 18px; border: 0; border-bottom: 1px solid var(--line-soft); background: transparent; color: inherit; font: 16px var(--font-ui); outline: none; }
+.palette .plist { overflow: auto; padding: 6px; min-height: 0; }
+.palette .pi { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 12px; border-radius: 3px; text-align: left; font-size: 14px; white-space: nowrap; }
+.palette .pi[aria-selected="true"] { background: var(--signal-soft); box-shadow: inset 2px 0 0 var(--signal); }
+.palette .pi .nog { width: 9px; flex: none; }
+.palette .pi .t { flex: none; max-width: 62%; overflow: hidden; text-overflow: ellipsis; }
+.palette .pi .s { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--faint); font-size: 12.5px; }
+.palette .pi .st { flex: none; color: var(--muted); font-size: 12px; }
+.palette .pi .g { flex: none; font: 600 10.5px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.palette .pi .k { flex: none; }
+.palette mark { background: none; color: var(--signal); font-weight: 600; }
+.palette .none { padding: 14px 12px; color: var(--faint); font-size: 13px; text-align: center; }
+.palette .pfoot { display: flex; gap: 18px; padding: 8px 16px; border-top: 1px solid var(--line-soft); font-size: 12px; color: var(--faint); }
+
 #toast { position: fixed; right: 20px; bottom: 52px; z-index: 40; max-width: 360px; padding: 12px 16px; border-radius: 4px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); font-size: 14px; display: flex; gap: 12px; align-items: center; }
 #toast[hidden] { display: none; }
 #toast .x { color: var(--faint); margin-left: auto; }
