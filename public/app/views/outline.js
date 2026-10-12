@@ -33,7 +33,7 @@ const CSS = `
 .outline .more { padding: 3px 10px 3px calc(36px + var(--depth, 0) * 18px); font-size: 12px; color: var(--muted); }
 .outline.filled { grid-template-columns: 1fr; }
 .outline.filled .rail { display: none; }
-.outline .story { max-width: 760px; margin: 0 auto; padding: 36px 36px 80px; }
+.outline .story { padding: 24px 28px 80px; } /* from the left, the pane's full width; prose keeps a reading measure */
 .outline .story .eyebrow { font-size: 12px; letter-spacing: .09em; text-transform: uppercase; color: var(--faint); }
 .outline .story h1 { font: 650 calc(var(--size) * 1.9)/1.25 var(--font-prose); letter-spacing: -.015em; margin: 8px 0 14px; }
 .outline .story .hook { margin: -14px 0 28px; max-width: 65ch; }

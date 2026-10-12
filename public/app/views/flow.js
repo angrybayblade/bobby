@@ -315,11 +315,10 @@ export default {
         s = Math.min((sw - PAD * 2) / focusItem.w, (sh - PAD * 2) / focusItem.h);
         tx = sw / 2 - (focusItem.x + focusItem.w / 2) * s; ty = sh / 2 - (focusItem.y + focusItem.h / 2) * s;
       }
-      if (app.level === 0 && box.h * s > sh - top - PAD) {
-        ty = top - box.y * s; // too tall to fit: start under the intent, keep the current core in view
-        const cur = focusItem && { y: focusItem.y, h: focusItem.h };
-        if (cur) ty = Math.min(ty, sh * 0.45 - (cur.y + cur.h / 2) * s);
-      }
+      if (app.level === 0) { // the whole tree from the top-left, as wide as the canvas allows; scroll for the rest
+        s = Math.max(minScale, Math.min(1.5, (sw - PAD * 2) / box.w));
+        tx = PAD - box.x * s; ty = PAD - box.y * s;
+      } else if (!(app.level === 1 && focusItem?.body)) tx = PAD - box.x * s; // from the left, not centred
       if (filled) return fillCam();
       if (!mine) { view = { tx, ty, s }; apply(); }
     }
