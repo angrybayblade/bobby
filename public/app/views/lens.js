@@ -59,10 +59,12 @@ const CSS = `
 .lens .grid .intent { max-width: 70ch; font: 600 calc(var(--size) * 1.4)/1.35 var(--font-prose); margin: 0 auto 26px; }
 .lens .grid .intent small { display: block; font: 12px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); margin-bottom: 6px; }
 .lens .planets { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; max-width: 1100px; margin: 0 auto; }
-.lens .planet { display: flex; flex-direction: column; justify-content: flex-start; text-align: left; border: 1px solid var(--line); border-radius: 4px; padding: 16px 18px; background: var(--surface); }
+.lens .planet { min-width: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-start; text-align: left; border: 1px solid var(--line); border-radius: 4px; padding: 16px 18px; background: var(--surface); }
 .lens .planet.cur { border-color: var(--signal); box-shadow: 0 0 0 5px var(--signal-soft); }
-.lens .planet h3 { margin: 0 0 6px; font-size: calc(var(--size) * 1.02); }
-.lens .planet p { margin: 0 0 12px; color: var(--muted); font: 14px/1.5 var(--font-prose); }
+.lens .planet h3 { margin: 0 0 6px; font-size: calc(var(--size) * 1.02); display: flex; gap: 6px; min-width: 0; }
+.lens .planet h3 .n { flex: none; color: var(--faint); }
+.lens .planet h3 .tt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lens .planet p { margin: 0 0 12px; color: var(--muted); font: 14px/1.5 var(--font-prose); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .lens .planet .dots { display: flex; gap: 3px; flex-wrap: wrap; }
 .lens .planet .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
 .lens .planet .dots i.d { background: var(--muted); }
@@ -90,7 +92,7 @@ export default {
       return `<div class="grid"><div class="intent"><small>What this PR does</small>${esc(app.graph.intent)}</div><div class="planets">${app.graph.cores.map((c, ci) => {
         if (!app.coreShown(c)) return "";
         const items = app.index.walk.filter((p) => app.get(p)?.core === c);
-        return `<button class="planet ${c === fc ? "cur" : ""}" data-core="${c.id}"><h3>${ci + 1} · ${esc(c.title)}</h3><p>${esc(c.summary)}</p><div class="dots">${items.map((p) => `<i class="${app.isReviewed(p) ? "d" : ""}"></i>`).join("")}</div></button>`;
+        return `<button class="planet ${c === fc ? "cur" : ""}" data-core="${c.id}"><h3 title="${esc(c.title)}"><span class="n">${ci + 1}</span><span class="tt">${esc(c.title)}</span></h3><p title="${esc(c.summary)}">${esc(c.summary)}</p><div class="dots">${items.map((p) => `<i class="${app.isReviewed(p) ? "d" : ""}"></i>`).join("")}</div></button>`;
       }).join("")}</div></div>`;
     }
 
