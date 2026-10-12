@@ -113,7 +113,7 @@ const CSS = `
 
 const BAND_LABEL = { upUnchanged: "relies on · untouched", upChanged: "relies on · changed", core: "core", downChanged: "affects · changed", downUnchanged: "affects · untouched" };
 let W = 840; // a viewer's width: wider in split layout, so each side keeps room
-const MAX_H = 460, GX = 200, GY = 64, TOP = 34;
+const GX = 200, GY = 64, TOP = 34;
 
 export default {
   id: "diff",
@@ -210,10 +210,14 @@ export default {
       }
       layout();
       for (const [p, top] of keep) if (views.has(p)) views.get(p).body.scrollTop = top;
-      builtFrom = buildSig(); builtGraph = app.graph; fileSigs = new Map(M.files.map((f) => [f.path, fileSig(f.path)]));
+      builtCap = capH(); builtFrom = buildSig(); builtGraph = app.graph; fileSigs = new Map(M.files.map((f) => [f.path, fileSig(f.path)]));
     }
     // What a viewer's content depends on. Settings outside buildSig (theme, motion, hints, edges…) are pure CSS or
     // a redraw, so they never rebuild; a change inside one file (its layout, its comments and notes) re-renders that file.
+    // A viewer is as wide as W and at most as tall as the stage's shape allows (W × stage height / width), so framing
+    // one fills the stage; a file with less to show is only as tall as its code.
+    const capH = () => { const sw = stage.clientWidth || 1440, sh = stage.clientHeight || 900; return Math.round(Math.max(240, (W * (sh - TOP - 80)) / Math.max(1, sw - 80))); };
+    let builtCap = 0;
     let builtFrom = "", builtGraph = null, fileSigs = new Map();
     const buildSig = () => JSON.stringify(["diffLayout", "size", "font", "spacing", "palette", "prComments", "untouched", "tests"].map((k) => app.settings[k]));
     const fileSig = (path) => {
@@ -251,7 +255,8 @@ export default {
       // forced a full layout per file.
       const vs = files.map((f) => views.get(f.path)).filter((v) => !only || only.has(v.f.path));
       for (const v of vs) v.el.style.height = "";
-      for (const v of vs) v.h = Math.min(MAX_H, v.el.offsetHeight);
+      const maxH = capH();
+      for (const v of vs) v.h = Math.min(maxH, v.el.offsetHeight);
       for (const v of vs) v.el.style.height = `${v.h}px`;
       const edges = [...next].flatMap(([a, bs]) => [...bs].map((b) => [a.path, b.path]));
       const L = layered(files.map((f) => f.path), edges, { h: (p) => views.get(p).h, gap: GY, compGap: GY * 2 + TOP });
@@ -644,7 +649,10 @@ export default {
       restyle();
       if (reason === "focus" && !selfFocus) { reveal(true); track(); setTimeout(follow, 350); } // after the smooth scroll settles
       if (reason === "level" && app.level === 1 && beforePage) { cam = beforePage.cam; pan = beforePage.pan; beforePage = null; apply(); }
-      else if (reason === "level" || reason === "resize") { beforePage = null; frame(); }
+      else if (reason === "resize" && M && Math.abs(capH() - builtCap) > 4) { // the stage changed shape: re-measure the viewers
+        for (const v of views.values()) v.el.style.height = "";
+        layout(); builtCap = capH(); if (filled) pin(views.get(filled.path)); beforePage = null; frame();
+      } else if (reason === "level" || reason === "resize") { beforePage = null; frame(); }
       redraw();
     }
 
