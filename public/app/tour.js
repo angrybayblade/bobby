@@ -9,7 +9,7 @@ const PALETTE_KEY = MOD === "⌘" ? kbd("⌘K") : kbd("ctrl", "k");
 let app, steps = [], at = -1, onEnd = null, card, ring, firstRun = false;
 
 const TOUR = [
-  { title: "Welcome to Bobby", body: `Bobby shows a PR one page at a time, in dependency order: the code a change relies on, then the change, then what it affects. Four quick tips, or ${kbd("esc")} to skip.` },
+  { title: "Welcome", body: `I'll take you through this PR one page at a time, in dependency order: the code a change relies on, then the change, then what it affects. Four quick tips, or ${kbd("esc")} to skip.` },
   { at: "#where", title: "Where you are", body: `The PR, the core change you're in, and the page you're on. ${kbd("enter")} zooms in and ${kbd("esc")} zooms out: overview, core, page.` },
   { at: "#view", title: "The walk", body: `${kbd("j")} ${kbd("k")} step through it. <i class="glyph core"></i> is a core change, <i class="glyph change"></i> changed code, <i class="glyph context"></i> untouched code around it. ${kbd("a")} marks a page reviewed and moves on, ${kbd("x")} flags it for later, ${kbd("c")} comments on a line.` },
   { at: '#top .seg[aria-label="View"]', title: "Four ways to see it", body: `Flow, Outline, Lens and Diff show the same walk. ${kbd("v")} switches, and you keep your place.` },
@@ -20,7 +20,7 @@ const TOUR = [
 // marks it seen. A first launch marks them all seen: the tour covers the app as it is.
 const NEWS = [
   { id: "palette", title: "Command palette", body: `${PALETTE_KEY} searches every command, core, file and page, and runs what you pick.` },
-  { id: "tour", title: "A tour of Bobby", body: `Four quick tips on how the walk, the views and the keys fit together. It's on ${kbd("?")} whenever you want it again.`, act: { label: "Take the tour", run: () => start() } },
+  { id: "tour", title: "A quick tour", body: `Let me show you how the walk, the views and the keys fit together, in four quick tips. You'll find it on ${kbd("?")} whenever you want it again.`, act: { label: "Take the tour", run: () => start() } },
 ];
 let news = null;
 
