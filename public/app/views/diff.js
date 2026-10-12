@@ -45,11 +45,13 @@ const CSS = `
 :is(.dv, .fvw) .fvh [data-tip] { position: relative; }
 :is(.dv, .fvw) .fvh [data-tip]::after { content: attr(data-tip); position: absolute; top: calc(100% + 8px); right: 0; z-index: 6; padding: 4px 9px; border-radius: 1px; background: var(--text); color: var(--bg); font: 500 12px var(--font-ui); white-space: nowrap; pointer-events: none; opacity: 0; transform: translateY(-2px); transition: opacity .12s, transform .12s; }
 :is(.dv, .fvw) .fvh [data-tip]:hover::after { opacity: 1; transform: none; transition-delay: .25s; }
-.dv .viewed .fvh .vwf::after, .fvw.viewed .fvh .vwf::after { content: attr(data-tip-on); }
-.dv .viewed .fvh .vwf, .fvw.viewed .fvh .vwf { color: var(--ok); }
+
 /* A file marked read says so in its header. */
-:is(.dv, .fvw) .fvh .fread { display: none; font: 600 10.5px var(--font-ui); color: var(--ok); white-space: nowrap; padding: 0 6px; border: 1px solid color-mix(in srgb, var(--ok) 45%, transparent); border-radius: 2px; }
-.dv .viewed .fvh .fread, .fvw.viewed .fvh .fread { display: inline; }
+:is(.dv, .fvw) .fvh .frd { display: inline-flex; align-items: center; gap: 5px; flex: none; padding: 0 7px; font: 500 11px/18px var(--font-ui); color: var(--faint); white-space: nowrap; border: 1px solid var(--line-soft); border-radius: 2px; }
+:is(.dv, .fvw) .fvh .frd:hover { color: var(--text); border-color: var(--muted); }
+:is(.dv, .fvw) .fvh .frd .cb { display: inline-grid; place-items: center; width: 10px; height: 10px; border: 1px solid currentColor; font: 700 8px/1 var(--font-ui); font-style: normal; }
+.dv .viewed .fvh .frd, .fvw.viewed .fvh .frd { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+.dv .viewed .fvh .frd .cb::after, .fvw.viewed .fvh .frd .cb::after { content: "✓"; }
 :is(.dv, .fvw) .fvb { position: relative; overflow: auto; overscroll-behavior: contain; cursor: auto; flex: 1; min-height: 0; }
 :is(.dv, .fvw) .sec { padding: 10px 12px 2px; border-bottom: 1px solid var(--line-soft); }
 :is(.dv, .fvw) .sec:last-child { border-bottom: 0; }
@@ -125,8 +127,7 @@ export function fileViewer(app, pid) {
   const { a, d } = app.stat(pid), split = app.layoutOf(path) === "split", done = app.isFileRead(path);
   const stat = n.kind === "change" ? `<span style="color:var(--ok)">+${a}</span> <span style="color:var(--risk)">−${d}</span>` : "untouched";
   return `<div class="fvw ${done ? "viewed" : ""}"><div class="fvh"><i class="glyph ${n.kind}"></i><span class="p">${esc(dir)}<b>${esc(path.split("/").pop())}</b></span><span class="band ${pl.band}">${BAND_LABEL[pl.band]}</span><span class="st">${stat}</span>`
-    + `<span class="fread">✓ File read</span>`
-    + `<button class="max vwf" data-pfile="${esc(path)}" aria-label="Mark file read" data-tip="Mark the whole file read · local only" data-tip-on="Unmark the whole file">✓</button>`
+    + `<button class="frd" data-pfile="${esc(path)}" aria-label="Mark the whole file read" title="Every page of this file, at once · local only"><i class="cb"></i><span>File read</span></button>`
     + `<button class="max lay" data-flayout="${esc(path)}" aria-label="Inline or split" data-tip="${split ? "Show this file inline" : "Show this file split"} · d for every file">${split ? "▤" : "◫"}</button>`
     + `<button class="max" data-pnote="${esc(path)}" aria-label="Note on this file" data-tip="Private note on this file · only you see it">✎</button>`
     + `<button class="max" data-pmax="1" aria-label="Full screen" data-tip="Full screen · g">⤢</button></div><div class="fvb nbody"></div></div>`;
@@ -210,8 +211,7 @@ export default {
     function header(f, exit = false) {
       const dir = f.path.includes("/") ? f.path.slice(0, f.path.lastIndexOf("/") + 1) : "";
       return `<i class="glyph ${f.changed ? "change" : "context"}"></i><span class="p">${esc(dir)}<b>${esc(f.path.split("/").pop())}</b></span><span class="band ${f.band}">${BAND_LABEL[f.band]}</span><span class="st">${stat(f)}</span>`
-        + `<span class="fread">✓ File read</span>`
-        + `<button class="max vwf" data-fviewed="${esc(f.path)}" aria-label="Mark file read" data-tip="Mark the whole file read · local only" data-tip-on="Unmark the whole file">✓</button>`
+        + `<button class="frd" data-fviewed="${esc(f.path)}" aria-label="Mark the whole file read" title="Every page of this file, at once · local only"><i class="cb"></i><span>File read</span></button>`
         + `<button class="max lay" data-flayout="${esc(f.path)}" aria-label="Inline or split" data-tip="${app.layoutOf(f.path) === "split" ? "Show this file inline" : "Show this file split"} · d for every file">${app.layoutOf(f.path) === "split" ? "▤" : "◫"}</button>`
         + `<button class="max" data-fnote="${esc(f.path)}" aria-label="Note on this file" data-tip="Private note on this file · only you see it">✎</button>`
         + (exit ? `<button class="max" data-exit="1" aria-label="Back to all files" data-tip="Back to all files · esc">⤡</button>`
