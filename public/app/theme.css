@@ -248,6 +248,7 @@ kbd {
 .code .fh b { color: var(--text); font-weight: 600; }
 .code .fh .ctx { color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 .code .fh .st { white-space: nowrap; }
+.code .fh > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* a long path gives way to the counts */
 .code.folded .fh { width: 100%; text-align: left; border-bottom: 0; }
 .code.folded .fh:hover { color: var(--text); background: var(--raised); }
 .code .fold-t { margin-left: 10px; font: 12px var(--font-code); color: var(--faint); }
