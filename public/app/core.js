@@ -137,6 +137,39 @@ export function createApp({ graph, session }) {
       api("/api/mark", { keys, mark });
       app.emit("marks");
     },
+    // ---- dependency levels: a page's distance from its core change along the core's edges. 0 is the core change,
+    // 1, 2… what it affects, −1, −2… what it relies on; a page linked to nothing takes its band's level.
+    coreLevels(core) {
+      const cache = (app.index.levels ??= new Map());
+      let lvl = cache.get(core.id);
+      if (lvl) return lvl;
+      const es = app.edgesOf(core.id), pls = app.corePlacements(core);
+      lvl = new Map();
+      for (const pl of pls) if (pl.band === "core") lvl.set(pl.id, 0);
+      for (let changed = true, n = 0; changed && n < pls.length; n++) {
+        changed = false;
+        for (const e of es) {
+          const a = app.get(e.from)?.pl, b = app.get(e.to)?.pl;
+          if (!a || !b) continue;
+          if (lvl.has(e.from) && !lvl.has(e.to) && !b.band.startsWith("up")) { lvl.set(e.to, lvl.get(e.from) + 1); changed = true; }
+          if (lvl.has(e.to) && !lvl.has(e.from) && a.band.startsWith("up")) { lvl.set(e.from, lvl.get(e.to) - 1); changed = true; }
+        }
+      }
+      const bandLvl = { upUnchanged: -2, upChanged: -1, core: 0, downChanged: 1, downUnchanged: 2 };
+      for (const pl of pls) if (!lvl.has(pl.id)) lvl.set(pl.id, bandLvl[pl.band]);
+      cache.set(core.id, lvl);
+      return lvl;
+    },
+    pageLevel(pid) { const loc = app.get(pid); return loc ? app.coreLevels(loc.core).get(loc.pl.id) : undefined; },
+    /** A file's level: that of its page closest to a core change (ties: the one it affects, not relies on); within
+     *  `core` when given (its repeats included, so a file shown in that core counts there). */
+    fileLevel(path, core) {
+      const at = (p) => { const n = app.nodeOf(p); return n && (n.kind === "change" ? n.file : n.location.path); };
+      const pids = core ? app.corePlacements(core).map((pl) => pl.id).filter((p) => at(p) === path && app.index.walkPos.has(app.canonical(p))) : app.filePages(path);
+      const ls = pids.map((p) => (core ? app.coreLevels(core).get(p) : app.pageLevel(p))).filter((l) => l != null);
+      return ls.length ? ls.sort((a, b) => Math.abs(a) - Math.abs(b) || b - a)[0] : undefined;
+    },
+
     // ---- whole files: every page of the walk that shows code in a file
     filePages(path) {
       const at = (p) => { const n = app.nodeOf(p); return n && (n.kind === "change" ? n.file : n.location.path); };

@@ -213,6 +213,10 @@ kbd {
 #files .ffile .fs { font-family: var(--font-code); font-size: 11px; flex: none; }
 #files .ffile .fs .a { color: var(--ok); } #files .ffile .fs .d { color: var(--risk); }
 #files .ffile .fc { color: var(--signal); font-size: 11px; flex: none; }
+#files .ffile .flvl { flex: none; font: 500 10px var(--font-code); color: var(--faint); padding: 0 4px; border: 1px solid var(--line-soft); border-radius: 2px; }
+#files .ffile .flvl.l0 { color: var(--text); border-color: var(--muted); }
+#files .ffile .flvl.up { border-style: dashed; }
+#files .ffile .flvl.other { opacity: .45; }
 #files .ffile .ok { color: var(--faint); flex: none; opacity: 0; padding: 0 2px; border-radius: 2px; }
 #files .ffile:hover .ok { opacity: 1; } #files .ffile .ok:hover { color: var(--text); background: var(--bg); }
 #files .ffile.done .ok { opacity: 1; color: var(--ok); }

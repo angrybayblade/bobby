@@ -195,22 +195,7 @@ export default {
     // ---- arrows: ← / → move a dependency level (to what the focus relies on / affects, along an edge); ↑ / ↓ stay on
     // the level and move to the previous / next page there, in walk order. A page's level is its distance from the core
     // change: 0 for the core change, +1, +2… for what it affects, −1, −2… for what it relies on.
-    function levels(core) {
-      const es = app.edgesOf(core.id), pls = app.corePlacements(core), lvl = new Map();
-      for (const pl of pls) if (pl.band === "core") lvl.set(pl.id, 0);
-      for (let changed = true, n = 0; changed && n < pls.length; n++) {
-        changed = false;
-        for (const e of es) {
-          const a = app.get(e.from)?.pl, b = app.get(e.to)?.pl;
-          if (!a || !b) continue;
-          if (lvl.has(e.from) && !lvl.has(e.to) && !b.band.startsWith("up")) { lvl.set(e.to, lvl.get(e.from) + 1); changed = true; }
-          if (lvl.has(e.to) && !lvl.has(e.from) && a.band.startsWith("up")) { lvl.set(e.from, lvl.get(e.to) - 1); changed = true; }
-        }
-      }
-      const bandLvl = { upUnchanged: -2, upChanged: -1, core: 0, downChanged: 1, downUnchanged: 2 }; // not linked: by its band
-      for (const pl of pls) if (!lvl.has(pl.id)) lvl.set(pl.id, bandLvl[pl.band]);
-      return { lvl, order: pls.map((pl) => pl.id) };
-    }
+    const levels = (core) => ({ lvl: app.coreLevels(core), order: app.corePlacements(core).map((pl) => pl.id) });
     function move(dc, dr) {
       const loc = app.get(app.focus);
       if (!loc) return;

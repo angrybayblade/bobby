@@ -56,6 +56,17 @@ function filesOf() {
   }
   return files;
 }
+/** L0, L1, L-1: how far the file is from the core change in the current core's tree (the one you're on); a file
+ *  outside it shows its own closest level, faint. */
+const lvlTag = (path) => {
+  const core = app.get(app.focus)?.core;
+  const here = core ? app.fileLevel(path, core) : undefined;
+  const l = here ?? app.fileLevel(path);
+  if (l == null) return "";
+  const what = l === 0 ? "a core change" : l > 0 ? `${l} step${l > 1 ? "s" : ""} downstream: affected by the change` : `${-l} step${l < -1 ? "s" : ""} upstream: relied on by the change`;
+  const where = here != null ? `in core ${app.get(app.focus).ci + 1}` : "in another core";
+  return `<span class="flvl ${l === 0 ? "l0" : l > 0 ? "dn" : "up"} ${here == null ? "other" : ""}" title="Level ${l} ${where} · ${what}">L${l}</span>`;
+};
 function renderFiles() {
   const el = $("#files");
   if (!el) return;
@@ -101,7 +112,7 @@ function renderFiles() {
     }
     for (const { name, f } of d.files.sort((a, b) => a.name.localeCompare(b.name))) {
       const done = f.pids.every((p) => app.isReviewed(p)), n = talk(f.path);
-      rows.push(`<button class="ffile ${f.path === curPath ? "cur" : ""} ${done ? "done" : ""}" data-ffile="${esc(f.path)}" style="--d:${depth}" title="${esc(f.path)}"><i class="glyph ${f.core ? "core" : f.changed ? "change" : "context"}"></i><span class="nm">${esc(name)}</span>${n ? `<span class="fc">◂ ${n}</span>` : ""}${f.changed ? `<span class="fs"><span class="a">+${f.a}</span> <span class="d">−${f.d}</span></span>` : ""}<span class="ok" data-fread="${esc(f.path)}" role="button" title="${done ? "Unmark the whole file" : "Mark the whole file read"}">✓</span></button>`);
+      rows.push(`<button class="ffile ${f.path === curPath ? "cur" : ""} ${done ? "done" : ""}" data-ffile="${esc(f.path)}" style="--d:${depth}" title="${esc(f.path)}"><i class="glyph ${f.core ? "core" : f.changed ? "change" : "context"}"></i><span class="nm">${esc(name)}</span>${lvlTag(f.path)}${n ? `<span class="fc">◂ ${n}</span>` : ""}${f.changed ? `<span class="fs"><span class="a">+${f.a}</span> <span class="d">−${f.d}</span></span>` : ""}<span class="ok" data-fread="${esc(f.path)}" role="button" title="${done ? "Unmark the whole file" : "Mark the whole file read"}">✓</span></button>`);
     }
   };
   walk(root, 0, "");
