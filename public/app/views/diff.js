@@ -94,7 +94,8 @@ const CSS = `
 .dv .rail .none { color: var(--faint); font-size: 13px; }
 .dv .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--faint); }
 .dv .fv.pinned { border: 0; border-radius: 0; box-shadow: none; z-index: 5; } /* filled: square, borderless, over edge labels */
-.dv .fv.pinned > .fvh, .dv .fv.pinned > .fvb { zoom: var(--fill, 1); } /* filled: the viewer is zoomed up, its contents back down */
+.dv .fv.pinned > .fvh, .dv .fv.pinned > .fvb { zoom: var(--fill, 1); }
+.dv .world .fv:not(.pinned):not(.measuring) > .fvh, .dv .world .fv:not(.pinned):not(.measuring) > .fvb { zoom: var(--clamp, 1); } /* past MAX_TEXT: more file, same text size */ /* filled: the viewer is zoomed up, its contents back down */
 /* Compact, GitHub-like code: one box per file, slim hunk rows, a tight gutter. */
 :is(.dv, .fvw) .fvh { gap: 8px; padding: 5px 6px 5px 10px; font-size: 12px; }
 :is(.dv, .fvw) .fvh .band { font-size: 9.5px; padding: 0 5px; }
@@ -248,9 +249,10 @@ export default {
     // Framing a viewer scales it to the stage's width (FRAME_PAD each side); the cap is the height that then fills
     // the stage's height too, so a full viewer and the stage share one aspect ratio (its band label sits in the margin).
     const FRAME_PAD = 40;
-    // Code is never drawn larger than in focus mode (FILL_ZOOM× its canvas size): the canvas zooms in no further.
-    const MAX_ZOOM = 1.1;
-    const fitScale = () => Math.max(0.3, Math.min(MAX_ZOOM, ((stage.clientWidth || 1440) - FRAME_PAD * 2) / W));
+    // Zoom freely; code inside a viewer is never drawn larger than focus mode draws it (MAX_TEXT× its canvas size):
+    // past that, the viewer grows and shows more of its file at the same text size (its contents are zoomed back).
+    const MAX_TEXT = 1.1;
+    const fitScale = () => Math.max(0.3, ((stage.clientWidth || 1440) - FRAME_PAD * 2) / W);
     const capH = () => Math.round(Math.max(240, ((stage.clientHeight || 900) - FRAME_PAD * 2) / fitScale()));
     let builtCap = 0;
     new ResizeObserver(() => { if (M && stage.clientWidth) update("resize"); }).observe(stage);
@@ -374,7 +376,15 @@ export default {
       if (!s?.isConnected || !v.body.contains(s)) secs.set(pid, (s = v.body.querySelector(`.sec[data-pid="${pid}"]`)));
       return s;
     }
-    const port = (v) => ({ top: v.body.scrollTop, h: v.body.clientHeight, off: v.body.offsetTop }); // a viewer's scroll window
+    // A viewer's scroll window. Positions inside it are read on screen and divided by the viewer's on-screen scale, so
+    // they stay right whatever its contents are zoomed by (the text clamp, focus mode) and while the camera glides.
+    const port = (v) => {
+      const p = { top: v.body.scrollTop, h: v.body.clientHeight, off: 0, S: 1, vt: 0 };
+      if (!v.el) return p;
+      const vr = v.el.getBoundingClientRect(), br = v.body.getBoundingClientRect();
+      p.S = vr.height / (v.el.offsetHeight || 1) || 1; p.vt = vr.top; p.off = (br.top - vr.top) / p.S;
+      return p;
+    };
     function visible(v, p = port(v)) {
       const bot = p.top + p.h;
       const seen = (s) => Math.min(bot, s.offsetTop + s.offsetHeight) - Math.max(p.top, s.offsetTop) >= 28; // a sliver at the edge doesn't count
@@ -382,8 +392,8 @@ export default {
     }
     // World y of a section's heading, pinned to the viewer's top (pin -1) or bottom (pin 1) when scrolled out of view.
     function anchor(v, pid, p = port(v)) {
-      const s = secEl(v, pid);
-      const y = p.off + s.offsetTop - p.top + Math.min(16, s.offsetHeight / 2), lo = p.off + 10, hi = v.h - 10;
+      const s = secEl(v, pid), h = (s.querySelector(".sech") ?? s).getBoundingClientRect(); // the middle of its heading
+      const y = (h.top + Math.min(h.height, 40) / 2 - p.vt) / p.S, lo = p.off + 10, hi = v.h - 10;
       return { y: v.y + Math.max(lo, Math.min(hi, y)), pin: y < lo ? -1 : y > hi ? 1 : 0 };
     }
     function links(p = port) {
@@ -644,10 +654,21 @@ export default {
     function apply() {
       if (filled && (cam.s !== filled.s || pan.x || pan.y)) { filled = null; pin(null); } // zoomed or panned away: no longer filled
       world.style.transform = `translate(${cam.tx + pan.x}px, ${cam.ty + pan.y}px) scale(${cam.s})`;
+      clampText();
+    }
+    // Contents zoom back by MAX_TEXT/scale when the camera is past it. Re-zooming every viewer reflows the canvas, so
+    // during a pinch or ctrl+scroll it's applied once the gesture settles.
+    let clampAt = 1, clampTimer = 0;
+    function clampText(now = !world.classList.contains("still")) {
+      const z = +Math.min(1, MAX_TEXT / cam.s).toFixed(3);
+      if (z === clampAt) return clearTimeout(clampTimer);
+      const set = () => { clampAt = z; world.style.setProperty("--clamp", z); redraw(); };
+      clearTimeout(clampTimer);
+      if (now) set(); else clampTimer = setTimeout(set, 160);
     }
     // Zoom by k around a point on the stage, keeping whatever is under it in place.
     function zoomAt(k, px, py) {
-      const s = Math.max(0.15, Math.min(Math.max(MAX_ZOOM, cam.s), cam.s * k)); // capped where code reaches focus mode's size; never jumps down from a filled view
+      const s = Math.max(0.15, Math.min(Math.max(4, cam.s), cam.s * k)); // never jumps down from a filled view
       const wx = (px - cam.tx - pan.x) / cam.s, wy = (py - cam.ty - pan.y) / cam.s;
       cam = { s, tx: px - wx * s - pan.x, ty: py - wy * s - pan.y };
       apply();
