@@ -26,7 +26,8 @@ export const DEFAULT_SETTINGS = {
   prComments: "hide", // hide | show: other reviewers' comments, behind a per-page toggle when hidden
   untouched: "hide", // hide | show: untouched code the changes rely on or affect, in every view (the top bar's switch)
   tests: "hide", // hide | show: test files and generated files, in every view (the top bar's switch)
-  fileTree: "show", // show | hide: the file tree right of the view (t)
+  fileTree: "show", // show | hide: the file tree beside the view (t)
+  fileTreeSide: "right", // right | left
   diffLayout: "split", // split | inline: old beside new, or changed lines in one column
   palette: "github", // github | warm: colours (and, for github, fonts); theme picks dark or light
   hintUses: {},

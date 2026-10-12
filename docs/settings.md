@@ -19,6 +19,7 @@ Open settings with `,` or the gear in the header. Changes apply immediately and 
 | PR comments | Hidden, show per page · Always shown | Hidden, show per page |
 | Untouched code | Hidden · Shown (also the top bar's **○ Untouched**) | Hidden |
 | File tree | Shown · Hidden (also `t`, or ▤ in the top bar) | Shown |
+| File tree side | Right · Left (also ⇄ in the tree's header) | Right |
 | Tests & generated files | Hidden · Shown (also the top bar's **⚗ Tests**) | Hidden |
 
 **Style** picks the colours. GitHub is the default. Warm is the alternative: warm neutrals with one amber signal colour. GitHub uses GitHub's colours and fonts: its accent blue as the signal, its diff greens and reds, blue hunk rows, its syntax colours, and the system UI and monospace fonts. Either comes in dark and light.

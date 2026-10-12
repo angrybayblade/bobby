@@ -24,6 +24,7 @@ const media = (q) => window.matchMedia(q).matches;
 function applySettings() {
   const s = app.settings, root = document.documentElement;
   root.dataset.theme = s.theme === "system" ? (media("(prefers-color-scheme: light)") ? "light" : "dark") : s.theme;
+  root.dataset.files = s.fileTreeSide === "left" ? "left" : "right";
   root.dataset.palette = s.palette === "github" ? "github" : "warm";
   root.dataset.motion = s.motion === "system" ? (media("(prefers-reduced-motion: reduce)") ? "off" : "on") : s.motion;
   root.style.setProperty("--font-prose", FONTS[s.font] ?? FONTS.sans);

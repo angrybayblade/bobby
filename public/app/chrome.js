@@ -62,9 +62,10 @@ function renderFiles() {
   el.hidden = app.settings.fileTree === "hide";
   if (el.hidden) return;
   if (!el.querySelector(".flist")) {
-    el.innerHTML = `<div class="fhd"><input type="search" placeholder="Filter files…" aria-label="Filter files"><span class="fn"></span></div><div class="flist"></div>`;
+    el.innerHTML = `<div class="fhd"><input type="search" placeholder="Filter files…" aria-label="Filter files"><span class="fn"></span><button class="fside" data-fside="1" title="Move the file tree to the other side">⇄</button></div><div class="flist"></div>`;
     el.querySelector("input").addEventListener("input", (ev) => { fileFilter = ev.target.value; renderFiles(); });
     el.addEventListener("click", (ev) => {
+      if (ev.target.closest("[data-fside]")) { app.saveSettings({ fileTreeSide: app.settings.fileTreeSide === "left" ? "right" : "left" }); return window.dispatchEvent(new Event("resize")); }
       const t = ev.target.closest("[data-fdir],[data-ffile]");
       if (!t) return;
       if (t.dataset.fdir != null) { closedDirs.has(t.dataset.fdir) ? closedDirs.delete(t.dataset.fdir) : closedDirs.add(t.dataset.fdir); return renderFiles(); }
@@ -249,6 +250,7 @@ const SETTINGS = [
   ["prComments", "PR comments", [["hide", "Hidden, show per page"], ["show", "Always shown"]]],
   ["untouched", "Untouched code", [["hide", "Hidden"], ["show", "Shown"]]],
   ["fileTree", "File tree", [["show", "Shown"], ["hide", "Hidden"]]],
+  ["fileTreeSide", "File tree side", [["right", "Right"], ["left", "Left"]]],
   ["tests", "Tests & generated files", [["hide", "Hidden"], ["show", "Shown"]]],
 ];
 export function settings() {
