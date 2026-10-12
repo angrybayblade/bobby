@@ -29,23 +29,73 @@ How a PR becomes a review graph. The code lives in `src/`; the output format is 
 
 **Low-signal classification.** A hunk gets a `noise` reason if its file is a lockfile (`package-lock.json`, `bun.lock`, `go.sum`, …), generated (`dist/`, `vendor/`, `*.min.js`, `*.pb.go`, snapshots, …) or binary, or if the hunk is whitespace-only (added and removed lines are equal once whitespace is stripped). Low-signal hunks skip analysis and end up on the single "Low-signal changes" page.
 
-## 3. Static analysis (`analyze.ts › analyze`)
+## 3. Static analysis (`analyze.ts`, `syntax.ts`, `resolve.ts`)
+
+For **TypeScript, TSX, JavaScript, Python, Go, Java and Rust**, analysis reads code through its syntax tree and its imports. Other languages fall back to text search, described at the end of this section.
+
+### Reading code (`syntax.ts`)
+
+Each file is parsed with [tree-sitter](https://tree-sitter.github.io/), which runs as WebAssembly, so it works under bun and inside the compiled binary. The grammars are embedded in the binary. A parsed file gives:
+
+- its **declarations**: whether each is at module level, a member (a method or field of a class, struct, trait or interface), or a local;
+- every **reference** to a name, with what it's reached through (`db` in `db.create()`, `pkg` in `pkg.Name`). Comments, strings and import lines never count;
+- its **imports**: which local name binds which exported name of which module;
+- its **re-exports**.
+
+### Resolving imports (`resolve.ts`)
+
+`Repo` reads the repo at the PR's head through git, without a checkout, and says which file an import refers to:
+
+| Language | Resolves |
+|---|---|
+| TS/JS | Relative paths. `tsconfig`/`jsconfig` `paths` and `baseUrl`, following `extends`, including into workspace packages. Workspace packages by their `package.json` name, through `source`/`module`/`types`/`main`/`exports`. Extension and `index` rules, including `.js` written for a `.ts` file. |
+| Python | Relative (`from .a import b`) and absolute (`a.b.c`) modules, and `__init__.py`. When several files match, the one nearest the importer wins. |
+| Go | Import paths through the repo's `go.mod` modules, to a package directory. |
+| Java | Fully qualified class names, and `a.b.*` packages. |
+| Rust | `crate::`, `super::` and `self::` paths, to module files. |
+
+`findDecl` follows re-exports (`export { x } from`, `export * from`) to the file that actually declares a name. Anything that resolves outside the repo, such as a library, resolves to nothing.
 
 ### Units
 
-Hunks are grouped into **units** by file and **primary symbol**. The primary symbol is the first declaration found in the hunk's changed lines; failing that, in git's `@@` function context; failing that, the nearest declaration above the change; and finally the file name. `declsIn` uses a few language-agnostic regexes covering `function`, `def`, `class`, `fn`, `func`, `const x = (…) =>`, methods and similar. Every symbol declared in a unit's changed lines is added to `unit.symbols`.
+Hunks are grouped into **units** by file and **primary symbol**:
+
+1. A module-level declaration on the hunk's added lines, then a method.
+2. Failing that, the innermost declaration or method around the change.
+3. Failing that, the old pattern-based guess.
+
+One-line members (fields) are left out: their names are too generic to follow. Declarations removed by the hunk are kept as symbols too, because their remaining callers matter. Docs and data files (Markdown, JSON, YAML…) are named after the file and never read for declarations.
 
 ### Downstream: who uses what changed
 
-For every meaningful symbol a unit declares (at least 4 characters and not a keyword), one `git grep -n -w -F` at the head commit finds its usages:
-
-- Declarations and import or re-export lines are ignored.
-- A hit on an **added line of another unit** becomes a static **edge** `owner → that unit` ("uses `symbol`").
-- A hit in **untouched code** becomes a downstream **ref**, a `CodeRef` with `dir: "down"`. Refs are capped at 10 per symbol and 2 per file. Symbols with more than 120 hits are treated as too generic to give refs.
+1. One `git grep` pass (a single PCRE alternation, or `-E` when git has no PCRE) finds the files that mention any changed name.
+2. Each of those files is parsed, and a reference counts only if it **binds to the owner's declaration**:
+   - it's in the owner's file;
+   - or the name, or its namespace (`ns.name`, `pkg.Name`), is imported from a module that resolves to the owner's file, re-exports included;
+   - or, for Go and Java, it's in the same package;
+   - or, for a member reached through a value (`x.method()`), the file imports the class that declares it.
+3. A binding on **another unit's added line** becomes an edge `owner → that unit` ("uses `symbol`"). One in **untouched code** becomes a downstream ref (`dir: "down"`): at most 10 per symbol and 2 per file, and none for a symbol used more than 120 times.
 
 ### Upstream: what the new code relies on
 
-Identifiers used on added lines (meaningful, not declared by the PR) are collected per unit, up to 600. They're looked up with batched `git grep -E` for declaration patterns at the head commit. Only names with **exactly one** definition outside the PR become upstream refs (`dir: "up"`), up to 6 per unit, ranked by how often the unit uses them. Ambiguous names are dropped as noise.
+Each name referenced on a unit's added lines is resolved to its **one declaration**:
+
+- through the file's imports and re-exports;
+- otherwise to the file's own module-level declarations;
+- otherwise to its Go or Java package;
+- otherwise through its wildcard imports.
+
+Names reached through a value (`x.member`) aren't resolved. Declarations that are themselves changed code are left to the downstream pass, as edges. The others become upstream refs (`dir: "up"`), up to 6 per unit, ranked by how often the unit uses them.
+
+### Fallback: text search
+
+Files in other languages, and everything when tree-sitter can't load, use the earlier method:
+
+- `declsIn`, a set of language-agnostic patterns, finds declarations;
+- downstream uses are whole-word `git grep` matches that aren't declarations or import lines;
+- upstream refs are identifiers with **exactly one** definition-looking line elsewhere in the repo.
+
+Matches in docs and data files are ignored.
 
 The result is an `Analysis`: `units`, `refs`, `edges` (unit → unit) and `hunkById`.
 
