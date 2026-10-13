@@ -877,12 +877,12 @@ export default {
       }
       if (to) { const tv = views.get(to.path); app.setFocus((tv && visible(tv)[0]) ?? to.sections[0].pid); } // what's showing there: its scroll stays
     }
-    const keys = {
-      ArrowLeft: () => moveFile(-1, 0), ArrowRight: () => moveFile(1, 0),
-      ArrowUp: () => moveFile(0, -1), ArrowDown: () => moveFile(0, 1),
-      f: () => { if (app.level < 2) return fill(); app.setLevel(1); setTimeout(fill, 60); }, // from the page, back to the canvas, filled
-      Escape: () => (filled && app.level < 2 ? fill() : app.setLevel(app.level - 1)), // focus mode: back to the canvas as it was
-      g: () => { if (app.level === 2) return app.setLevel(1); const act = activeFile(); if (act) openFocus(act.path); }, // full screen and back
+    const keys = { // by action (keys.js): whichever keys you've bound to them
+      left: () => moveFile(-1, 0), right: () => moveFile(1, 0),
+      up: () => moveFile(0, -1), down: () => moveFile(0, 1),
+      focus: () => { if (app.level < 2) return fill(); app.setLevel(1); setTimeout(fill, 60); }, // from the page, back to the canvas, filled
+      zoomOut: () => (filled && app.level < 2 ? fill() : app.setLevel(app.level - 1)), // focus mode: back to the canvas as it was
+      fullScreen: () => { if (app.level === 2) return app.setLevel(1); const act = activeFile(); if (act) openFocus(act.path); }, // full screen and back
     };
 
     return { update, keys, hide() { away = { focus: app.focus, level: app.level }; }, destroy() { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); } };

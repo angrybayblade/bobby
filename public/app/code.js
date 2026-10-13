@@ -2,6 +2,7 @@
 // Views show it as the level-2 page, or as the body of the focused card (no title block).
 import { BAND_TEXT, DONE, LOW, api, esc } from "./core.js";
 import { MOD } from "./palette.js";
+import { keyHtml } from "./keys.js";
 
 const EXT = {
   ts: "typescript", tsx: "typescript", mts: "typescript", cts: "typescript", js: "javascript", jsx: "javascript", mjs: "javascript", cjs: "javascript",
@@ -396,7 +397,7 @@ function lowPage(app) {
   const open = app.page.lowOpen ?? new Set();
   return `<div class="band">Low-signal changes</div>
     <h1>Skim, don't read${app.isReviewed(LOW) ? `<span class="badges"><span class="badge done">✓ reviewed</span></span>` : ""}</h1>
-    <p class="why">Lockfiles, generated output and whitespace-only edits. Open anything that looks surprising, then press <kbd>a</kbd>.</p>
+    <p class="why">Lockfiles, generated output and whitespace-only edits. Open anything that looks surprising, then press ${keyHtml(app.settings, "reviewed")}.</p>
     ${[...byFile].map(([file, hs]) => {
       let a = 0, d = 0; for (const h of hs) for (const l of h.lines) l.t === "+" ? a++ : l.t === "-" ? d++ : 0;
       return `<div class="code"><button class="fh" style="width:100%;text-align:left" data-low="${esc(file)}"><span><b>${esc(file)}</b> <span style="color:var(--faint)">· ${esc(hs[0].lowSignal)}</span></span><span class="ctx"></span><span class="st">+${a} −${d} · ${open.has(file) ? "hide" : "show"}</span></button>
@@ -410,8 +411,8 @@ function donePage(app) {
   return `<div style="text-align:center;margin-top:12vh">
     <h1 style="font-family:var(--font-ui)">${done === total ? "All reviewed ✓" : "End of the walk"}</h1>
     <p class="why" style="margin:0 auto 24px">${done === total
-      ? `${app.state.comments.length} draft comment(s). Press <kbd>s</kbd> to submit your review.`
-      : `${total - done} page(s) still unreviewed. Press <kbd>n</kbd> to jump to the next one.`}</p>
+      ? `${app.state.comments.length} draft comment(s). Press ${keyHtml(app.settings, "submit")} to submit your review.`
+      : `${total - done} page(s) still unreviewed. Press ${keyHtml(app.settings, "nextUnreviewed")} to jump to the next one.`}</p>
     ${flagged.length ? `<div class="band" style="justify-content:center;margin-top:30px">Flagged for a second look</div>${flagged.map((p) => `<p><button class="pill" data-go="${p}">${esc(app.get(p)?.pl.title ?? "Low-signal changes")}</button></p>`).join("")}` : ""}
   </div>`;
 }

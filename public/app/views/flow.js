@@ -499,11 +499,11 @@ export default {
       else to = G.parent.get(f) ?? [...G.feeds].find(([, t]) => t === f)?.[0];
       if (to && shown(to)) app.setFocus(to);
     }
-    const keys = {
-      ArrowLeft: () => move(-1, 0), ArrowRight: () => move(1, 0), ArrowUp: () => move(0, -1), ArrowDown: () => move(0, 1),
-      f: () => fill(),
-      g: () => app.setLevel(app.level === 2 ? 1 : 2),
-      Escape: () => (filled ? unfill(true) : app.setLevel(app.level - 1)),
+    const keys = { // by action (keys.js): whichever keys you've bound to them
+      left: () => move(-1, 0), right: () => move(1, 0), up: () => move(0, -1), down: () => move(0, 1),
+      focus: () => fill(),
+      fullScreen: () => app.setLevel(app.level === 2 ? 1 : 2),
+      zoomOut: () => (filled ? unfill(true) : app.setLevel(app.level - 1)),
     };
 
     update("mount");

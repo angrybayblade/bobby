@@ -1,0 +1,92 @@
+// Every action a key can run, by a stable id, with its default keys. Your own bindings live in settings.keys
+// ({ id: [keys] }, replacing that action's defaults); everything that shows a key asks here, so hints, the key sheet,
+// the palette and the tour follow them. Keys are KeyboardEvent.key values ("j", "J", "Enter", " ", "ArrowLeft", "!").
+
+export const ACTIONS = [
+  // moving
+  { id: "next", group: "Moving", title: "Next page", keys: ["j", " "] },
+  { id: "prev", group: "Moving", title: "Previous page", keys: ["k"] },
+  { id: "left", group: "Moving", title: "Follow the shape: back along an edge (Outline: parent)", keys: ["ArrowLeft"] },
+  { id: "right", group: "Moving", title: "Follow the shape: on along an edge (Outline: first nested page)", keys: ["ArrowRight"] },
+  { id: "up", group: "Moving", title: "Previous page at the same level (Outline: row)", keys: ["ArrowUp"] },
+  { id: "down", group: "Moving", title: "Next page at the same level (Outline: row)", keys: ["ArrowDown"] },
+  { id: "nextCore", group: "Moving", title: "Next core", keys: ["J"] },
+  { id: "prevCore", group: "Moving", title: "Previous core", keys: ["K"] },
+  { id: "entry", group: "Moving", title: "Back to the entry point, where a load starts", keys: ["!"] },
+  { id: "nextUnreviewed", group: "Moving", title: "Next unreviewed page", keys: ["n"] },
+  { id: "nextFlagged", group: "Moving", title: "Next flagged page", keys: ["F"] },
+  { id: "zoomIn", group: "Moving", title: "Zoom in: overview → core → page", keys: ["Enter", "+", "="] },
+  { id: "zoomOut", group: "Moving", title: "Zoom out (esc also closes what's open first)", keys: ["Escape", "-", "_"] },
+  // reading
+  { id: "focus", group: "Reading", title: "Focus mode: what you're on fills the screen; again to go back", keys: ["f"] },
+  { id: "fullScreen", group: "Reading", title: "Full screen page; again to go back", keys: ["g"] },
+  { id: "expand", group: "Reading", title: "Open collapsed code, then more context", keys: ["e"] },
+  { id: "nextView", group: "Reading", title: "Switch view: Flow, Outline, Lens, Diff", keys: ["v"] },
+  { id: "layout", group: "Reading", title: "Diff layout: inline or split", keys: ["d"] },
+  { id: "files", group: "Reading", title: "Show or hide the file tree", keys: ["t"] },
+  // reviewing
+  { id: "reviewed", group: "Reviewing", title: "Looks good: mark reviewed and move on", keys: ["a"] },
+  { id: "unmark", group: "Reviewing", title: "Un-mark this page", keys: ["u"] },
+  { id: "flag", group: "Reviewing", title: "Flag or unflag, to come back to", keys: ["x"] },
+  { id: "comment", group: "Reviewing", title: "Comment on a line", keys: ["c"] },
+  { id: "note", group: "Reviewing", title: "Private note on a line: only you see it", keys: ["m"] },
+  { id: "notes", group: "Reviewing", title: "Your notes", keys: ["M"] },
+  { id: "park", group: "Reviewing", title: "Park a thought, shown when you return", keys: ["p"] },
+  { id: "submit", group: "Reviewing", title: "Submit review", keys: ["s"] },
+  // the app
+  { id: "switchTree", group: "Bobby", title: "Switch to Claude's tree, when it's ready", keys: ["R"] },
+  { id: "settings", group: "Bobby", title: "Settings", keys: [","] },
+  { id: "help", group: "Bobby", title: "All keys", keys: ["?"] },
+];
+export const action = (id) => ACTIONS.find((a) => a.id === id);
+
+/** An action's keys: yours if you've set them, else its defaults. */
+export const keysOf = (settings, id) => settings.keys?.[id] ?? action(id)?.keys ?? [];
+/** The action a key runs, or undefined. Binding a key takes it from any other action (bind), so a key has one. */
+export const actionFor = (settings, key) => ACTIONS.find((a) => keysOf(settings, a.id).includes(key))?.id;
+
+const NAMES = { Enter: "enter", Escape: "esc", " ": "space", ArrowLeft: "←", ArrowRight: "→", ArrowUp: "↑", ArrowDown: "↓", "!": "shift 1", Tab: "tab", Backspace: "⌫", Delete: "del" };
+/** How a key is shown: its words, each in its own <kbd> ("shift 1" is two). */
+export const keyText = (k) => NAMES[k] ?? k;
+export const kbdHtml = (k) => keyText(k).split(" ").map((x) => `<kbd>${esc(x)}</kbd>`).join(" ");
+/** An action's keys for a hint or a sentence: the first (or first n), as <kbd>s; "unbound" if it has none. */
+export function keyHtml(settings, id, n = 1) {
+  const ks = keysOf(settings, id).slice(0, n);
+  return ks.length ? ks.map(kbdHtml).join(" ") : `<span class="unbound">unbound</span>`;
+}
+
+/** Binds a key to an action, taking it from any action that had it (default or yours). Returns the action it was taken
+ *  from, if any, and the new settings.keys. */
+export function bind(settings, id, key) {
+  const keys = { ...(settings.keys ?? {}) };
+  const from = ACTIONS.find((a) => a.id !== id && keysOf(settings, a.id).includes(key));
+  if (from) keys[from.id] = keysOf(settings, from.id).filter((k) => k !== key);
+  keys[id] = [...keysOf(settings, id).filter((k) => k !== key), key];
+  return { from: from?.id, keys: tidy(keys) };
+}
+export function unbind(settings, id, key) {
+  return tidy({ ...(settings.keys ?? {}), [id]: keysOf(settings, id).filter((k) => k !== key) });
+}
+export function reset(settings, id) {
+  const keys = { ...(settings.keys ?? {}) };
+  if (id) delete keys[id];
+  else return {};
+  // a default it takes back from another action: that action loses it
+  for (const k of action(id).keys) for (const other of Object.keys(keys)) if (keys[other].includes(k)) keys[other] = keys[other].filter((x) => x !== k);
+  return tidy(keys);
+}
+/** Only what differs from the defaults is kept. */
+function tidy(keys) {
+  const out = {};
+  for (const [id, ks] of Object.entries(keys)) {
+    const d = action(id)?.keys ?? [];
+    if (ks.length !== d.length || ks.some((k, i) => k !== d[i])) out[id] = ks;
+  }
+  return out;
+}
+/** Keys that can't be bound: modifiers alone, and what text fields and the browser need. */
+export const bindable = (ev) => !["Shift", "Control", "Alt", "Meta", "CapsLock", "Tab", "Dead", "Unidentified"].includes(ev.key) && !ev.metaKey && !ev.ctrlKey && !ev.altKey;
+/** A keydown as a key: shift+1 is "!" whatever the layout prints, as everywhere else. */
+export const keyOfEvent = (ev) => (ev.shiftKey && ev.code === "Digit1" ? "!" : ev.key);
+
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);

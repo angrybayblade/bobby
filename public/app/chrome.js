@@ -2,6 +2,7 @@
 import { BAND_TEXT, DONE, LEVELS, LOW, api, esc, inline } from "./core.js";
 import { MOD } from "./palette.js";
 import * as tour from "./tour.js";
+import { ACTIONS, kbdHtml, keyHtml, keysOf, keyText } from "./keys.js";
 
 const $ = (q) => document.querySelector(q);
 const PALETTE_KEY = MOD === "⌘" ? "⌘K" : "ctrl k";
@@ -129,7 +130,7 @@ function renderTop() {
   const pct = total ? Math.round((done / total) * 100) : 100;
   const g = app.graph;
   const llm = app.llm === "pending" ? `<span class="pill pulse" title="The static tree is usable now">Claude is organising…</span>`
-    : app.claudeReady && g.generator.tree !== "claude" ? `<button class="pill signal" data-act="switch-tree">Smarter tree ready · R</button>` : "";
+    : app.claudeReady && g.generator.tree !== "claude" ? `<button class="pill signal" data-act="switch-tree">Smarter tree ready · ${esc(keyText(keysOf(app.settings, "switchTree")[0] ?? ""))}</button>` : "";
   const lsp = app.servers.map(serverChip).join("");
   const drafts = app.state.comments.filter((c) => !c.wip && c.kind !== "note").length; // unfinished drafts aren't ready to post
   $("#top").innerHTML = `
@@ -139,12 +140,12 @@ function renderTop() {
     ${llm}${lsp}
     ${coreProgress()}
     <div class="prog" title="${done} of ${total} pages reviewed"><div class="bar"><i style="width:${pct}%"></i></div>${done}/${total}${mins && done < total ? ` · ~${mins}m` : ""}</div>
-    <div class="seg" role="group" aria-label="View">${views.map((v) => `<button data-view="${v.id}" aria-pressed="${app.viewId === v.id}" title="${esc(v.hint)} (v)">${esc(v.name)}</button>`).join("")}</div>
-    ${drafts ? `<button class="pill signal" data-act="submit">${drafts} draft${drafts > 1 ? "s" : ""} · S</button>` : ""}
+    <div class="seg" role="group" aria-label="View">${views.map((v) => `<button data-view="${v.id}" aria-pressed="${app.viewId === v.id}" title="${esc(v.hint)} (${esc(keysOf(app.settings, "nextView").map(keyText)[0] ?? "")})">${esc(v.name)}</button>`).join("")}</div>
+    ${drafts ? `<button class="pill signal" data-act="submit">${drafts} draft${drafts > 1 ? "s" : ""} · ${esc(keyText(keysOf(app.settings, "submit")[0] ?? ""))}</button>` : ""}
     <button class="pill tog" data-act="tests" aria-pressed="${app.settings.tests === "show"}" title="Test files and generated files, in every view: ${app.settings.tests === "show" ? "shown. Click to hide" : "hidden. Click to show"}">⚗ Tests</button>
     <button class="pill tog" data-act="untouched" aria-pressed="${app.settings.untouched !== "hide"}" title="Untouched code the changes rely on or affect, in every view: ${app.settings.untouched === "hide" ? "hidden. Click to show" : "shown. Click to hide"}">○ Untouched</button>
     <button class="pill" data-act="notes" title="Your private notes (M). Never posted to GitHub.">✎ Notes${app.state.notes.length ? ` · ${app.state.notes.length}` : ""}</button>
-    <button class="iconbtn" data-act="files" aria-pressed="${app.settings.fileTree !== "hide"}" title="File tree (t)" aria-label="File tree">▤</button>
+    <button class="iconbtn" data-act="files" aria-pressed="${app.settings.fileTree !== "hide"}" title="File tree (${esc(keysOf(app.settings, "files").map(keyText)[0] ?? "")})" aria-label="File tree">▤</button>
     <button class="iconbtn" data-act="settings" title="Settings (,)" aria-label="Settings">${GEAR}</button>`;
 }
 
@@ -194,20 +195,22 @@ function renderWhere() {
     <span class="levels" title="Zoom: ${LEVELS[app.level]} (enter / esc)">${LEVELS.map((_, i) => `<i class="${i <= app.level ? "on" : ""}"></i>`).join("")}<span style="margin-left:6px">${LEVELS[app.level]}</span></span>`;
 }
 
-const HINTS = [
-  [["j", "k"], "next / back"], [["enter"], "zoom in"], [["v"], "switch view"], [["?"], "all keys"],
-];
+// Hints by action (keys.js), so they show your keys. Each fades once you've used it five times.
+const HINTS = [[["next", "prev"], "next / back"], [["zoomIn"], "zoom in"], [["nextView"], "switch view"]];
 const HINTS_BY_LEVEL = {
-  0: [[["j", "k"], "step"], [["enter"], "open core"], [["v"], "switch view"]],
-  1: [[["j", "k"], "step"], [["f"], "focus"], [["g"], "full screen"], [["x"], "flag for later"], [["a"], "looks good →"], [["c"], "comment"], [["e"], "open / more"], [["esc"], "overview"]],
-  2: [[["j", "k"], "next / back"], [["g"], "back"], [["a"], "looks good →"], [["x"], "flag"], [["c"], "comment"], [["e"], "open / more"], [["p"], "park a thought"], [["esc"], "zoom out"]],
+  0: [[["next", "prev"], "step"], [["zoomIn"], "open core"], [["nextView"], "switch view"]],
+  1: [[["next", "prev"], "step"], [["focus"], "focus"], [["fullScreen"], "full screen"], [["flag"], "flag for later"], [["reviewed"], "looks good →"], [["comment"], "comment"], [["expand"], "open / more"], [["zoomOut"], "overview"]],
+  2: [[["next", "prev"], "next / back"], [["fullScreen"], "back"], [["reviewed"], "looks good →"], [["flag"], "flag"], [["comment"], "comment"], [["expand"], "open / more"], [["park"], "park a thought"], [["zoomOut"], "zoom out"]],
 };
+// Counts kept before keys were customizable were by key name: still honoured, so learned hints stay hidden.
+const LEGACY = { next: "j", prev: "k", zoomIn: "enter", zoomOut: "esc", nextView: "v", focus: "f", fullScreen: "g", flag: "x", reviewed: "a", comment: "c", expand: "e", park: "p" };
 function renderKeys() {
   const mode = app.settings.hints;
-  const uses = app.settings.hintUses ?? {};
-  const list = (HINTS_BY_LEVEL[app.level] ?? HINTS).filter(([ks]) => mode === "always" || (mode === "fade" && ks.some((k) => (uses[k] ?? 0) < 5)));
-  $("#keys").innerHTML = (mode === "never" ? `<span><kbd>?</kbd> keys</span>`
-    : [...list, [["?"], "all keys"], [PALETTE_KEY.split(" "), "commands"]].map(([ks, label]) => `<span>${ks.map((k) => `<kbd>${k}</kbd>`).join(" ")} ${label}</span>`).join("")) + tour.newsChip();
+  const uses = app.settings.hintUses ?? {}, used = (id) => Math.max(uses[id] ?? 0, uses[LEGACY[id]] ?? 0);
+  const list = (HINTS_BY_LEVEL[app.level] ?? HINTS).filter(([ids]) => ids.every((id) => keysOf(app.settings, id).length) && (mode === "always" || (mode === "fade" && ids.some((id) => used(id) < 5))));
+  const help = keyHtml(app.settings, "help");
+  $("#keys").innerHTML = (mode === "never" ? `<span>${help} keys</span>`
+    : [...list.map(([ids, label]) => `<span>${ids.map((id) => keyHtml(app.settings, id)).join(" ")} ${label}</span>`), `<span>${help} all keys</span>`, `<span>${PALETTE_KEY.split(" ").map((k) => `<kbd>${k}</kbd>`).join(" ")} commands</span>`].join("")) + tour.newsChip();
 }
 
 // ---------------------------------------------------------------- overlays
@@ -221,34 +224,13 @@ function open(html, cls = "") {
 export function close() { $("#overlay").hidden = true; }
 
 export function help() {
-  const r = (k, d) => `<tr><td>${k.split(" ").map((x) => `<kbd>${x}</kbd>`).join(" ")}</td><td>${d}</td></tr>`;
+  const keysCell = (id) => keysOf(app.settings, id).map(kbdHtml).join(" <span class=\"or\">or</span> ") || `<span class="unbound">unbound</span>`;
+  const groups = [...new Set(ACTIONS.map((a) => a.group))];
   open(`<h2>How the walk works</h2>
     <p>Each core change comes with its surroundings, in this order: <b>untouched code it relies on</b> → <b>changed code it relies on</b> → <b>the core</b> → <b>changed code it affects</b> → <b>untouched code it affects</b>. Solid dots ● are changed code, hollow ○ are untouched, and ◆ is the core.</p>
-    <table>
-      ${r("j k", "next / previous page (space too)")}
-      ${r("← → ↑ ↓", "follow the shape: → / ← along edges to what this leads into / comes from (Outline: first nested page / parent), ↑ ↓ to the previous / next page at the same level (Outline: rows)")}
-      ${r("J K", "next / previous core")}
-      ${r("shift 1", "back to the entry point: the unreviewed core with the least around it, where a load starts")}
-      ${r("n", "next unreviewed")}
-      ${r("a", "looks good: mark reviewed and move on")}
-      ${r("u", "un-mark")}
-      ${r("f", "focus: what you're on fills the screen with its code; again (or esc) to go back as you were")}
-      ${r("g", "full screen page; again (or esc) to go back as you were")}
-      ${r("x", "flag to come back to")}
-      ${r("t", "file tree: the PR's files, right of the view")}
-      ${r("F", "next flagged: skim and flag first, then go deep")}
-      ${r("c", "comment (click a line first, or it picks one)")}
-      ${r("m", "private note on a line: only you see it, never posted")}
-      ${r("M", "your notes: on the whole PR, plus a list of all of them")}
-      ${r("e", "open collapsed code, then more context")}
-      ${r("p", "park a thought: jot what's in your head, shown when you return")}
-      ${r("enter esc", "zoom in / out: overview → core → page")}
-      ${r("v", "switch view: Flow, Outline, Lens, Diff")}
-      ${r("d", "diff layout: inline or split")}
-      ${r("s", "submit review")}
-      ${r(",", "settings")}
-      ${r(PALETTE_KEY, "command palette: search every command, core, file and page")}
-    </table>
+    ${groups.map((g) => `<h4 class="nh">${g}</h4><table>${ACTIONS.filter((a) => a.group === g).map((a) => `<tr><td>${keysCell(a.id)}</td><td>${esc(a.title)}</td></tr>`).join("")}</table>`).join("")}
+    <table><tr><td>${PALETTE_KEY.split(" ").map((k) => `<kbd>${k}</kbd>`).join(" ")}</td><td>Command palette: search every command, core, file and page</td></tr>
+      <tr><td>${MOD}-click</td><td>Inspect a name: where it's declared, its type and its code</td></tr></table>
     <div class="row"><button class="btn primary" data-act="close">Got it</button><button class="btn" data-act="tour">Take the tour</button></div>`);
 }
 

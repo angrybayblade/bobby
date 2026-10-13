@@ -3,6 +3,7 @@ import { escapeCode, inspectorOpen, expandAll, renderFile, renderNode, renderPag
 import * as chrome from "./chrome.js";
 import * as palette from "./palette.js";
 import * as tour from "./tour.js";
+import { ACTIONS, actionFor, keyHtml, keyOfEvent, keysOf, keyText } from "./keys.js";
 import views from "./views/index.js";
 
 const [graph, session] = await Promise.all([api("/api/graph"), api("/api/session")]);
@@ -87,7 +88,7 @@ async function poll() {
   app.llm = s.llm;
   if (s.claudeReady && !app.claudeReady) {
     app.claudeReady = true;
-    chrome.toast(`<span>Claude's tree is ready. <kbd>R</kbd> switches; you keep your place.</span>`);
+    chrome.toast(`<span>Claude's tree is ready. ${keyHtml(app.settings, "switchTree")} switches; you keep your place.</span>`);
   }
   const was = new Map(app.servers.map((x) => [x.id, x.state]));
   app.servers = s.servers ?? [];
@@ -118,7 +119,7 @@ tour.welcome(() => {
   if (resume && resume !== app.focus && !hash.has("p") && (app.progress().done > 0 || session.state.note)) chrome.reentry(resume, session.state.lastLevel ?? 2);
   else if (entry && !hash.has("p")) {
     const deps = entry.deps === 1 ? "1 thing" : `${entry.deps} things`;
-    chrome.coreIntro(app.get(entry.pid), `<span style="color:var(--muted);font-size:13px">Start here: the core with the least around it (${deps} it relies on or affects). <kbd>esc</kbd> for the overview.</span>`);
+    chrome.coreIntro(app.get(entry.pid), `<span style="color:var(--muted);font-size:13px">Start here: the core with the least around it (${deps} it relies on or affects). ${keyHtml(app.settings, "zoomOut")} for the overview.</span>`);
   }
 });
 
@@ -126,51 +127,44 @@ tour.welcome(() => {
 const typing = (t) => t.matches?.("input, textarea, [contenteditable]");
 const page = () => app.pageEl?.isConnected; // the focused node's code is on screen (page or card)
 /** Does what key k does here: the view's own binding first, then the global one. Returns whether k does anything. */
+/** A key: the action it's bound to (keys.js, yours or the default), run by the view if it has its own way, else here. */
 function press(k, { learn = true } = {}) {
-  const hint = k === "Enter" ? "enter" : k === "Escape" ? "esc" : k;
-  if (current?.keys?.[k]) { if (learn) app.useKey(hint); current.keys[k](); return true; } // counted, so its hint fades too
-  const act = {
-    j: () => app.step(1), ArrowDown: () => app.step(1), ArrowRight: () => app.step(1), " ": () => app.step(1),
-    k: () => app.step(-1), ArrowUp: () => app.step(-1), ArrowLeft: () => app.step(-1),
-    J: () => app.stepCore(1), K: () => app.stepCore(-1),
-    n: () => app.nextUnreviewed(),
-    F: () => app.nextFlagged() || chrome.toast("Nothing flagged yet. Skim at the core level and press <kbd>x</kbd> on anything worth a closer look.", 5000),
-    a: () => { app.mark(app.focus, "reviewed"); app.nextUnreviewed(); },
-    u: () => app.mark(app.focus, null),
-    x: () => app.mark(app.focus, app.isFlagged(app.focus) ? null : "flagged"), // f is focus mode in every view
-    c: () => { if (page()) return startComment(app, app.pageEl); app.setLevel(2); setTimeout(() => page() && startComment(app, app.pageEl)); },
-    m: () => { if (page()) return startComment(app, app.pageEl, "note"); app.setLevel(2); setTimeout(() => page() && startComment(app, app.pageEl, "note")); },
-    e: () => page() && expandAll(app, app.pageEl),
-    Enter: () => app.setLevel(app.level + 1), "+": () => app.setLevel(app.level + 1), "=": () => app.setLevel(app.level + 1),
-    Escape: () => app.setLevel(app.level - 1), "-": () => app.setLevel(app.level - 1), _: () => app.setLevel(app.level - 1),
-    v: () => app.switchView(views[(views.findIndex((v) => v.id === currentId) + 1) % views.length].id),
-    s: () => chrome.submit(), "?": () => chrome.help(), ",": () => chrome.settings(), p: () => chrome.park(), M: () => chrome.notes(),
-    R: () => app.switchTree(),
-    t: () => chrome.toggleFiles(),
-    "!": () => { const e = app.entryPoint(); if (e) app.setFocus(e.pid, { level: 1 }); }, // back to the entry point
-    d: () => app.toggleLayout(),
-  }[k];
+  const id = actionFor(app.settings, k);
+  return id ? runAction(id, { learn }) : false;
+}
+function runAction(id, { learn = true } = {}) {
+  const act = current?.keys?.[id] ?? ACTS[id];
   if (!act) return false;
-  if (learn) app.useKey(hint);
+  if (learn) app.useKey(id); // counted, so its hint fades
   act();
   return true;
 }
-// ---- command palette: every key's action by name, plus what has no key of its own
-const KEYED = [
-  ["Next page", "j"], ["Previous page", "k"], ["Next core", "J"], ["Previous core", "K"],
-  ["Next unreviewed page", "n"], ["Next flagged page", "F"], ["Back to the entry point", "!"],
-  ["Looks good: mark reviewed and move on", "a"], ["Un-mark this page", "u"], ["Flag or unflag this page", "x"],
-  ["Comment on a line", "c"], ["Private note on a line", "m"], ["Your notes", "M"], ["Park a thought", "p"],
-  ["Open collapsed code, then more context", "e"], ["Zoom in", "Enter"], ["Zoom out", "Escape"],
-  ["Focus mode", "f"], ["Full screen page", "g"], ["Next view", "v"], ["Diff layout: inline or split", "d"],
-  ["Show or hide the file tree", "t"], ["Submit review", "s"], ["Settings", ","], ["All keys", "?"],
-];
-const KEY_TEXT = { Enter: "enter", Escape: "esc", "!": "shift 1" };
+const ACTS = {
+  next: () => app.step(1), prev: () => app.step(-1),
+  left: () => app.step(-1), right: () => app.step(1), up: () => app.step(-1), down: () => app.step(1), // views follow their shape instead
+  nextCore: () => app.stepCore(1), prevCore: () => app.stepCore(-1),
+  nextUnreviewed: () => app.nextUnreviewed(),
+  nextFlagged: () => app.nextFlagged() || chrome.toast(`Nothing flagged yet. Skim at the core level and press ${keyHtml(app.settings, "flag")} on anything worth a closer look.`, 5000),
+  reviewed: () => { app.mark(app.focus, "reviewed"); app.nextUnreviewed(); },
+  unmark: () => app.mark(app.focus, null),
+  flag: () => app.mark(app.focus, app.isFlagged(app.focus) ? null : "flagged"),
+  comment: () => { if (page()) return startComment(app, app.pageEl); app.setLevel(2); setTimeout(() => page() && startComment(app, app.pageEl)); },
+  note: () => { if (page()) return startComment(app, app.pageEl, "note"); app.setLevel(2); setTimeout(() => page() && startComment(app, app.pageEl, "note")); },
+  expand: () => page() && expandAll(app, app.pageEl),
+  zoomIn: () => app.setLevel(app.level + 1), zoomOut: () => app.setLevel(app.level - 1),
+  nextView: () => app.switchView(views[(views.findIndex((v) => v.id === currentId) + 1) % views.length].id),
+  submit: () => chrome.submit(), help: () => chrome.help(), settings: () => chrome.settings(), park: () => chrome.park(), notes: () => chrome.notes(),
+  switchTree: () => app.switchTree(),
+  files: () => chrome.toggleFiles(),
+  entry: () => { const e = app.entryPoint(); if (e) app.setFocus(e.pid, { level: 1 }); },
+  layout: () => app.toggleLayout(),
+};
+// ---- command palette: every action by name, with its keys, plus what has no key of its own
 function commands() {
   const s = app.settings, flip = (k, a, b) => app.saveSettings({ [k]: s[k] === a ? b : a });
   return [
-    ...KEYED.map(([title, k]) => ({ id: `key:${k}`, title, keys: (KEY_TEXT[k] ?? k).split(" "), run: () => press(k, { learn: false }) })),
-    ...(app.claudeReady && app.graph.generator.tree !== "claude" ? [{ id: "key:R", title: "Switch to Claude's tree", keys: ["R"], run: () => app.switchTree() }] : []),
+    ...ACTIONS.filter((a) => a.id !== "switchTree" || (app.claudeReady && app.graph.generator.tree !== "claude"))
+      .map((a) => ({ id: `key:${a.id}`, title: a.title, keys: keysOf(app.settings, a.id).slice(0, 1).flatMap((k) => keyText(k).split(" ")), run: () => runAction(a.id, { learn: false }) })),
     { id: "tour", title: "Take the tour", sub: "how the walk, the views and the keys fit together", run: () => tour.start() },
     ...views.filter((v) => v.id !== currentId).map((v) => ({ id: `view:${v.id}`, title: `${v.name} view`, sub: v.hint, run: () => app.switchView(v.id) })),
     { id: "set:tests", title: `${s.tests === "show" ? "Hide" : "Show"} tests and generated files`, run: () => flip("tests", "show", "hide") },
@@ -198,8 +192,7 @@ document.addEventListener("keydown", (ev) => {
   if (tour.key(ev.key)) return ev.preventDefault(); // the callout's own keys; every other key still works under it
   // Esc works on what's innermost: an open composer, then a line selection, then the view (focus mode), then the level.
   if (ev.key === "Escape" && escapeCode(app)) return ev.preventDefault();
-  const k = ev.shiftKey && ev.code === "Digit1" ? "!" : ev.key; // shift+1, whatever the layout prints
-  if (press(k)) ev.preventDefault();
+  if (press(keyOfEvent(ev))) ev.preventDefault(); // shift+1 is "!", whatever the layout prints
 });
 
 window.bobby = app; // handy for debugging and tests

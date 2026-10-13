@@ -1,5 +1,6 @@
 // Outline: a document-like rail (the open core as a tree: each page nested under the page it attaches to, distant
 // cores folded) beside a reading pane that shows the PR story, the core's story, or the code page.
+import { keyHtml } from "../keys.js";
 import { BANDS, BAND_TEXT, DONE, LOW, esc, inline } from "../core.js";
 
 const BAND_CHIP = { upUnchanged: "relies on · untouched", upChanged: "relies on · changed", core: "core", downChanged: "affects · changed", downUnchanged: "affects · untouched" };
@@ -138,7 +139,7 @@ export default {
       const fc = app.get(app.focus)?.core;
       const { done, total, mins } = app.progress();
       return `<div class="story"><div class="eyebrow">What this PR does</div><h1>${esc(app.graph.intent)}</h1>
-        <p class="lede">${app.graph.cores.length} core change${app.graph.cores.length > 1 ? "s" : ""} · ${done}/${total} reviewed${mins ? ` · about ${mins} min left` : ""}. Press <kbd>enter</kbd> to open the highlighted one.</p>
+        <p class="lede">${app.graph.cores.length} core change${app.graph.cores.length > 1 ? "s" : ""} · ${done}/${total} reviewed${mins ? ` · about ${mins} min left` : ""}. Press ${keyHtml(app.settings, "zoomIn")} to open the highlighted one.</p>
         ${app.graph.cores.map((c, ci) => {
           if (!app.coreShown(c)) return "";
           const items = app.index.walk.filter((p) => app.get(p)?.core === c);
@@ -204,11 +205,11 @@ export default {
       if (to) app.setFocus(to, { level: Math.max(1, app.level) });
     }
     const fill = () => { filled = !filled; update("fill"); };
-    const keys = {
-      ArrowLeft: () => move(-1, 0), ArrowRight: () => move(1, 0), ArrowUp: () => move(0, -1), ArrowDown: () => move(0, 1),
-      f: () => fill(), // the reading pane takes the whole width
-      g: () => app.setLevel(app.level === 2 ? 1 : 2),
-      Escape: () => (filled ? fill() : app.setLevel(app.level - 1)),
+    const keys = { // by action (keys.js): whichever keys you've bound to them
+      left: () => move(-1, 0), right: () => move(1, 0), up: () => move(0, -1), down: () => move(0, 1),
+      focus: () => fill(), // the reading pane takes the whole width
+      fullScreen: () => app.setLevel(app.level === 2 ? 1 : 2),
+      zoomOut: () => (filled ? fill() : app.setLevel(app.level - 1)),
     };
 
     update("mount");

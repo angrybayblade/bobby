@@ -2,25 +2,27 @@
 // underneath keeps its keys and clicks, and the callout follows what it points at as the app re-renders.
 import { esc } from "./core.js";
 import { MOD } from "./palette.js";
+import { keyHtml } from "./keys.js";
 
 const $ = (q) => document.querySelector(q);
 const kbd = (...ks) => ks.map((k) => `<kbd>${k}</kbd>`).join(" ");
 const PALETTE_KEY = MOD === "⌘" ? kbd("⌘K") : kbd("ctrl", "k");
 let app, steps = [], at = -1, onEnd = null, card, ring, firstRun = false;
 
-const TOUR = [
+const k = (id) => keyHtml(app.settings, id); // your key for an action (keys.js), as it is when the step shows
+const TOUR = () => [
   { title: "Welcome", body: `I'll take you through this PR one page at a time, in dependency order: the code a change relies on, then the change, then what it affects. Four quick tips, or ${kbd("esc")} to skip.` },
-  { at: "#where", title: "Where you are", body: `The PR, the core change you're in, and the page you're on. ${kbd("enter")} zooms in and ${kbd("esc")} zooms out: overview, core, page.` },
-  { at: "#view", title: "The walk", body: `${kbd("j")} ${kbd("k")} step through it. <i class="glyph core"></i> is a core change, <i class="glyph change"></i> changed code, <i class="glyph context"></i> untouched code around it. ${kbd("a")} marks a page reviewed and moves on, ${kbd("x")} flags it for later, ${kbd("c")} comments on a line.` },
-  { at: '#top .seg[aria-label="View"]', title: "Four ways to see it", body: `Flow, Outline, Lens and Diff show the same walk. ${kbd("v")} switches, and you keep your place.` },
-  { at: "#keys", title: "Keys when you need them", body: `These hints fade once you've used them. ${kbd("?")} lists every key, ${PALETTE_KEY} searches every command, and ${kbd("s")} submits your review.`, next: "Start reviewing" },
+  { at: "#where", title: "Where you are", body: `The PR, the core change you're in, and the page you're on. ${k("zoomIn")} zooms in and ${k("zoomOut")} zooms out: overview, core, page.` },
+  { at: "#view", title: "The walk", body: `${k("next")} ${k("prev")} step through it. <i class="glyph core"></i> is a core change, <i class="glyph change"></i> changed code, <i class="glyph context"></i> untouched code around it. ${k("reviewed")} marks a page reviewed and moves on, ${k("flag")} flags it for later, ${k("comment")} comments on a line.` },
+  { at: '#top .seg[aria-label="View"]', title: "Four ways to see it", body: `Flow, Outline, Lens and Diff show the same walk. ${k("nextView")} switches, and you keep your place.` },
+  { at: "#keys", title: "Keys when you need them", body: `These hints fade once you've used them. ${k("help")} lists every key, ${PALETTE_KEY} searches every command, and ${k("submit")} submits your review.`, next: "Start reviewing" },
 ];
 
 // What's new, oldest first. Each is offered once, as a chip at the end of the key hints, one per launch; opening it
 // marks it seen. A first launch marks them all seen: the tour covers the app as it is.
-const NEWS = [
+const NEWS = () => [
   { id: "palette", title: "Command palette", body: `${PALETTE_KEY} searches every command, core, file and page, and runs what you pick.` },
-  { id: "tour", title: "A quick tour", body: `Let me show you how the walk, the views and the keys fit together, in four quick tips. You'll find it on ${kbd("?")} whenever you want it again.`, act: { label: "Take the tour", run: () => start() } },
+  { id: "tour", title: "A quick tour", body: `Let me show you how the walk, the views and the keys fit together, in four quick tips. You'll find it on ${k("help")} whenever you want it again.`, act: { label: "Take the tour", run: () => start() } },
   { id: "inspect", title: "Inspect a name", body: `${MOD === "⌘" ? kbd("⌘") : kbd("ctrl")}-click a function, class or variable in the code to see where it's declared, its type and its code, in a window over the review. ${MOD === "⌘" ? kbd("⌘") : kbd("ctrl")}-click inside to go deeper, ${kbd("esc")} to come back.` },
 ];
 let news = null;
@@ -32,8 +34,8 @@ export function init(a, { fresh = false } = {}) {
   app = a;
   firstRun = fresh && app.settings.tour !== "seen";
   const seen = app.settings.news ?? [];
-  news = firstRun ? null : NEWS.find((n) => !seen.includes(n.id)) ?? null;
-  const patch = { ...(app.settings.tour !== "seen" ? { tour: "seen" } : {}), ...(firstRun ? { news: NEWS.map((n) => n.id) } : {}) };
+  news = firstRun ? null : NEWS().find((n) => !seen.includes(n.id)) ?? null;
+  const patch = { ...(app.settings.tour !== "seen" ? { tour: "seen" } : {}), ...(firstRun ? { news: NEWS().map((n) => n.id) } : {}) };
   if (Object.keys(patch).length) app.saveSettings(patch);
   document.addEventListener("click", (ev) => ev.target.closest("[data-tour=news]") && openNews());
   ring = document.body.appendChild(Object.assign(document.createElement("div"), { className: "tour-ring", hidden: true }));
@@ -44,7 +46,7 @@ export function init(a, { fresh = false } = {}) {
   app.on(() => isOpen() && requestAnimationFrame(place));
 }
 
-export const start = (then) => show(TOUR, { then });
+export const start = (then) => show(TOUR(), { then });
 /** Runs the tour on a first launch, then `then`; otherwise just `then`. */
 export function welcome(then) {
   if (!firstRun) return then();
@@ -55,7 +57,7 @@ export function welcome(then) {
 /** The chip for what's new, for the end of the key hints; empty once it's been seen. */
 export const newsChip = () => (news ? `<button class="newchip" data-tour="news" title="What's new">New · ${esc(news.title)}</button>` : "");
 function openNews() {
-  const n = news;
+  const n = news && NEWS().find((x) => x.id === news.id); // with your keys as they are now
   if (!n) return;
   show([{ at: ".newchip", ...n }], { then: () => { news = null; app.saveSettings({ news: [...(app.settings.news ?? []), n.id] }); } });
 }

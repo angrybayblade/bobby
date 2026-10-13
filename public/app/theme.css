@@ -369,7 +369,7 @@ mark.wd { background: var(--del-word); color: inherit; border-radius: 0; }
 .sec.done .sech .vw { color: var(--ok); border-color: transparent; }
 .sech .vw .cb { display: inline-grid; place-items: center; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; border: 1px solid currentColor; border-radius: 0; font: 700 8px/1 var(--font-ui); }
 .modal.notes { display: flex; flex-direction: column; gap: 8px; }
-.modal.notes .nh { margin: 10px 0 0; font: 600 11px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.modal .nh { margin: 10px 0 0; font: 600 11px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
 .modal.notes .note code { font: 12px var(--font-code); color: var(--muted); }
 .node.file > .fnotes { margin: 0; padding: 10px 12px; border-bottom: 1px solid var(--line-soft); max-width: none; }
 .cmt .ckind { display: flex; gap: 4px; margin: -2px 0 6px; }
@@ -424,6 +424,9 @@ mark.wd { background: var(--del-word); color: inherit; border-radius: 0; }
 .palette .none { padding: 14px 12px; color: var(--faint); font-size: 13px; text-align: center; }
 .palette .pfoot { display: flex; gap: 18px; padding: 8px 16px; border-top: 1px solid var(--line-soft); font-size: 12px; color: var(--faint); }
 
+/* Keyboard shortcuts: the key sheet and the editor (chrome.js › help, keysEditor). */
+.unbound { color: var(--faint); font-style: italic; font-size: 12px; }
+.or { color: var(--faint); font-size: 11px; margin: 0 2px; }
 /* A language server's card: what it installs, and the command to run yourself. */
 .srvfacts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 12px 0; font-size: 13px; }
 .srvfacts dt { color: var(--faint); }

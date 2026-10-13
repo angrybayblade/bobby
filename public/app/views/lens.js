@@ -222,12 +222,12 @@ export default {
       }
     }
     const fill = () => { if (app.level !== 1) { app.setLevel(1); return setTimeout(fill, 60); } filled = !filled; update("fill"); };
-    const keys = {
-      ArrowLeft: () => (app.level === 0 ? switchCore(-1) : move(-1, 0)), ArrowRight: () => (app.level === 0 ? switchCore(1) : move(1, 0)),
-      ArrowUp: () => (app.level === 0 ? switchCore(-1) : move(0, -1)), ArrowDown: () => (app.level === 0 ? switchCore(1) : move(0, 1)),
-      f: () => fill(),
-      g: () => app.setLevel(app.level === 2 ? 1 : 2),
-      Escape: () => (filled ? fill() : app.setLevel(app.level - 1)),
+    const keys = { // by action (keys.js): whichever keys you've bound to them
+      left: () => (app.level === 0 ? switchCore(-1) : move(-1, 0)), right: () => (app.level === 0 ? switchCore(1) : move(1, 0)),
+      up: () => (app.level === 0 ? switchCore(-1) : move(0, -1)), down: () => (app.level === 0 ? switchCore(1) : move(0, 1)),
+      focus: () => fill(),
+      fullScreen: () => app.setLevel(app.level === 2 ? 1 : 2),
+      zoomOut: () => (filled ? fill() : app.setLevel(app.level - 1)),
     };
 
     update("mount");
