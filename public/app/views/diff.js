@@ -656,15 +656,29 @@ export default {
       world.style.transform = `translate(${cam.tx + pan.x}px, ${cam.ty + pan.y}px) scale(${cam.s})`;
       clampText();
     }
-    // Contents zoom back by MAX_TEXT/scale when the camera is past it. Re-zooming every viewer reflows the canvas, so
-    // during a pinch or ctrl+scroll it's applied once the gesture settles.
-    let clampAt = 1, clampTimer = 0;
+    // Contents zoom back by MAX_TEXT/scale when the camera is past it, so text keeps its size while the viewer
+    // grows. Re-zooming every viewer reflows the canvas (~100ms), so during a pinch or ctrl+scroll only the viewers
+    // on screen follow, in the same frame as the camera; the rest catch up a few a frame once it settles.
+    let clampTimer = 0, clampFrame = 0;
+    const clampOf = () => String(+Math.min(1, MAX_TEXT / cam.s).toFixed(3));
+    const setClamp = (v, z) => { if (v.clamp === z) return false; v.clamp = z; v.el.style.setProperty("--clamp", z); return true; };
+    function onScreen() {
+      const sw = stage.clientWidth, sh = stage.clientHeight, s = cam.s, x0 = cam.tx + pan.x, y0 = cam.ty + pan.y;
+      return [...views.values()].filter((v) => v.x * s + x0 < sw && (v.x + W) * s + x0 > 0 && v.y * s + y0 < sh && (v.y + v.h) * s + y0 > 0);
+    }
     function clampText(now = !world.classList.contains("still")) {
-      const z = +Math.min(1, MAX_TEXT / cam.s).toFixed(3);
-      if (z === clampAt) return clearTimeout(clampTimer);
-      const set = () => { clampAt = z; world.style.setProperty("--clamp", z); redraw(); };
-      clearTimeout(clampTimer);
-      if (now) set(); else clampTimer = setTimeout(set, 160);
+      clearTimeout(clampTimer); cancelAnimationFrame(clampFrame);
+      const z = clampOf();
+      let moved = false;
+      for (const v of now ? views.values() : onScreen()) moved = setClamp(v, z) || moved;
+      if (moved) redraw();
+      if (now) return;
+      clampTimer = setTimeout(function rest() {
+        let n = 0, moved = false;
+        for (const v of views.values()) if (v.clamp !== z && n++ < 4) moved = setClamp(v, z) || moved;
+        if (moved) redraw();
+        if (n > 4) clampFrame = requestAnimationFrame(rest);
+      }, 160);
     }
     // Zoom by k around a point on the stage, keeping whatever is under it in place. At most until a viewer fills
     // the stage less FRAME_PAD (a full-height viewer shares the stage's shape, so its height fits then too).
