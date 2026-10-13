@@ -3,13 +3,14 @@
 import type { ReviewGraph } from "./graph.ts";
 import { Inspector } from "./inspect.ts";
 import { headTree, keepTree, type LanguageServer, type Offer } from "./langserver.ts";
+import { python } from "./python.ts";
 import type { Session } from "./server.ts";
 import { loadCachedDefs, loadSettings, saveCachedDefs, saveSettings } from "./state.ts";
 import type { Definition } from "./types.ts";
 import { typescript } from "./typescript.ts";
 
 /** Every language with a server. A new one is a LanguageServer added here. */
-export const SERVERS: LanguageServer[] = [typescript];
+export const SERVERS: LanguageServer[] = [typescript, python];
 export const serverById = (id: string) => SERVERS.find((s) => s.id === id);
 
 // consent: Bobby can install it and is waiting for a yes; missing: something to install yourself (hint, command);
