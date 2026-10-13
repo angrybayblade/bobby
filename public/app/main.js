@@ -78,25 +78,28 @@ app.switchTree = async () => {
   app.replaceGraph(await api("/api/graph"));
   chrome.toast("Switched to Claude's tree. You're on the same code.", 4000);
 };
+// Polled while Claude works or a language server is installing or loading.
+const busy = (list) => list.some((x) => x.state === "pending" || x.state === "installing");
+let pollTimer = 0;
 async function poll() {
+  clearTimeout(pollTimer);
   const s = await api("/api/status");
   app.llm = s.llm;
   if (s.claudeReady && !app.claudeReady) {
     app.claudeReady = true;
     chrome.toast(`<span>Claude's tree is ready. <kbd>R</kbd> switches; you keep your place.</span>`);
   }
-  if (app.lsp === "pending" && s.lsp !== "pending") { // the language server has answered: its definitions replace the syntax-only ones
-    if (s.lsp === "done") app.graph.definitions = await api("/api/definitions");
-    app.lspError = s.lspError;
-  }
-  app.lsp = s.lsp;
+  const was = new Map(app.servers.map((x) => [x.id, x.state]));
+  app.servers = s.servers ?? [];
+  // A server finished: its definitions replace the syntax-only ones for its language.
+  if (app.servers.some((x) => x.state === "done" && was.get(x.id) !== "done")) app.graph.definitions = await api("/api/definitions");
   app.emit("llm");
-  if (s.llm === "pending" || s.lsp === "pending") setTimeout(poll, 4000);
+  if (s.llm === "pending" || busy(app.servers)) pollTimer = setTimeout(poll, 3000);
 }
-if (app.llm === "pending" || app.lsp === "pending") poll();
-// The graph and the session are read at once: the server may have finished between them, leaving syntax-only definitions.
-else if (app.lsp === "done" && !Object.values(app.graph.definitions ?? {}).some((l) => l.some((d) => d.via === "lsp")))
-  api("/api/definitions").then((d) => { app.graph.definitions = d; });
+app.watchServers = poll; // after you say yes, check again or no in the UI
+if (app.llm === "pending" || busy(app.servers)) poll();
+// The graph and the session are read at once: a server may have finished between them, leaving syntax-only definitions.
+else if (app.servers.some((x) => x.state === "done")) api("/api/definitions").then((d) => { app.graph.definitions = d; });
 
 // ---- start: at the entry point (the unreviewed core with the least around it), on every load. Where you were last is
 // offered on the welcome-back card instead of being jumped to.

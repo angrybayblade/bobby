@@ -424,6 +424,11 @@ mark.wd { background: var(--del-word); color: inherit; border-radius: 0; }
 .palette .none { padding: 14px 12px; color: var(--faint); font-size: 13px; text-align: center; }
 .palette .pfoot { display: flex; gap: 18px; padding: 8px 16px; border-top: 1px solid var(--line-soft); font-size: 12px; color: var(--faint); }
 
+/* A language server's card: what it installs, and the command to run yourself. */
+.srvfacts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 12px 0; font-size: 13px; }
+.srvfacts dt { color: var(--faint); }
+.srvfacts dd { margin: 0; color: var(--text); }
+.srvcmd { margin: 10px 0; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised); font: 12.5px/1.5 var(--font-code); white-space: pre-wrap; user-select: all; }
 #toast { position: fixed; right: 20px; bottom: 52px; z-index: 40; max-width: 360px; padding: 12px 16px; border-radius: 4px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); font-size: 14px; display: flex; gap: 12px; align-items: center; }
 #toast[hidden] { display: none; }
 #toast .x { color: var(--faint); margin-left: auto; }

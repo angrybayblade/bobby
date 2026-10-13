@@ -7,9 +7,8 @@ import { parseDiff } from "./diff.ts";
 import { analyze, heuristicTree, type Analysis } from "./analyze.ts";
 import { claudeTree } from "./llm.ts";
 import { buildGraph, GRAPH_SCHEMA, LEGACY_SCHEMAS, VERSION, type ReviewGraph } from "./graph.ts";
-import { loadCachedDefs, loadCachedGraphs, loadCachedTree, loadState, saveCachedDefs, saveCachedGraphs, saveCachedTree } from "./state.ts";
-import { Inspector } from "./inspect.ts";
-import { headTree, keepTree, TS_SERVER_ID, tsLanguageId } from "./typescript.ts";
+import { loadCachedGraphs, loadCachedTree, loadSettings, loadState, saveCachedGraphs, saveCachedTree } from "./state.ts";
+import { allow, SERVERS, serverById, startServers, stopServers } from "./servers.ts";
 import type { FileDiff, PrInfo } from "./types.ts";
 import { startServer, type Session } from "./server.ts";
 import pkg from "../package.json" with { type: "json" };
@@ -38,19 +37,21 @@ const USAGE = `bobby: review a PR one focused page at a time
   bobby <pr-url | number>            extract + open the review UI for a PR
   bobby extract [pr] [-o file.json]  write the review graph (${GRAPH_SCHEMA}) and exit
   bobby open <graph.json>            open the UI on an existing graph file
+  bobby lsp                          the language servers behind the inspector, by language
+  bobby lsp install <language>       install one (typescript, python), or say how (go)
 
   --base <ref>   no PR: the branch to compare against (default: this branch's PR base,
                  origin's default branch, then main/master/develop/trunk; asks if none)
   --repo <dir>   local clone (default: cwd, else auto-clone to ~/.bobby/repos)
   --port <n>     UI port (default 4173)
   --no-llm       static analysis only; skip Claude
-  --no-lsp       don't start the TypeScript language server (the inspector then answers from imports alone)
-  --lsp          extract: ask the language server too (slower: it loads the project first)
+  --no-lsp       don't start language servers (the inspector then answers from imports alone)
+  --lsp          extract: ask the installed language servers too (slower: they load the project first)
   --refresh      rebuild everything for this commit (ignore cached graphs and Claude tree)
   --no-open      don't open the browser
   -v, --version  print the version`;
 
-const [cmd, arg] = ["extract", "open"].includes(positionals[0]) ? [positionals[0], positionals[1]] : ["review", positionals[0]];
+const [cmd, arg] = ["extract", "open", "lsp"].includes(positionals[0]) ? [positionals[0], positionals[1]] : ["review", positionals[0]];
 if (values.version) {
   console.log(pkg.version);
   process.exit(0);
@@ -58,6 +59,31 @@ if (values.version) {
 if (values.help || (cmd === "open" && !arg)) {
   console.log(USAGE);
   process.exit(values.help ? 0 : 1);
+}
+if (cmd === "lsp") process.exit(await lspCommand(arg, positionals[2]));
+
+/** bobby lsp: where each language's server stands. bobby lsp install <language>: installs it (or says how), and
+ *  clears a "never" given in the UI. */
+async function lspCommand(sub?: string, id?: string): Promise<number> {
+  if (sub === "install") {
+    const srv = id ? serverById(id) : undefined;
+    if (!srv) { console.error(`Which language? ${SERVERS.map((s) => s.id).join(", ")}`); return 1; }
+    allow(srv.id);
+    if (await srv.installed()) { console.log(`✓ ${srv.title}: already installed (${await srv.version()})`); return 0; }
+    const missing = await srv.missing();
+    if (missing || !srv.install) { console.log(`${srv.title}: ${missing?.hint ?? "Bobby can't install this one."}${missing?.command ? `\n  ${missing.command}` : ""}`); return 1; }
+    await srv.install((m) => console.log(m));
+    console.log(`✓ ${srv.title}: installed (${await srv.version()})`);
+    return 0;
+  }
+  if (sub) { console.error(USAGE); return 1; }
+  const never = (loadSettings().servers ?? {}) as Record<string, string>;
+  for (const srv of SERVERS) {
+    const status = (await srv.installed()) ? `installed (${await srv.version()})`
+      : await srv.missing().then((m) => m ? `${m.hint}${m.command ? ` ${m.command}` : ""}` : `not installed: bobby lsp install ${srv.id}${srv.offer ? ` (${srv.offer.size}, ${srv.offer.from})` : ""}`);
+    console.log(`${srv.title.padEnd(12)} ${status}${never[srv.id] === "never" ? "  [turned off in the UI]" : ""}`);
+  }
+  return 0;
 }
 const log = (m: string) => (cmd === "extract" && !values.out ? console.error(m) : console.log(m));
 
@@ -70,7 +96,7 @@ if (cmd === "open") {
     if (discussion) graph.discussion = discussion;
   }
   const session: Session = { cwd: values.repo ?? null, staticGraph: graph, state: loadState({ ...graph.pr }), llm: "off" };
-  if (session.cwd) languageServer(session, session.cwd);
+  void startServers(session, { ask: true, off: values["no-lsp"], log });
   await serve(session);
 } else {
   const t0 = Date.now();
@@ -143,10 +169,10 @@ if (cmd === "open") {
       log("▸ asking Claude to build the change tree…");
       graph = await claude().catch((e) => (log(`  ✗ Claude failed, writing static graph: ${e.message}`), staticGraph));
     }
-    if (values.lsp && hasTypeScript(graph)) {
+    if (values.lsp) { // the servers that are installed; none is installed without asking
       const s: Session = { cwd, staticGraph: graph, state: { headSha: graph.pr.headSha, marks: {}, comments: [] }, llm: "off" };
-      await languageServer(s, cwd);
-      await s.inspector?.stop();
+      await startServers(s, { ask: false, log });
+      await stopServers(s);
       if (s.definitions) graph = { ...graph, definitions: s.definitions };
     }
     const text = JSON.stringify(graph, null, 1);
@@ -157,7 +183,7 @@ if (cmd === "open") {
       cwd, staticGraph, claudeGraph, state: loadState(pr),
       llm: claudeGraph ? "done" : wantLlm ? "pending" : "off",
     };
-    languageServer(session, cwd);
+    void startServers(session, { ask: true, off: values["no-lsp"], log });
     if (wantLlm) {
       log("▸ asking Claude to build the change tree (UI is usable meanwhile)…");
       claude()
@@ -165,46 +191,6 @@ if (cmd === "open") {
         .catch((e) => { session.llm = "failed"; session.llmError = String(e.message ?? e); console.error(`  ✗ Claude tree failed, keeping static tree: ${session.llmError}`); });
     }
     await serve(session);
-  }
-}
-
-function hasTypeScript(g: ReviewGraph) { return g.files.some((f) => f.status !== "deleted" && tsLanguageId(f.path)); }
-
-/** The TypeScript language server, in the background (the UI is usable meanwhile): it loads the project, places
- *  every name on the change's lines, then stays up to answer the inspector. Off with --no-lsp or without TS. */
-async function languageServer(session: Session, cwd: string) {
-  const g = session.staticGraph, pr = g.pr;
-  if (values["no-lsp"] || !hasTypeScript(g)) { session.lsp = "off"; return; }
-  session.lsp = "pending";
-  const t0 = Date.now(), cacheable = pr.provider !== "local"; // a local review reads your working copy, which changes
-  const cacheId = `${TS_SERVER_ID}.${g.generator.version}`; // what the server placed depends on the names extraction found
-  try {
-    const cached = cacheable ? loadCachedDefs(pr, cacheId) : null;
-    if (cached) session.definitions = cached;
-    const root = pr.provider === "local" ? cwd : await headTree(cwd, pr);
-    log(`▸ starting the TypeScript language server${cmd === "extract" ? "" : " (the UI is usable meanwhile)"}…`);
-    const insp = (session.inspector = await Inspector.start(root, log));
-    process.once("SIGINT", () => void insp.stop().finally(() => process.exit(130)));
-    insp.onExit((why) => { // it stopped on its own: say so, and answer from imports from now on
-      session.lsp = "failed";
-      session.lspError = `the language server stopped: ${why}`;
-      console.error(`  ✗ ${session.lspError}. The inspector answers from imports alone.`);
-    });
-    if (pr.provider !== "local") setInterval(() => keepTree(root), 3_600_000).unref(); // in use: never pruned by another Bobby
-    if (cached) { // already placed: one name loads the project, so the inspector's first answer is quick
-      const [path, list] = Object.entries(cached).find(([p, l]) => tsLanguageId(p) && l.length) ?? [];
-      if (path && list) await insp.definitions({ [path]: list.slice(0, 1) });
-    } else {
-      session.definitions = await insp.definitions(g.definitions ?? {});
-      if (cacheable) saveCachedDefs(pr, cacheId, session.definitions);
-    }
-    const all = Object.values(session.definitions ?? {}).flat(), placed = all.filter((d) => d.via === "lsp").length;
-    session.lsp = "done";
-    log(`  ✓ language server ready: ${placed} of ${all.length} names placed by it (${((Date.now() - t0) / 1000).toFixed(1)}s)`);
-  } catch (e) {
-    session.lsp = "failed";
-    session.lspError = String((e as Error).message ?? e);
-    console.error(`  ✗ language server: ${session.lspError}. The inspector answers from imports alone.`);
   }
 }
 

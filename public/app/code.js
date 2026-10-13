@@ -497,7 +497,8 @@ async function inspect(app, at, deeper) {
   let res = app.caps.inspect ? await api(`/api/inspect?path=${encodeURIComponent(at.path)}&line=${at.line}&col=${at.col}`).catch(() => null) : null;
   if (!res && stored) res = { to: stored.to, ext: stored.ext, via: stored.via ?? "syntax" };
   entry.res = res ?? { via: "none" };
-  if (res?.lsp && res.lsp !== app.lsp) { app.lsp = res.lsp; app.lspError = res.lspError; app.emit("llm"); } // e.g. the server stopped
+  const srv = res?.server, known = srv && app.servers.find((x) => x.id === srv.id);
+  if (known && known.state !== srv.state) { Object.assign(known, srv); app.emit("llm"); } // e.g. its server stopped
   const to = entry.res.to;
   if (to && app.caps.files) {
     const r = await api(`/api/file?path=${encodeURIComponent(to.path)}`).catch(() => null);
@@ -519,7 +520,7 @@ function peekHtml(app) {
     : e.loading ? "looking…"
     : res?.to ? `${esc(res.to.path)}:${res.to.line}${gh ? ` <a href="${esc(gh)}" target="_blank" rel="noopener" title="Open on GitHub">GitHub ↗</a>` : ""}`
     : res?.ext ? `in <b>${esc(res.ext)}</b>, outside this repo`
-    : `not found${res?.pending ? ": types are still loading, try again in a moment" : res?.changed ? "" : app.lsp !== "done" ? ": locals and members of values need the language server" : ""}`;
+    : `not found${res?.pending ? ": types are still loading, try again in a moment" : res?.changed ? "" : res?.server && res.server.state !== "done" ? `: locals and members of values need the ${esc(res.server.title)} language server` : ""}`;
   const changed = res?.changed ? `<div class="pkw">This file has changed since the review started, so it's answered from imports alone. Restart Bobby to inspect it with types.</div>` : "";
   const head = `<div class="pkh"><div class="pktrail">${trail}</div>${via}<button class="pkx" data-peekclose title="Close · esc" aria-label="Close">✕</button></div>
     <div class="pkw">${where}</div>${changed}`;

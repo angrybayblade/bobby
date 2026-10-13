@@ -5,6 +5,7 @@ import type { ReviewGraph } from "./graph.ts";
 import { loadSettings, saveSettings, saveState } from "./state.ts";
 import type { Comment, Definition, PrivateNote, ReviewState } from "./types.ts";
 import { type Inspector, insideRepo, inspectSyntax } from "./inspect.ts";
+import { declineServer, inspectorFor, installServer, recheckServer, type ServerInfo, serverInfoFor } from "./servers.ts";
 import { Repo } from "./resolve.ts";
 
 export interface Session {
@@ -14,10 +15,12 @@ export interface Session {
   state: ReviewState;
   llm: "pending" | "done" | "failed" | "off";
   llmError?: string;
-  // The language server: loading, then answering the inspector, with its definitions for the change's names.
-  lsp?: "pending" | "done" | "failed" | "off";
-  lspError?: string;
-  inspector?: Inspector;
+  // Language servers, one per language in the review (servers.ts): where each stands, the running ones, and the
+  // definitions with their answers merged in. root: the tree they read; log: where they report.
+  servers?: Record<string, ServerInfo>;
+  inspectors?: Record<string, Inspector>;
+  root?: Promise<string>;
+  log?: (m: string) => void;
   definitions?: Record<string, Definition[]>;
   repo?: Promise<Repo>; // the head commit's syntax, for the inspector without a language server
 }
@@ -57,8 +60,19 @@ export function startServer(s: Session, port: number) {
         return json(s.definitions ? { ...g, definitions: s.definitions } : g); // the language server's, once it has answered
       }
       if (p === "/api/session")
-        return json({ state: s.state, settings: loadSettings(), llm: s.llm, llmError: s.llmError, lsp: s.lsp ?? "off", lspError: s.lspError, caps: { files: !!s.cwd, inspect: !!s.cwd } });
-      if (p === "/api/status") return json({ llm: s.llm, llmError: s.llmError, claudeReady: !!s.claudeGraph, lsp: s.lsp ?? "off", lspError: s.lspError });
+        return json({ state: s.state, settings: loadSettings(), llm: s.llm, llmError: s.llmError, servers: Object.values(s.servers ?? {}), caps: { files: !!s.cwd, inspect: !!s.cwd } });
+      if (p === "/api/status") return json({ llm: s.llm, llmError: s.llmError, claudeReady: !!s.claudeGraph, servers: Object.values(s.servers ?? {}) });
+      // A language server: yes, install it; look again for what you installed yourself; not now, or never.
+      if (req.method === "POST" && p.startsWith("/api/servers/")) {
+        const { id, never } = (await req.json()) as { id: string; never?: boolean };
+        if (!s.servers?.[id]) return json({ error: "no such server in this review" }, 404);
+        const act = p.slice("/api/servers/".length);
+        if (act === "install") void installServer(s, id); // in the background: its state says how it's going
+        else if (act === "check") await recheckServer(s, id);
+        else if (act === "decline") declineServer(s, id, !!never);
+        else return json({ error: "not found" }, 404);
+        return json({ servers: Object.values(s.servers) });
+      }
       if (p === "/api/definitions") return json(s.definitions ?? s.staticGraph.definitions ?? {});
 
       // The inspector: where the name at path:line:col (head side) is declared. The language server once it's loaded;
@@ -66,7 +80,7 @@ export function startServer(s: Session, port: number) {
       if (p === "/api/inspect") {
         const path = url.searchParams.get("path") ?? "", line = Number(url.searchParams.get("line")), col = Number(url.searchParams.get("col"));
         if (!insideRepo(path) || !Number.isInteger(line) || !Number.isInteger(col)) return json({ error: "a repo-relative path, a line and a column" }, 400);
-        const state = { pending: s.lsp === "pending", lsp: s.lsp ?? "off", ...(s.lspError ? { lspError: s.lspError } : {}) };
+        const server = serverInfoFor(s, path), state = { pending: server?.state === "pending" || server?.state === "installing", ...(server ? { server } : {}) };
         // A local review's diff is a snapshot of your working copy; the server reads the live files. Once a file has
         // changed, its lines no longer match what you're reading, so the server isn't asked about it.
         const changed = pr().provider === "local" && !!s.cwd && (await changedSince(s.cwd, pr().headSha, path));
@@ -78,8 +92,9 @@ export function startServer(s: Session, port: number) {
           s.repo ??= Repo.open(s.cwd, pr().headSha);
           return inspectSyntax(await s.repo, path, line, col).catch(() => null);
         };
-        if (s.inspector?.alive && s.lsp === "done" && !changed) {
-          const r = await s.inspector.inspect(path, line, col).catch(() => null);
+        const insp = inspectorFor(s, path);
+        if (insp && !changed) {
+          const r = await insp.inspect(path, line, col).catch(() => null);
           if (r?.to || r?.ext) return json({ ...r, ...state });
           if (r?.hover) { const d = await syntax(); return json({ ...(d?.to || d?.ext ? d : {}), ...r, via: d?.to || d?.ext ? d.via : r.via, ...state }); } // a type, and where imports say it is
         }

@@ -130,8 +130,7 @@ function renderTop() {
   const g = app.graph;
   const llm = app.llm === "pending" ? `<span class="pill pulse" title="The static tree is usable now">Claude is organising…</span>`
     : app.claudeReady && g.generator.tree !== "claude" ? `<button class="pill signal" data-act="switch-tree">Smarter tree ready · R</button>` : "";
-  const lsp = app.lsp === "pending" ? `<span class="pill pulse" title="The TypeScript language server is loading the project. Until it's ready, ${MOD}-click on a name finds what imports can">Types loading…</span>`
-    : app.lsp === "failed" ? `<span class="pill" title="The TypeScript language server isn't running: ${esc(app.lspError ?? "")}. ${MOD}-click on a name still finds what imports can">Types off</span>` : "";
+  const lsp = app.servers.map(serverChip).join("");
   const drafts = app.state.comments.filter((c) => !c.wip && c.kind !== "note").length; // unfinished drafts aren't ready to post
   $("#top").innerHTML = `
     <div class="brand"><img src="/bobby.svg" alt="" width="22" height="22">bobby</div>
@@ -438,6 +437,44 @@ function welcomeBackLite() {
     ${loc.core.hook ? `<span class="hook">${inline(loc.core.hook)}</span>` : ""}</span>`, 15000);
 }
 
+// ---------------------------------------------------------------- language servers
+// A chip for each language whose server needs you (a yes, something to install) or is on its way; nothing once it's up.
+function serverChip(s) {
+  const t = esc(s.title), act = `data-act="server" data-id="${esc(s.id)}"`;
+  if (s.state === "consent") return `<button class="pill signal" ${act} title="Install the ${t} language server for types in ${t} code">${t} types · set up?</button>`;
+  if (s.state === "missing") return `<button class="pill" ${act} title="${esc(s.hint ?? "")}">${t} types · needs setup</button>`;
+  if (s.state === "installing") return `<span class="pill pulse">Installing ${t} types…</span>`;
+  if (s.state === "pending") return `<span class="pill pulse" title="The ${t} language server is loading the project. Until it's ready, ${MOD}-click on a name finds what imports can">${t} types loading…</span>`;
+  if (s.state === "failed") return `<button class="pill" ${act} title="${esc(s.error ?? "")}">${t} types off</button>`;
+  return "";
+}
+/** What a language server would bring, and the choices: install (Bobby can) or how to (you install it), not now, never. */
+function serverCard(id) {
+  const s = app.servers.find((x) => x.id === id);
+  if (!s) return;
+  const t = esc(s.title), btn = (act, label, primary = false) => `<button class="btn${primary ? " primary" : ""}" data-act="${act}" data-id="${esc(id)}">${label}</button>`;
+  const why = `<p>With it, ${MOD}-click and hover know locals, methods called on values, and types in ${t} code. Without it, they find what imports can.</p>`;
+  const later = `<div class="row">${s.state === "failed" ? btn("srv-install", "Try again", true) : ""}${btn("srv-later", "Not now")}${btn("srv-never", `Never for ${t}`)}</div>`;
+  if (s.state === "consent") return open(`<h2>Set up ${t} types?</h2>${why}
+    <dl class="srvfacts"><dt>Installs</dt><dd>${esc(s.offer?.from ?? "")}</dd><dt>Size</dt><dd>${esc(s.offer?.size ?? "")}</dd><dt>Into</dt><dd><code>~/.bobby/servers</code></dd><dt>Runs</dt><dd>Only while Bobby does. It reads the PR's code and never runs it.</dd></dl>
+    <div class="row">${btn("srv-install", "Install", true)}${btn("srv-later", "Not now")}${btn("srv-never", `Never for ${t}`)}</div>`);
+  if (s.state === "missing") return open(`<h2>${t} types need setup</h2>${why}<p>${esc(s.hint ?? "")}</p>
+    ${s.command ? `<pre class="srvcmd"><code>${esc(s.command)}</code></pre>` : ""}
+    <div class="row">${s.command ? `${btn("srv-copy", "Copy command")}${btn("srv-check", "Check again", true)}` : ""}${btn("srv-later", "Not now")}${btn("srv-never", `Never for ${t}`)}</div>`);
+  if (s.state === "failed") return open(`<h2>${t} types are off</h2><p>The ${t} language server isn't running: ${esc(s.error ?? "")}</p><p>${MOD}-click and hover still find what imports can.</p>${later}`);
+}
+async function serverAction(act, id) {
+  if (act === "srv-copy") { const s = app.servers.find((x) => x.id === id); await navigator.clipboard?.writeText(s?.command ?? "").catch(() => {}); return toast("Copied. Run it in a terminal, then Check again.", 3000); }
+  const path = { "srv-install": "install", "srv-check": "check", "srv-later": "decline", "srv-never": "decline" }[act];
+  const r = await api(`/api/servers/${path}`, { id, never: act === "srv-never" });
+  if (r.servers) app.servers = r.servers;
+  close();
+  app.emit("llm");
+  app.watchServers?.();
+  const s = app.servers.find((x) => x.id === id);
+  if (act === "srv-check" && s?.state === "missing") serverCard(id); // still not there: say so again
+}
+
 // ---------------------------------------------------------------- clicks
 function onClick(ev) {
   const lay = ev.target.closest("[data-flayout]");
@@ -472,6 +509,8 @@ function onClick(ev) {
     untouched: () => app.saveSettings({ untouched: app.settings.untouched === "hide" ? "show" : "hide" }),
     tests: () => app.saveSettings({ tests: app.settings.tests === "show" ? "hide" : "show" }),
     files: () => toggleFiles(),
+    server: () => serverCard(ds.id),
+    ...Object.fromEntries(["srv-install", "srv-check", "srv-later", "srv-never", "srv-copy"].map((a) => [a, () => serverAction(a, ds.id)])),
   })[ds.act]?.();
 }
 
