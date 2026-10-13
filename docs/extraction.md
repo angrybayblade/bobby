@@ -99,6 +99,10 @@ Matches in docs and data files are ignored.
 
 The result is an `Analysis`: `units`, `refs`, `edges` (unit → unit) and `hunkById`.
 
+### Definitions (`analyze.ts › definitions`)
+
+For the inspector, every name on a new-side hunk line of a parsed file is resolved like an upstream reference (through imports, the file itself, its Go/Java package) and stored in the graph's `definitions`, with its column. Names it can't place (locals, members of values) are kept without a target, for the language server.
+
 ## 4. Change trees
 
 A **change tree** (`ChangeTree` in `types.ts`) is the intermediate shape: cores, each with five bands of `TreeNode`s. A node points at units (changed code) or at a ref (untouched code). Two producers make one.
@@ -147,7 +151,18 @@ Both trees go through `finalize`:
 
 `VERSION` in `graph.ts` is stamped into `generator.version`. **Bump it whenever extraction output changes**: cached graphs with a different version are rebuilt on the next launch.
 
-## 6. Caching (`cli.ts`, `state.ts`)
+## 6. The language server (`lsp.ts`, `typescript.ts`, `inspect.ts`)
+
+TypeScript and JavaScript names are then asked of the TypeScript language server, in the background, so the UI is usable meanwhile:
+
+- **The server** (`typescript.ts`): pinned `typescript-language-server` and `typescript`, installed once into `~/.bobby/servers` by Bobby itself (a compiled binary acts as Bun with `BUN_BE_BUN=1`, so no npm is needed). It runs on Node 18+ when there's one on PATH: tsserver loads a large monorepo in about 3 s there, against minutes on Bun.
+- **The code** (`typescript.ts › headTree`): Bobby never checks out a PR, so its head commit's TS, JS and JSON are exported with `git archive` to `~/.bobby/trees`, and the monorepo's workspace packages are symlinked into its `node_modules` so imports between them resolve. Nothing is installed: third-party packages stay missing, and their names are reported as `ext`. A local review uses your working copy as it is.
+- **The client** (`lsp.ts`): JSON-RPC over stdio; definitions and hovers, on files sent with `didOpen`. The syntax-only server mode is off (`useSyntaxServer: "never"`), since it answers imports with the import line itself.
+- **The pass** (`inspect.ts › Inspector.definitions`): each name's definition, eight at a time. A target in the repo becomes `to`; one in `node_modules` or TypeScript's libraries becomes `ext`; a server stuck on an uninstalled package's import line reports the package. The result replaces the graph's `definitions` in what the server serves, and is cached per head commit and server version. The server then stays up for the inspector's live questions (`/api/inspect`), which add the type.
+
+`--no-lsp` turns it off. `extract --lsp` waits for it and writes its definitions into the file.
+
+## 7. Caching (`cli.ts`, `state.ts`)
 
 Keyed by `owner_repo_number_<first 12 of head sha>` in `~/.bobby/cache/`:
 
@@ -155,5 +170,6 @@ Keyed by `owner_repo_number_<first 12 of head sha>` in `~/.bobby/cache/`:
 |---|---|---|
 | `….graphs.json` | `{ static, claude? }` built graphs | After the static graph is built, and again when Claude's is ready |
 | `….json` | Claude's raw `ChangeTree` | When Claude finishes |
+| `….defs.<server>.json` | The language server's `definitions` | When its pass finishes (not for a local review, whose files change) |
 
 On launch, a cache hit with a matching `VERSION` skips fetch, diff, analysis and graph building, and only refreshes `discussion`. If the static graph is cached but Claude's isn't, extraction runs lazily only when Claude needs it. `--refresh` ignores both caches.

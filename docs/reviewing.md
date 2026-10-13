@@ -90,6 +90,14 @@ Marks are stored by the **content** of each hunk, not its position. After a forc
 - Press `e` again for **more context**: 10 more lines above and below each hunk. This needs a local clone.
 - Changes are shown with muted line tints and word-level highlights.
 
+## Inspecting a name
+
+⌘-click (ctrl-click elsewhere) a function, class, type or variable in the code to see where it's declared, in a window over the review: its file and line (with a link to GitHub), its type and doc comment, and its code, with the declaring line marked. ⌘-click a name inside the window to go deeper; the trail at the top goes back to any step. `esc` goes back a step and then closes it, as do ✕ and a click outside. While it's open, other keys wait. Holding ⌘ shows a pointer over code you can inspect.
+
+Hovering a name highlights every other use of the same symbol on screen, in any file: the same declaration, not just the same spelling, so a local `env` and an imported `env` stay apart. Names Bobby couldn't place aren't highlighted.
+
+For TypeScript and JavaScript, a language server answers: it places locals, members of values (`client.get()`), and types. It starts in the background when you open a review, and **Types loading…** shows in the top bar until it's ready, usually seconds. Until then, and for other languages, Bobby finds what imports and the syntax tree can. A name from a package says which package; packages aren't installed, so their own types aren't followed. Removed lines can't be inspected yet.
+
 ## Comments
 
 1. Click a line to select it, then click it again (or press `c`) to open the composer. Pressing `c` with nothing selected picks the most relevant line on the page. For several lines, like GitHub's diff, click the first line, then shift-click the last (or drag down the line numbers): the comment or note covers the whole range, shows as `L12–L18`, and posts to GitHub as a multi-line comment. Selecting shows a small popover on the last selected line: **Comment** (a GitHub draft) or **Private note**.

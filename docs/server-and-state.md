@@ -20,8 +20,10 @@ The CLI fills `claudeGraph` and `llm` from the background Claude job while the s
 | Method & path | Body → response | Purpose |
 |---|---|---|
 | `GET /api/graph` | → `ReviewGraph` | Claude's graph if ready, else the static one. `?tree=static` forces static. |
-| `GET /api/session` | → `{ state, settings, llm, llmError, caps: { files } }` | Everything the UI needs at boot. `caps.files` is true when there's a local clone. |
-| `GET /api/status` | → `{ llm, llmError, claudeReady }` | Polled every 4s while Claude is pending. |
+| `GET /api/session` | → `{ state, settings, llm, llmError, lsp, lspError, caps: { files, inspect } }` | Everything the UI needs at boot. `caps.files` and `caps.inspect` are true when there's a local clone. |
+| `GET /api/status` | → `{ llm, llmError, claudeReady, lsp, lspError }` | Polled every 4s while Claude or the language server is pending. |
+| `GET /api/definitions` | → `{ [path]: Definition[] }` | The language server's definitions once it's done, else the graph's. |
+| `GET /api/inspect?path=&line=&col=` | → `{ name?, to?, ext?, hover?, via, pending? }` | The inspector: where the name at a head-side position is declared. The language server once it's loaded (with `hover`, its type); until then, or without one, the graph's `definitions` and the syntax tree at head. |
 | `POST /api/settings` | patch → merged settings | Merges into `~/.bobby/settings.json`. |
 | `GET /api/file?path=&side=base\|head` | → `{ lines }` | A whole file at the merge-base or head, for "more context". Returns 404 without a clone. |
 | `POST /api/mark` | `{ keys, mark }` | Sets `reviewed` or `flagged` (or clears, with `null`) for content keys. |
