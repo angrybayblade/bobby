@@ -27,7 +27,7 @@ const CSS = `
 /* In a file (you clicked it, or stepped into it): only it and the files it relates to show code. The rest keep their place
    and size, title bar included, but their code fades into the background: content-visibility skips drawing it, so nothing re-lays out or
    re-renders as you move. The faint lines between them go too, so what's left is what bears on the file you're reading. */
-.dv.engaged .world .fv:not(.w-focus):not(.active) > .fvb { content-visibility: hidden; background: var(--bg); }
+.dv.engaged .world .fv:not(.w-focus):not(.active):not(.measuring) > .fvb { content-visibility: hidden; background: var(--bg); } /* hidden code has no height: measured shown */
 .dv.engaged .fv.w-semi { opacity: .85; }
 .dv.engaged .fv.w-none { opacity: .6; }
 .dv.engaged svg.edges .bg { display: none; }
@@ -298,7 +298,8 @@ export default {
       // Measure every viewer in one layout: all writes, then all reads, then all writes. Interleaving them
       // forced a full layout per file.
       const vs = files.map((f) => views.get(f.path)).filter((v) => !only || only.has(v.f.path));
-      // At natural size (.measuring lifts the text clamp), so a viewer's height never depends on the zoom it was built at.
+      // At natural size with its code shown (.measuring lifts the text clamp and the engaged hiding), so a viewer's
+      // height never depends on the zoom it was built at or on whether you were in a file.
       for (const v of vs) { v.el.style.height = ""; v.el.classList.add("measuring"); }
       const maxH = capH();
       for (const v of vs) v.h = Math.min(maxH, v.el.offsetHeight);
