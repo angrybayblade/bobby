@@ -98,6 +98,7 @@ async function poll() {
   if (s.llm === "pending" || busy(app.servers)) pollTimer = setTimeout(poll, 3000);
 }
 app.watchServers = poll; // after you say yes, check again or no in the UI
+app.openKeys = () => chrome.keysEditor(); // for the tour's news, which can't import chrome.js
 if (app.llm === "pending" || busy(app.servers)) poll();
 // The graph and the session are read at once: a server may have finished between them, leaving syntax-only definitions.
 else if (app.servers.some((x) => x.state === "done")) api("/api/definitions").then((d) => { app.graph.definitions = d; });
@@ -165,6 +166,7 @@ function commands() {
   return [
     ...ACTIONS.filter((a) => a.id !== "switchTree" || (app.claudeReady && app.graph.generator.tree !== "claude"))
       .map((a) => ({ id: `key:${a.id}`, title: a.title, keys: keysOf(app.settings, a.id).slice(0, 1).flatMap((k) => keyText(k).split(" ")), run: () => runAction(a.id, { learn: false }) })),
+    { id: "keys", title: "Customize keyboard shortcuts", sub: "bind any action to the keys you like", run: () => chrome.keysEditor() },
     { id: "tour", title: "Take the tour", sub: "how the walk, the views and the keys fit together", run: () => tour.start() },
     ...views.filter((v) => v.id !== currentId).map((v) => ({ id: `view:${v.id}`, title: `${v.name} view`, sub: v.hint, run: () => app.switchView(v.id) })),
     { id: "set:tests", title: `${s.tests === "show" ? "Hide" : "Show"} tests and generated files`, run: () => flip("tests", "show", "hide") },

@@ -24,6 +24,7 @@ const NEWS = () => [
   { id: "palette", title: "Command palette", body: `${PALETTE_KEY} searches every command, core, file and page, and runs what you pick.` },
   { id: "tour", title: "A quick tour", body: `Let me show you how the walk, the views and the keys fit together, in four quick tips. You'll find it on ${k("help")} whenever you want it again.`, act: { label: "Take the tour", run: () => start() } },
   { id: "inspect", title: "Inspect a name", body: `${MOD === "⌘" ? kbd("⌘") : kbd("ctrl")}-click a function, class or variable in the code to see where it's declared, its type and its code, in a window over the review. ${MOD === "⌘" ? kbd("⌘") : kbd("ctrl")}-click inside to go deeper, ${kbd("esc")} to come back.` },
+  { id: "keys", title: "Your own keys", body: `Bind any action to the keys you like: ${k("help")}, then <b>Customize keys</b>, or search "keyboard shortcuts" with ${PALETTE_KEY}.`, act: { label: "Customize keys", run: () => app.openKeys?.() } },
 ];
 let news = null;
 

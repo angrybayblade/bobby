@@ -2,7 +2,7 @@
 import { BAND_TEXT, DONE, LEVELS, LOW, api, esc, inline } from "./core.js";
 import { MOD } from "./palette.js";
 import * as tour from "./tour.js";
-import { ACTIONS, kbdHtml, keyHtml, keysOf, keyText } from "./keys.js";
+import { ACTIONS, action, bind, bindable, kbdHtml, keyHtml, keyOfEvent, keysOf, keyText, reset, unbind } from "./keys.js";
 
 const $ = (q) => document.querySelector(q);
 const PALETTE_KEY = MOD === "⌘" ? "⌘K" : "ctrl k";
@@ -231,8 +231,56 @@ export function help() {
     ${groups.map((g) => `<h4 class="nh">${g}</h4><table>${ACTIONS.filter((a) => a.group === g).map((a) => `<tr><td>${keysCell(a.id)}</td><td>${esc(a.title)}</td></tr>`).join("")}</table>`).join("")}
     <table><tr><td>${PALETTE_KEY.split(" ").map((k) => `<kbd>${k}</kbd>`).join(" ")}</td><td>Command palette: search every command, core, file and page</td></tr>
       <tr><td>${MOD}-click</td><td>Inspect a name: where it's declared, its type and its code</td></tr></table>
-    <div class="row"><button class="btn primary" data-act="close">Got it</button><button class="btn" data-act="tour">Take the tour</button></div>`);
+    <div class="row"><button class="btn primary" data-act="close">Got it</button><button class="btn" data-act="keys">Customize keys</button><button class="btn" data-act="tour">Take the tour</button></div>`);
 }
+
+// ---------------------------------------------------------------- customizing keys
+// Every action, its keys as chips (✕ removes one), + to bind another by pressing it, and a reset for what you changed.
+// A key already bound elsewhere moves here, and the editor says where it came from. Saved in settings.keys.
+let recording = null, moved = "";
+export function keysEditor() {
+  recording = null; moved = "";
+  drawKeys(true);
+}
+function drawKeys(first = false) {
+  const top = first ? 0 : $("#overlay .modal.keys")?.scrollTop ?? 0; // redrawn as you bind: stay where you were
+  const mine = app.settings.keys ?? {}, groups = [...new Set(ACTIONS.map((a) => a.group))];
+  const row = (a) => {
+    const chips = keysOf(app.settings, a.id).map((k) => `<span class="kchip">${kbdHtml(k)}<button data-act="key-unbind" data-id="${a.id}" data-key="${esc(k)}" aria-label="Remove ${esc(keyText(k))}" title="Remove">✕</button></span>`).join("");
+    const add = recording === a.id ? `<span class="krec">press a key… <span class="faint">esc to cancel</span></span>` : `<button class="kadd" data-act="key-add" data-id="${a.id}" title="Bind another key">+</button>`;
+    const changed = mine[a.id] ? `<button class="kreset" data-act="key-reset" data-id="${a.id}" title="Back to ${action(a.id).keys.map(keyText).join(", ") || "no keys"}">reset</button>` : "";
+    return `<tr${recording === a.id ? ` class="rec"` : ""}><td>${esc(a.title)}</td><td><div class="kcell">${chips || `<span class="unbound">unbound</span>`}${add}${changed}</div></td></tr>`;
+  };
+  open(`<h2>Keyboard shortcuts</h2>
+    <p>Click + and press a key to bind it; a key bound elsewhere moves here. Esc still closes what's open first. Saved for every review.</p>
+    ${moved ? `<div class="kmoved">${moved}</div>` : ""}
+    ${groups.map((g) => `<h4 class="nh">${g}</h4><table class="ktable">${ACTIONS.filter((a) => a.group === g).map(row).join("")}</table>`).join("")}
+    <div class="row">${Object.keys(mine).length ? `<button class="btn" data-act="key-reset-all">Reset all to defaults</button>` : ""}<button class="btn primary" data-act="close" style="margin-left:auto">Done</button></div>`, "keys");
+  const m = $("#overlay .modal.keys");
+  m.querySelector(".btn.primary")?.focus({ preventScroll: true });
+  m.scrollTop = top;
+}
+function keyEdit(act, id, key) {
+  if (act === "key-add") { recording = id; moved = ""; return drawKeys(); }
+  const next = act === "key-unbind" ? unbind(app.settings, id, key) : act === "key-reset" ? reset(app.settings, id) : {};
+  moved = "";
+  app.saveSettings({ keys: next });
+  drawKeys();
+}
+// While recording, the next key is the binding; nothing else gets it.
+addEventListener("keydown", (ev) => {
+  if (!recording) return;
+  ev.preventDefault();
+  ev.stopImmediatePropagation();
+  if (ev.key === "Escape") { recording = null; return drawKeys(); }
+  if (!bindable(ev)) return;
+  const key = keyOfEvent(ev), id = recording;
+  const { from, keys } = bind(app.settings, id, key);
+  recording = null;
+  moved = from ? `${kbdHtml(key)} was bound to <b>${esc(action(from).title)}</b>; it's here now.${keysOf({ keys }, from).length ? "" : ` That action has no key left.`}` : "";
+  app.saveSettings({ keys });
+  drawKeys();
+}, true);
 
 const SETTINGS = [
   ["palette", "Style", [["github", "GitHub"], ["warm", "Warm"]]],
@@ -257,7 +305,7 @@ export function settings() {
   open(`<h2>Settings</h2><p>Changes apply immediately and are remembered.</p>
     ${SETTINGS.map(([key, label, opts]) => `<div class="setting"><label>${label}</label><div class="seg">${opts.map(([v, t]) =>
       `<button data-set="${key}" data-val="${v}" aria-pressed="${String(app.settings[key]) === String(v)}">${t}</button>`).join("")}</div></div>`).join("")}
-    <div class="row"><button class="btn primary" data-act="close">Done</button></div>`);
+    <div class="row"><button class="btn" data-act="keys">Keyboard shortcuts…</button><button class="btn primary" data-act="close" style="margin-left:auto">Done</button></div>`);
 }
 
 export function submit(msg) {
@@ -491,6 +539,9 @@ function onClick(ev) {
     untouched: () => app.saveSettings({ untouched: app.settings.untouched === "hide" ? "show" : "hide" }),
     tests: () => app.saveSettings({ tests: app.settings.tests === "show" ? "hide" : "show" }),
     files: () => toggleFiles(),
+    keys: () => keysEditor(),
+    "key-add": () => keyEdit("key-add", ds.id), "key-unbind": () => keyEdit("key-unbind", ds.id, ds.key), "key-reset": () => keyEdit("key-reset", ds.id),
+    "key-reset-all": () => keyEdit("key-reset-all"),
     server: () => serverCard(ds.id),
     ...Object.fromEntries(["srv-install", "srv-check", "srv-later", "srv-never", "srv-copy"].map((a) => [a, () => serverAction(a, ds.id)])),
   })[ds.act]?.();
