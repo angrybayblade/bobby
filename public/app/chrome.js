@@ -130,12 +130,14 @@ function renderTop() {
   const g = app.graph;
   const llm = app.llm === "pending" ? `<span class="pill pulse" title="The static tree is usable now">Claude is organising…</span>`
     : app.claudeReady && g.generator.tree !== "claude" ? `<button class="pill signal" data-act="switch-tree">Smarter tree ready · R</button>` : "";
+  const lsp = app.lsp === "pending" ? `<span class="pill pulse" title="The TypeScript language server is loading the project. Until it's ready, ${MOD}-click on a name finds what imports can">Types loading…</span>`
+    : app.lsp === "failed" ? `<span class="pill" title="The TypeScript language server isn't running: ${esc(app.lspError ?? "")}. ${MOD}-click on a name still finds what imports can">Types off</span>` : "";
   const drafts = app.state.comments.filter((c) => !c.wip && c.kind !== "note").length; // unfinished drafts aren't ready to post
   $("#top").innerHTML = `
     <div class="brand"><img src="/bobby.svg" alt="" width="22" height="22">bobby</div>
     ${g.pr.provider === "local" ? `<span class="prtitle" title="Local review: ${esc(g.pr.branch)} compared with ${esc(g.pr.baseRef)}">⎇ ${esc(g.pr.branch)} → ${esc(g.pr.baseRef)} · ${esc(g.pr.title)}</span>`
       : `<a class="prtitle" href="${esc(g.pr.url)}" target="_blank" rel="noopener">#${g.pr.number} ${esc(g.pr.title)}</a>`}
-    ${llm}
+    ${llm}${lsp}
     ${coreProgress()}
     <div class="prog" title="${done} of ${total} pages reviewed"><div class="bar"><i style="width:${pct}%"></i></div>${done}/${total}${mins && done < total ? ` · ~${mins}m` : ""}</div>
     <div class="seg" role="group" aria-label="View">${views.map((v) => `<button data-view="${v.id}" aria-pressed="${app.viewId === v.id}" title="${esc(v.hint)} (v)">${esc(v.name)}</button>`).join("")}</div>

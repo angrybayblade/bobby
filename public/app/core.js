@@ -89,6 +89,8 @@ export function createApp({ graph, session }) {
     settings: { ...DEFAULT_SETTINGS, ...session.settings },
     caps: session.caps,
     llm: session.llm,
+    lsp: session.lsp ?? "off", // the language server behind the inspector: pending (loading), done, failed or off
+    lspError: session.lspError,
     focus: null,
     level: 0,
     page: { exp: {}, open: new Set(), sel: null, composing: null }, // transient code-page state; open = unfolded blocks

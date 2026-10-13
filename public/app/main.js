@@ -85,10 +85,18 @@ async function poll() {
     app.claudeReady = true;
     chrome.toast(`<span>Claude's tree is ready. <kbd>R</kbd> switches; you keep your place.</span>`);
   }
+  if (app.lsp === "pending" && s.lsp !== "pending") { // the language server has answered: its definitions replace the syntax-only ones
+    if (s.lsp === "done") app.graph.definitions = await api("/api/definitions");
+    app.lspError = s.lspError;
+  }
+  app.lsp = s.lsp;
   app.emit("llm");
-  if (s.llm === "pending") setTimeout(poll, 4000);
+  if (s.llm === "pending" || s.lsp === "pending") setTimeout(poll, 4000);
 }
-if (app.llm === "pending") poll();
+if (app.llm === "pending" || app.lsp === "pending") poll();
+// The graph and the session are read at once: the server may have finished between them, leaving syntax-only definitions.
+else if (app.lsp === "done" && !Object.values(app.graph.definitions ?? {}).some((l) => l.some((d) => d.via === "lsp")))
+  api("/api/definitions").then((d) => { app.graph.definitions = d; });
 
 // ---- start: at the entry point (the unreviewed core with the least around it), on every load. Where you were last is
 // offered on the welcome-back card instead of being jumped to.
