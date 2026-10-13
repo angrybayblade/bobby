@@ -571,10 +571,70 @@ function onPeekClick(app, ev) {
 addEventListener("keydown", (e) => { if (e.key === "Meta" || e.key === "Control") document.body.classList.add("inspecting"); });
 for (const ev of ["keyup", "blur"]) addEventListener(ev, () => document.body.classList.remove("inspecting"));
 
+// ---- symbol highlights: hovering a name lights up every use of the same symbol on screen, in any file. Two names
+// are one symbol when they're declared at the same place (graph.definitions), so a local and an import that share
+// a name stay apart. Painted with the CSS Highlight API: no element is added, so nothing re-renders or reflows.
+let symFor, symIndex, hoverApp = null, hoverRaf = 0, lastMove = null, hoverSym = null, hoverRanges = [];
+/** The definitions indexed by line (what's under the pointer) and by symbol (where else it's used); rebuilt when the
+ *  language server's definitions replace the syntax-only ones. */
+function symbols(app) {
+  const defs = app.graph.definitions;
+  if (symFor === defs) return symIndex;
+  const byLine = new Map(), bySym = new Map();
+  for (const [path, list] of Object.entries(defs ?? {})) for (const d of list) {
+    const sym = d.to ? `${d.to.path}:${d.to.line}:${d.name}` : d.ext ? `${d.ext}:${d.name}` : null; // unplaced: no highlight, not a guess
+    if (!sym) continue;
+    const at = { path, line: d.line, col: d.col, len: d.len, sym };
+    const k = `${path}|RIGHT|${d.line}`;
+    (byLine.get(k) ?? byLine.set(k, []).get(k)).push(at);
+    (bySym.get(sym) ?? bySym.set(sym, []).get(sym)).push(at);
+  }
+  symFor = defs; symIndex = { byLine, bySym }; hoverSym = null;
+  return symIndex;
+}
+/** Text from col to col + len inside a line's code, across the highlighter's spans. */
+function textRange(code, col, len) {
+  let at = 0, r = null;
+  for (const w = document.createTreeWalker(code, NodeFilter.SHOW_TEXT); w.nextNode();) {
+    const n = w.currentNode, end = at + n.length;
+    if (!r && col < end) { r = new Range(); r.setStart(n, col - at); }
+    if (r && col + len <= end) { r.setEnd(n, col + len - at); return r; }
+    at = end;
+  }
+  return null;
+}
+function showSymbol(sym) {
+  if (sym === hoverSym && (!sym || hoverRanges[0]?.startContainer.isConnected)) return; // same symbol, still drawn
+  hoverSym = sym; hoverRanges = [];
+  if (!sym) return CSS.highlights.delete("bobby-sym");
+  const uses = symIndex.bySym.get(sym) ?? [], want = new Map();
+  for (const u of uses) (want.get(`${u.path}|RIGHT|${u.line}`) ?? want.set(`${u.path}|RIGHT|${u.line}`, []).get(`${u.path}|RIGHT|${u.line}`)).push(u);
+  for (const row of document.querySelectorAll(".ln[data-key]")) { // one pass over the rows, whatever the symbol's count
+    const list = want.get(row.dataset.key), code = list && row.querySelector("code");
+    if (code) for (const u of list) { const r = textRange(code, u.col, u.len); if (r) hoverRanges.push(r); }
+  }
+  CSS.highlights.set("bobby-sym", new Highlight(...hoverRanges));
+}
+function hoverTick() {
+  hoverRaf = 0;
+  const e = lastMove, app = hoverApp;
+  if (!app || !e || e.buttons) return showSymbol(null); // dragging the canvas or a selection: nothing to point at
+  const code = e.target.closest?.(".ln[data-key] code"), row = code?.closest(".ln");
+  const here = row && symbols(app).byLine.get(row.dataset.key);
+  if (!here) return showSymbol(null);
+  const w = wordAt(e, code);
+  showSymbol(w && here.find((u) => w.col >= u.col && w.col < u.col + u.len)?.sym || null);
+}
+if (window.CSS?.highlights) {
+  addEventListener("mousemove", (e) => { lastMove = e; hoverRaf ||= requestAnimationFrame(hoverTick); }, { passive: true });
+  document.documentElement.addEventListener("mouseleave", () => showSymbol(null)); // off the page
+}
+
 // One delegated listener per container.
 const bound = new WeakMap();
 function bind(app, el, rerender) {
   bound.set(el, rerender);
+  hoverApp = app;
   if (el.dataset.bound) return;
   el.dataset.bound = "1";
   el.addEventListener("click", (ev) => {

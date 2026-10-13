@@ -277,6 +277,8 @@ kbd {
 .ln.sel { background: var(--signal-soft); } .ln.sel .bar { background: var(--signal); } /* a selected line or range, like GitHub's */
 .ln .no { cursor: pointer; } /* click a number to select, shift-click or drag down them for a range */
 .code { position: relative; }
+/* Symbol highlights: every use of the symbol under the pointer (code.js, CSS Highlight API). */
+::highlight(bobby-sym) { background-color: color-mix(in srgb, var(--signal) 22%, transparent); }
 /* The inspector: a window over the app (code.js › drawPeek). ⌘/ctrl held shows what can be clicked. */
 body.inspecting .ln[data-side="RIGHT"] code, body.inspecting .inspector .pl code { cursor: pointer; }
 .inspector { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-start; justify-content: center; padding: 9vh 24px 24px; background: color-mix(in srgb, var(--bg) 70%, transparent); } /* no blur: it would repaint the whole canvas */
