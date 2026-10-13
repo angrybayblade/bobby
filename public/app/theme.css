@@ -277,6 +277,12 @@ kbd {
 .ln.sel { background: var(--signal-soft); } .ln.sel .bar { background: var(--signal); } /* a selected line or range, like GitHub's */
 .ln .no { cursor: pointer; } /* click a number to select, shift-click or drag down them for a range */
 .code { position: relative; }
+/* Scrollbars in code (a viewer, a code box's long lines): thin and quiet, the same in every view.
+   Styled, not native: a native one ignores the contents' zoom, so on the Diff canvas it grew with the camera. */
+:is(.fvb, .fvb *, .code *)::-webkit-scrollbar { width: 8px; height: 8px; }
+:is(.fvb, .fvb *, .code *)::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+:is(.fvb, .fvb *, .code *)::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+:is(.fvb, .fvb *, .code *)::-webkit-scrollbar-track, :is(.fvb, .fvb *, .code *)::-webkit-scrollbar-corner { background: transparent; }
 /* Symbol highlights: every use of the symbol under the pointer (code.js, CSS Highlight API). */
 ::highlight(bobby-sym) { background-color: color-mix(in srgb, var(--signal) 22%, transparent); }
 /* The inspector: a window over the app (code.js › drawPeek). ⌘/ctrl held shows what can be clicked. */

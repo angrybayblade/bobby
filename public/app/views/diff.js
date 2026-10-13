@@ -75,11 +75,6 @@ const CSS = `
 .dv svg.edges .bg path.hit { stroke: transparent; stroke-width: calc(12px * var(--k, 1)) !important; opacity: 1; pointer-events: stroke; } /* hover target: names what a line connects */
 .dv svg.edges .bg path.hit.out { pointer-events: none; }
 .dv .elbl { position: absolute; z-index: 4; font: 11.5px var(--font-ui); color: var(--muted); background: var(--bg); border: 1px solid var(--line-soft); padding: 1px 7px; border-radius: 1px; white-space: nowrap; transform: translate(-50%, -50%) scale(var(--k, 1)); pointer-events: none; }
-/* Native scrollbars ignore the contents' zoom (they'd grow with the camera); a styled one shrinks with the text. */
-.dv .world .fvb::-webkit-scrollbar { width: 8px; height: 8px; }
-.dv .world .fvb::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
-.dv .world .fvb::-webkit-scrollbar-thumb:hover { background: var(--muted); }
-.dv .world .fvb::-webkit-scrollbar-track, .dv .world .fvb::-webkit-scrollbar-corner { background: transparent; }
 :is(.dv, .fvw) .fvh:active { cursor: grabbing; }
 .dv .fv.held { box-shadow: 0 12px 40px rgba(0,0,0,.25); }
 .dv .dfocus { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(180px, 260px) minmax(0, 1fr) minmax(180px, 260px); gap: 22px; padding: 18px 22px; background: var(--bg); z-index: 5; }
