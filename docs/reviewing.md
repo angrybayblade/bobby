@@ -66,6 +66,10 @@ The breadcrumb bar shows where you are (`repo #n › core › page`) and the cur
 
 "Next" always follows the same walk, so switching views never changes what comes next.
 
+### Your own keys
+
+Every key above is a default. To change one, press `?`, then **Customize keys** (or **Keyboard shortcuts…** in settings, or search "keyboard shortcuts" with ⌘K). Each action lists its keys: **+** binds another (press it; `esc` cancels), **✕** removes one, and **reset** puts back the defaults. A key already bound to another action moves to this one, and the editor says which action lost it. Key hints, the key sheet, the palette, the tour and Bobby's messages all show your keys. Esc still closes what's open first, whatever you bind it to; ⌘-click and ⌘K aren't rebindable.
+
 ## Marking progress
 
 | Key | |

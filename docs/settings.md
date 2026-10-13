@@ -26,6 +26,8 @@ Open settings with `,` or the gear in the header. Changes apply immediately and 
 
 **Tests & generated files** are skipped by default: test files (`*.test.*`, `*.spec.*`, `__tests__/`, `tests/`, fixtures, `test_*.py`, `*_test.go`, …) and generated files (`__generated__/`, `*.generated.*`, `*_pb2.py`, OpenAPI specs, or code carrying a generated-file marker such as `@generated` or "DO NOT EDIT"). Hidden, they leave every view, `j`/`k` and progress; the **⚗ Tests** switch in the top bar brings them back. **Untouched code** works the same way and is also hidden by default; **○ Untouched** brings back the untouched code the changes rely on and the untouched code they affect. Lockfiles, `dist/` and the like are already set aside on the low-signal page.
 
+**Keyboard shortcuts** (**Keyboard shortcuts…** in settings, or **Customize keys** on the `?` sheet) are saved as `keys` in the same file: `{ "<action>": ["<key>", …] }` for each action you changed, replacing its defaults. Actions and their defaults are in `public/app/keys.js`; keys are `KeyboardEvent.key` values (`"j"`, `"J"`, `"Enter"`, `" "`, `"ArrowLeft"`, `"!"` for shift 1). An empty list leaves an action with no key.
+
 "System" follows your OS: light/dark preference for the theme, and the reduced-motion preference for motion. With motion off, every transition and animation is disabled.
 
 ## Design choices
