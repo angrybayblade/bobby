@@ -1,6 +1,7 @@
 // A node, laid out top to bottom: title, why it matters, the comments on it, then its code.
 // Views show it as the level-2 page, or as the body of the focused card (no title block).
 import { BAND_TEXT, DONE, LOW, api, esc } from "./core.js";
+import { MOD } from "./palette.js";
 
 const EXT = {
   ts: "typescript", tsx: "typescript", mts: "typescript", cts: "typescript", js: "javascript", jsx: "javascript", mjs: "javascript", cjs: "javascript",
@@ -195,6 +196,11 @@ function syncPop(app, el) {
 /** Esc on the code, innermost first: an open composer closes (its text kept as an unfinished draft), then a line
  *  selection clears. Returns whether it did either. */
 export function escapeCode(app) {
+  if (app.page.peek) { // a peek is innermost: back a step, then closed
+    if (app.page.peek.stack.length > 1) app.page.peek.stack.pop(); else app.page.peek = null;
+    drawPeek(app);
+    return true;
+  }
   const ta = document.querySelector("textarea[data-composer]");
   if (app.page.composing && ta) { closeComposer(app, ta); return true; }
   if (app.page.sel && document.querySelector(".ln.sel")) {
@@ -461,6 +467,110 @@ export function renderFile(app, el, pids) {
   syncPop(app, el);
 }
 
+// ---- the inspector: ⌘/ctrl-click a name to see where it's declared (and, with a language server, its type) without
+// leaving your place. It opens a window over the app; ⌘/ctrl-click inside it to go deeper, esc to go back a step and
+// then close, or ✕ (or a click outside) to close.
+/** The name under a click inside a line's code, and its column (UTF-16 units, as the source counts them). */
+function wordAt(ev, code) {
+  const p = document.caretPositionFromPoint?.(ev.clientX, ev.clientY), r = p ? null : document.caretRangeFromPoint?.(ev.clientX, ev.clientY);
+  const node = p?.offsetNode ?? r?.startContainer, off = p?.offset ?? r?.startOffset;
+  if (!node || !code.contains(node)) return null;
+  let at = 0;
+  for (const w = document.createTreeWalker(code, NodeFilter.SHOW_TEXT); w.nextNode();) {
+    if (w.currentNode === node) { at += off; break; }
+    at += w.currentNode.length;
+  }
+  const text = code.textContent, isW = (c) => /[\w$]/.test(c ?? "");
+  let a = at, b = at;
+  if (!isW(text[a]) && isW(text[a - 1])) a = b = at - 1; // just past a word's end
+  if (!isW(text[a])) return null;
+  while (a > 0 && isW(text[a - 1])) a--;
+  while (b < text.length && isW(text[b])) b++;
+  const name = text.slice(a, b);
+  return /^\d/.test(name) ? null : { name, col: a };
+}
+async function inspect(app, at, deeper) {
+  const entry = { ...at, loading: true };
+  if (deeper && app.page.peek) app.page.peek.stack.push(entry); else app.page.peek = { stack: [entry] };
+  drawPeek(app);
+  const stored = (app.graph.definitions?.[at.path] ?? []).find((d) => d.line === at.line && at.col >= d.col && at.col < d.col + d.len);
+  let res = app.caps.inspect ? await api(`/api/inspect?path=${encodeURIComponent(at.path)}&line=${at.line}&col=${at.col}`).catch(() => null) : null;
+  if (!res && stored) res = { to: stored.to, ext: stored.ext, via: stored.via ?? "syntax" };
+  entry.res = res ?? { via: "none" };
+  if (res?.lsp && res.lsp !== app.lsp) { app.lsp = res.lsp; app.lspError = res.lspError; app.emit("llm"); } // e.g. the server stopped
+  const to = entry.res.to;
+  if (to && app.caps.files) {
+    const r = await api(`/api/file?path=${encodeURIComponent(to.path)}`).catch(() => null);
+    const end = Math.min(to.end ?? to.line + 12, to.line + 300); // the whole declaration: the window scrolls
+    if (r?.lines?.length) { entry.start = to.line; entry.lines = r.lines.slice(to.line - 1, end); entry.more = (to.end ?? 0) > end; }
+  }
+  entry.loading = false;
+  if (app.page.peek?.stack.includes(entry)) drawPeek(app);
+}
+const VIA = { lsp: ["types", "Found by the TypeScript language server"], syntax: ["imports", "Found through imports and the syntax tree, without types"] };
+/** The inspector's window: a trail of what you inspected, then where the last one is declared, its type and its code. */
+function peekHtml(app) {
+  const pk = app.page.peek, e = pk.stack.at(-1), res = e.res, pr = app.graph.pr;
+  const trail = pk.stack.map((x, i) => i === pk.stack.length - 1 ? `<code class="pkn">${esc(x.name)}</code>`
+    : `<button class="pkcrumb" data-peekto="${i}" title="Back to ${esc(x.name)}">${esc(x.name)}</button><span class="pksep">›</span>`).join("");
+  const via = res && VIA[res.via] ? `<span class="pkv" title="${VIA[res.via][1]}">${VIA[res.via][0]}</span>` : "";
+  const gh = res?.to && pr.provider !== "local" ? `https://github.com/${pr.owner}/${pr.repo}/blob/${pr.headSha}/${res.to.path}#L${res.to.line}${res.to.end ? `-L${res.to.end}` : ""}` : "";
+  const where = e.note ? esc(e.note)
+    : e.loading ? "looking…"
+    : res?.to ? `${esc(res.to.path)}:${res.to.line}${gh ? ` <a href="${esc(gh)}" target="_blank" rel="noopener" title="Open on GitHub">GitHub ↗</a>` : ""}`
+    : res?.ext ? `in <b>${esc(res.ext)}</b>, outside this repo`
+    : `not found${res?.pending ? ": types are still loading, try again in a moment" : res?.changed ? "" : app.lsp !== "done" ? ": locals and members of values need the language server" : ""}`;
+  const changed = res?.changed ? `<div class="pkw">This file has changed since the review started, so it's answered from imports alone. Restart Bobby to inspect it with types.</div>` : "";
+  const head = `<div class="pkh"><div class="pktrail">${trail}</div>${via}<button class="pkx" data-peekclose title="Close · esc" aria-label="Close">✕</button></div>
+    <div class="pkw">${where}</div>${changed}`;
+  const types = res?.hover ? hoverHtml(res.hover) : "";
+  const code = e.lines ? `<div class="pkc">${hlBlock(e.lines, langOf(res.to.path)).map((h, i) =>
+    `<div class="pl${e.start + i === res.to.line ? " at" : ""}" data-path="${esc(res.to.path)}" data-line="${e.start + i}"><span class="no">${e.start + i}</span><code>${h}</code></div>`).join("")}${e.more ? `<div class="pkmore">⋯ ${res.to.end - (e.start + e.lines.length - 1)} more lines</div>` : ""}</div>` : "";
+  const hint = e.loading || !e.lines ? "" : `<div class="pkhint">${MOD}-click a name to go deeper · esc to go back</div>`;
+  return `<div class="pkwin" role="dialog" aria-label="Inspect ${esc(e.name)}">${head}<div class="pkbody">${types}${code}</div>${hint}</div>`;
+}
+/** A hover's markdown: its code blocks highlighted, then its prose (doc comment) as one short paragraph. */
+function hoverHtml(md) {
+  const blocks = [];
+  const prose = md.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => { blocks.push(`<pre class="pkt">${hlBlock(code.replace(/\n$/, "").split("\n"), lang || "typescript").join("\n")}</pre>`); return "\n"; })
+    .replace(/\n{3,}/g, "\n\n").trim().slice(0, 1200);
+  const doc = prose ? `<div class="pkd">${esc(prose).replace(/`([^`\n]+)`/g, "<code>$1</code>")}</div>` : "";
+  return blocks.join("") + doc;
+}
+/** The window over the app, or nothing. It lives outside every view, so it's never clipped, zoomed or re-rendered with the code. */
+let peekEl = null, downOnBackdrop = false;
+export const inspectorOpen = () => !!peekEl;
+function drawPeek(app) {
+  if (!app.page.peek) { peekEl?.remove(); peekEl = null; return; }
+  if (!peekEl) {
+    peekEl = document.createElement("div");
+    peekEl.className = "inspector";
+    peekEl.addEventListener("mousedown", (ev) => { downOnBackdrop = ev.target === peekEl; });
+    peekEl.addEventListener("click", (ev) => onPeekClick(app, ev));
+    document.body.appendChild(peekEl);
+  }
+  const keep = peekEl.querySelector(".pkbody")?.dataset.at, at = `${app.page.peek.stack.length}:${app.page.peek.stack.at(-1).loading ? 0 : 1}`;
+  const top = keep === at ? peekEl.querySelector(".pkbody").scrollTop : 0;
+  peekEl.innerHTML = peekHtml(app);
+  const body = peekEl.querySelector(".pkbody");
+  body.dataset.at = at;
+  body.scrollTop = top;
+}
+function onPeekClick(app, ev) {
+  // ✕, or a click on the dimmed backdrop: pressed there too, so selecting code and letting go outside doesn't close it
+  if ((ev.target === peekEl && downOnBackdrop) || ev.target.closest("[data-peekclose]")) { app.page.peek = null; return drawPeek(app); }
+  const to = ev.target.closest("[data-peekto]");
+  if (to) { app.page.peek.stack.length = Number(to.dataset.peekto) + 1; return drawPeek(app); }
+  const code = (ev.metaKey || ev.ctrlKey) && ev.target.closest(".pl code");
+  if (!code) return;
+  ev.preventDefault();
+  const w = wordAt(ev, code), line = code.closest(".pl");
+  if (w) inspect(app, { ...w, path: line.dataset.path, line: Number(line.dataset.line) }, true);
+}
+// Holding ⌘/ctrl shows which code can be inspected.
+addEventListener("keydown", (e) => { if (e.key === "Meta" || e.key === "Control") document.body.classList.add("inspecting"); });
+for (const ev of ["keyup", "blur"]) addEventListener(ev, () => document.body.classList.remove("inspecting"));
+
 // One delegated listener per container.
 const bound = new WeakMap();
 function bind(app, el, rerender) {
@@ -469,6 +579,17 @@ function bind(app, el, rerender) {
   el.dataset.bound = "1";
   el.addEventListener("click", (ev) => {
     if (ev.target.closest("a")) return;
+    const code = (ev.metaKey || ev.ctrlKey) && ev.target.closest(".ln[data-key] code");
+    if (code) { // the inspector
+      ev.preventDefault();
+      const w = wordAt(ev, code), line = code.closest(".ln");
+      if (!w) return;
+      if (line.dataset.side === "LEFT") { // removed code isn't at head, where names are looked up
+        app.page.peek = { stack: [{ ...w, note: "Removed lines can't be inspected yet: this code isn't at the PR's head." }] };
+        return drawPeek(app);
+      }
+      return inspect(app, { ...w, path: line.dataset.path, line: Number(line.dataset.line) }, false);
+    }
     const t = ev.target.closest("[data-compose],[data-wip],[data-ghshow],[data-ckind],[data-delnote],[data-viewed],[data-exp],[data-del],[data-low],[data-go],[data-jump],[data-fold],.ln[data-key]");
     if (!t || !el.contains(t)) return;
     const again = () => bound.get(el)();
