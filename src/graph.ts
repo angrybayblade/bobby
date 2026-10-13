@@ -5,7 +5,7 @@
  */
 import { fileLines } from "./git.ts";
 import type { Analysis } from "./analyze.ts";
-import type { Band, ChangeTree, DiffLine, FileDiff, PrInfo, TreeNode } from "./types.ts";
+import type { Band, ChangeTree, Definition, DiffLine, FileDiff, PrInfo, TreeNode } from "./types.ts";
 import { BANDS } from "./types.ts";
 
 export const GRAPH_SCHEMA = "bobby.review-graph/v1" as const;
@@ -33,6 +33,7 @@ export interface ReviewGraph {
   walk: string[];
   lowSignal: string[];
   discussion?: GDiscussion[];
+  definitions?: Record<string, Definition[]>; // path → names on its new-side diff lines and where each is declared
 }
 
 /** An existing inline review comment on GitHub, anchored to a line of the diff. */
@@ -170,6 +171,7 @@ export async function buildGraph(cwd: string | null, pr: PrInfo, files: FileDiff
     walk,
     lowSignal: tree.noiseHunkIds,
     ...(discussion.length ? { discussion } : {}),
+    ...(Object.keys(a.defs ?? {}).length ? { definitions: a.defs } : {}),
   };
 }
 

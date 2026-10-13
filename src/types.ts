@@ -129,3 +129,12 @@ export interface ReviewState {
   lastSeenAt?: string;
   note?: string; // "where my head was": parked thought shown on return
 }
+
+/** A name used on a new-side line of the change, and where it's declared: in the repo (to), outside it (ext: a
+ *  package or the language's own library), or not found (neither). via: how it was found. */
+export interface Definition {
+  line: number; col: number; len: number; name: string; // col: 0-based, UTF-16 units
+  to?: { path: string; line: number; end?: number };
+  ext?: string;
+  via?: "lsp" | "syntax";
+}

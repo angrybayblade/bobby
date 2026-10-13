@@ -2,7 +2,7 @@ import { dirname } from "node:path/posix";
 import { git } from "./git.ts";
 import { Repo } from "./resolve.ts";
 import { family, langOf, type Ref, type Syntax, syntaxReady } from "./syntax.ts";
-import type { Band, ChangeTree, CodeRef, Core, FileDiff, Hunk, PrInfo, TreeNode, Unit } from "./types.ts";
+import type { Band, ChangeTree, CodeRef, Core, Definition, FileDiff, Hunk, PrInfo, TreeNode, Unit } from "./types.ts";
 import { BANDS } from "./types.ts";
 
 const KEYWORDS = new Set(
@@ -56,6 +56,7 @@ export interface Analysis {
   refs: CodeRef[];
   edges: Array<{ from: string; to: string; symbol: string }>; // from = upstream unit, to = downstream unit
   hunkById: Map<string, Hunk>;
+  defs: Record<string, Definition[]>; // path → the names on its new-side lines, and where each is declared
 }
 
 export async function analyze(cwd: string, pr: PrInfo, files: FileDiff[]): Promise<Analysis> {
@@ -189,7 +190,30 @@ export async function analyze(cwd: string, pr: PrInfo, files: FileDiff[]): Promi
   }
   await textUpstream(cwd, pr, units.filter((x) => !parsed(x) && !NOT_CODE.test(x.file)), hunkById, addedAt, symbolOwner, addRef);
 
-  return { units, refs, edges, hunkById };
+  return { units, refs, edges, hunkById, defs: await definitions(repo, files) };
+}
+
+/** 4. Definitions, for the inspector: every name on a new-side line of a hunk (added or context), resolved through
+ *  the syntax tree and imports. Names it can't place (locals, members of values) are kept without a target, so a
+ *  language server can fill them in later. */
+async function definitions(repo: Repo | null, files: FileDiff[]): Promise<Record<string, Definition[]>> {
+  const out: Record<string, Definition[]> = {};
+  if (!repo) return out;
+  for (const f of files) {
+    if (f.status === "deleted" || !langOf(f.path)) continue;
+    const syn = await repo.syntax(f.path);
+    if (!syn) continue;
+    const shown = new Set(f.hunks.flatMap((h) => h.lines.filter((l) => l.t !== "-" && l.n != null).map((l) => l.n!)));
+    const list: Definition[] = [];
+    for (const r of syn.refs) {
+      if (!shown.has(r.line) || KEYWORDS.has(r.name)) continue;
+      const d = await resolveDef(repo, f.path, syn, r);
+      const end = d && (await repo.syntax(d.path))?.decls.find((x) => x.line === d.line)?.end;
+      list.push({ line: r.line, col: r.col, len: r.name.length, name: r.name, ...(d ? { to: { ...d, ...(end && end > d.line ? { end } : {}) }, via: "syntax" as const } : {}) });
+    }
+    if (list.length) out[f.path] = list;
+  }
+  return out;
 }
 
 type Hit = { path: string; line: number; text: string };
@@ -246,7 +270,7 @@ async function binds(repo: Repo, path: string, syn: Syntax, r: Ref, owner: Unit)
 
 /** Where a name used in `path` is declared, if it's somewhere in the repo: through an import, the file itself, its
  *  Go/Java package, or a wildcard import. Members reached through a value (x.name) aren't resolved. */
-async function resolveDef(repo: Repo, path: string, syn: Syntax, r: Ref): Promise<{ path: string; line: number } | null> {
+export async function resolveDef(repo: Repo, path: string, syn: Syntax, r: Ref): Promise<{ path: string; line: number } | null> {
   const fam = family(syn.lang);
   if (r.qual) {
     const imp = syn.imports.find((i) => i.local === rootOf(r.qual!));

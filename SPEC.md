@@ -27,7 +27,8 @@ PR ─┬─ files ── hunks                        (the raw diff)
     ├─ edges                                 (placement → placement, within a core)
     ├─ walk                                  (placement ids in review order)
     ├─ lowSignal                             (hunk ids to collapse)
-    └─ discussion?                           (existing review comments, by path + line + side)
+    ├─ discussion?                           (existing review comments, by path + line + side)
+    └─ definitions?                          (path → names on its new-side diff lines, and where each is declared)
 ```
 
 ### Local reviews
@@ -71,6 +72,10 @@ A core may carry `hook`: one short question to lead with, usually about what cou
 ### Discussion
 
 `discussion` is optional. It holds inline review comments already on the PR, so a reviewer sees what others said before writing. Each one is anchored like a GitHub review comment: `path`, `line` and `side` (`RIGHT` for the new file, `LEFT` for the old one). Comments whose line no longer exists in the diff are left out. Adding it didn't change the version: v1 consumers that don't know the field ignore it.
+
+### Definitions
+
+`definitions` is optional, and also doesn't change the version. It maps a file path to the names used on its new-side lines in the diff (added and context lines), for an inspector: `{ line, col, len, name, to?, ext?, via? }`. `col` is 0-based in UTF-16 code units, as LSP counts. Each name is declared at `to` (`{ path, line, end? }`, in the repo at head), or outside the repo (`ext`: a package name, or the language's built-in types), or wasn't found (neither). `via` says how it was found: `syntax` (imports and the syntax tree) or `lsp` (a language server, which also places locals and members of values). Removed lines aren't covered.
 
 ## Stability rules (for review state)
 
