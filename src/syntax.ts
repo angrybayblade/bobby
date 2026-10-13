@@ -33,7 +33,7 @@ const WASM: Record<Lang, string> = { ts: wasmTs, tsx: wasmTsx, js: wasmJs, py: w
  *  method or field of a class, struct, trait or interface (reached through a value, x.name). Neither: a local. */
 export interface Decl { name: string; line: number; start: number; end: number; top: boolean; member?: boolean }
 /** A use of a name. qual is what it's reached through, "db" in db.create(), "pkg" in pkg.Name. */
-export interface Ref { name: string; line: number; qual?: string }
+export interface Ref { name: string; line: number; col: number; qual?: string } // col: 0-based, in UTF-16 units (as LSP counts)
 /** A name an import binds. name is what the module exports it as ("default" or "*" for the module itself). */
 export interface Import { local: string; name: string; source: string; level?: number }
 /** export { name as local } from source, or export * from source (name "*"). */
@@ -78,6 +78,7 @@ export async function parseSyntax(path: string, text: string): Promise<Syntax | 
 
 type N = Parser.SyntaxNode;
 const line = (n: N) => n.startPosition.row + 1;
+const col = (n: N) => n.startPosition.column;
 const unquote = (s: string) => s.replace(/^[`'"]|[`'"]$/g, "");
 
 function walk(lang: Lang, root: N): Syntax {
@@ -90,7 +91,7 @@ function walk(lang: Lang, root: N): Syntax {
   };
   const ref = (n: N, qual?: N | null) => {
     if (declNames.has(n.id)) return;
-    out.refs.push({ name: n.text, line: line(n), ...(qual ? { qual: qual.text } : {}) });
+    out.refs.push({ name: n.text, line: line(n), col: col(n), ...(qual ? { qual: qual.text } : {}) });
   };
   const handlers = { ts: jsNode, tsx: jsNode, js: jsNode, py: pyNode, go: goNode, java: javaNode, rust: rustNode }[lang];
   // Iterative pre-order walk. depth: nesting inside function/class bodies, so top-level declarations can be told apart.
