@@ -18,6 +18,7 @@ export class LspClient {
   private open = new Map<string, number>(); // uri → version, for files sent with didOpen
   private stderr: string[] = [];
   private exitFns: Array<(why: string) => void> = [];
+  private settings: Record<string, unknown> = {};
   private stopping = false;
   exited = false;
 
@@ -36,14 +37,16 @@ export class LspClient {
     });
   }
 
-  /** Starts a server and runs the initialize handshake for one workspace folder. */
-  static async start(cmd: string[], root: string, opts: { env?: Record<string, string | undefined>; init?: unknown; timeoutMs?: number } = {}) {
+  /** Starts a server and runs the initialize handshake. folders: its workspace folders (the root alone by default);
+   *  settings: what it's told when it asks for its configuration, by section. */
+  static async start(cmd: string[], root: string, opts: { env?: Record<string, string | undefined>; init?: unknown; folders?: string[]; settings?: Record<string, unknown>; timeoutMs?: number } = {}) {
     const c = new LspClient(cmd, root, { ...process.env, ...opts.env });
+    c.settings = opts.settings ?? {};
     const uri = pathToFileURL(root).href;
     await c.request("initialize", {
       processId: process.pid,
       rootUri: uri,
-      workspaceFolders: [{ uri, name: "bobby" }],
+      workspaceFolders: (opts.folders?.length ? opts.folders : [root]).map((f, i) => ({ uri: pathToFileURL(f).href, name: `bobby-${i}` })),
       capabilities: {
         textDocument: {
           definition: { linkSupport: true },
@@ -135,9 +138,9 @@ export class LspClient {
       }
     }
   }
-  private receive(msg: { id?: number; method?: string; params?: { items?: unknown[] }; result?: unknown; error?: { message: string } }) {
+  private receive(msg: { id?: number; method?: string; params?: { items?: Array<{ section?: string }> }; result?: unknown; error?: { message: string } }) {
     if (msg.method && msg.id != null) { // a request from the server: answer so it doesn't wait on us
-      const result = msg.method === "workspace/configuration" ? (msg.params?.items ?? []).map(() => null) : null;
+      const result = msg.method === "workspace/configuration" ? (msg.params?.items ?? []).map((i) => (i.section && this.settings[i.section]) ?? null) : null;
       return this.send({ jsonrpc: "2.0", id: msg.id, result });
     }
     if (msg.id == null) return; // a notification (logs, diagnostics, progress): not used
