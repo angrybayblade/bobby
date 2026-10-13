@@ -1,6 +1,7 @@
 // Which language servers a review runs, and their lives: detected from the PR's files, asked about before anything is
 // installed, started in the background (the UI is usable meanwhile), and their answers merged into the definitions.
 import type { ReviewGraph } from "./graph.ts";
+import { go } from "./go.ts";
 import { Inspector } from "./inspect.ts";
 import { headTree, keepTree, type LanguageServer, type Offer } from "./langserver.ts";
 import { python } from "./python.ts";
@@ -10,7 +11,7 @@ import type { Definition } from "./types.ts";
 import { typescript } from "./typescript.ts";
 
 /** Every language with a server. A new one is a LanguageServer added here. */
-export const SERVERS: LanguageServer[] = [typescript, python];
+export const SERVERS: LanguageServer[] = [typescript, python, go];
 export const serverById = (id: string) => SERVERS.find((s) => s.id === id);
 
 // consent: Bobby can install it and is waiting for a yes; missing: something to install yourself (hint, command);
