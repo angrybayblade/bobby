@@ -1,6 +1,6 @@
 {
   "name": "focus-bobby",
-  "version": "0.1.0-rc2",
+  "version": "0.1.0-rc3",
   "description": "Bobby: a PR reviewer that shows one focused page at a time, in dependency order",
   "keywords": [
     "code-review",
