@@ -292,10 +292,11 @@ export default {
       // Measure every viewer in one layout: all writes, then all reads, then all writes. Interleaving them
       // forced a full layout per file.
       const vs = files.map((f) => views.get(f.path)).filter((v) => !only || only.has(v.f.path));
-      for (const v of vs) v.el.style.height = "";
+      // At natural size (.measuring lifts the text clamp), so a viewer's height never depends on the zoom it was built at.
+      for (const v of vs) { v.el.style.height = ""; v.el.classList.add("measuring"); }
       const maxH = capH();
       for (const v of vs) v.h = Math.min(maxH, v.el.offsetHeight);
-      for (const v of vs) v.el.style.height = `${v.h}px`;
+      for (const v of vs) { v.el.style.height = `${v.h}px`; v.el.classList.remove("measuring"); }
       const edges = [...next].flatMap(([a, bs]) => [...bs].map((b) => [a.path, b.path]));
       const L = layered(files.map((f) => f.path), edges, { h: (p) => views.get(p).h, gap: GY, compGap: GY * 2 + TOP });
       columns = [];
