@@ -151,16 +151,25 @@ Both trees go through `finalize`:
 
 `VERSION` in `graph.ts` is stamped into `generator.version`. **Bump it whenever extraction output changes**: cached graphs with a different version are rebuilt on the next launch.
 
-## 6. The language server (`lsp.ts`, `typescript.ts`, `inspect.ts`)
+## 6. Language servers (`servers.ts`, `langserver.ts`, `lsp.ts`, `inspect.ts`)
 
-TypeScript and JavaScript names are then asked of the TypeScript language server, in the background, so the UI is usable meanwhile:
+The names are then asked of a language server per language, in the background, so the UI is usable meanwhile. Each language is one `LanguageServer` (`langserver.ts`): which files it reads, what to export for it, whether it's installed and how to install it, how to start it, and how to name a declaration outside the repo. Adding a language is adding one to `SERVERS` in `servers.ts`; nothing else knows them.
 
-- **The server** (`typescript.ts`): pinned `typescript-language-server` and `typescript`, installed once into `~/.bobby/servers` by Bobby itself (a compiled binary acts as Bun with `BUN_BE_BUN=1`, so no npm is needed). It runs on Node 18+ when there's one on PATH: tsserver loads a large monorepo in about 3 s there, against minutes on Bun.
-- **The code** (`typescript.ts › headTree`): Bobby never checks out a PR, so its head commit's TS, JS and JSON are exported with `git archive` to `~/.bobby/trees`, and the monorepo's workspace packages are symlinked into its `node_modules` so imports between them resolve. Nothing is installed: third-party packages stay missing, and their names are reported as `ext`. A local review uses your working copy as it is.
-- **The client** (`lsp.ts`): JSON-RPC over stdio; definitions and hovers, on files sent with `didOpen`. The syntax-only server mode is off (`useSyntaxServer: "never"`), since it answers imports with the import line itself.
-- **The pass** (`inspect.ts › Inspector.definitions`): each name's definition, eight at a time. A target in the repo becomes `to`; one in `node_modules` or TypeScript's libraries becomes `ext`; a server stuck on an uninstalled package's import line reports the package. The result replaces the graph's `definitions` in what the server serves, and is cached per head commit and server version. The server then stays up for the inspector's live questions (`/api/inspect`), which add the type.
+| Language | Server | Installed by | Notes |
+|---|---|---|---|
+| TypeScript, JavaScript (`typescript.ts`) | typescript-language-server over a pinned TypeScript | Bobby, from npm, after you agree (about 24 MB) | Runs on Node 18+ when there's one: tsserver loads a large monorepo in about 3 s there, against minutes on Bun. Workspace packages are symlinked into the exported tree's `node_modules`, so imports between them resolve. The syntax-only mode is off (`useSyntaxServer: "never"`): it answers an import with the import line. |
+| Python (`python.ts`) | pyright | Bobby, from npm, after you agree (about 35 MB) | Never runs the code it reads. A declaration in the standard library, typeshed stubs or `site-packages` is named, not jumped to. |
+| Go (`go.ts`) | gopls | You (`go install golang.org/x/tools/gopls@latest`); found on PATH or in `$(go env GOPATH)/bin` | Started locked down: `GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off GOFLAGS=-mod=readonly CGO_ENABLED=0`, so nothing is downloaded and no cgo runs. Go loads a module's whole dependency graph or nothing, so in an exported tree each module missing from your module cache is replaced by an empty stub (`.bobby-stubs/`, found by asking `go list -m all` offline until it loads): the repo's own code resolves, and those modules' names aren't found. |
 
-`--no-lsp` turns it off. `extract --lsp` waits for it and writes its definitions into the file.
+How a review gets its servers (`servers.ts`):
+
+- **Detected** from the review's files: a PR touching only Go starts only gopls.
+- **Asked first**: a server Bobby can install waits for a yes in the UI (`consent`); one you install yourself shows how (`missing`, with the command). "Never" is saved in `settings.json` under `servers`; `bobby lsp install <language>` clears it.
+- **The code** (`langserver.ts › headTree`): a PR's head commit, every registered language's files, exported with `git archive` to `~/.bobby/trees` (beside, then moved into place) and prepared by each server (`prepareTree`). A local review uses your working copy, which is never modified.
+- **The client** (`lsp.ts`): JSON-RPC over stdio; definitions and hovers, on files sent with `didOpen`; the workspace folders and settings each server asks for.
+- **The pass** (`inspect.ts › Inspector.definitions`): each name's definition, eight at a time. A target in the repo becomes `to` (its last line from the syntax tree when the server gives only the name); one outside becomes `ext`; a server stopped at an import of a package that isn't installed reports the package. Each server's results replace the graph's for its files, and are cached per head commit, server version and extraction version. The server then stays up for the inspector's live questions (`/api/inspect`), which add the type. One that stops on its own is reported, and its language falls back to imports.
+
+`--no-lsp` turns them all off. `extract --lsp` waits for the installed ones and writes their definitions into the file; it never installs anything.
 
 ## 7. Caching (`cli.ts`, `state.ts`)
 
@@ -170,6 +179,6 @@ Keyed by `owner_repo_number_<first 12 of head sha>` in `~/.bobby/cache/`:
 |---|---|---|
 | `….graphs.json` | `{ static, claude? }` built graphs | After the static graph is built, and again when Claude's is ready |
 | `….json` | Claude's raw `ChangeTree` | When Claude finishes |
-| `….defs.<server>.json` | The language server's `definitions` | When its pass finishes (not for a local review, whose files change) |
+| `….defs.<server>.<version>.json` | A language server's `definitions` for its files | When its pass finishes (not for a local review, whose files change) |
 
 On launch, a cache hit with a matching `VERSION` skips fetch, diff, analysis and graph building, and only refreshes `discussion`. If the static graph is cached but Claude's isn't, extraction runs lazily only when Claude needs it. `--refresh` ignores both caches.

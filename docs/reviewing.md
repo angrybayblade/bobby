@@ -96,7 +96,7 @@ Marks are stored by the **content** of each hunk, not its position. After a forc
 
 Hovering a name highlights every other use of the same symbol on screen, in any file: the same declaration, not just the same spelling, so a local `env` and an imported `env` stay apart. Names Bobby couldn't place aren't highlighted.
 
-For TypeScript and JavaScript, a language server answers: it places locals, members of values (`client.get()`), and types. It starts in the background when you open a review, and **Types loading…** shows in the top bar until it's ready, usually seconds. Until then, and for other languages, Bobby finds what imports and the syntax tree can. A name from a package says which package; packages aren't installed, so their own types aren't followed. Removed lines can't be inspected yet.
+For TypeScript, JavaScript, Python and Go, a language server answers: it places locals, members of values (`client.get()`), and types. Bobby starts one per language in the review, in the background, and **<Language> types loading…** shows in the top bar until it's ready, usually seconds. One that isn't set up shows **<Language> types · set up?** (Bobby can install it: the card says what, how big, and from where, then **Install**, **Not now** or **Never**) or **needs setup** (for Go: the `go install` command to run, then **Check again**). Until a server answers, and for other languages, Bobby finds what imports and the syntax tree can. A name from a package says which package; packages aren't installed, so their own types aren't followed. Removed lines can't be inspected yet.
 
 ## Comments
 

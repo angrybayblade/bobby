@@ -8,7 +8,8 @@
 | `git` | Fetches the PR and computes the diff locally. |
 | [`gh`](https://cli.github.com), logged in | Reads PR metadata and review comments, clones repos, posts your review. |
 | `claude` (Claude Code CLI), optional | Builds the smarter change tree. It uses your Claude Code login, so no API key is needed. Without it, or with `--no-llm`, you get the static tree. |
-| `node` 18+, optional | Runs the TypeScript language server behind the inspector. Bobby installs the server itself; without Node it runs it on Bun, where a large project takes minutes rather than seconds to load. |
+| `node` 18+, optional | Runs the TypeScript and Python language servers behind the inspector. Bobby installs them itself, after asking; without Node it runs them on Bun, where a large project takes minutes rather than seconds to load. |
+| `gopls`, optional | The Go language server: `go install golang.org/x/tools/gopls@latest`. Bobby finds it on PATH or in `$(go env GOPATH)/bin`. |
 
 ## Install
 
@@ -89,9 +90,11 @@ bobby                                 # inside a repo: review this branch (see a
 bobby <pr-url | number>               # extract + open the review UI
 bobby extract [pr] [-o file.json]     # write the review graph and exit (stdout without -o); no pr = this branch
 bobby open <graph.json> [--repo dir]  # open the UI on an existing graph file
+bobby lsp                             # the language servers behind the inspector, by language
+bobby lsp install <language>          # install one (typescript, python), or say how (go)
 ```
 
-`extract` waits for Claude's tree (unless `--no-llm`) and writes it, falling back to the static tree if Claude fails. With `--lsp`, it also waits for the TypeScript language server's definitions. `open` views any `bobby.review-graph/v1` file, whoever produced it. With `--repo`, it can also load more context around hunks, and start the language server.
+`extract` waits for Claude's tree (unless `--no-llm`) and writes it, falling back to the static tree if Claude fails. With `--lsp`, it also waits for the installed language servers' definitions. `open` views any `bobby.review-graph/v1` file, whoever produced it. With `--repo`, it can also load more context around hunks, and start the language server.
 
 ## Flags
 
@@ -101,8 +104,8 @@ bobby open <graph.json> [--repo dir]  # open the UI on an existing graph file
 | `--repo <dir>` | cwd, else auto-clone | Local clone to use. With no PR, the repo to review. |
 | `--port <n>` | `4173` | UI port. |
 | `--no-llm` | off | Static analysis only; skip Claude. |
-| `--no-lsp` | off | Don't start the TypeScript language server. The inspector then finds what imports can. |
-| `--lsp` | off | `extract` only: ask the language server too, and write its definitions. |
+| `--no-lsp` | off | Don't start language servers. The inspector then finds what imports can. |
+| `--lsp` | off | `extract` only: ask the installed language servers too, and write their definitions. Nothing is installed. |
 | `--refresh` | off | Rebuild everything for this commit, ignoring the cached graphs and Claude tree. |
 | `--no-open` | off | Don't open the browser. |
 | `-o, --out <file>` | stdout | Output file for `extract`. |
@@ -120,9 +123,9 @@ Everything lives under `~/.bobby/`. If you used Bobby when it was called prfocus
 | `cache/<owner>_<repo>_<n>_<sha12>.json` | Claude's raw change tree for one head commit. |
 | `state/<owner>_<repo>_<n>.json` | Your review progress, draft comments, position and parked thought. |
 | `state/<owner>_<repo>_branch_<branch>.json`, `cache/…_branch_<branch>_<sha12>_<base7>.*` | The same for a local review. `<owner>_<repo>` comes from a GitHub `origin`, else `local_<folder>`. |
-| `cache/…_<sha12>.defs.<server>.json` | The language server's definitions for one head commit. |
-| `servers/typescript-<versions>/` | The TypeScript language server, installed on first use (about 24 MB from npm). |
-| `trees/<owner>_<repo>/<sha12>/` | A PR's head commit as plain files (its TS, JS and JSON), for the language server. The three most recent per repo are kept. |
+| `cache/…_<sha12>.defs.<server>.<version>.json` | A language server's definitions for one head commit. |
+| `servers/typescript-<versions>/`, `servers/pyright-<version>/` | The TypeScript and Python language servers, installed when you agree (about 24 MB and 35 MB from npm). |
+| `trees/<owner>_<repo>/<sha12>/` | A PR's head commit as plain files (the languages Bobby has servers for), for the language servers. The three most recent per repo are kept. |
 | `settings.json` | UI preferences, shared by every PR. |
 
 Deleting `cache/`, `servers/` or `trees/` is always safe. Deleting a `state/` file forgets your progress on that PR.
