@@ -3,7 +3,9 @@ import { embeddedAsset } from "./assets.ts";
 import { fileLines, reviewComments, run } from "./git.ts";
 import type { ReviewGraph } from "./graph.ts";
 import { loadSettings, saveSettings, saveState } from "./state.ts";
-import type { Comment, PrivateNote, ReviewState } from "./types.ts";
+import type { Comment, Definition, PrivateNote, ReviewState } from "./types.ts";
+import { type Inspector, insideRepo, inspectSyntax } from "./inspect.ts";
+import { Repo } from "./resolve.ts";
 
 export interface Session {
   cwd: string | null; // local clone; null when viewing a graph file without one
@@ -12,10 +14,22 @@ export interface Session {
   state: ReviewState;
   llm: "pending" | "done" | "failed" | "off";
   llmError?: string;
+  // The language server: loading, then answering the inspector, with its definitions for the change's names.
+  lsp?: "pending" | "done" | "failed" | "off";
+  lspError?: string;
+  inspector?: Inspector;
+  definitions?: Record<string, Definition[]>;
+  repo?: Promise<Repo>; // the head commit's syntax, for the inspector without a language server
 }
 
 const PUBLIC = join(import.meta.dir, "..", "public");
 const json = (v: unknown, status = 200) => Response.json(v, { status });
+
+/** Whether a file in your working copy differs from the snapshot a local review was built from. */
+async function changedSince(cwd: string, snapshot: string, path: string) {
+  const live = await Bun.file(join(cwd, path)).text().catch(() => null);
+  return live !== (await fileLines(cwd, snapshot, path)).join("\n");
+}
 
 export function startServer(s: Session, port: number) {
   const pr = () => s.staticGraph.pr;
@@ -39,11 +53,38 @@ export function startServer(s: Session, port: number) {
 
       if (p === "/api/graph") {
         const want = url.searchParams.get("tree");
-        return json(want === "static" ? s.staticGraph : (s.claudeGraph ?? s.staticGraph));
+        const g = want === "static" ? s.staticGraph : (s.claudeGraph ?? s.staticGraph);
+        return json(s.definitions ? { ...g, definitions: s.definitions } : g); // the language server's, once it has answered
       }
       if (p === "/api/session")
-        return json({ state: s.state, settings: loadSettings(), llm: s.llm, llmError: s.llmError, caps: { files: !!s.cwd } });
-      if (p === "/api/status") return json({ llm: s.llm, llmError: s.llmError, claudeReady: !!s.claudeGraph });
+        return json({ state: s.state, settings: loadSettings(), llm: s.llm, llmError: s.llmError, lsp: s.lsp ?? "off", lspError: s.lspError, caps: { files: !!s.cwd, inspect: !!s.cwd } });
+      if (p === "/api/status") return json({ llm: s.llm, llmError: s.llmError, claudeReady: !!s.claudeGraph, lsp: s.lsp ?? "off", lspError: s.lspError });
+      if (p === "/api/definitions") return json(s.definitions ?? s.staticGraph.definitions ?? {});
+
+      // The inspector: where the name at path:line:col (head side) is declared. The language server once it's loaded;
+      // until then, or without one, what extraction stored and the syntax tree at head.
+      if (p === "/api/inspect") {
+        const path = url.searchParams.get("path") ?? "", line = Number(url.searchParams.get("line")), col = Number(url.searchParams.get("col"));
+        if (!insideRepo(path) || !Number.isInteger(line) || !Number.isInteger(col)) return json({ error: "a repo-relative path, a line and a column" }, 400);
+        const state = { pending: s.lsp === "pending", lsp: s.lsp ?? "off", ...(s.lspError ? { lspError: s.lspError } : {}) };
+        // A local review's diff is a snapshot of your working copy; the server reads the live files. Once a file has
+        // changed, its lines no longer match what you're reading, so the server isn't asked about it.
+        const changed = pr().provider === "local" && !!s.cwd && (await changedSince(s.cwd, pr().headSha, path));
+        // Where it's declared, without the server: what extraction stored, else the syntax tree at head.
+        const syntax = async () => {
+          const d = (s.definitions ?? s.staticGraph.definitions ?? {})[path]?.find((x) => x.line === line && col >= x.col && col < x.col + x.len);
+          if (d?.to || d?.ext) return { name: d.name, to: d.to, ext: d.ext, via: d.via ?? ("syntax" as const) };
+          if (!s.cwd) return null;
+          s.repo ??= Repo.open(s.cwd, pr().headSha);
+          return inspectSyntax(await s.repo, path, line, col).catch(() => null);
+        };
+        if (s.inspector?.alive && s.lsp === "done" && !changed) {
+          const r = await s.inspector.inspect(path, line, col).catch(() => null);
+          if (r?.to || r?.ext) return json({ ...r, ...state });
+          if (r?.hover) { const d = await syntax(); return json({ ...(d?.to || d?.ext ? d : {}), ...r, via: d?.to || d?.ext ? d.via : r.via, ...state }); } // a type, and where imports say it is
+        }
+        return json({ ...((await syntax()) ?? { via: "none" }), ...state, ...(changed ? { changed } : {}) });
+      }
 
       if (p === "/api/settings" && req.method === "POST") {
         const next = { ...loadSettings(), ...((await req.json()) as object) };

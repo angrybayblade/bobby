@@ -7,7 +7,9 @@ import { parseDiff } from "./diff.ts";
 import { analyze, heuristicTree, type Analysis } from "./analyze.ts";
 import { claudeTree } from "./llm.ts";
 import { buildGraph, GRAPH_SCHEMA, LEGACY_SCHEMAS, VERSION, type ReviewGraph } from "./graph.ts";
-import { loadCachedGraphs, loadCachedTree, loadState, saveCachedGraphs, saveCachedTree } from "./state.ts";
+import { loadCachedDefs, loadCachedGraphs, loadCachedTree, loadState, saveCachedDefs, saveCachedGraphs, saveCachedTree } from "./state.ts";
+import { Inspector } from "./inspect.ts";
+import { headTree, keepTree, TS_SERVER_ID, tsLanguageId } from "./typescript.ts";
 import type { FileDiff, PrInfo } from "./types.ts";
 import { startServer, type Session } from "./server.ts";
 import pkg from "../package.json" with { type: "json" };
@@ -21,6 +23,8 @@ const { values, positionals } = parseArgs({
     port: { type: "string", default: "4173" },
     out: { type: "string", short: "o" },
     "no-llm": { type: "boolean", default: false },
+    "no-lsp": { type: "boolean", default: false },
+    lsp: { type: "boolean", default: false },
     refresh: { type: "boolean", default: false },
     "no-open": { type: "boolean", default: false },
     help: { type: "boolean", short: "h", default: false },
@@ -40,6 +44,8 @@ const USAGE = `bobby: review a PR one focused page at a time
   --repo <dir>   local clone (default: cwd, else auto-clone to ~/.bobby/repos)
   --port <n>     UI port (default 4173)
   --no-llm       static analysis only; skip Claude
+  --no-lsp       don't start the TypeScript language server (the inspector then answers from imports alone)
+  --lsp          extract: ask the language server too (slower: it loads the project first)
   --refresh      rebuild everything for this commit (ignore cached graphs and Claude tree)
   --no-open      don't open the browser
   -v, --version  print the version`;
@@ -63,7 +69,9 @@ if (cmd === "open") {
     const discussion = await reviewComments(graph.pr, true).catch(() => null);
     if (discussion) graph.discussion = discussion;
   }
-  await serve({ cwd: values.repo ?? null, staticGraph: graph, state: loadState({ ...graph.pr }), llm: "off" });
+  const session: Session = { cwd: values.repo ?? null, staticGraph: graph, state: loadState({ ...graph.pr }), llm: "off" };
+  if (session.cwd) languageServer(session, session.cwd);
+  await serve(session);
 } else {
   const t0 = Date.now();
   const secs = () => `${((Date.now() - t0) / 1000).toFixed(1)}s`;
@@ -135,6 +143,12 @@ if (cmd === "open") {
       log("▸ asking Claude to build the change tree…");
       graph = await claude().catch((e) => (log(`  ✗ Claude failed, writing static graph: ${e.message}`), staticGraph));
     }
+    if (values.lsp && hasTypeScript(graph)) {
+      const s: Session = { cwd, staticGraph: graph, state: { headSha: graph.pr.headSha, marks: {}, comments: [] }, llm: "off" };
+      await languageServer(s, cwd);
+      await s.inspector?.stop();
+      if (s.definitions) graph = { ...graph, definitions: s.definitions };
+    }
     const text = JSON.stringify(graph, null, 1);
     if (values.out) { writeFileSync(values.out, text); log(`  ✓ wrote ${values.out}`); }
     else console.log(text);
@@ -143,6 +157,7 @@ if (cmd === "open") {
       cwd, staticGraph, claudeGraph, state: loadState(pr),
       llm: claudeGraph ? "done" : wantLlm ? "pending" : "off",
     };
+    languageServer(session, cwd);
     if (wantLlm) {
       log("▸ asking Claude to build the change tree (UI is usable meanwhile)…");
       claude()
@@ -150,6 +165,46 @@ if (cmd === "open") {
         .catch((e) => { session.llm = "failed"; session.llmError = String(e.message ?? e); console.error(`  ✗ Claude tree failed, keeping static tree: ${session.llmError}`); });
     }
     await serve(session);
+  }
+}
+
+function hasTypeScript(g: ReviewGraph) { return g.files.some((f) => f.status !== "deleted" && tsLanguageId(f.path)); }
+
+/** The TypeScript language server, in the background (the UI is usable meanwhile): it loads the project, places
+ *  every name on the change's lines, then stays up to answer the inspector. Off with --no-lsp or without TS. */
+async function languageServer(session: Session, cwd: string) {
+  const g = session.staticGraph, pr = g.pr;
+  if (values["no-lsp"] || !hasTypeScript(g)) { session.lsp = "off"; return; }
+  session.lsp = "pending";
+  const t0 = Date.now(), cacheable = pr.provider !== "local"; // a local review reads your working copy, which changes
+  const cacheId = `${TS_SERVER_ID}.${g.generator.version}`; // what the server placed depends on the names extraction found
+  try {
+    const cached = cacheable ? loadCachedDefs(pr, cacheId) : null;
+    if (cached) session.definitions = cached;
+    const root = pr.provider === "local" ? cwd : await headTree(cwd, pr);
+    log(`▸ starting the TypeScript language server${cmd === "extract" ? "" : " (the UI is usable meanwhile)"}…`);
+    const insp = (session.inspector = await Inspector.start(root, log));
+    process.once("SIGINT", () => void insp.stop().finally(() => process.exit(130)));
+    insp.onExit((why) => { // it stopped on its own: say so, and answer from imports from now on
+      session.lsp = "failed";
+      session.lspError = `the language server stopped: ${why}`;
+      console.error(`  ✗ ${session.lspError}. The inspector answers from imports alone.`);
+    });
+    if (pr.provider !== "local") setInterval(() => keepTree(root), 3_600_000).unref(); // in use: never pruned by another Bobby
+    if (cached) { // already placed: one name loads the project, so the inspector's first answer is quick
+      const [path, list] = Object.entries(cached).find(([p, l]) => tsLanguageId(p) && l.length) ?? [];
+      if (path && list) await insp.definitions({ [path]: list.slice(0, 1) });
+    } else {
+      session.definitions = await insp.definitions(g.definitions ?? {});
+      if (cacheable) saveCachedDefs(pr, cacheId, session.definitions);
+    }
+    const all = Object.values(session.definitions ?? {}).flat(), placed = all.filter((d) => d.via === "lsp").length;
+    session.lsp = "done";
+    log(`  ✓ language server ready: ${placed} of ${all.length} names placed by it (${((Date.now() - t0) / 1000).toFixed(1)}s)`);
+  } catch (e) {
+    session.lsp = "failed";
+    session.lspError = String((e as Error).message ?? e);
+    console.error(`  ✗ language server: ${session.lspError}. The inspector answers from imports alone.`);
   }
 }
 

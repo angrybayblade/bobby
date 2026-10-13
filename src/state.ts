@@ -54,3 +54,9 @@ export const saveCachedGraphs = (pr: GraphKey, g: CachedGraphs) => writeJson(gra
 const settingsPath = join(ROOT, "settings.json");
 export const loadSettings = (): Record<string, unknown> => readJson(settingsPath) ?? {};
 export const saveSettings = (s: Record<string, unknown>) => writeJson(settingsPath, s);
+
+/** A language server's definitions per head commit and server version: asking again means loading the project again. */
+type Defs = Record<string, import("./types.ts").Definition[]>;
+const defsPath = (pr: GraphKey, server: string) => join(ROOT, "cache", `${slug(pr)}_${rev(pr)}.defs.${server}.json`);
+export const loadCachedDefs = (pr: GraphKey, server: string) => readJson<Defs>(defsPath(pr, server));
+export const saveCachedDefs = (pr: GraphKey, server: string, d: Defs) => writeJson(defsPath(pr, server), d);
