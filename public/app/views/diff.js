@@ -14,7 +14,7 @@ const CSS = `
 .dv.dragging { user-select: none; }
 .dv .world { position: absolute; left: 0; top: 0; transform-origin: 0 0; transition: transform var(--dur) var(--ease); }
 .dv.dragging .world, .dv .world.still { transition: none; }
-.dv .bhead { position: absolute; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
+.dv .bhead { position: absolute; transform-origin: 0 0; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
 .dv .fv { position: absolute; left: 0; top: 0; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; box-shadow: var(--shadow); z-index: 2; transition: transform var(--dur) var(--ease), opacity var(--dur); }
 .dv.dragging .fv, .dv .fv.held { transition: none; }
 .dv .fv.context { border-style: dashed; }
@@ -65,15 +65,21 @@ const CSS = `
 :is(.dv, .fvw) .sec .notes { margin-bottom: 10px; }
 :is(.dv, .fvw) .sec.rel { box-shadow: inset 3px 0 0 var(--line); }
 .dv svg.edges { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; z-index: 1; } /* under the viewers: edges live in the gaps */
-.dv svg.edges path { fill: none; stroke: var(--muted); stroke-width: 2; }
+.dv svg.edges path { fill: none; stroke: var(--muted); stroke-width: calc(2px * var(--k, 1)); } /* --k: past MAX_TEXT, edges and labels keep their size too (arrowheads follow the stroke) */
+.dv .over { position: absolute; left: 0; top: 0; }
 .dv svg.edges marker path { fill: var(--muted); stroke: none; }
-.dv svg.edges .bg path { stroke-width: 1.5; opacity: .16; transition: opacity var(--dur); }
+.dv svg.edges .bg path { stroke-width: calc(1.5px * var(--k, 1)); opacity: .16; transition: opacity var(--dur); }
 .dv svg.edges .bg path.merged { opacity: .24; }
 .dv svg.edges .bg path:has(+ .hit:hover) { opacity: .6; }
 .dv svg.edges .bg path.in, .dv svg.edges .bg path.out { opacity: 0; }
-.dv svg.edges .bg path.hit { stroke: transparent; stroke-width: 12px !important; opacity: 1; pointer-events: stroke; } /* hover target: names what a line connects */
+.dv svg.edges .bg path.hit { stroke: transparent; stroke-width: calc(12px * var(--k, 1)) !important; opacity: 1; pointer-events: stroke; } /* hover target: names what a line connects */
 .dv svg.edges .bg path.hit.out { pointer-events: none; }
-.dv .elbl { position: absolute; z-index: 4; font: 11.5px var(--font-ui); color: var(--muted); background: var(--bg); border: 1px solid var(--line-soft); padding: 1px 7px; border-radius: 1px; white-space: nowrap; transform: translate(-50%, -50%); pointer-events: none; }
+.dv .elbl { position: absolute; z-index: 4; font: 11.5px var(--font-ui); color: var(--muted); background: var(--bg); border: 1px solid var(--line-soft); padding: 1px 7px; border-radius: 1px; white-space: nowrap; transform: translate(-50%, -50%) scale(var(--k, 1)); pointer-events: none; }
+/* Native scrollbars ignore the contents' zoom (they'd grow with the camera); a styled one shrinks with the text. */
+.dv .world .fvb::-webkit-scrollbar { width: 8px; height: 8px; }
+.dv .world .fvb::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+.dv .world .fvb::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+.dv .world .fvb::-webkit-scrollbar-track, .dv .world .fvb::-webkit-scrollbar-corner { background: transparent; }
 :is(.dv, .fvw) .fvh:active { cursor: grabbing; }
 .dv .fv.held { box-shadow: 0 12px 40px rgba(0,0,0,.25); }
 .dv .dfocus { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(180px, 260px) minmax(0, 1fr) minmax(180px, 260px); gap: 22px; padding: 18px 22px; background: var(--bg); z-index: 5; }
@@ -222,7 +228,7 @@ export default {
     // ---- build: render every viewer, measure, then lay out as a graph.
     function build() {
       const keep = new Map([...views].map(([p, v]) => [p, v.body.scrollTop]));
-      world.innerHTML = `<svg class="edges"><defs><marker id="dv-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs><g class="bg"></g><g class="fg"></g></svg>`;
+      world.innerHTML = `<svg class="edges"><defs><marker id="dv-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs><g class="bg"></g><g class="fg"></g></svg><div class="over"></div>`;
       views.clear(); drawn.clear(); secs.clear(); relShown = new Set();
       W = app.settings.diffLayout === "split" ? 1280 : 840;
       M = model();
@@ -318,8 +324,8 @@ export default {
         const h = document.createElement("div");
         h.className = "bhead";
         h.textContent = text;
-        h.style.transform = `translate(4px, ${comp.top}px)`;
-        world.appendChild(h);
+        h.style.transform = `translate(4px, ${comp.top}px) scale(var(--k, 1))`;
+        world.querySelector(".over").appendChild(h);
       }
     }
 
@@ -497,10 +503,10 @@ export default {
           e.path.classList.remove("out"); e.hit?.classList.remove("out");
         }
         if (e.d !== s.d) { e.path.setAttribute("d", (e.d = s.d)); e.hit?.setAttribute("d", s.d); }
-        if (s.width && e.w !== s.width) e.path.style.strokeWidth = `${(e.w = s.width)}px`;
+        if (s.width && e.w !== s.width) e.path.style.strokeWidth = `calc(${(e.w = s.width)}px * var(--k, 1))`;
         if (s.title && e.title !== s.title) e.tip.textContent = e.title = s.title;
         if (s.label) {
-          e.lbl ??= world.appendChild(Object.assign(document.createElement("div"), { className: "elbl", textContent: s.label }));
+          e.lbl ??= world.querySelector(".over").appendChild(Object.assign(document.createElement("div"), { className: "elbl", textContent: s.label }));
           if (e.lx !== s.lx || e.ly !== s.ly) { e.lbl.style.left = `${(e.lx = s.lx)}px`; e.lbl.style.top = `${(e.ly = s.ly)}px`; }
         }
       }
@@ -658,7 +664,7 @@ export default {
       clampText();
     }
     // Contents zoom back by MAX_TEXT/scale when the camera is past it, so text keeps its size while the viewer
-    // grows. Re-zooming every viewer reflows the canvas (~100ms), so during a pinch or ctrl+scroll only the viewers
+    // grows; edges, their labels and the group headings shrink by as much (--k). Re-zooming every viewer reflows the canvas (~100ms), so during a pinch or ctrl+scroll only the viewers
     // on screen follow, in the same frame as the camera; the rest catch up a few a frame once it settles.
     let clampTimer = 0, clampFrame = 0;
     const clampOf = () => String(+Math.min(1, MAX_TEXT / cam.s).toFixed(3));
@@ -670,6 +676,7 @@ export default {
     function clampText(now = !world.classList.contains("still")) {
       clearTimeout(clampTimer); cancelAnimationFrame(clampFrame);
       const z = clampOf();
+      for (const el of world.querySelectorAll(":scope > svg.edges, :scope > .over")) el.style.setProperty("--k", z); // a repaint, no reflow
       let moved = false;
       for (const v of now ? views.values() : onScreen()) moved = setClamp(v, z) || moved;
       if (moved) redraw();
