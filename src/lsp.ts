@@ -128,20 +128,32 @@ export class LspClient {
     this.proc.stdin.write(body);
     this.proc.stdin.flush();
   }
+  /** Messages are "Content-Length: n\r\n\r\n" and n bytes of JSON, split across chunks any which way. The bytes wait in
+   *  one buffer that grows by doubling, read from the front: a 10 MB answer in 64 KB chunks is copied a few times, not
+   *  once a chunk, and the headers are looked for once a message. */
   private async readLoop() {
-    let buf = new Uint8Array(0);
+    let buf = new Uint8Array(1 << 16), start = 0, end = 0, body = -1; // body: the length of the message being waited on
     for await (const chunk of this.proc.stdout) {
-      const next = new Uint8Array(buf.length + chunk.length);
-      next.set(buf); next.set(chunk, buf.length); buf = next;
-      for (;;) {
-        const head = headerEnd(buf);
-        if (head < 0) break;
-        const len = Number(/Content-Length:\s*(\d+)/i.exec(dec.decode(buf.subarray(0, head)))?.[1]);
-        if (!Number.isFinite(len) || buf.length < head + 4 + len) break;
-        const body = dec.decode(buf.subarray(head + 4, head + 4 + len));
-        buf = buf.slice(head + 4 + len);
-        try { this.receive(JSON.parse(body)); } catch { /* a malformed message: skip it */ }
+      if (end + chunk.length > buf.length) {
+        const live = end - start, next = new Uint8Array(Math.max(buf.length, (live + chunk.length) * 2));
+        next.set(buf.subarray(start, end)); buf = next; start = 0; end = live;
       }
+      buf.set(chunk, end); end += chunk.length;
+      for (;;) {
+        if (body < 0) {
+          const head = headerEnd(buf.subarray(start, end));
+          if (head < 0) break;
+          const len = Number(/Content-Length:\s*(\d+)/i.exec(dec.decode(buf.subarray(start, start + head)))?.[1]);
+          start += head + 4;
+          if (!Number.isFinite(len)) continue; // headers without a length: skip them
+          body = len;
+        }
+        if (end - start < body) break;
+        const text = dec.decode(buf.subarray(start, start + body));
+        start += body; body = -1;
+        try { this.receive(JSON.parse(text)); } catch { /* a malformed message: skip it */ }
+      }
+      if (start === end) start = end = 0;
     }
   }
   private receive(msg: { id?: number; method?: string; params?: { items?: Array<{ section?: string }> }; result?: unknown; error?: { message: string } }) {
