@@ -4,13 +4,13 @@ The UI in `public/` is plain ES modules with no build step and no framework. `in
 
 ## Boot (`app/main.js`)
 
-1. Fetch `/api/graph` and `/api/session` in parallel, and create the runtime with `createApp`.
+1. Fetch `/api/graph` and `/api/session` in parallel, and create the runtime with `createApp`. If either fails, the loading line says why and boot stops.
 2. Attach the rendering helpers to `app` (`renderPage`, `renderNode`, `renderFile`).
 3. Apply settings to the document: `data-theme`, `data-motion`, and CSS variables for font, size and word spacing.
-4. Pick the starting focus. Resume on the stored `lastNodeId` at the stored `lastLevel` (default Page). On a first visit, use `app.entryPoint()` (the core with the fewest dependency pages, then the fewest changed lines, preferring linked cores) at the Core level, with the core's intro toast. Fall back to the first unreviewed page at Overview.
+4. Pick the starting focus: always `app.entryPoint()` (the unreviewed core with the fewest dependency pages, then the fewest changed lines, preferring linked cores) at the Core level. The stored `lastNodeId` is offered on the welcome-back card instead of jumped to. With nothing left unreviewed, the first page at Overview.
 5. Mount the view: from the URL hash if present, otherwise the last one used (`settings.view`).
 6. Start the tour module and the chrome. On a first launch (`/api/session` returned no saved settings), run the tour first; then show the welcome-back card if there's progress or a parked thought, or else the entry point's intro toast.
-7. If Claude is pending, poll `/api/status` every 4s and toast when its tree is ready.
+7. While Claude or a language server is working, poll `/api/status` every 3 s (every 10 s while the server can't be reached), toast when Claude's tree is ready, and emit `llm` only when a status actually changed.
 
 **Deep links for testing**: `#view=lens&level=1&p=5` picks the view, level and walk position (1-based). `window.bobby` exposes the runtime in the console.
 
@@ -39,7 +39,7 @@ The UI in `public/` is plain ES modules with no build step and no framework. `in
 | `comments` | A draft or private note was added, deleted or submitted |
 | `graph` | `replaceGraph` swapped in Claude's tree (focus is kept by node id) |
 | `settings` | A setting changed |
-| `llm` | Claude's status changed |
+| `llm` | Claude's or a language server's status changed |
 | `resize` | The window resized (sent to the view by `main.js`) |
 
 `main.js` forwards every reason to the mounted view's `update(reason)`.
@@ -50,11 +50,11 @@ The UI in `public/` is plain ES modules with no build step and no framework. `in
 
 ## Keyboard (`app/main.js`)
 
-One `keydown` handler. It ignores typing in inputs and any modified keys, and lets an open modal take `esc`/`enter`. A view can claim keys by returning `keys: { [key]: fn }` from `mount`; those win over the global map. Both go through `press(key)`, and every handled key calls `useKey`.
+One `keydown` handler. It ignores typing in inputs and any modified keys, leaves `enter` and space to a button or link you've tabbed to, and lets an open modal take `esc` (from its text box too) and `enter`. Every action has a stable id in `app/keys.js` (`ACTIONS`), with default keys the reader can rebind (`settings.keys`). `press(key)` looks up the key's action and `runAction(id)` runs it: the view's own `keys: { [id]: fn }` from `mount` win over the global `ACTS`. Every handled key calls `useKey`.
 
-The one modified key is `⌘K` / `Ctrl+K`, which toggles the command palette (`app/palette.js`). It doesn't open over another modal or while you're writing in a textarea. The palette shows in `#overlay` like any modal and searches four kinds of item: commands, cores, files and pages. Commands come from `commands()` in `main.js`: every key in `KEYED`, run by name through `press(key, { learn: false })` so view keys like `f` and `g` do what they do in the current view, without counting toward fading their hints. There are also commands with no key of their own (switch to a view, the Tests and Untouched switches, theme). Cores, files and pages are read from the walk each time it opens, so the switches decide what it finds. Matching is per word against the title, then the subtitle (a file's folder, a page's core and path). Substrings beat scattered letters, and word starts count extra. With nothing typed, it lists what you ran last, then every command and core.
+The one modified key is `⌘K` / `Ctrl+K`, which toggles the command palette (`app/palette.js`). It doesn't open over another modal or while you're writing in a textarea. The palette shows in `#overlay` like any modal and searches four kinds of item: commands, cores, files and pages. Commands come from `commands()` in `main.js`: every action in `ACTIONS`, run through `runAction(id, { learn: false })` so view keys like `f` and `g` do what they do in the current view, without counting toward fading their hints. There are also commands with no key of their own (switch to a view, the Tests and Untouched switches, theme). Cores, files and pages are read from the walk each time it opens, so the switches decide what it finds. Matching is per word against the title, then the subtitle (a file's folder, a page's core and path). Substrings beat scattered letters, and word starts count extra. With nothing typed, it lists what you ran last, then every command and core.
 
-To add a command with a key, add a row to `KEYED`; for one without a key, add it to `commands()`.
+To add a command with a key, add an action to `ACTIONS` in `keys.js` and its handler to `ACTS` (or a view's `keys`); for one without a key, add it to `commands()`.
 
 ## Chrome (`app/chrome.js`)
 
@@ -102,10 +102,10 @@ A view is an ES module in `app/views/` registered in `app/views/index.js`. The c
 All four canvases follow the same pattern: a `.stage` (viewport, receives input) containing a `.world` (absolutely positioned content, moved by one CSS `transform` for pan and zoom). Edges are an SVG inside the world, so they move with it.
 
 ### Flow (`flow.js`)
-Lays out cores as rows and bands as columns. Degree-of-interest sizing: the focus is large, its neighbours medium, the rest small, and bands longer than a threshold fold into "+N". `camera()` frames the whole graph, the current core or the focus, depending on the level. Edges are cubic curves. Ones touching the focus are highlighted, ones outside the current core are dimmed, and edges to folded nodes route to the "+N" card.
+The PR as one tree on a canvas, left to right: the PR, its concerns, each concern's core changes, then what each affects (what it relies on to its left), laid out in pre-order. Degree-of-interest sizing: the focus is large, its neighbours medium, the rest small, and bands longer than a threshold fold into "+N". `camera()` frames the whole graph, the current core or the focus, depending on the level. Edges are cubic curves. Ones touching the focus are highlighted, ones outside the current core are dimmed, and edges to folded nodes route to the "+N" card.
 
 ### Outline (`outline.js`)
-A rail rendered from the walk, with indentation from tree depth and distant cores folded. A document pane re-renders only when its key (`level:core` or `level:pid`) changes.
+A rail rendered from the walk, with indentation from tree depth and distant cores folded. The document pane re-renders on every update; its key (`level:core` or `level:pid`) decides whether the scroll position is kept (the same key) or reset.
 
 ### Lens (`lens.js`)
 A three-column grid: incoming neighbours, the focus, outgoing neighbours. Edges are redrawn with `wire()` on resize.
@@ -114,7 +114,7 @@ A three-column grid: incoming neighbours, the focus, outgoing neighbours. Edges 
 The most involved view.
 
 - **Model.** Every node's first placement in walk order is its canonical section. Sections are grouped by file (a change node's file, or a context node's path) and sorted by line. A file's column is the band of its most central section. `rel` maps each section to its related sections, from `graph.edges` mapped onto canonical sections, with a direction relative to that section. `pairs` lists each relation once.
-- **Layout.** Every viewer is rendered with `renderFile`, measured (height capped at 460px) and placed by `layered()` (`views/layered.js`): files become a directed graph from the section edges, cycles are broken in band-then-walk order, each file's column is its longest path from a source, a few barycentre sweeps order each column, and heights line up with what leads in. Connected groups are stacked, and unlinked files go in a grid at the end. Dragged viewers keep their position in `placedBy`.
+- **Layout.** Every viewer is rendered with `renderFile`, measured (height capped at what fits the stage at the Overview's scale, at least 240px) and placed by `layered()` (`views/layered.js`): files become a directed graph from the section edges, cycles are broken in band-then-walk order, each file's column is its longest path from a source, a few barycentre sweeps order each column, and heights line up with what leads in. Connected groups are stacked, and unlinked files go in a grid at the end. Dragged viewers keep their position in `placedBy`.
 - **Engagement.** `engaged` is true once the reader clicks into a viewer's code or steps with `j`/`k`. It's false after a background click (not a drag) or at Overview, and `.dv.engaged` mirrors it. Wheel events scroll code only over the active viewer while engaged; everywhere else they pan.
 - **Reading focus.** A scroll in the active viewer, after 90ms, makes the section under the top third the focus (`readFocus`). Programmatic scrolls set a `quietUntil` window so they aren't read back as the reader moving.
 - **Weights.** Each redraw gives every viewer `w-focus` (the active viewer and the targets of its focused edges, only while engaged), `w-semi` (other changed files) or `w-none` (untouched files). The CSS maps these to opacity and lift.
