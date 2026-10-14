@@ -16,7 +16,7 @@ Open settings with `,` or the gear in the header. Changes apply immediately and 
 | Break reminder | Off · 15m · 25m · 45m | Off |
 | Rabbit-hole nudge | Off · 8m · 12m · 20m | 12m |
 | Drift prompt | On · Off | On |
-| PR comments | Hidden, show per page · Always shown | Hidden, show per page |
+| Comments | Open · Collapsed (also the speech bubble in the top bar) | Open |
 | Untouched code | Hidden · Shown (also the top bar's **○ Untouched**) | Hidden |
 | File tree | Shown · Hidden (also `t`, or ▤ in the top bar) | Shown |
 | File tree side | Right · Left (also ⇄ in the tree's header) | Right |

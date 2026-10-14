@@ -108,9 +108,11 @@ For TypeScript, JavaScript, Python and Go, a language server answers: it places 
 
 1. Click a line to select it, then click it again (or press `c`) to open the composer. Pressing `c` with nothing selected picks the most relevant line on the page. For several lines, like GitHub's diff, click the first line, then shift-click the last (or drag down the line numbers): the comment or note covers the whole range, shows as `L12–L18`, and posts to GitHub as a multi-line comment. Selecting shows a small popover on the last selected line: **Comment** (a GitHub draft) or **Private note**.
 2. Write your comment. `cmd/ctrl+enter` saves it as a **draft**, and `esc` cancels.
-3. Drafts show on their page and in a **"N drafts · S"** pill in the header. Delete one with its ✕.
+3. A draft shows under its line, like a comment, tagged **draft**, and counts in the **"N drafts · S"** pill in the header. Delete it there.
 
-**Existing review comments** on the PR are hidden by default, so the code comes first. A page with some shows **Show N comments from the PR**; click it to see them next to your drafts, on the lines they're anchored to, and click a comment to jump to its line. Lines with comments still carry a ◂ marker. To always show them, set **PR comments** to "Always shown" in settings. Your own drafts and private notes are always shown.
+**Comments sit under the line they're on**, as on GitHub: the PR's existing comments, with their author's avatar, name and time, replies stacked under the first, Markdown rendered (code, tables, lists, links) and long ones cut short with **Show more**; and your drafts, the same way. A comment on a range sits under its last line. In the inline layout a thread is as wide as the file; in split, it's on the side it was made on (removed lines left, the rest right), as wide as that side. A comment just outside the lines a hunk shows is announced at its edge, **"2 comments below"**, which opens the code down to it.
+
+**Collapsing** leaves a comment where it is, as one slim line with its author, how it starts and how many replies. Three levels, each a speech-bubble button that's filled while comments show and an outline while they're collapsed: a thread's own (in its corner, or click the slim line to open it), a file's (in the file's header, with its count), and the whole PR's (in the top bar, with its count). A broader one sets everything under it; a thread can still be opened or collapsed on its own afterwards. The PR's is saved as the **Comments** setting (open by default), and the rest last while the page is open.
 
 Comments on **untouched code** can't be inline on GitHub. They're kept as drafts and go into the review summary under "Notes on code this PR doesn't touch".
 
@@ -124,7 +126,7 @@ Notes are for you: reminders, questions to come back to, half-formed thoughts. *
 | On a whole file | In the Diff view, click ✎ in the file's header. File notes show at the top of the file, and on its pages in every view. |
 | On the whole PR | Press `M`, or click **✎ Notes** in the header, and write in the panel. |
 
-The **Notes** panel (`M`) also lists every note on code. Click one to jump to its page. Notes look like comments but quieter (dashed, muted), and the composer is dashed while it's in note mode. Delete a note with its ✕.
+A note on a line **floats beside it**, over the right edge of the code, like a sticky note; notes on nearby lines stack. Collapse one to a small icon on its line with –, delete it with ✕. Notes follow the same file and PR collapsing as comments. The **Notes** panel (`M`) also lists every note on code; click one to jump to its page. The composer is dashed while it's in note mode.
 
 ## Submitting
 
