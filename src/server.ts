@@ -28,6 +28,36 @@ export interface Session {
 const PUBLIC = join(import.meta.dir, "..", "public");
 const json = (v: unknown, status = 200) => Response.json(v, { status });
 
+/** Where a line sits, outer › inner: the blocks around it, by indentation, which reads anonymous callbacks too
+ *  (describe/it, route handlers) in any language. "" at the top of the file. */
+function scopeAt(lines: string[], line: number): string {
+  const indent = (t: string) => t.replace(/\t/g, "    ").match(/^ */)![0].length;
+  let cur = indent(lines[line - 1] ?? "");
+  const chain: string[] = [];
+  for (let i = line - 2; i >= 0 && cur > 0 && chain.length < 2; i--) {
+    const t = lines[i];
+    if (!t.trim() || indent(t) >= cur) continue;
+    cur = indent(t);
+    const label = opener(t.trim());
+    if (label) chain.unshift(label);
+  }
+  return chain.join(" › ");
+}
+/** A line that opens a block, named: a test, a function, a method, a class; or null for one that doesn't (an object). */
+function opener(t: string): string | null {
+  let m;
+  if (/^(import\b|export\s*\{[^}]*$|from\s+\S+\s+import\s*\($)/.test(t)) return "import"; // a name on its own line in a multi-line import
+  if ((m = /^(describe|it|test|context|suite)(?:\.\w+)?\(\s*(['"`])(.{1,60}?)\2/.exec(t))) return `${m[1]} "${m[3]}"`;
+  if ((m = /^func\s+\(\s*\w*\s*\*?(\w+)[^)]*\)\s*(\w+)/.exec(t))) return `${m[1]}.${m[2]}()`; // Go method
+  if ((m = /^(?:export\s+)?(?:default\s+)?(?:async\s+)?(?:function\*?|func|def|fn)\s+(\w+)/.exec(t))) return `${m[1]}()`;
+  if ((m = /^(?:export\s+)?(?:default\s+)?(?:abstract\s+)?(?:class|interface|struct|impl|type)\s+(\w+)/.exec(t))) return m[1];
+  if ((m = /^(?:export\s+)?(?:const|let|var)\s+(\w+)\s*[:=]/.exec(t))) return /=>|function|\($/.test(t) || /[({[]\s*$/.test(t) ? m[1] : null;
+  if ((m = /^(?:(?:public|private|protected|static|async|override|readonly|get|set)\s+)*(\w+)\s*(?:<[^>]*>)?\([^)]*\)?\s*(?::[^={]+)?\{?\s*$/.exec(t)) && !/^(if|for|while|switch|catch|return|else)$/.test(m[1])) return `${m[1]}()`; // a method
+  if ((m = /^\w[\w.]*\.(get|post|put|patch|delete|use|on|route)\(\s*(['"`])(.{1,50}?)\2/.exec(t))) return `${m[1]} "${m[3]}"`; // a route or a handler
+  if ((m = /^(?:await\s+|return\s+)?([\w.]+)\((?:.*,\s*)?(?:async\s+)?(?:\([^)]*\)|\w+)\s*=>\s*\{\s*$/.exec(t))) return `${m[1].split(".").pop()}(…)`; // a callback: beforeEach, map, router.use
+  return null;
+}
+
 /** Whether a file in your working copy differs from the snapshot a local review was built from. */
 async function changedSince(cwd: string, snapshot: string, path: string) {
   const live = await Bun.file(join(cwd, path)).text().catch(() => null);
@@ -93,7 +123,8 @@ export function startServer(s: Session, port: number) {
         if (!uses) return json({ refs: [], total: 0, via: "none", ...state });
         const MAX = 500, refs = uses.refs.slice(0, MAX), lines = new Map<string, string[]>();
         for (const r of refs) if (!lines.has(r.path)) lines.set(r.path, s.cwd ? await fileLines(s.cwd, pr().headSha, r.path).catch(() => []) : []);
-        return json({ name: uses.name, refs: refs.map((r) => ({ ...r, text: (lines.get(r.path)?.[r.line - 1] ?? "").slice(0, 400) })), total: uses.refs.length, via: uses.via, ...state, ...(changed ? { changed } : {}) });
+        const out = refs.map((r) => ({ ...r, text: (lines.get(r.path)?.[r.line - 1] ?? "").slice(0, 400), scope: scopeAt(lines.get(r.path) ?? [], r.line) }));
+        return json({ name: uses.name, refs: out, total: uses.refs.length, via: uses.via, ...state, ...(changed ? { changed } : {}) });
       }
       if (p === "/api/inspect") {
         const path = url.searchParams.get("path") ?? "", line = Number(url.searchParams.get("line")), col = Number(url.searchParams.get("col"));
