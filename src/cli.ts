@@ -7,7 +7,7 @@ import { parseDiff } from "./diff.ts";
 import { analyze, heuristicTree, type Analysis } from "./analyze.ts";
 import { claudeTree } from "./llm.ts";
 import { buildGraph, GRAPH_SCHEMA, LEGACY_SCHEMAS, VERSION, type ReviewGraph } from "./graph.ts";
-import { loadCachedGraphs, loadCachedTree, loadSettings, loadState, saveCachedGraphs, saveCachedTree } from "./state.ts";
+import { hold, holder, loadCachedGraphs, loadCachedTree, loadSettings, loadState, saveCachedGraphs, saveCachedTree } from "./state.ts";
 import { allow, SERVERS, serverById, startServers, stopServers } from "./servers.ts";
 import type { FileDiff, PrInfo } from "./types.ts";
 import { startServer, type Session } from "./server.ts";
@@ -95,9 +95,10 @@ if (cmd === "open") {
     const discussion = await reviewComments(graph.pr, true).catch(() => null);
     if (discussion) graph.discussion = discussion;
   }
+  if (await alreadyOpen(graph.pr)) process.exit(0);
   const session: Session = { cwd: values.repo ?? null, staticGraph: graph, state: loadState({ ...graph.pr }), llm: "off" };
   void startServers(session, { ask: true, off: values["no-lsp"], log });
-  await serve(session);
+  await serve(session, graph.pr);
 } else {
   const t0 = Date.now();
   const secs = () => `${((Date.now() - t0) / 1000).toFixed(1)}s`;
@@ -120,6 +121,7 @@ if (cmd === "open") {
     if (local.untracked) log(`  ${local.untracked} untracked file(s) left out: \`git add -N <file>\` to include one`);
     getPr = async () => pr;
   }
+  if (cmd !== "extract" && await alreadyOpen(key)) process.exit(0);
 
   // Same head commit as last time → reuse the built graphs. Comments still change, so they're always re-read.
   const hit = values.refresh ? null : loadCachedGraphs(key);
@@ -190,11 +192,25 @@ if (cmd === "open") {
         .then((g) => { session.claudeGraph = g; session.llm = "done"; log(`  ✓ Claude tree ready: ${g.cores.length} cores`); })
         .catch((e) => { session.llm = "failed"; session.llmError = String(e.message ?? e); console.error(`  ✗ Claude tree failed, keeping static tree: ${session.llmError}`); });
     }
-    await serve(session);
+    await serve(session, pr);
   }
 }
 
-async function serve(session: Session) {
+/** Another Bobby already serving this review: point at it (and open it) rather than start a second one that would
+ *  save over its progress. --refresh starts anew regardless, after saying so. */
+async function alreadyOpen(pr: Parameters<typeof holder>[0]) {
+  const other = holder(pr);
+  if (!other) return false;
+  const url = `http://127.0.0.1:${other.port}`;
+  const up = await fetch(`${url}/api/status`, { signal: AbortSignal.timeout(1500) }).then((r) => r.ok, () => false);
+  if (!up) return false;
+  if (values.refresh) { console.log(`  ! this review is also open at ${url} (pid ${other.pid}); whichever saves last keeps its progress`); return false; }
+  console.log(`  already open at ${url} (pid ${other.pid}); stop that one to start anew\n\n  ▶ ${url}\n`);
+  if (!values["no-open"]) await run(openCommand(url), { allowFail: true }).catch(() => {});
+  return true;
+}
+
+async function serve(session: Session, pr: Parameters<typeof hold>[0]) {
   // The default port may be taken (another review, a dev server): fall back to any free one.
   let server;
   try { server = startServer(session, Number(values.port)); }
@@ -204,6 +220,7 @@ async function serve(session: Session) {
     console.log(`  port ${values.port} is in use, using ${server.port}`);
   }
   const url = `http://127.0.0.1:${server.port}`;
+  hold(pr, server.port!);
   console.log(`\n  ▶ ${url}\n`);
   if (!values["no-open"]) await run(openCommand(url), { allowFail: true }).catch(() => console.log("  (open that link in your browser)"));
 }

@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import type { ReviewGraph } from "./graph.ts";
 import type { ChangeTree, PrInfo, ReviewState } from "./types.ts";
 
@@ -47,6 +47,26 @@ export function loadState(pr: PrKey & { headSha: string }): ReviewState {
   return s ? { ...s, version: STATE_VERSION, headSha: pr.headSha } : { version: STATE_VERSION, headSha: pr.headSha, marks: {}, comments: [] };
 }
 export const saveState = (pr: PrKey, s: ReviewState) => writeJson(join(ROOT, "state", `${slug(pr)}.json`), { ...s, version: STATE_VERSION });
+
+// One Bobby per PR (or branch): each keeps the review's state in memory and saves all of it, so a second one would
+// save over the first's marks and drafts. The one serving it leaves its pid and port here while it runs.
+const lockPath = (pr: PrKey) => join(ROOT, "state", `${slug(pr)}.lock`);
+const alive = (pid: number) => { try { process.kill(pid, 0); return true; } catch (e) { return (e as { code?: string }).code === "EPERM"; } };
+/** The other Bobby serving this review, if one is still running (a lock left by one that died is ignored). */
+export function holder(pr: PrKey): { pid: number; port: number } | null {
+  let l: { pid: number; port: number } | null = null;
+  try { l = JSON.parse(readFileSync(lockPath(pr), "utf8")); } catch { return null; }
+  return l && l.pid !== process.pid && alive(l.pid) ? l : null;
+}
+/** Marks this review as served by this process, until it exits. */
+export function hold(pr: PrKey, port: number) {
+  const path = lockPath(pr);
+  writeJson(path, { pid: process.pid, port });
+  // ctrl-c, a closed terminal or a kill end the process without "exit" unless something listens (the language
+  // servers' handler exits for SIGINT already)
+  for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"] as const) if (!process.listenerCount(sig)) process.once(sig, () => process.exit(130));
+  process.once("exit", () => { try { if (JSON.parse(readFileSync(path, "utf8")).pid === process.pid) unlinkSync(path); } catch { /* gone already */ } });
+}
 
 // A local review's diff also depends on the base it's compared with, so that's part of its cache key.
 const rev = (pr: { headSha: string; baseSha?: string; branch?: string }) => pr.headSha.slice(0, 12) + (pr.branch && pr.baseSha ? `_${pr.baseSha.slice(0, 7)}` : "");
