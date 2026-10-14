@@ -1,4 +1,4 @@
-import { DONE, api, createApp } from "./core.js";
+import { DONE, api, createApp, esc } from "./core.js";
 import { escapeCode, inspectorKey, inspectorOpen, expandAll, renderFile, renderNode, renderPage, startComment, startFileNote } from "./code.js";
 import * as chrome from "./chrome.js";
 import * as palette from "./palette.js";
@@ -6,7 +6,12 @@ import * as tour from "./tour.js";
 import { ACTIONS, actionFor, keyHtml, keyOfEvent, keysOf, keyText } from "./keys.js";
 import views from "./views/index.js";
 
-const [graph, session] = await Promise.all([api("/api/graph"), api("/api/session")]);
+// Without these there's no review: say why, in place of "Fetching the change tree…", and stop.
+const [graph, session] = await Promise.all([api("/api/graph"), api("/api/session")]).catch((e) => {
+  const empty = document.querySelector("#view > .empty");
+  if (empty) empty.textContent = `Couldn't load the review: ${e.message} Reload once it's back.`;
+  return new Promise(() => {});
+});
 const fresh = !Object.keys(session.settings).length; // nothing saved yet: a first launch
 const app = createApp({ graph, session });
 app.claudeReady = graph.generator.tree === "claude";
@@ -82,9 +87,17 @@ app.switchTree = async () => {
 // Polled while Claude works or a language server is installing or loading.
 const busy = (list) => list.some((x) => x.state === "pending" || x.state === "installing");
 let pollTimer = 0;
+let pollLost = false;
 async function poll() {
   clearTimeout(pollTimer);
-  const s = await api("/api/status");
+  // Unreachable (restarting, asleep): keep trying, slower, and say so once.
+  const s = await api("/api/status").catch((e) => {
+    if (!pollLost) chrome.toast(esc(e.message), 6000);
+    pollLost = true;
+    pollTimer = setTimeout(poll, 10_000);
+  });
+  if (!s) return;
+  pollLost = false;
   app.llm = s.llm;
   if (s.claudeReady && !app.claudeReady) {
     app.claudeReady = true;
@@ -93,15 +106,17 @@ async function poll() {
   const was = new Map(app.servers.map((x) => [x.id, x.state]));
   app.servers = s.servers ?? [];
   // A server finished: its definitions replace the syntax-only ones for its language.
-  if (app.servers.some((x) => x.state === "done" && was.get(x.id) !== "done")) app.graph.definitions = await api("/api/definitions");
+  if (app.servers.some((x) => x.state === "done" && was.get(x.id) !== "done")) app.graph.definitions = await api("/api/definitions").catch(() => app.graph.definitions);
   app.emit("llm");
   if (s.llm === "pending" || busy(app.servers)) pollTimer = setTimeout(poll, 3000);
 }
-app.watchServers = poll; // after you say yes, check again or no in the UI
+app.watchServers = poll;
+// A call that failed with no one to catch it (a save, a delete): say so rather than nothing.
+window.addEventListener("unhandledrejection", (ev) => chrome.toast(`Not saved: ${esc(ev.reason?.message ?? ev.reason)}`, 8000)); // after you say yes, check again or no in the UI
 app.openKeys = () => chrome.keysEditor(); // for the tour's news, which can't import chrome.js
 if (app.llm === "pending" || busy(app.servers)) poll();
 // The graph and the session are read at once: a server may have finished between them, leaving syntax-only definitions.
-else if (app.servers.some((x) => x.state === "done")) api("/api/definitions").then((d) => { app.graph.definitions = d; });
+else if (app.servers.some((x) => x.state === "done")) api("/api/definitions").then((d) => { app.graph.definitions = d; }, () => {});
 
 // ---- start: at the entry point (the unreviewed core with the least around it), on every load. Where you were last is
 // offered on the welcome-back card instead of being jumped to.

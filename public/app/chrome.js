@@ -334,7 +334,7 @@ export function submit(msg) {
     </div>${msg ? `<div class="err">${esc(msg)}</div>` : ""}`);
 }
 async function doSubmit(event) {
-  const r = await api("/api/submit", { event, body: $("#rbody").value });
+  const r = await api("/api/submit", { event, body: $("#rbody").value }).catch((e) => ({ ok: false, error: e.message }));
   if (!r.ok) return submit(r.error);
   app.state.comments = app.state.comments.filter((c) => c.wip || c.kind === "note"); // unfinished drafts remain
   if (r.discussion) app.graph.discussion = r.discussion; // what was just posted, now on GitHub
@@ -509,7 +509,7 @@ function serverCard(id) {
 async function serverAction(act, id) {
   if (act === "srv-copy") { const s = app.servers.find((x) => x.id === id); await navigator.clipboard?.writeText(s?.command ?? "").catch(() => {}); return toast("Copied. Run it in a terminal, then Check again.", 3000); }
   const path = { "srv-install": "install", "srv-check": "check", "srv-later": "decline", "srv-never": "decline" }[act];
-  const r = await api(`/api/servers/${path}`, { id, never: act === "srv-never" });
+  const r = await api(`/api/servers/${path}`, { id, never: act === "srv-never" }).catch((e) => (toast(esc(e.message), 6000), {}));
   if (r.servers) app.servers = r.servers;
   close();
   app.emit("llm");

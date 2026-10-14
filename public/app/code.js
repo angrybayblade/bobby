@@ -107,7 +107,7 @@ function fileLines(app, path, rerender) {
   const f = files.get(path);
   if (f === undefined) {
     files.set(path, "loading");
-    api(`/api/file?path=${encodeURIComponent(path)}`).then((r) => { files.set(path, r.lines ?? []); rerender(); });
+    api(`/api/file?path=${encodeURIComponent(path)}`).then((r) => { files.set(path, r.lines ?? []); rerender(); }, () => files.delete(path)); // asked again next time
     return null;
   }
   return f === "loading" ? null : f;

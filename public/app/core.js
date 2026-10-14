@@ -38,8 +38,16 @@ export const DEFAULT_SETTINGS = {
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 /** Escaped text with `backtick` spans as <code>, for model-written prose like hooks. */
 export const inline = (s) => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
-export const api = (url, body, method = body ? "POST" : "GET") =>
-  fetch(url, { method, headers: body ? { "content-type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined }).then((r) => r.json());
+/** A call to Bobby's server. Rejects when it fails: the server can't be reached (stopped, or the laptop slept), or it
+ *  answers an error. An answer that carries its own ok: false (submit) is the caller's to read. */
+export async function api(url, body, method = body ? "POST" : "GET") {
+  let r;
+  try { r = await fetch(url, { method, headers: body ? { "content-type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined }); }
+  catch { throw new Error("Bobby isn't answering. Is it still running in your terminal?"); }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok && !("ok" in j)) throw new Error(j.error ?? `${r.status} ${r.statusText}`);
+  return j;
+}
 
 // Some placements can be switched off: untouched code a change relies on or affects (settings.untouched), and test or generated
 // files (settings.tests). Switched off, they leave the walk, the edges and every view, as if the graph never had them.
