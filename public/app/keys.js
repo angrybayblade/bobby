@@ -53,6 +53,8 @@ const NAMES = { Enter: "enter", Escape: "esc", " ": "space", ArrowLeft: "←", A
 /** How a key is shown: its words, each in its own <kbd> ("shift 1" is two, "shift ←" too). */
 export const keyText = (k) => (k.startsWith("Shift+") ? `shift ${keyText(k.slice(6))}` : NAMES[k] ?? k);
 export const kbdHtml = (k) => keyText(k).split(" ").map((x) => `<kbd>${esc(x)}</kbd>`).join(" ");
+/** An action's first key as plain text, for a tooltip: "c", "shift 1", or "unbound". */
+export const keyName = (settings, id) => (keysOf(settings, id)[0] ? keyText(keysOf(settings, id)[0]) : "unbound");
 /** An action's keys for a hint or a sentence: the first (or first n), as <kbd>s; "unbound" if it has none. */
 export function keyHtml(settings, id, n = 1) {
   const ks = keysOf(settings, id).slice(0, n);

@@ -2,7 +2,7 @@
 // Views show it as the level-2 page, or as the body of the focused card (no title block).
 import { BAND_TEXT, DONE, LOW, api, esc } from "./core.js";
 import { MOD } from "./palette.js";
-import { keyHtml } from "./keys.js";
+import { keyHtml, keyName } from "./keys.js";
 import { bubble, notesFor, outside, placeNotes, showFull, threadsAt, toggleItem } from "./comments.js";
 
 const EXT = {
@@ -212,7 +212,7 @@ function syncPop(app, el) {
   const pop = document.createElement("div");
   pop.className = "selpop";
   const lines = n > 1 ? ` on ${n} lines` : "";
-  pop.innerHTML = `<button data-compose="comment" aria-label="Comment${lines}" title="Comment${lines}: a draft for your GitHub review (c)">${ICON_COMMENT}</button><button data-compose="note" aria-label="Private note${lines}" title="Private note${lines}: only you see it, never posted (m)">${ICON_NOTE}</button>`;
+  pop.innerHTML = `<button data-compose="comment" aria-label="Comment${lines}" title="Comment${lines}: a draft for your GitHub review (${esc(keyName(app.settings, "comment"))})">${ICON_COMMENT}</button><button data-compose="note" aria-label="Private note${lines}" title="Private note${lines}: only you see it, never posted (${esc(keyName(app.settings, "note"))})">${ICON_NOTE}</button>`;
   box.appendChild(pop);
   let top = 0; // in the code box's own layout: on-screen measures are scaled by the canvas's zoom
   for (let n = row; n && n !== box; n = n.offsetParent) top += n.offsetTop;
@@ -326,8 +326,8 @@ function fileHead(path, extra = "", stat = "") {
 }
 /** Switch one file between inline and split; the label names what you'd switch to. */
 export const layoutBtn = (path, cls = "lay") => {
-  const split = window.bobby?.layoutOf(path) === "split";
-  return `<button class="${cls}" data-flayout="${esc(path)}" title="${split ? "Show this file inline" : "Show this file split: old beside new"} (d for every file)">${split ? "Inline" : "Split"}</button>`;
+  const app = window.bobby, split = app?.layoutOf(path) === "split";
+  return `<button class="${cls}" data-flayout="${esc(path)}" title="${split ? "Show this file inline" : "Show this file split: old beside new"} (${esc(app ? keyName(app.settings, "layout") : "d")} for every file)">${split ? "Inline" : "Split"}</button>`;
 };
 
 /** Whether a hunk shown down to new-side line hi is at the end of its file: a deleted file has no new side, a hunk

@@ -2,7 +2,7 @@
 import { BAND_TEXT, DONE, LEVELS, LOW, api, esc, inline } from "./core.js";
 import { MOD } from "./palette.js";
 import * as tour from "./tour.js";
-import { ACTIONS, action, bind, bindable, kbdHtml, keyHtml, keyOfEvent, keysOf, keyText, reset, unbind } from "./keys.js";
+import { ACTIONS, action, bind, bindable, kbdHtml, keyHtml, keyName, keyOfEvent, keysOf, keyText, reset, unbind } from "./keys.js";
 import { bubble, prCount, togglePR } from "./comments.js";
 
 const $ = (q) => document.querySelector(q);
@@ -146,10 +146,10 @@ function renderTop() {
     ${drafts ? `<button class="pill signal" data-act="submit">${drafts} draft${drafts > 1 ? "s" : ""} · ${esc(keyText(keysOf(app.settings, "submit")[0] ?? ""))}</button>` : ""}
     <button class="pill tog" data-act="tests" aria-pressed="${app.settings.tests === "show"}" title="Test files and generated files, in every view: ${app.settings.tests === "show" ? "shown. Click to hide" : "hidden. Click to show"}">⚗ Tests</button>
     <button class="pill tog" data-act="untouched" aria-pressed="${app.settings.untouched !== "hide"}" title="Untouched code the changes rely on or affect, in every view: ${app.settings.untouched === "hide" ? "hidden. Click to show" : "shown. Click to hide"}">○ Untouched</button>
-    <button class="pill" data-act="notes" title="Your private notes (M). Never posted to GitHub.">✎ Notes${app.state.notes.length ? ` · ${app.state.notes.length}` : ""}</button>
+    <button class="pill" data-act="notes" title="Your private notes (${esc(keyName(app.settings, "notes"))}). Never posted to GitHub.">✎ Notes${app.state.notes.length ? ` · ${app.state.notes.length}` : ""}</button>
     ${commentsButton()}
     <button class="iconbtn" data-act="files" aria-pressed="${app.settings.fileTree !== "hide"}" title="File tree (${esc(keysOf(app.settings, "files").map(keyText)[0] ?? "")})" aria-label="File tree">▤</button>
-    <button class="iconbtn" data-act="settings" title="Settings (,)" aria-label="Settings">${GEAR}</button>`;
+    <button class="iconbtn" data-act="settings" title="Settings (${esc(keyName(app.settings, "settings"))})" aria-label="Settings">${GEAR}</button>`;
 }
 
 // Progress inside the core you're in: a bar that moves every few pages, not every few dozen.
@@ -180,7 +180,7 @@ function watchCores() {
   toast(`<span class="intro"><b>✓ Core ${ci + 1} of ${app.graph.cores.length} done · ${esc(c.title)}</b>
     <span style="color:var(--muted);font-size:13px">${pages.length} page${pages.length === 1 ? "" : "s"}${flagged ? ` · ${flagged} flagged` : ""}${notes.length ? ` · ${notes.length} note${notes.length > 1 ? "s" : ""}` : ""} · ${now.size} of ${app.graph.cores.length} cores done</span>
     ${notes.slice(0, 3).map((n) => `<span style="font-size:13px">✎ ${esc(n.body.slice(0, 80))}</span>`).join("")}
-    ${nc ? `<span style="font-size:13px;color:var(--muted)">Next: core ${next + 1} · ${esc(nc.title)}</span>${nc.hook ? `<span class="hook">${inline(nc.hook)}</span>` : ""}` : `<span style="font-size:13px">That was the last core. <kbd>s</kbd> to submit.</span>`}</span>`, 12000);
+    ${nc ? `<span style="font-size:13px;color:var(--muted)">Next: core ${next + 1} · ${esc(nc.title)}</span>${nc.hook ? `<span class="hook">${inline(nc.hook)}</span>` : ""}` : `<span style="font-size:13px">That was the last core. ${keyHtml(app.settings, "submit")} to submit.</span>`}</span>`, 12000);
 }
 
 function renderWhere() {
@@ -192,9 +192,9 @@ function renderWhere() {
     crumbs.push(`<button data-level="2" class="${app.level === 2 ? "here" : ""}"><i class="glyph ${loc.pl.band === "core" ? "core" : app.nodeOf(pid).kind}" style="margin-right:6px"></i>${esc(loc.pl.title)}</button>`);
   } else if (pid === LOW) crumbs.push(`<button data-level="2" class="here">Low-signal changes</button>`);
   else if (pid === DONE) crumbs.push(`<button class="here">End</button>`);
-  const note = app.state.note ? `<button data-act="note" title="Your parked thought (p)" style="color:var(--signal)">📌 ${esc(app.state.note.slice(0, 48))}${app.state.note.length > 48 ? "…" : ""}</button>` : "";
+  const note = app.state.note ? `<button data-act="note" title="Your parked thought (${esc(keyName(app.settings, "park"))})" style="color:var(--signal)">📌 ${esc(app.state.note.slice(0, 48))}${app.state.note.length > 48 ? "…" : ""}</button>` : "";
   $("#where").innerHTML = `${crumbs.join(`<span class="sep">›</span>`)}${note}
-    <span class="seg lay" role="group" aria-label="Diff layout" title="Diff layout for every file (d)">${[["inline", "Inline"], ["split", "Split"]].map(([v, t]) => `<button data-act="layout" data-val="${v}" aria-pressed="${app.settings.diffLayout === v}">${t}</button>`).join("")}</span>
+    <span class="seg lay" role="group" aria-label="Diff layout" title="Diff layout for every file (${esc(keyName(app.settings, "layout"))})">${[["inline", "Inline"], ["split", "Split"]].map(([v, t]) => `<button data-act="layout" data-val="${v}" aria-pressed="${app.settings.diffLayout === v}">${t}</button>`).join("")}</span>
     <span class="levels" title="Zoom: ${LEVELS[app.level]} (enter / esc)">${LEVELS.map((_, i) => `<i class="${i <= app.level ? "on" : ""}"></i>`).join("")}<span style="margin-left:6px">${LEVELS[app.level]}</span></span>`;
 }
 

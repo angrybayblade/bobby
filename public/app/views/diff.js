@@ -7,6 +7,7 @@ import { bubble, fileCount, fileStamp, fileState, toggleFile } from "../comments
 import { BANDS, esc } from "../core.js";
 import { injectCss } from "./flow.js";
 import { layered } from "./layered.js";
+import { keyName } from "../keys.js";
 
 const CSS = `
 .dv { position: absolute; inset: 0; }
@@ -137,9 +138,9 @@ export function fileViewer(app, pid) {
   const stat = n.kind === "change" ? `<span style="color:var(--ok)">+${a}</span> <span style="color:var(--risk)">−${d}</span>` : "untouched";
   return `<div class="fvw ${done ? "viewed" : ""}"><div class="fvh"><i class="glyph ${n.kind}"></i><span class="p">${esc(dir)}<b>${esc(path.split("/").pop())}</b>${movedFrom(app, path)}</span><span class="band ${pl.band}">${BAND_LABEL[pl.band]}</span><span class="st">${stat}</span>`
     + `<button class="frd" data-pfile="${esc(path)}" aria-label="Mark the whole file viewed" title="Every page of this file, at once · local only"><i class="cb"></i><span>Mark viewed</span></button>`
-    + `<button class="max lay" data-flayout="${esc(path)}" aria-label="Inline or split" data-tip="${split ? "Show this file inline" : "Show this file split"} · d for every file">${split ? "▤" : "◫"}</button>`
+    + `<button class="max lay" data-flayout="${esc(path)}" aria-label="Inline or split" data-tip="${split ? "Show this file inline" : "Show this file split"} · ${esc(keyName(app.settings, "layout"))} for every file">${split ? "▤" : "◫"}</button>`
     + `<button class="max" data-pnote="${esc(path)}" aria-label="Note on this file" data-tip="Private note on this file · only you see it">✎</button>`
-    + `<button class="max" data-pmax="1" aria-label="Full screen" data-tip="Full screen · g">⤢</button></div><div class="fvb nbody"></div></div>`;
+    + `<button class="max" data-pmax="1" aria-label="Full screen" data-tip="Full screen · ${esc(keyName(app.settings, "fullScreen"))}">⤢</button></div><div class="fvb nbody"></div></div>`;
 }
 /** Handles a click on a fileViewer's header buttons; true if it was one. */
 export function viewerAction(app, ev) {
@@ -221,7 +222,7 @@ export default {
       const dir = f.path.includes("/") ? f.path.slice(0, f.path.lastIndexOf("/") + 1) : "";
       return `<i class="glyph ${f.changed ? "change" : "context"}"></i><span class="p">${esc(dir)}<b>${esc(f.path.split("/").pop())}</b>${movedFrom(app, f.path)}</span><span class="band ${f.band}">${BAND_LABEL[f.band]}</span><span class="st">${stat(f)}</span>`
         + `<button class="frd" data-fviewed="${esc(f.path)}" aria-label="Mark the whole file viewed" title="Every page of this file, at once · local only"><i class="cb"></i><span>Mark viewed</span></button>`
-        + `<button class="max lay" data-flayout="${esc(f.path)}" aria-label="Inline or split" data-tip="${app.layoutOf(f.path) === "split" ? "Show this file inline" : "Show this file split"} · d for every file">${app.layoutOf(f.path) === "split" ? "▤" : "◫"}</button>`
+        + `<button class="max lay" data-flayout="${esc(f.path)}" aria-label="Inline or split" data-tip="${app.layoutOf(f.path) === "split" ? "Show this file inline" : "Show this file split"} · ${esc(keyName(app.settings, "layout"))} for every file">${app.layoutOf(f.path) === "split" ? "▤" : "◫"}</button>`
         + (fileCount(app, f.path) ? `<button class="max fcm" data-fcomments="${esc(f.path)}" aria-pressed="${fileState(app, f.path) === "open"}" data-tip="${fileState(app, f.path) === "open" ? "Collapse" : "Show"} the comments in this file">${bubble(fileState(app, f.path) === "open")}<span>${fileCount(app, f.path)}</span></button>` : "")
         + `<button class="max" data-fnote="${esc(f.path)}" aria-label="Note on this file" data-tip="Private note on this file · only you see it">✎</button>`
         + (exit ? `<button class="max" data-exit="1" aria-label="Back to all files" data-tip="Back to all files · esc">⤡</button>`
