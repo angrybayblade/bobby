@@ -314,12 +314,44 @@ body.inspecting .ln[data-side="RIGHT"] code, body.inspecting .inspector .pl code
 .inspector .pkmore { padding: 2px 0 6px 64px; color: var(--faint); }
 .inspector .pkhint { padding: 6px 14px; border-top: 1px solid var(--line-soft); font: 11.5px var(--font-ui); color: var(--faint); }
 .inspector .pktag { margin-left: 8px; font: 11px/16px var(--font-ui); color: var(--signal); border: 1px solid var(--signal); border-radius: 1px; padding: 0 6px; }
-.inspector .ugroup + .ugroup { border-top: 1px solid var(--line-soft); }
-.inspector .uhead { position: sticky; top: 0; z-index: 1; padding: 8px 14px 4px; background: var(--surface); font: 600 11px var(--font-ui); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); }
-.inspector .uhead span { margin-left: 6px; color: var(--muted); }
-.inspector .ufile { padding: 6px 14px 2px; font: 12px var(--font-code); color: var(--muted); }
-.inspector .urow { cursor: pointer; }
-.inspector .urow:hover { background: var(--raised); }
+/* Uses: file cards, each use a two-line row (what it does · where it is · line, then its code), its code opened in place. */
+.inspector .ufilters { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 10px; border-bottom: 1px solid var(--line-soft); flex: none; }
+.inspector .ufilter { font: 12px var(--font-ui); color: var(--muted); border: 1px solid var(--line); border-radius: 12px; padding: 2px 10px; }
+.inspector .ufilter span { color: var(--faint); margin-left: 4px; }
+.inspector .ufilter[aria-pressed="true"] { color: var(--text); border-color: var(--text); }
+.inspector .ufilter:disabled { opacity: .4; cursor: default; }
+.inspector .ucard { margin: 10px 12px; border: 1px solid var(--line-soft); border-radius: var(--radius); overflow: hidden; }
+.inspector .uchead { display: flex; align-items: baseline; gap: 8px; padding: 6px 10px; background: var(--raised); font: 13px var(--font-code); }
+.inspector .uchead b { color: var(--text); }
+.inspector .udir { flex: 1; min-width: 0; color: var(--faint); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+.inspector .ucount { color: var(--faint); font-size: 12px; }
+.inspector .ubadge { flex: none; font: 600 10.5px/16px var(--font-ui); letter-spacing: .04em; text-transform: uppercase; padding: 0 6px; border-radius: 2px; }
+.inspector .ubadge.g0 { color: var(--ok); background: color-mix(in srgb, var(--ok) 16%, transparent); }
+.inspector .ubadge.g1 { color: var(--signal); background: var(--signal-soft); }
+.inspector .ubadge.g2 { color: var(--muted); background: var(--bg); border: 1px solid var(--line); }
+.inspector .uitem { padding: 6px 10px 7px; border-top: 1px solid var(--line-soft); cursor: pointer; }
+.inspector .uitem:hover { background: color-mix(in srgb, var(--raised) 60%, transparent); }
+.inspector .uitem.sel { box-shadow: inset 2px 0 0 var(--signal); background: color-mix(in srgb, var(--signal-soft) 50%, transparent); }
+.inspector .uitem.open { background: var(--raised); }
+.inspector .ul1 { display: flex; align-items: center; gap: 8px; font: 12.5px var(--font-ui); color: var(--muted); }
+.inspector .ul1 b { color: var(--text); font-weight: 600; font-family: var(--font-code); font-size: 12px; }
+.inspector .uscope { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inspector .uline { color: var(--faint); font: 11.5px var(--font-code); }
+.inspector .ukind { flex: none; min-width: 52px; text-align: center; font: 600 10.5px/16px var(--font-code); padding: 0 6px; border-radius: 2px; color: var(--muted); background: var(--bg); border: 1px solid var(--line); }
+.inspector .ukind.k-call { color: var(--hl-fn); border-color: color-mix(in srgb, var(--hl-fn) 45%, transparent); }
+.inspector .ukind.k-import { color: var(--hl-kw); border-color: color-mix(in srgb, var(--hl-kw) 45%, transparent); }
+.inspector .ukind.k-type, .inspector .ukind.k-new { color: var(--hl-type); border-color: color-mix(in srgb, var(--hl-type) 45%, transparent); }
+.inspector .ukind.k-write { color: var(--risk); border-color: color-mix(in srgb, var(--risk) 45%, transparent); }
+.inspector .ul2 { margin-top: 3px; padding-left: 60px; white-space: pre; overflow: hidden; text-overflow: ellipsis; font: var(--code-size)/1.5 var(--font-code); color: var(--text); }
+.inspector .ul2 code { font: inherit; }
+.inspector mark.usemark { background: color-mix(in srgb, var(--signal) 28%, transparent); color: inherit; border-radius: 2px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--signal) 45%, transparent); }
+.inspector .uview { border-top: 1px solid var(--line-soft); background: var(--bg); }
+.inspector .uview .pkc { max-height: 22em; overflow: auto; }
+.inspector .umore { display: block; width: 100%; text-align: left; padding: 2px 0 2px 64px; font: 11.5px var(--font-code); color: var(--faint); }
+.inspector .umore:hover { color: var(--text); background: var(--raised); }
+.inspector .uacts { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--line-soft); }
+.inspector .uacts .btn { padding: 3px 10px; font-size: 12.5px; }
+.inspector .uhint { margin-left: auto; font: 11.5px var(--font-ui); color: var(--faint); }
 .inspector ::-webkit-scrollbar { width: 8px; height: 8px; }
 .inspector ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
 .inspector ::-webkit-scrollbar-track, .inspector ::-webkit-scrollbar-corner { background: transparent; }

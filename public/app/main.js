@@ -1,5 +1,5 @@
 import { DONE, api, createApp } from "./core.js";
-import { escapeCode, inspectorOpen, expandAll, renderFile, renderNode, renderPage, startComment, startFileNote } from "./code.js";
+import { escapeCode, inspectorKey, inspectorOpen, expandAll, renderFile, renderNode, renderPage, startComment, startFileNote } from "./code.js";
 import * as chrome from "./chrome.js";
 import * as palette from "./palette.js";
 import * as tour from "./tour.js";
@@ -190,8 +190,8 @@ document.addEventListener("keydown", (ev) => {
     if (ev.key === "Escape" || ev.key === "Enter") { ev.preventDefault(); chrome.close(); }
     return;
   }
-  if (inspectorOpen()) { // the inspector's window is on top: esc goes back a step and closes it, other keys wait
-    if (ev.key === "Escape" && escapeCode(app)) ev.preventDefault();
+  if (inspectorOpen()) { // the inspector's window is on top: its own keys (a list of uses), esc to step back; others wait
+    if (inspectorKey(app, ev) || (ev.key === "Escape" && escapeCode(app))) ev.preventDefault();
     return;
   }
   if (tour.key(ev.key)) return ev.preventDefault(); // the callout's own keys; every other key still works under it

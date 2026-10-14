@@ -537,41 +537,106 @@ async function uses(app, at, deeper) {
   if (app.page.peek?.stack.includes(entry)) drawPeek(app);
 }
 const SHOW_ELSEWHERE = 200; // the first two groups always show in full; the third up to this
+const BADGE = ["in diff", "in PR", "elsewhere"];
+/** What a use does with the name, from the code around it: imports it, calls it, constructs it, names a type, assigns
+ *  it, reaches into it (".del()"), or just refers to it. */
+function useKind(u, name) {
+  const text = u.text ?? "", before = text.slice(0, u.col), after = text.slice(u.col + name.length);
+  if (u.scope === "import" || u.scope?.endsWith(" › import")) return { kind: "import", label: "import" }; // inside a multi-line import
+  if (/^\s*(import\b|from\s+\S+\s+import\b|export\s*(\{|\*))/.test(text) || /\brequire\(\s*['"]?$/.test(before)) return { kind: "import", label: "import" };
+  if (/\bnew\s+$/.test(before)) return { kind: "new", label: "new" };
+  if (/^\s*(<[^>()]*>)?\s*\(/.test(after)) return { kind: "call", label: "call" };
+  const member = /^\s*\??\.(\w+)(\s*\()?/.exec(after);
+  if (member) return { kind: member[2] ? "call" : "ref", label: `.${member[1]}${member[2] ? "()" : ""}` };
+  if (/(:|<|\||&|\bextends|\bimplements|\bas|\bsatisfies|\binstanceof)\s*$/.test(before)) return { kind: "type", label: "type" };
+  if (/^\s*[-+*/]?=(?!=)/.test(after) && !/\b(const|let|var)\s+$/.test(before)) return { kind: "write", label: "assign" };
+  return { kind: "ref", label: "reference" };
+}
+/** A use's line, its leading space trimmed, highlighted, with the name marked. */
+function useCode(u, name) {
+  const text = u.text ?? "", lead = text.length - text.trimStart().length;
+  return applyRanges(hlBlock([text.trim()], langOf(u.path))[0], [[u.col - lead, u.col - lead + name.length]], "usemark");
+}
+const fileCache = new Map(); // path → its lines at head, for the code a use opens in place
 function usesHtml(app, e) {
-  const groups = USE_GROUPS.map(() => []);
-  for (const [i, u] of (e.list ?? []).entries()) groups[u.group].push([i, u]);
-  const room = Math.max(0, SHOW_ELSEWHERE - groups[0].length - groups[1].length);
-  const hidden = Math.max(0, groups[2].length - room) + Math.max(0, (e.res?.total ?? 0) - (e.list?.length ?? 0));
-  const counts = groups.map((g) => g.length);
-  groups[2] = groups[2].slice(0, room);
-  return groups.map((g, gi) => {
-    if (!counts[gi]) return "";
-    let html = `<div class="ugroup"><div class="uhead">${USE_GROUPS[gi]} <span>${counts[gi]}</span></div>`, file = "", last = 0;
-    for (const [i, u] of g) {
-      if (u.path !== file) { file = u.path; last = 0; html += `<div class="ufile">${esc(u.path)}</div>`; }
-      if (u.line === last) continue; // two uses on one line: one row
-      last = u.line;
-      html += `<div class="pl urow" data-use="${i}" title="${gi === 0 ? "Go there" : "Open it here"}"><span class="no">${u.line}</span><code>${hlBlock([(u.text ?? "").trim()], langOf(u.path))[0]}</code></div>`;
-    }
-    return html + (gi === 2 && hidden ? `<div class="pkmore">and ${hidden} more</div>` : "") + `</div>`;
-  }).join("");
-}
-/** A use clicked in the list: in the diff, go there and select its line; anywhere else, its code in the window. */
-async function openUse(app, u) {
-  const pid = u.group === 0 && app.pidAt(u.path, u.line);
-  if (pid) {
-    app.page.peek = null;
-    drawPeek(app);
-    app.setFocus(pid);
-    return setTimeout(() => selectLine(app, `${u.path}|RIGHT|${u.line}`), 350); // once the view has moved there
+  const shown = (e.list ?? []).map((u, i) => [i, u]).filter(([, u]) => e.filter == null || u.group === e.filter);
+  let room = SHOW_ELSEWHERE - shown.filter(([, u]) => u.group < 2).length, hidden = 0;
+  const cards = [];
+  for (const [i, u] of shown) {
+    if (u.group === 2 && e.filter !== 2 && room-- <= 0) { hidden++; continue; }
+    let c = cards.at(-1);
+    if (!c || c.path !== u.path || c.group !== u.group) cards.push((c = { path: u.path, group: u.group, items: [] }));
+    c.items.push([i, u]);
   }
-  const entry = { kind: "code", name: `${u.path.split("/").pop()}:${u.line}`, path: u.path, line: u.line, loading: true, res: { to: { path: u.path, line: u.line } } };
-  app.page.peek.stack.push(entry);
-  drawPeek(app);
-  await loadCode(app, entry, Math.max(1, u.line - 8), u.line + 16);
-  entry.loading = false;
-  if (app.page.peek?.stack.includes(entry)) drawPeek(app);
+  hidden += Math.max(0, (e.res?.total ?? 0) - (e.list?.length ?? 0));
+  return cards.map((c) => {
+    const slash = c.path.lastIndexOf("/");
+    const head = `<div class="uchead"><span class="ubadge g${c.group}">${BADGE[c.group]}</span><b>${esc(c.path.slice(slash + 1))}</b><span class="udir">&lrm;${esc(c.path.slice(0, slash))}&lrm;</span><span class="ucount">${c.items.length}</span></div>`;
+    const items = c.items.map(([i, u]) => {
+      const k = useKind(u, e.name), open = e.open === i;
+      const scope = u.scope?.replace(/(^| › )import$/, "");
+      const where = scope ? `in <b>${esc(scope)}</b>` : k.kind === "import" ? "imported" : "top level";
+      return `<div class="uitem${open ? " open" : ""}${e.sel === i ? " sel" : ""}" data-use="${i}">
+        <div class="ul1"><span class="ukind k-${k.kind}">${esc(k.label)}</span><span class="uscope">${where}</span><span class="uline">L${u.line}</span></div>
+        <div class="ul2"><code>${useCode(u, e.name)}</code></div></div>${open ? useViewer(app, e, u) : ""}`;
+    }).join("");
+    return `<div class="ucard">${head}${items}</div>`;
+  }).join("") + (hidden ? `<div class="pkmore">and ${hidden} more elsewhere${e.filter == null ? ": filter to Elsewhere to see more" : ""}</div>` : "");
 }
+/** A use's code, in place under it: lines around it, the use marked, more above or below on request; and for a use in
+ *  the branch, a button to its diff node. */
+function useViewer(app, e, u) {
+  const lines = fileCache.get(u.path);
+  if (!lines) {
+    if (!fileCache.has(u.path) && app.caps.files) {
+      fileCache.set(u.path, null);
+      api(`/api/file?path=${encodeURIComponent(u.path)}`).then((r) => { fileCache.set(u.path, r?.lines ?? []); drawPeek(app); }).catch(() => fileCache.delete(u.path));
+    }
+    return `<div class="uview"><div class="pkmore">${app.caps.files ? "loading…" : "No local clone: the code can't be shown."}</div></div>`;
+  }
+  const r = (e.ranges ??= {})[`${u.path}:${u.line}`] ??= { from: Math.max(1, u.line - 6), to: u.line + 6 };
+  const from = r.from, to = Math.min(lines.length, r.to), html = hlBlock(lines.slice(from - 1, to), langOf(u.path));
+  const rows = html.map((h, k) => {
+    const n = from + k, mark = n === u.line ? applyRanges(h, [[u.col, u.col + e.name.length]], "usemark") : h;
+    return `<div class="pl${n === u.line ? " at" : ""}" data-path="${esc(u.path)}" data-line="${n}"><span class="no">${n}</span><code>${mark}</code></div>`;
+  }).join("");
+  const pr = app.graph.pr, inBranch = u.group < 2 && app.pidAt(u.path, u.line);
+  const gh = pr.provider !== "local" ? `<a class="btn" href="${esc(`https://github.com/${pr.owner}/${pr.repo}/blob/${pr.headSha}/${u.path}#L${u.line}`)}" target="_blank" rel="noopener">GitHub ↗</a>` : "";
+  return `<div class="uview">${from > 1 ? `<button class="umore" data-umore="up">▲ more above</button>` : ""}<div class="pkc">${rows}</div>${to < lines.length ? `<button class="umore" data-umore="down">▼ more below</button>` : ""}
+    <div class="uacts">${inBranch ? `<button class="btn primary" data-uopen="1" title="Close this and focus its diff node · o">Open in diff</button>` : ""}${gh}<span class="uhint">${MOD}-click a name here to inspect it</span></div></div>`;
+}
+/** Open in diff: close the window and focus the node it's in; in the diff, its line selected. */
+function openInDiff(app, u) {
+  const pid = app.pidAt(u.path, u.line);
+  if (!pid) return;
+  app.page.peek = null;
+  drawPeek(app);
+  app.setFocus(pid);
+  if (u.group === 0) setTimeout(() => selectLine(app, `${u.path}|RIGHT|${u.line}`), 350); // once the view has moved there
+}
+function toggleUse(app, e, i) {
+  e.open = e.open === i ? null : i;
+  e.sel = i;
+  drawPeek(app);
+  peekEl?.querySelector(`.uitem[data-use="${i}"]`)?.scrollIntoView({ block: "nearest" });
+}
+/** Keys while a list of uses is showing: ↑ ↓ (or j k) move, enter opens or closes the code, o opens it in the diff. */
+export function inspectorKey(app, ev) {
+  const e = app.page.peek?.stack.at(-1);
+  if (e?.kind !== "uses" || !e.list?.length) return false;
+  const order = [...(peekEl?.querySelectorAll(".uitem") ?? [])].map((n) => Number(n.dataset.use));
+  const at = order.indexOf(e.sel ?? -1);
+  if (["ArrowDown", "j", "ArrowUp", "k"].includes(ev.key)) {
+    e.sel = order[Math.max(0, Math.min(order.length - 1, at + (ev.key === "ArrowDown" || ev.key === "j" ? 1 : -1)))] ?? order[0];
+    drawPeek(app);
+    peekEl?.querySelector(`.uitem[data-use="${e.sel}"]`)?.scrollIntoView({ block: "nearest" });
+    return true;
+  }
+  if (ev.key === "Enter" && e.sel != null) { toggleUse(app, e, e.sel); return true; }
+  if (ev.key === "o" && e.sel != null) { openInDiff(app, e.list[e.sel]); return true; }
+  return false;
+}
+
 /** Selects a line wherever it's on screen, and scrolls the code it's in (never the canvas) to show it. */
 function selectLine(app, key) {
   const row = [...document.querySelectorAll(`.ln[data-key="${CSS.escape(key)}"]`)].find((r) => r.offsetParent);
@@ -595,11 +660,14 @@ function peekHtml(app) {
   const gh = res?.to && pr.provider !== "local" ? `https://github.com/${pr.owner}/${pr.repo}/blob/${pr.headSha}/${res.to.path}#L${res.to.line}${res.to.end ? `-L${res.to.end}` : ""}` : "";
   if (e.kind === "uses") {
     const n = e.list?.length ?? 0, counts = USE_GROUPS.map((_, g) => (e.list ?? []).filter((u) => u.group === g).length);
-    const summary = e.loading ? "looking for its uses…"
-      : !n ? `no uses found${res?.pending ? ": types are still loading, try again in a moment" : res?.via === "syntax" ? " through imports (uses through a value need the language server)" : ""}`
-      : `${res.total} use${res.total === 1 ? "" : "s"} · ${counts.map((c, g) => `${c} ${["in the diff", "in the PR's files", "elsewhere"][g]}`).join(" · ")}`;
-    const head = `<div class="pkh"><div class="pktrail">${trail}<span class="pktag">uses</span></div>${via}<button class="pkx" data-peekclose title="Close · esc" aria-label="Close">✕</button></div><div class="pkw">${summary}</div>`;
-    const hint = e.loading || !n ? "" : `<div class="pkhint">Click a use to go there (in the diff) or open it · ${MOD}⇧-click a name for its uses · esc to go back</div>`;
+    const files = new Set((e.list ?? []).map((u) => u.path)).size;
+    const summary = e.loading ? `<div class="pkw">looking for its uses…</div>`
+      : !n ? `<div class="pkw">No uses found${res?.pending ? ": types are still loading, try again in a moment" : res?.via === "syntax" ? " through imports (uses through a value need the language server)" : ""}.</div>`
+      : `<div class="pkw">Used ${res.total} time${res.total === 1 ? "" : "s"} in ${files} file${files === 1 ? "" : "s"}</div>
+        <div class="ufilters">${[["All", null, n], ...USE_GROUPS.map((t, g) => [["In the diff", "In the PR's other lines", "Elsewhere"][g], g, counts[g]])].map(([t, g, c]) =>
+          `<button class="ufilter${g != null ? ` g${g}` : ""}" data-ufilter="${g ?? "all"}" aria-pressed="${(e.filter ?? null) === g}"${c ? "" : " disabled"}>${t} <span>${c}</span></button>`).join("")}</div>`;
+    const head = `<div class="pkh"><div class="pktrail">${trail}<span class="pktag">uses</span></div>${via}<button class="pkx" data-peekclose title="Close · esc" aria-label="Close">✕</button></div>${summary}`;
+    const hint = e.loading || !n ? "" : `<div class="pkhint">Click a use to read it here · ↑ ↓ to move, enter to open, o for its diff node · esc to go back</div>`;
     return `<div class="pkwin" role="dialog" aria-label="Uses of ${esc(e.name)}">${head}<div class="pkbody">${e.loading ? "" : usesHtml(app, e)}</div>${hint}</div>`;
   }
   const where = e.note ? esc(e.note)
@@ -648,9 +716,15 @@ function onPeekClick(app, ev) {
   if ((ev.target === peekEl && downOnBackdrop) || ev.target.closest("[data-peekclose]")) { app.page.peek = null; return drawPeek(app); }
   const to = ev.target.closest("[data-peekto]");
   if (to) { app.page.peek.stack.length = Number(to.dataset.peekto) + 1; return drawPeek(app); }
-  const use = !(ev.metaKey || ev.ctrlKey) && ev.target.closest("[data-use]");
-  if (use) return openUse(app, app.page.peek.stack.at(-1).list[Number(use.dataset.use)]);
-  const code = (ev.metaKey || ev.ctrlKey) && ev.target.closest(".pl:not(.urow) code");
+  const e = app.page.peek.stack.at(-1);
+  const filter = ev.target.closest("[data-ufilter]");
+  if (filter) { e.filter = filter.dataset.ufilter === "all" ? null : Number(filter.dataset.ufilter); e.open = null; return drawPeek(app); }
+  if (ev.target.closest("[data-uopen]")) return openInDiff(app, e.list[e.open]);
+  const more = ev.target.closest("[data-umore]");
+  if (more) { const u = e.list[e.open], r = e.ranges[`${u.path}:${u.line}`]; more.dataset.umore === "up" ? (r.from = Math.max(1, r.from - 12)) : (r.to += 12); return drawPeek(app); }
+  const use = !(ev.metaKey || ev.ctrlKey) && ev.target.closest(".uitem");
+  if (use) return toggleUse(app, e, Number(use.dataset.use));
+  const code = (ev.metaKey || ev.ctrlKey) && ev.target.closest(".pl code");
   if (!code) return;
   ev.preventDefault();
   const w = wordAt(ev, code), line = code.closest(".pl");
