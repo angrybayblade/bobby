@@ -39,9 +39,10 @@ export const saveState = (pr: PrKey, s: ReviewState) => writeJson(join(ROOT, "st
 
 // A local review's diff also depends on the base it's compared with, so that's part of its cache key.
 const rev = (pr: { headSha: string; baseSha?: string; branch?: string }) => pr.headSha.slice(0, 12) + (pr.branch && pr.baseSha ? `_${pr.baseSha.slice(0, 7)}` : "");
-const treePath = (pr: PrInfo) => join(ROOT, "cache", `${slug(pr)}_${rev(pr)}.json`);
-export const loadCachedTree = (pr: PrInfo) => readJson<ChangeTree>(treePath(pr));
-export const saveCachedTree = (pr: PrInfo, t: ChangeTree) => writeJson(treePath(pr), t);
+// Claude's tree names extraction's units, which another extraction version may number differently: keyed by it too.
+const treePath = (pr: PrInfo, version: string) => join(ROOT, "cache", `${slug(pr)}_${rev(pr)}.tree.${version}.json`);
+export const loadCachedTree = (pr: PrInfo, version: string) => readJson<ChangeTree>(treePath(pr, version));
+export const saveCachedTree = (pr: PrInfo, version: string, t: ChangeTree) => writeJson(treePath(pr, version), t);
 
 /** Built graphs per head commit, so reopening an unchanged PR skips fetching, diffing and analysis. */
 export interface CachedGraphs { static: ReviewGraph; claude?: ReviewGraph }

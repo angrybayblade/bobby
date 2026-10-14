@@ -178,7 +178,7 @@ Keyed by `owner_repo_number_<first 12 of head sha>` in `~/.bobby/cache/`:
 | File | Holds | Written |
 |---|---|---|
 | `….graphs.json` | `{ static, claude? }` built graphs | After the static graph is built, and again when Claude's is ready |
-| `….json` | Claude's raw `ChangeTree` | When Claude finishes |
+| `….tree.<version>.json` | Claude's raw `ChangeTree`, per extraction version (it names extraction's units) | When Claude finishes |
 | `….defs.<server>.<version>.json` | A language server's `definitions` for its files | When its pass finishes (not for a local review, whose files change) |
 
 On launch, a cache hit with a matching `VERSION` skips fetch, diff, analysis and graph building, and only refreshes `discussion`. If the static graph is cached but Claude's isn't, extraction runs lazily only when Claude needs it. `--refresh` ignores both caches.

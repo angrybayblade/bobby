@@ -147,7 +147,7 @@ if (cmd === "open") {
   } else {
     const { pr, files, analysis } = await extract();
     staticGraph = await buildGraph(cwd, pr, files, analysis, heuristicTree(pr, analysis, files), discussion);
-    const tree = values.refresh ? null : loadCachedTree(pr);
+    const tree = values.refresh ? null : loadCachedTree(pr, VERSION);
     claudeGraph = tree?.source === "claude" ? await buildGraph(cwd, pr, files, analysis, tree, discussion) : undefined;
     saveCachedGraphs(key, { static: staticGraph, claude: claudeGraph });
   }
@@ -157,7 +157,7 @@ if (cmd === "open") {
   const claude = async () => {
     const { pr, files, analysis } = await extract();
     const tree = await claudeTree(pr, analysis, files);
-    saveCachedTree(pr, tree);
+    saveCachedTree(pr, VERSION, tree);
     const g = await buildGraph(cwd, pr, files, analysis, tree, discussion);
     saveCachedGraphs(key, { static: staticGraph, claude: g });
     return g;

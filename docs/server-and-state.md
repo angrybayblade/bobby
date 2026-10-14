@@ -58,7 +58,7 @@ Everything is JSON under `~/.bobby/` (from `os.homedir()`):
   settings.json                                  UI preferences (free-form; views may add keys)
   state/<owner>_<repo>_<n>.json                  ReviewState for one PR
   cache/<owner>_<repo>_<n>_<sha12>.graphs.json   built graphs for one head commit
-  cache/<owner>_<repo>_<n>_<sha12>.json          Claude's raw change tree for one head commit
+  cache/<owner>_<repo>_<n>_<sha12>.tree.<v>.json Claude's raw change tree for one head commit and extraction version
   repos/<owner>/<repo>/                          auto-clones
 ```
 
