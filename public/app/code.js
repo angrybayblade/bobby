@@ -243,19 +243,24 @@ export function escapeCode(app) {
 const owner = (node) => { for (let n = node; n; n = n.parentElement) if (bound.has(n)) return n; return null; };
 /** Closes the composer. Anything written in it is kept as an unfinished draft on the same lines, to continue later. */
 async function closeComposer(app, ta) {
-  const el = owner(ta), c = app.page.composing, text = ta.value.trim();
+  const el = owner(ta), c = app.page.composing;
   app.page.composing = null;
-  if (text && c && !c.file) {
-    const range = c.start ? { startLine: Number(c.start.line), startSide: c.start.side } : {};
-    try {
-      // the new draft first: the one it replaces goes only once that's saved
-      const d = await api("/api/comment", { path: c.path, line: Number(c.line), side: c.side, body: text, inDiff: c.indiff === "1" && (!c.start || c.start.indiff === "1"), wip: true, ...(c.kind === "note" ? { kind: "note" } : {}), ...range });
-      app.state.comments.push(d);
-      if (c.editing) await dropDraft(app, c.editing).catch((e) => app.fail?.(e)); // saved either way; the old one may linger
-      app.emit("comments");
-    } catch (e) { app.page.composing = { ...c, text: ta.value }; app.fail?.(e); } // still open, text and all
-  }
+  if (c && !(await keepDraft(app, c, ta.value))) app.page.composing = { ...c, text: ta.value }; // still open, text and all
   if (el) bound.get(el)?.();
+}
+/** What's written in a composer, kept as an unfinished draft on its lines. False if it couldn't be saved. A note on
+ *  the whole file isn't kept this way. */
+export async function keepDraft(app, c, text = c.text ?? "") {
+  if (!text.trim() || c.file) return true;
+  const range = c.start ? { startLine: Number(c.start.line), startSide: c.start.side } : {};
+  try {
+    // the new draft first: the one it replaces goes only once that's saved
+    const d = await api("/api/comment", { path: c.path, line: Number(c.line), side: c.side, body: text.trim(), inDiff: c.indiff === "1" && (!c.start || c.start.indiff === "1"), wip: true, ...(c.kind === "note" ? { kind: "note" } : {}), ...range });
+    app.state.comments.push(d);
+    if (c.editing) await dropDraft(app, c.editing).catch((e) => app.fail?.(e)); // saved either way; the old one may linger
+    app.emit("comments");
+    return true;
+  } catch (e) { app.fail?.(e); return false; }
 }
 async function dropDraft(app, id) {
   await api(`/api/comment/${id}`, null, "DELETE");
@@ -920,6 +925,8 @@ function bind(app, el, rerender) {
     window.addEventListener("mousemove", move);
     window.addEventListener("mouseup", up);
   });
+  // the text lives in app.page.composing as you type, so a re-render (a status poll, a mark) rebuilds the box with it
+  el.addEventListener("input", (ev) => { if (ev.target.matches("textarea[data-composer]") && app.page.composing) app.page.composing.text = ev.target.value; });
   el.addEventListener("keydown", (ev) => {
     if (!ev.target.matches("textarea[data-composer]")) return;
     ev.stopPropagation();

@@ -1,5 +1,5 @@
 import { DONE, api, createApp, esc } from "./core.js";
-import { escapeCode, inspectorKey, inspectorOpen, expandAll, renderFile, renderNode, renderPage, startComment, startFileNote } from "./code.js";
+import { escapeCode, inspectorKey, inspectorOpen, expandAll, keepDraft, renderFile, renderNode, renderPage, startComment, startFileNote } from "./code.js";
 import * as chrome from "./chrome.js";
 import * as palette from "./palette.js";
 import * as tour from "./tour.js";
@@ -21,6 +21,7 @@ app.renderNode = (el, pid) => { app.pageEl = el; renderNode(app, el, pid ?? app.
 // A whole file (sections = placement ids in file order) for file-level views.
 app.renderFile = (el, pids) => renderFile(app, el, pids);
 app.noteOnFile = (el, path) => startFileNote(app, el, path); // el: the renderFile container showing path
+app.keepDraft = (c) => keepDraft(app, c);
 
 // ---- settings → document
 const FONTS = {

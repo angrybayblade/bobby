@@ -259,6 +259,7 @@ export function createApp({ graph, session }) {
       const changed = pid !== app.focus;
       app.focus = pid;
       const fileNote = app.page.composing?.file ? app.page.composing : null; // a note on the whole file outlives moving within it
+      if (!fileNote && app.page.composing) app.keepDraft?.(app.page.composing); // moving away keeps what you wrote, as esc does
       app.page = { exp: app.page.exp, open: app.page.open, kind: app.page.kind, sel: null, selKeys: null, anchor: null, composing: fileNote };
       if (level !== undefined && level !== app.level) { app.level = level; app.emit("level"); }
       if (changed) {
@@ -270,6 +271,7 @@ export function createApp({ graph, session }) {
       l = Math.max(0, Math.min(2, l));
       if (l === app.level) return;
       app.level = l;
+      if (app.page.composing) app.keepDraft?.(app.page.composing);
       app.page.composing = null;
       app.emit("level");
       app.savePosition();
