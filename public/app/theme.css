@@ -427,10 +427,6 @@ body.inspecting .ln[data-side="RIGHT"] code, body.inspecting .inspector .pl code
 .selpop button { display: grid; place-items: center; width: 22px; height: 20px; border-radius: 3px; color: var(--muted); background: var(--surface); }
 .selpop button:hover { color: var(--text); background: var(--raised); }
 .selpop button[data-compose="comment"] { color: var(--signal); }
-.note.wip { border-left-style: dashed; opacity: .9; }
-.note.wip .who .cont { margin-left: auto; font: 500 11.5px var(--font-ui); color: var(--signal); padding: 0 6px; }
-.note.wip .who .cont + .x { margin-left: 4px; }
-.cmt .crange { font: 500 11.5px var(--font-ui); color: var(--muted); margin-bottom: 6px; }
 .ln:hover .no { color: var(--muted); }
 .code .fh .lay { margin-left: 4px; padding: 0 7px; font: 500 11px/18px var(--font-ui); color: var(--faint); border: 1px solid var(--line-soft); border-radius: 1px; }
 .code .fh .lay:hover { color: var(--text); border-color: var(--muted); }
@@ -447,8 +443,6 @@ body.inspecting .ln[data-side="RIGHT"] code, body.inspecting .inspector .pl code
 mark.wa { background: var(--add-word); color: inherit; border-radius: 0; }
 mark.wd { background: var(--del-word); color: inherit; border-radius: 0; }
 .notes { margin: 0 0 18px; display: flex; flex-direction: column; gap: 8px; max-width: 80ch; }
-.ghtoggle { align-self: flex-start; font: 12px var(--font-ui); color: var(--muted); padding: 3px 10px; border: 1px solid var(--line-soft); border-radius: 1px; }
-.ghtoggle:hover { color: var(--text); border-color: var(--muted); }
 .notes h4 { margin: 0; font: 600 11px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
 .note { padding: 9px 14px; border: 1px solid var(--line); border-radius: 3px; background: var(--bg); cursor: pointer; }
 .note:hover { border-color: var(--muted); }
@@ -461,7 +455,6 @@ mark.wd { background: var(--del-word); color: inherit; border-radius: 0; }
 .note .hint { font-size: 12px; color: var(--faint); margin-top: 4px; }
 .note.mine { border-left: 3px dashed var(--muted); background: var(--surface); }
 .note.mine .body { color: var(--muted); }
-.cmt.private { border-style: dashed; }
 .hook { display: block; font: calc(var(--size) * 1.02)/1.5 var(--font-prose); color: var(--text); }
 .hook::before { content: "Look for  "; font: 600 10.5px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
 .hook code { font: .92em var(--font-code); }
@@ -479,11 +472,6 @@ mark.wd { background: var(--del-word); color: inherit; border-radius: 0; }
 .modal .nh { margin: 10px 0 0; font: 600 11px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
 .modal.notes .note code { font: 12px var(--font-code); color: var(--muted); }
 .node.file > .fnotes { margin: 0; padding: 10px 12px; border-bottom: 1px solid var(--line-soft); max-width: none; }
-.cmt .ckind { display: flex; gap: 4px; margin: -2px 0 6px; }
-.cmt .ckind button { font: 12px var(--font-ui); color: var(--faint); padding: 2px 8px; border-radius: 1px; }
-.cmt .ckind button[aria-pressed="true"] { color: var(--text); background: var(--raised); }
-.cmt { margin: 6px 16px 10px 110px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 3px; background: var(--bg); font: var(--size)/1.5 var(--font-prose); max-width: 70ch; }
-.cmt textarea { width: 100%; min-height: 72px; border: 0; outline: 0; resize: vertical; background: none; color: inherit; font: inherit; }
 
 .hljs-keyword, .hljs-built_in, .hljs-literal { color: var(--hl-kw); }
 .hljs-string, .hljs-regexp { color: var(--hl-str); }

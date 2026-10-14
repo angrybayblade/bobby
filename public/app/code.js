@@ -287,32 +287,6 @@ const rangeLabel = (c) => {
   if (!c.startLine || c.startLine === c.line) return `${old(c.side)}L${c.line}`;
   return (c.startSide ?? c.side) === c.side ? `${old(c.side)}L${c.startLine}–L${c.line}` : `${old(c.startSide)}L${c.startLine}–${old(c.side)}L${c.line}`;
 };
-const jumpKey = (c) => `${c.path}|${c.side}|${c.line}${c.startLine && c.startLine !== c.line ? `|${c.startSide ?? c.side}|${c.startLine}` : ""}`;
-
-// ---- comments: your drafts plus existing GitHub discussion on the lines this node shows.
-function spans(app, pid) {
-  const node = app.nodeOf(pid);
-  if (!node) return [];
-  if (node.kind === "context") {
-    const { path, line } = node.location, sn = node.snippet, r = app.page.exp[`ctx:${path}:${line}`];
-    return [{ path, side: "RIGHT", lo: Math.min(sn.start, r?.start ?? sn.start), hi: Math.max(sn.start + sn.lines.length - 1, r?.end ?? 0) }];
-  }
-  return app.hunksOf(pid).flatMap((h) => {
-    const e = app.page.exp[h.id] ?? { above: 0, below: 0 };
-    const nNew = h.lines.filter((l) => l.t !== "-").length, nOld = h.lines.filter((l) => l.t !== "+").length;
-    return [
-      { path: h.file, side: "RIGHT", lo: h.newStart - e.above, hi: h.newStart + nNew - 1 + e.below },
-      { path: h.file, side: "LEFT", lo: h.oldStart, hi: h.oldStart + nOld - 1 },
-    ];
-  });
-}
-export function nodeComments(app, pid) {
-  const sp = spans(app, pid);
-  const hit = (c) => sp.some((s) => s.path === c.path && s.side === c.side && c.line >= s.lo && c.line <= s.hi);
-  const notes = app.state.notes.filter((n) => n.line && hit(n)).map((n) => ({ ...n, private: true }));
-  return [...(app.graph.discussion ?? []).filter(hit), ...app.state.comments.filter(hit), ...notes]
-    .sort((a, b) => a.path.localeCompare(b.path) || a.line - b.line || !!b.url - !!a.url || String(a.createdAt).localeCompare(String(b.createdAt)));
-}
 function privateNote(n, where, key) {
   return `<div class="note mine"${key ? ` data-jump="${key}"` : ""}><div class="who">You · private note${where ? ` · ${where}` : ""}<button class="x" data-delnote="${n.id}" title="Delete note">✕</button></div><div class="body">${esc(n.body)}</div></div>`;
 }

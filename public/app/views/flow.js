@@ -16,7 +16,7 @@ const CSS = `
 .flow svg path.hot { stroke: var(--muted); stroke-width: 2; }
 .flow svg path.dim { opacity: .35; }
 .flow svg path.rep { stroke-dasharray: 4 4; }
-.flow .card, .flow .chead { position: absolute; left: 0; top: 0; transition: transform var(--dur) var(--ease), width var(--dur) var(--ease), height var(--dur) var(--ease), opacity var(--dur); }
+.flow .card { position: absolute; left: 0; top: 0; transition: transform var(--dur) var(--ease), width var(--dur) var(--ease), height var(--dur) var(--ease), opacity var(--dur); }
 .flow .card { border-radius: 3px; background: var(--surface); border: 1px solid var(--line); padding: 8px 12px; overflow: hidden; cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
 .flow .card:hover { border-color: var(--muted); }
 .flow .card .t { display: flex; align-items: center; gap: 8px; font: 500 13px/1.3 var(--font-code); white-space: nowrap; }
@@ -46,9 +46,6 @@ const CSS = `
 .flow .card.pinned .fvw { flex: 1; min-height: 0; }
 .flow .card.pinned .nbody { max-height: none; flex: 1; min-height: 0; }
 .flow .card.agg { background: none; border-style: dashed; color: var(--muted); font-size: 13px; justify-content: center; }
-.flow .chead { font-size: 14px; font-weight: 600; white-space: nowrap; cursor: pointer; display: flex; gap: 10px; align-items: baseline; max-width: 1400px; }
-.flow .chead small { font-weight: 400; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
-.flow .chead.other { opacity: .45; }
 .flow .card.pr { border-color: var(--muted); padding: 12px 14px; }
 .flow .card.pr .t { white-space: normal; font: 600 13.5px/1.35 var(--font-prose); }
 .flow .card.pr .t span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
@@ -60,8 +57,6 @@ const CSS = `
 .flow .pane { overflow: auto; border-top: 1px solid var(--line); background: var(--bg); }
 .flow.paged { grid-template-rows: var(--rail, 220px) 1fr; }
 .flow.paged .stage { cursor: default; }
-.flow .intent { position: absolute; left: 32px; top: 20px; right: 32px; max-width: 80ch; z-index: 3; font: 600 calc(var(--size) * 1.35)/1.35 var(--font-prose); pointer-events: none; transition: opacity var(--dur); }
-.flow .intent small { display: block; font: 12px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); margin-bottom: 6px; }
 `;
 
 const MAX_GROUPS = 15;
@@ -77,9 +72,8 @@ export default {
   hint: "Node-link canvas: relies on ← core → affects",
   mount(el, app) {
     injectCss("flow", CSS); useViewerCss();
-    el.innerHTML = `<div class="flow"><div class="stage"><div class="intent"></div><div class="world"><svg class="edges"></svg></div></div><div class="pane" hidden></div></div>`;
+    el.innerHTML = `<div class="flow"><div class="stage"><div class="world"><svg class="edges"></svg></div></div><div class="pane" hidden></div></div>`;
     const root = el.firstElementChild, stage = root.querySelector(".stage"), world = root.querySelector(".world"), svg = root.querySelector("svg"), pane = root.querySelector(".pane");
-    const intentEl = root.querySelector(".intent");
     const els = new Map(); // key → element (reused so moves animate)
     const expanded = new Set(); // "coreId:band" opened by the user
     let lastPagePid = null;
@@ -91,7 +85,7 @@ export default {
 
     function layout() {
       const body = withBody();
-      const items = [], heads = [];
+      const items = [];
       // The tree is the review graph's own: each core change is a root, and every page hangs off the one page its
       // core's edges attach it to (what it's reached from; what's relied on, beside what it feeds). Code that several
       // changes reach appears under each of them: the original once, the rest as small ↺ repeats. Laid out in
@@ -244,7 +238,7 @@ export default {
         const hot = app.level > 0 && (a0 === fid || b0 === fid);
         edges.push({ a, b, hot, dim: a.kind === "pr" && b.kind === "grp" && !b.open && app.level > 0, rep: b.kind === "pl" && !!b.pl.repeatOf });
       }
-      return { items, heads, edges, height: y, width: Math.max(width, 400) };
+      return { items, edges, height: y, width: Math.max(width, 400) };
     }
 
     function card(it) {
@@ -297,7 +291,6 @@ export default {
       let box, maxScale = 1, minScale = 0.4;
       const focusItem = L.items.find((i) => i.kind === "pl" && i.pl.id === app.canonical(app.focus)) ?? L.items.find((i) => i.kind === "low" && app.focus === LOW);
       const loc = app.get(app.focus);
-      const top = 0;
       if (app.level === 0 || !loc || !focusItem) box = { x: -20, y: -10, w: L.width, h: L.height };
       else {
         // Core or page level: frame the focus and its neighbours in the graph.
@@ -310,8 +303,7 @@ export default {
       }
       let s = Math.min(maxScale, (sw - PAD * 2) / box.w, (sh - PAD * 2) / box.h);
       s = Math.max(minScale, s);
-      if (top) s = Math.max(minScale, Math.min(s, (sh - top - PAD) / box.h));
-      let tx = sw / 2 - (box.x + box.w / 2) * s, ty = top + (sh - top) / 2 - (box.y + box.h / 2) * s;
+      let tx = sw / 2 - (box.x + box.w / 2) * s, ty = sh / 2 - (box.y + box.h / 2) * s;
       if (app.level === 1 && focusItem?.body) { // like Diff: the card with its code fills the stage, at the scale that fits its width
         s = Math.min((sw - PAD * 2) / focusItem.w, (sh - PAD * 2) / focusItem.h);
         tx = sw / 2 - (focusItem.x + focusItem.w / 2) * s; ty = sh / 2 - (focusItem.y + focusItem.h / 2) * s;
@@ -348,7 +340,6 @@ export default {
       pane.hidden = !paged;
       let L = layout();
 
-      intentEl.hidden = true; // the PR card at the root carries the intent
 
       placeAll(L);
       // The code-bearing card sizes itself; re-lay out around its real height in the same frame.
@@ -391,11 +382,6 @@ export default {
 
     function placeAll(L) {
       for (const n of els.values()) n._seen = false;
-      for (const h of L.heads) {
-        const items = app.index.walk.filter((p) => app.get(p)?.core === h.c);
-        const done = items.filter((p) => app.isReviewed(p)).length;
-        place(`ch:${h.c.id}`, `chead ${app.level > 0 && !h.current ? "other" : ""}`, `${app.graph.cores.indexOf(h.c) + 1} · ${esc(h.c.title)} <small>${done}/${items.length}${h.current || app.level === 0 ? ` · ${esc(h.c.summary)}` : ""}</small>`, h.x, h.y, null, null, { core: h.c.id });
-      }
       for (const it of L.items) {
         const c = card(it);
         const key = it.kind === "pl" ? it.pl.id : it.kind === "agg" ? `agg:${it.key}` : it.kind === "grp" ? `grp:${it.g.id}` : it.kind;
@@ -409,7 +395,7 @@ export default {
     world.addEventListener("click", (ev) => {
       if (viewerAction(app, ev)) return;
       if (moved || ev.target.closest(".fvw")) return;
-      const t = ev.target.closest("[data-go],[data-expand],[data-core],[data-group],[data-pr]");
+      const t = ev.target.closest("[data-go],[data-expand],[data-group],[data-pr]");
       if (!t) return;
       if (t.dataset.expand) { expanded.add(t.dataset.expand); return update("expand"); }
       if (t.dataset.pr) return app.setLevel(0);
@@ -417,7 +403,6 @@ export default {
         const g = lastGroups?.get(t.dataset.group); const to = g && (g.roots.find((r) => !app.isReviewed(r)) ?? g.roots[0]);
         return to && app.setFocus(to, { level: 1 });
       }
-      if (t.dataset.core) { const first = app.index.walk.find((p) => app.get(p)?.core.id === t.dataset.core); app.setFocus(first, { level: 1 }); return; }
       const go = t.dataset.go;
       if (go === app.canonical(go) && go === app.focus) app.setLevel(app.level + 1);
       else app.setFocus(go, { level: app.level === 0 ? 1 : app.level });
