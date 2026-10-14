@@ -332,6 +332,19 @@ kbd {
 .cfaces .cav:last-child { margin-right: 0; }
 .cprev { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--faint); }
 .cn { flex: none; color: var(--faint); }
+/* The comment box: a thread to be, in the thread's spot (code.js › composer). */
+.ccompose .cmain { display: flex; flex-direction: column; gap: 6px; }
+.ccompose .cwho { min-height: 24px; }
+.ccompose .ckind { display: inline-flex; padding: 2px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
+.ccompose .ckind button { font: 12px var(--font-ui); color: var(--muted); padding: 2px 10px; border-radius: 4px; }
+.ccompose .ckind button[aria-pressed="true"] { color: var(--text); background: var(--raised); }
+.ccompose .ccap { font: 600 12.5px var(--font-ui); color: var(--text); }
+.ccompose textarea { width: 100%; min-height: 84px; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); font: 13px/1.5 var(--font-ui); resize: vertical; outline: 0; }
+.ccompose textarea:focus { border-color: color-mix(in srgb, var(--signal) 60%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--signal) 15%, transparent); }
+.ccompose .cfoot { display: flex; align-items: center; gap: 8px; }
+.ccompose .chint { font: 11.5px var(--font-ui); color: var(--faint); }
+.ccompose .cfoot .btn { padding: 4px 12px; font-size: 12.5px; }
+.ccompose.note { border-style: dashed; background: color-mix(in srgb, var(--hl-attr) 6%, var(--surface)); }
 .nlayer { position: absolute; inset: 0; pointer-events: none; }
 .fnote { position: absolute; right: 12px; z-index: 3; width: min(300px, 45%); pointer-events: auto; padding: 6px 10px 8px; border: 1px solid color-mix(in srgb, var(--hl-attr) 35%, var(--line)); border-radius: 4px; background: color-mix(in srgb, var(--hl-attr) 10%, var(--surface)); box-shadow: var(--shadow); font: 13px/1.45 var(--font-ui); white-space: normal; }
 .fnote.wip { border-style: dashed; }

@@ -126,8 +126,7 @@ function row(app, { t, o, n }, html, target, half) {
   const sel = !mirror && (app.page.selKeys ? app.page.selKeys.has(key) : app.page.sel?.key === key);
   return `<div class="ln ${cls}${sel ? " sel" : ""}${!mirror && target.hi === n && t !== "-" ? " target" : ""}" data-key="${esc(key)}" data-path="${esc(target.path)}" data-line="${line}" data-side="${side}" data-indiff="${target.inDiff && t !== "x" ? 1 : 0}">
     <span class="bar"></span>${nums}<span class="sg">${t === "+" ? "+" : t === "-" ? "−" : ""}</span><code>${html}</code></div>`
-    + (!half ? cmLine(threadsAt(app, key)) : "") // inline: the threads on this line, under it, the width of the node
-    + (composing ? composer(app.page.composing) : "");
+    + (!half ? cmLine(threadsAt(app, key) + (composing ? composer(app, app.page.composing) : "")) : ""); // inline: under the line, the width of the node
 }
 /** Diff lines as rows: one column (inline), or old beside new (split), pairing each run of removals with the additions after it. */
 function diffRows(app, lines, html, target) {
@@ -137,8 +136,10 @@ function diffRows(app, lines, html, target) {
     const c = app.page.composing, keyAt = (i) => `${target.path}|${lines[i].t === "-" ? "LEFT" : "RIGHT"}|${lines[i].t === "-" ? lines[i].o : lines[i].n}`;
     const composing = c && [L, R].some((i) => i != null && c.key === keyAt(i));
     // split: a thread sits on the side it was made on, as wide as that side; an unchanged line's are on the right
-    const left = L != null && lines[L].t === "-" ? threadsAt(app, keyAt(L)) : "", right = R != null && lines[R].t !== "-" ? threadsAt(app, keyAt(R)) : "";
-    return `<div class="srow">${cell(L, "L")}${cell(R, "R")}</div>${left || right ? `<div class="srow cmrow"><div class="cmcell">${left}</div><div class="cmcell">${right}</div></div>` : ""}${composing ? composer(c) : ""}`;
+    const lk = L != null && lines[L].t === "-" ? keyAt(L) : null, rk = R != null && lines[R].t !== "-" ? keyAt(R) : null;
+    const side = (k) => (k ? threadsAt(app, k) + (composing && c.key === k ? composer(app, c) : "") : ""); // the box sits on its line's side
+    const left = side(lk), right = side(rk);
+    return `<div class="srow">${cell(L, "L")}${cell(R, "R")}</div>${left || right ? `<div class="srow cmrow"><div class="cmcell">${left}</div><div class="cmcell">${right}</div></div>` : ""}`;
   };
   let out = "";
   for (let i = 0; i < lines.length;) {
@@ -163,14 +164,20 @@ function cmMore(app, h, dir, list, lines) {
     : `<div class="more cmore">${bubble(false)} ${n} ${what} ${dir}, outside the diff</div>`;
 }
 
-// A line can take a GitHub draft or a private note; c.file composes a note on a whole file (notes only).
-function composer(c) {
-  const note = c.kind === "note";
-  const lines = c.start && !c.file ? `<div class="crange">${note ? "Note" : "Comment"} on ${rangeLabel({ side: c.side, line: c.line, startLine: Number(c.start.line), startSide: c.start.side })}</div>` : "";
-  const kinds = c.file ? "" : `<div class="ckind" role="group" aria-label="Kind">${[["comment", "GitHub draft"], ["note", "Private note"]].map(([k, t]) =>
+// A line can take a GitHub draft or a private note; c.file composes a note on a whole file (notes only). It looks like
+// the thread it becomes, and sits where that thread will.
+function composer(app, c) {
+  const note = c.kind === "note", me = app.me;
+  const face = me ? `<img class="cav" src="/api/avatar?u=${encodeURIComponent(me.avatar ?? me.login)}" alt="" onerror="this.style.visibility='hidden'">` : "";
+  const range = c.start && !c.file ? `<span class="crange">${rangeLabel({ side: c.side, line: c.line, startLine: Number(c.start.line), startSide: c.start.side })}</span>` : "";
+  const kinds = c.file ? `<span class="ccap">Private note on this file</span>` : `<div class="ckind" role="group" aria-label="Kind">${[["comment", "Comment"], ["note", "Private note"]].map(([k, t]) =>
     `<button data-ckind="${k}" aria-pressed="${c.kind === k}">${t}</button>`).join("")}</div>`;
-  const hint = note ? "A private note: only you see it, and it's never posted to GitHub." : "Draft a comment for your GitHub review.";
-  return `<div class="cmt${note ? " private" : ""}">${kinds}${lines}<textarea data-composer placeholder="${hint}  ⌘/Ctrl+Enter to save · Esc to cancel">${esc(c.text ?? "")}</textarea></div>`;
+  const hint = note ? "A private note: only you see it, and it's never posted to GitHub" : "Leave a comment: saved as a draft for your review";
+  return `<div class="cthread ccompose${note ? " note" : ""}"><div class="citem">${face}<div class="cmain">
+    <div class="cwho">${kinds}<span class="cgrow"></span>${range}</div>
+    <textarea data-composer placeholder="${hint}">${esc(c.text ?? "")}</textarea>
+    <div class="cfoot"><span class="chint">${MOD}↵ to save · esc keeps it for later</span><span class="cgrow"></span><button class="btn" data-ccancel>Cancel</button><button class="btn primary" data-csave>${note ? "Add note" : "Save draft"}</button></div>
+  </div></div></div>`;
 }
 
 // ---- selecting lines: click one, shift-click (or drag down the line numbers) for a range, like GitHub's diff.
@@ -287,7 +294,7 @@ function fileNotesHtml(app, path) {
   const list = app.state.notes.filter((n) => n.path === path && !n.line);
   const c = app.page.composing, writing = c?.key === `file:${path}`;
   if (!list.length && !writing) return "";
-  return `<section class="notes fnotes"><h4>Your notes on this file${list.length ? ` · ${list.length}` : ""}</h4>${list.map((n) => privateNote(n, "", "")).join("")}${writing ? composer(c) : ""}</section>`;
+  return `<section class="notes fnotes"><h4>Your notes on this file${list.length ? ` · ${list.length}` : ""}</h4>${list.map((n) => privateNote(n, "", "")).join("")}${writing ? composer(app, c) : ""}</section>`;
 }
 /** Starts a private note on a whole file shown in el (a renderFile container). */
 export function startFileNote(app, el, path) {
@@ -820,7 +827,7 @@ function bind(app, el, rerender) {
       }
       return (ev.shiftKey ? uses : inspect)(app, { ...w, path: line.dataset.path, line: Number(line.dataset.line) }, false);
     }
-    const t = ev.target.closest("[data-compose],[data-wip],[data-expto],[data-ckind],[data-delnote],[data-viewed],[data-exp],[data-del],[data-low],[data-go],[data-jump],[data-fold],.ln[data-key]");
+    const t = ev.target.closest("[data-compose],[data-wip],[data-expto],[data-ckind],[data-csave],[data-ccancel],[data-delnote],[data-viewed],[data-exp],[data-del],[data-low],[data-go],[data-jump],[data-fold],.ln[data-key]");
     if (!t || !el.contains(t)) return;
     const again = () => bound.get(el)();
     const ds = t.dataset;
@@ -834,6 +841,8 @@ function bind(app, el, rerender) {
       app.page.composing = { ...app.page.sel, kind: d.kind === "note" ? "note" : "comment", text: d.body, editing: d.id };
       return again();
     }
+    if (ds.csave !== undefined) return saveComment(app, el.querySelector("textarea[data-composer]")?.value ?? "").then(again);
+    if (ds.ccancel !== undefined) { app.page.composing = null; return again(); } // Cancel discards; esc keeps it as an unfinished draft
     if (ds.ckind) { // switch the composer between a GitHub draft and a private note, keeping the text
       app.page.composing.text = el.querySelector("textarea[data-composer]")?.value ?? "";
       app.page.composing.kind = app.page.kind = ds.ckind;
