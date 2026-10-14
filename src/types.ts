@@ -120,6 +120,7 @@ export interface PrivateNote {
 }
 
 export interface ReviewState {
+  version?: number; // the state file's format (STATE_VERSION in state.ts); absent before 1
   headSha: string;
   marks: Record<string, "reviewed" | "flagged">; // keyed by hunk hash or ref key
   comments: Comment[];

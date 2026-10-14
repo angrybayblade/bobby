@@ -41,11 +41,12 @@ function writeJson(path: string, value: unknown) {
 }
 
 /** Marks are keyed by hunk content hash, so they survive force-pushes for hunks that didn't change. */
+export const STATE_VERSION = 1; // bump with a migration in loadState when ReviewState changes shape
 export function loadState(pr: PrKey & { headSha: string }): ReviewState {
   const s = readJson<ReviewState>(join(ROOT, "state", `${slug(pr)}.json`));
-  return s ? { ...s, headSha: pr.headSha } : { headSha: pr.headSha, marks: {}, comments: [] };
+  return s ? { ...s, version: STATE_VERSION, headSha: pr.headSha } : { version: STATE_VERSION, headSha: pr.headSha, marks: {}, comments: [] };
 }
-export const saveState = (pr: PrKey, s: ReviewState) => writeJson(join(ROOT, "state", `${slug(pr)}.json`), s);
+export const saveState = (pr: PrKey, s: ReviewState) => writeJson(join(ROOT, "state", `${slug(pr)}.json`), { ...s, version: STATE_VERSION });
 
 // A local review's diff also depends on the base it's compared with, so that's part of its cache key.
 const rev = (pr: { headSha: string; baseSha?: string; branch?: string }) => pr.headSha.slice(0, 12) + (pr.branch && pr.baseSha ? `_${pr.baseSha.slice(0, 7)}` : "");
