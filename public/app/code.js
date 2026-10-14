@@ -214,8 +214,13 @@ function syncPop(app, el) {
   box.appendChild(pop);
   let top = 0; // in the code box's own layout: on-screen measures are scaled by the canvas's zoom
   for (let n = row; n && n !== box; n = n.offsetParent) top += n.offsetTop;
-  const below = top + row.offsetHeight + 2;
-  pop.style.top = `${below + pop.offsetHeight <= box.clientHeight ? below : Math.max(0, top - pop.offsetHeight - 2)}px`; // above the line when it's the box's last
+  // In the gutter of the selection's last line, just left of its code (in split, that side's), like GitHub's: over the
+  // line number, covering no code. Long lines scrolled sideways move the gutter, so that's taken off.
+  const code = row.querySelector("code");
+  let left = 0;
+  for (let n = code; n && n !== box; n = n.offsetParent) left += n.offsetLeft;
+  pop.style.top = `${top + (row.offsetHeight - pop.offsetHeight) / 2}px`;
+  pop.style.left = `${Math.max(2, left - (row.closest(".lines")?.scrollLeft ?? 0) - pop.offsetWidth - 2)}px`;
 }
 /** Esc on the code, innermost first: an open composer closes (its text kept as an unfinished draft), then a line
  *  selection clears. Returns whether it did either. */
