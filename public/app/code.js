@@ -434,7 +434,7 @@ function lowPage(app) {
     ${[...byFile].map(([file, hs]) => {
       let a = 0, d = 0; for (const h of hs) for (const l of h.lines) l.t === "+" ? a++ : l.t === "-" ? d++ : 0;
       return `<div class="code"><button class="fh" style="width:100%;text-align:left" data-low="${esc(file)}"><span><b>${esc(file)}</b> <span style="color:var(--faint)">· ${esc(hs[0].lowSignal)}</span></span><span class="ctx"></span><span class="st">+${a} −${d} · ${open.has(file) ? "hide" : "show"}</span></button>
-        ${open.has(file) ? `<div class="lines">${hs.flatMap((h) => h.lines.slice(0, 300).map((l) => row(app, l, esc(l.s), { path: file, inDiff: true }))).join("")}</div>` : ""}</div>`;
+        ${open.has(file) ? `<div class="lines">${hs.flatMap((h) => [...h.lines.slice(0, 300).map((l) => row(app, l, esc(l.s), { path: file, inDiff: true })), ...(h.lines.length > 300 ? [`<div class="ln exp"><span class="bar"></span><code>… ${h.lines.length - 300} more lines not shown</code></div>`] : [])]).join("")}</div>` : ""}</div>`;
     }).join("")}`;
 }
 
