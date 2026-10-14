@@ -181,4 +181,4 @@ Keyed by `owner_repo_number_<first 12 of head sha>` in `~/.bobby/cache/`:
 | `….tree.<version>.json` | Claude's raw `ChangeTree`, per extraction version (it names extraction's units) | When Claude finishes |
 | `….defs.<server>.<version>.json` | A language server's `definitions` for its files | When its pass finishes (not for a local review, whose files change) |
 
-On launch, a cache hit with a matching `VERSION` skips fetch, diff, analysis and graph building, and only refreshes `discussion`. If the static graph is cached but Claude's isn't, extraction runs lazily only when Claude needs it. `--refresh` ignores both caches.
+On launch, a cache hit with a matching `VERSION` (for a PR, also the same base branch) skips diff, analysis and graph building, and only refreshes `discussion`. It skips the fetch too, unless the clone lacks the head or base commit. If the static graph is cached but Claude's isn't, extraction runs lazily only when Claude needs it, and a cached Claude tree is reused. `--refresh` ignores the graphs, the Claude tree and the language servers' answers; `--no-llm` ignores a cached Claude tree.
