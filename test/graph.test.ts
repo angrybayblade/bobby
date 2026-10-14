@@ -6,12 +6,16 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import Ajv2020 from "ajv/dist/2020.js";
 import schema from "../schema/review-graph.v1.schema.json" with { type: "json" };
-import { GRAPH_SCHEMA, type ReviewGraph } from "../src/graph.ts";
+import { GRAPH_SCHEMA, VERSION, type ReviewGraph } from "../src/graph.ts";
+import pkg from "../package.json" with { type: "json" };
 
 const root = mkdtempSync(join(tmpdir(), "bobby-test-"));
 const repo = join(root, "repo"), home = join(root, "home");
+// Without git's own variables: run from a commit hook, GIT_INDEX_FILE (and friends) would point these commands, and
+// bobby's, at the repo being committed to.
+const env = { ...Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith("GIT_"))), HOME: home };
 const sh = (cmd: string[]) => {
-  const r = Bun.spawnSync(cmd, { cwd: repo, env: { ...process.env, HOME: home, GIT_CONFIG_GLOBAL: "/dev/null" } });
+  const r = Bun.spawnSync(cmd, { cwd: repo, env: { ...env, GIT_CONFIG_GLOBAL: "/dev/null" } });
   if (r.exitCode !== 0) throw new Error(`${cmd.join(" ")}: ${r.stderr.toString()}`);
   return r.stdout.toString();
 };
@@ -35,7 +39,7 @@ beforeAll(() => {
   git("add", "-A");
   git("commit", "-qm", "raise the limit");
   const cli = join(import.meta.dir, "..", "src", "cli.ts"), out = join(root, "graph.json");
-  const r = Bun.spawnSync(["bun", cli, "extract", "--no-llm", "--base", "main", "--repo", repo, "-o", out], { env: { ...process.env, HOME: home } });
+  const r = Bun.spawnSync(["bun", cli, "extract", "--no-llm", "--base", "main", "--repo", repo, "-o", out], { env });
   if (r.exitCode !== 0) throw new Error(r.stderr.toString() + r.stdout.toString());
   graph = JSON.parse(readFileSync(out, "utf8"));
 });
