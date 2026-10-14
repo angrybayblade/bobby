@@ -73,7 +73,7 @@ export async function claudeTree(pr: PrInfo, a: Analysis, files: FileDiff[]): Pr
   const cmd = ["claude", "-p", "--output-format", "json", "--tools", "", "--no-session-persistence", "--json-schema", JSON.stringify(SCHEMA)];
   const model = process.env.BOBBY_MODEL ?? process.env.PRFOCUS_MODEL; // PRFOCUS_MODEL: the old name
   if (model) cmd.push("--model", model);
-  const out = JSON.parse(await run(cmd, { cwd: tmpdir(), input: prompt }));
+  const out = JSON.parse(await run(cmd, { cwd: tmpdir(), input: prompt, timeoutMs: 15 * 60_000 })); // a stuck claude mustn't leave the review "organising" forever
   if (out.is_error || !out.structured_output) throw new Error(`claude returned no structured output: ${String(out.result).slice(0, 300)}`);
   return toTree(out.structured_output, a, files);
 }
@@ -93,8 +93,13 @@ function buildPrompt(pr: PrInfo, a: Analysis): string {
   parts.push("", "# STATIC EDGES (upstream unit -> downstream unit; may be incomplete)");
   for (const e of a.edges) parts.push(`${e.from} -> ${e.to} via ${e.symbol}`);
   parts.push("", "# UNCHANGED CODE REFS");
-  for (const r of a.refs)
-    parts.push(`${r.id} [${r.dir === "up" ? "definition used by" : "usage of symbol from"} ${r.forUnit}] ${r.path}:${r.line} \`${r.symbol}\`: ${r.text.slice(0, 160)}`);
+  let shown = 0;
+  for (const r of a.refs) {
+    if (budget <= 0) break; // the same budget as the code: a huge reference list can't blow up the prompt
+    const line = `${r.id} [${r.dir === "up" ? "definition used by" : "usage of symbol from"} ${r.forUnit}] ${r.path}:${r.line} \`${r.symbol}\`: ${r.text.slice(0, 160)}`;
+    parts.push(line); budget -= line.length; shown++;
+  }
+  if (shown < a.refs.length) parts.push(`(${a.refs.length - shown} more refs omitted for size)`);
   return parts.join("\n");
 }
 

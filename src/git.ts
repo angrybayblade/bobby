@@ -5,7 +5,7 @@ import { home } from "./state.ts";
 
 export async function run(
   cmd: string[],
-  opts: { cwd?: string; input?: string; allowFail?: boolean; env?: Record<string, string> } = {},
+  opts: { cwd?: string; input?: string; allowFail?: boolean; env?: Record<string, string>; timeoutMs?: number } = {},
 ): Promise<string> {
   const proc = Bun.spawn(cmd, {
     cwd: opts.cwd,
@@ -14,11 +14,14 @@ export async function run(
     stdout: "pipe",
     stderr: "pipe",
   });
+  let timedOut = false;
+  const timer = opts.timeoutMs ? setTimeout(() => { timedOut = true; proc.kill(); }, opts.timeoutMs) : undefined;
   const [out, err, code] = await Promise.all([
     new Response(proc.stdout).text(),
     new Response(proc.stderr).text(),
     proc.exited,
-  ]);
+  ]).finally(() => clearTimeout(timer));
+  if (timedOut) { const s = Math.round(opts.timeoutMs! / 1000); throw new Error(`${cmd.slice(0, 2).join(" ")} gave no answer in ${s >= 120 ? `${Math.round(s / 60)} min` : `${s} s`}`); }
   if (code !== 0 && !opts.allowFail) {
     throw new Error(`${cmd.slice(0, 3).join(" ")} failed (${code}): ${err.trim() || out.trim()}`);
   }
