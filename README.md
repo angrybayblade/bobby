@@ -18,7 +18,7 @@ bobby 123        # inside a clone of the repo
 bobby            # no PR: review the branch you're on, uncommitted changes included
 ```
 
-You'll need `bun`, `git`, and `gh` (logged in). With the `claude` CLI installed, Claude organises the PR into a smarter tree in the background, using your Claude Code login.
+You'll need `git` and `gh` (logged in); the release binary carries everything else. With the `claude` CLI installed, Claude organises the PR into a smarter tree in the background, using your Claude Code login.
 
 In the UI: `j`/`k` to step, arrow keys to move up and down in the tree, `enter`/`esc` to zoom, `a` for looks good, `c` to comment, `v` to switch view, `s` to submit, and `?` for every key.
 

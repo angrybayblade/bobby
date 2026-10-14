@@ -4,12 +4,12 @@
 
 | Tool | Why |
 |---|---|
-| [`bun`](https://bun.sh) | Runs the CLI and the local server. |
 | `git` | Fetches the PR and computes the diff locally. |
 | [`gh`](https://cli.github.com), logged in | Reads PR metadata and review comments, clones repos, posts your review. |
 | `claude` (Claude Code CLI), optional | Builds the smarter change tree. It uses your Claude Code login, so no API key is needed. Without it, or with `--no-llm`, you get the static tree. |
 | `node` 18+, optional | Runs the TypeScript and Python language servers behind the inspector. Bobby installs them itself, after asking; without Node it runs them on Bun, where a large project takes minutes rather than seconds to load. |
 | `gopls`, optional | The Go language server: `go install golang.org/x/tools/gopls@latest`. Bobby finds it on PATH or in `$(go env GOPATH)/bin`. |
+| [`bun`](https://bun.sh), only from source | The release binary carries its own runtime. Building it, installing Bobby as a package, or running a clone needs Bun 1.1+. |
 
 ## Install
 
@@ -40,7 +40,7 @@ The install script picks the build for your OS and CPU, checks it against the re
 
 Release binaries aren't code-signed. On macOS, if Gatekeeper blocks a downloaded one, run `xattr -d com.apple.quarantine "$(which bobby)"`. Each release has a `SHA256SUMS` file to check downloads against.
 
-The binary is about 60 MB because it carries the Bun runtime. The UI's files are embedded in it, so it runs with nothing beside it.
+The binary is 62–86 MB, depending on the platform (27–41 MB to download), because it carries the Bun runtime and the tree-sitter grammars. The UI's files are embedded in it, so it runs with nothing beside it.
 
 ## Review a PR
 
