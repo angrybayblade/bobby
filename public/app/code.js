@@ -698,7 +698,10 @@ function drawPeek(app) {
   if (!peekEl) {
     peekEl = document.createElement("div");
     peekEl.className = "inspector";
-    peekEl.addEventListener("mousedown", (ev) => { downOnBackdrop = ev.target === peekEl; });
+    peekEl.addEventListener("mousedown", (ev) => {
+      downOnBackdrop = ev.target === peekEl;
+      if ((ev.metaKey || ev.ctrlKey) && ev.button === 0 && ev.target.closest(".pl code")) ev.preventDefault(); // as in the code: no selection
+    });
     peekEl.addEventListener("click", (ev) => onPeekClick(app, ev));
     document.body.appendChild(peekEl);
   }
@@ -878,6 +881,9 @@ function bind(app, el, rerender) {
       selectRange(app, el, app.page.anchor, { ...ds });
     }
   });
+  // ⌘/ctrl(+shift)-click on code inspects; the browser would act on the press first (shift extends the text selection
+  // from wherever it was), before the click reaches the inspector, so that's cancelled here, on the press.
+  el.addEventListener("mousedown", (ev) => { if ((ev.metaKey || ev.ctrlKey) && ev.button === 0 && ev.target.closest(".ln[data-key] code")) ev.preventDefault(); });
   // Drag down the line numbers to select several lines (the code itself stays selectable as text).
   el.addEventListener("mousedown", (ev) => {
     const gutter = ev.target.closest(".ln .no, .ln .bar, .ln .sg"), row = gutter?.closest(".ln[data-key]");
