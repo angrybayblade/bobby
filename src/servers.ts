@@ -141,7 +141,7 @@ async function run(s: Session, srv: LanguageServer) {
 function treeRoot(s: Session): Promise<string> {
   const pr = s.staticGraph.pr;
   if (pr.provider === "local") return Promise.resolve(s.cwd!);
-  return (s.root ??= headTree(s.cwd!, pr, SERVERS).then((dir) => { setInterval(() => keepTree(dir), 3_600_000).unref(); return dir; }));
+  return (s.root ??= headTree(s.cwd!, pr, SERVERS, serversFor(s.staticGraph)).then((dir) => { setInterval(() => keepTree(dir), 3_600_000).unref(); return dir; }));
 }
 function merge(s: Session, placed: Record<string, Definition[]>) {
   s.definitions = { ...(s.definitions ?? s.staticGraph.definitions ?? {}), ...placed };

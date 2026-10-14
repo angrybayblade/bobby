@@ -80,9 +80,11 @@ const IN_USE = 24 * 3_600_000; // a running Bobby marks its tree hourly, so a tr
 
 /** A PR's head commit as plain files, only what the servers read (their pathspecs), exported once per commit and
  *  reused; again if the pathspecs changed (a language added). */
-export async function headTree(cwd: string, pr: { owner: string; repo: string; headSha: string }, servers: LanguageServer[]): Promise<string> {
+/** servers: whose files are exported; prepare: those whose prepareTree runs on it (the review's languages: Go's module
+ *  stubbing has no business in a TypeScript review of a repo with Go in it). */
+export async function headTree(cwd: string, pr: { owner: string; repo: string; headSha: string }, servers: LanguageServer[], prepare = servers): Promise<string> {
   const specs = [...new Set(servers.flatMap((s) => s.treeFiles))].sort();
-  const stamp = `${pr.headSha}\n${specs.join(" ")}`;
+  const stamp = `${pr.headSha}\n${specs.join(" ")}\n${prepare.filter((s) => s.prepareTree).map((s) => s.id).sort().join(" ")}`;
   const base = join(home(), "trees", `${pr.owner}_${pr.repo}`), dir = join(base, pr.headSha.slice(0, 12)), done = join(dir, ".bobby-tree");
   if (existsSync(done) && readFileSync(done, "utf8") === stamp) { keepTree(dir); return dir; }
   // Exported beside, then moved into place: another Bobby on the same commit never sees, or deletes, half a tree.
@@ -101,7 +103,7 @@ export async function headTree(cwd: string, pr: { owner: string; repo: string; h
       throw new Error(`couldn't export ${pr.headSha.slice(0, 7)}: ${(await new Response(archive.stderr).text()) || (await new Response(tar.stderr).text())}`.trim());
     }
   }
-  for (const s of servers) await s.prepareTree?.(tmp);
+  for (const s of prepare) await s.prepareTree?.(tmp);
   writeFileSync(join(tmp, ".bobby-tree"), stamp);
   if (existsSync(dir) && (!existsSync(done) || readFileSync(done, "utf8") !== stamp)) rmSync(dir, { recursive: true, force: true }); // half a tree, or an older export
   try { renameSync(tmp, dir); } catch { rmSync(tmp, { recursive: true, force: true }); } // another Bobby got there first: use its tree

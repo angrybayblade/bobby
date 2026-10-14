@@ -64,9 +64,11 @@ function requirements(gomod: string) {
 /** In an exported tree: each module the build needs that isn't in your module cache becomes an empty local stub.
  *  Go's own word on what's missing, asked offline and repeatedly: a cached module can need an uncached one in turn. */
 async function stubMissingModules(dir: string) {
+  const mods = dirsWith(dir, "go.mod");
+  if (!mods.length) return;
   const e = await goEnv();
   if (!e?.GOMODCACHE) return;
-  for (const modDir of dirsWith(dir, "go.mod")) {
+  for (const modDir of mods) {
     const file = join(modDir, "go.mod"), { req, replaced } = requirements(readFileSync(file, "utf8"));
     const cached = (r: { path: string; version: string }) => existsSync(join(e.GOMODCACHE, `${escapeModule(r.path)}@${r.version}`))
       || existsSync(join(e.GOMODCACHE, "cache", "download", escapeModule(r.path), "@v", `${r.version}.zip`));
