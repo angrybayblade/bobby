@@ -28,10 +28,13 @@ export async function run(
 export const git = (cwd: string, args: string[], allowFail = false) =>
   run(["git", "-c", "core.quotePath=false", ...args], { cwd, allowFail });
 
+const ONLY_GITHUB = "Bobby reviews PRs on github.com only for now; GitHub Enterprise isn't supported yet. You can still review the branch locally: check it out and run bobby with no PR.";
+
 export function parsePrArg(arg: string): { owner?: string; repo?: string; number: number } {
   const m = arg.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
   if (m) return { owner: m[1], repo: m[2], number: Number(m[3]) };
   if (/^\d+$/.test(arg)) return { number: Number(arg) };
+  if (/^https?:\/\/[^/]+\/[^/]+\/[^/]+\/pull\/\d+/.test(arg)) throw new Error(ONLY_GITHUB);
   throw new Error(`Expected a PR URL or number, got "${arg}"`);
 }
 
@@ -60,14 +63,16 @@ export async function resolvePr(arg: string, repoDir?: string): Promise<Resolved
   const fields = "number,title,body,url,author,baseRefName,baseRefOid,headRefOid";
   const viewArgs = ["gh", "pr", "view", parsed.owner ? arg : String(parsed.number), "--json", fields];
   const meta = JSON.parse(await run(viewArgs, { cwd }));
-  const [, owner, repo] = meta.url.match(/github\.com\/([^/]+)\/([^/]+)\/pull/)!;
+  const m = meta.url.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/pull/);
+  if (!m) throw new Error(ONLY_GITHUB);
+  const [, owner, repo] = m;
 
   const isRepo = (await git(cwd, ["rev-parse", "--git-dir"], true)).trim() !== "";
   let remote = isRepo ? await remoteFor(cwd, owner, repo) : null;
   if (!remote && !repoDir) {
     cwd = join(home(), "repos", owner, repo);
     if (!existsSync(cwd)) {
-      console.log(`  cloning ${owner}/${repo} into ${cwd} (first time only)…`);
+      console.error(`  cloning ${owner}/${repo} into ${cwd} (first time only)…`); // stderr: extract may be writing the graph to stdout
       await run(["gh", "repo", "clone", `${owner}/${repo}`, cwd, "--", "--no-tags"]);
     }
     remote = (await remoteFor(cwd, owner, repo)) ?? "origin";
