@@ -36,6 +36,7 @@ const CSS = `
 :is(.dv, .fvw) .fvh { display: flex; gap: 10px; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--line-soft); font: 12.5px var(--font-code); color: var(--muted); cursor: grab; user-select: none; background: var(--raised); }
 :is(.dv, .fvw) .fvh b { font-weight: 600; }
 :is(.dv, .fvw) .fvh .p { flex: 1; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:is(.dv, .fvw) .fvh .p .moved { color: var(--faint); font-weight: 400; }
 :is(.dv, .fvw) .fvh .st { white-space: nowrap; }
 :is(.dv, .fvw) .fvh .band { font: 500 10.5px var(--font-ui); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); white-space: nowrap; padding: 1px 7px; border: 1px solid var(--line-soft); border-radius: 1px; }
 :is(.dv, .fvw) .fvh .band.core { color: var(--text); border-color: var(--muted); }
@@ -125,11 +126,16 @@ const GX = 200, GY = 64, TOP = 34;
 
 /** A page shown in a file viewer like Diff's, for other views (wrap: .fvw): the file's header (path, band, +/−,
  *  ✓ viewed, inline/split, note, full screen), then a .nbody to renderFile the page into. */
+/** A renamed file's old path, after its name in a header. */
+function movedFrom(app, path) {
+  const f = app.graph.files.find((x) => x.path === path);
+  return f?.status === "renamed" && f.oldPath !== path ? ` <span class="moved" title="Renamed from ${esc(f.oldPath)}">← ${esc(f.oldPath)}</span>` : "";
+}
 export function fileViewer(app, pid) {
   const pl = app.get(pid).pl, n = app.nodeOf(pid), path = n.kind === "change" ? n.file : n.location.path, dir = path.includes("/") ? path.slice(0, path.lastIndexOf("/") + 1) : "";
   const { a, d } = app.stat(pid), split = app.layoutOf(path) === "split", done = app.isFileRead(path);
   const stat = n.kind === "change" ? `<span style="color:var(--ok)">+${a}</span> <span style="color:var(--risk)">−${d}</span>` : "untouched";
-  return `<div class="fvw ${done ? "viewed" : ""}"><div class="fvh"><i class="glyph ${n.kind}"></i><span class="p">${esc(dir)}<b>${esc(path.split("/").pop())}</b></span><span class="band ${pl.band}">${BAND_LABEL[pl.band]}</span><span class="st">${stat}</span>`
+  return `<div class="fvw ${done ? "viewed" : ""}"><div class="fvh"><i class="glyph ${n.kind}"></i><span class="p">${esc(dir)}<b>${esc(path.split("/").pop())}</b>${movedFrom(app, path)}</span><span class="band ${pl.band}">${BAND_LABEL[pl.band]}</span><span class="st">${stat}</span>`
     + `<button class="frd" data-pfile="${esc(path)}" aria-label="Mark the whole file viewed" title="Every page of this file, at once · local only"><i class="cb"></i><span>Mark viewed</span></button>`
     + `<button class="max lay" data-flayout="${esc(path)}" aria-label="Inline or split" data-tip="${split ? "Show this file inline" : "Show this file split"} · d for every file">${split ? "▤" : "◫"}</button>`
     + `<button class="max" data-pnote="${esc(path)}" aria-label="Note on this file" data-tip="Private note on this file · only you see it">✎</button>`
@@ -213,7 +219,7 @@ export default {
     }
     function header(f, exit = false) {
       const dir = f.path.includes("/") ? f.path.slice(0, f.path.lastIndexOf("/") + 1) : "";
-      return `<i class="glyph ${f.changed ? "change" : "context"}"></i><span class="p">${esc(dir)}<b>${esc(f.path.split("/").pop())}</b></span><span class="band ${f.band}">${BAND_LABEL[f.band]}</span><span class="st">${stat(f)}</span>`
+      return `<i class="glyph ${f.changed ? "change" : "context"}"></i><span class="p">${esc(dir)}<b>${esc(f.path.split("/").pop())}</b>${movedFrom(app, f.path)}</span><span class="band ${f.band}">${BAND_LABEL[f.band]}</span><span class="st">${stat(f)}</span>`
         + `<button class="frd" data-fviewed="${esc(f.path)}" aria-label="Mark the whole file viewed" title="Every page of this file, at once · local only"><i class="cb"></i><span>Mark viewed</span></button>`
         + `<button class="max lay" data-flayout="${esc(f.path)}" aria-label="Inline or split" data-tip="${app.layoutOf(f.path) === "split" ? "Show this file inline" : "Show this file split"} · d for every file">${app.layoutOf(f.path) === "split" ? "▤" : "◫"}</button>`
         + (fileCount(app, f.path) ? `<button class="max fcm" data-fcomments="${esc(f.path)}" aria-pressed="${fileState(app, f.path) === "open"}" data-tip="${fileState(app, f.path) === "open" ? "Collapse" : "Show"} the comments in this file">${bubble(fileState(app, f.path) === "open")}<span>${fileCount(app, f.path)}</span></button>` : "")
