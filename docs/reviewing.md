@@ -51,7 +51,7 @@ The breadcrumb bar shows where you are (`repo #n › core › page`) and the cur
 | Key | |
 |---|---|
 | `j` / `k` (or space) | Next / previous page, in walk order |
-| Arrows | Follow the view's shape: → / ← along edges to what this leads into / comes from, ↑ / ↓ within the column. In Lens ← / → move a dependency level and ↑ / ↓ move along the level; in Outline → / ← go to the first nested page / the parent and ↑ / ↓ move between rows. |
+| Arrows | In Diff, ← / → go back and forth through the files you've visited (Shift + arrows move along the layout); see [Views](views.md#diff). Elsewhere, they follow the view's shape: → / ← along edges to what this leads into / comes from, ↑ / ↓ within the column. In Lens ← / → move a dependency level and ↑ / ↓ move along the level; in Outline → / ← go to the first nested page / the parent and ↑ / ↓ move between rows. |
 | `J` / `K` | Next / previous core |
 | `shift`+`1` | Back to the entry point: the unreviewed core with the least around it, where every load starts |
 | `n` | Next page you haven't reviewed |
