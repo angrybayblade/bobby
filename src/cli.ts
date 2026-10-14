@@ -13,6 +13,15 @@ import type { FileDiff, PrInfo } from "./types.ts";
 import { startServer, type Session } from "./server.ts";
 import pkg from "../package.json" with { type: "json" };
 
+// A failure is one line (no such file, a git or gh error), not a stack trace; BOBBY_DEBUG=1 shows the trace too.
+const fail = (e: unknown) => {
+  console.error(`✗ ${(e as Error)?.message ?? e}`);
+  if (process.env.BOBBY_DEBUG) console.error((e as Error)?.stack);
+  process.exit(1);
+};
+process.on("uncaughtException", fail);
+process.on("unhandledRejection", fail);
+
 const { values, positionals } = parseArgs({
   args: Bun.argv.slice(2),
   allowPositionals: true,
@@ -60,6 +69,7 @@ if (values.help || (cmd === "open" && !arg)) {
   console.log(USAGE);
   process.exit(values.help ? 0 : 1);
 }
+if (!/^\d{1,5}$/.test(values.port!) || Number(values.port) > 65535) fail(`--port takes a port number (0–65535), got "${values.port}"`);
 if (cmd === "lsp") process.exit(await lspCommand(arg, positionals[2]));
 
 /** bobby lsp: where each language's server stands. bobby lsp install <language>: installs it (or says how), and
