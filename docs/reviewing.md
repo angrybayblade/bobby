@@ -28,7 +28,7 @@ If the same code is relevant to two cores, you review it once. Later appearances
 
 - **First time using Bobby:** a short tour points at the breadcrumbs, the walk, the views and the key hints, one at a time. It doesn't block anything: keys still work underneath, `enter` goes on, `esc` skips. It shows once; take it again from **Take the tour** in the `?` sheet or the command palette. After an update, new features show up one at a time as a **New** chip at the end of the key hints; click it to read about the feature, and it won't show again.
 - **First time on a PR:** you start in the **easiest core**: the one with the least around it (fewest pages it relies on or affects), then the fewest changed lines. Cores linked to nothing are only used when every core is like that. You land on its first page at the Core level, with a toast saying why and what to look for. `esc` takes you to the overview.
-- **Coming back:** you resume on the page and zoom level you were last on. If you've made progress or parked a thought, the welcome-back card shows first.
+- **Coming back:** every load starts at the entry point. If you've made progress or parked a thought, the welcome-back card shows first, with where you were, to jump back to.
 
 ## Hooks: what to look for
 
@@ -51,7 +51,7 @@ The breadcrumb bar shows where you are (`repo #n › core › page`) and the cur
 | Key | |
 |---|---|
 | `j` / `k` (or space) | Next / previous page, in walk order |
-| Arrows | In Diff, ← / → go back and forth through the files you've visited (Shift + arrows move along the layout); see [Views](views.md#diff). Elsewhere, they follow the view's shape: → / ← along edges to what this leads into / comes from, ↑ / ↓ within the column. In Lens ← / → move a dependency level and ↑ / ↓ move along the level; in Outline → / ← go to the first nested page / the parent and ↑ / ↓ move between rows. |
+| Arrows | In Diff, ← / → go back and forth through the files you've visited (Shift + arrows move along the layout); see [Views](views.md#diff). In Flow, → / ↑ / ↓ follow the tree (or the nearest card that way) and ← always retracts, to the parent and then out a level; see [Views](views.md#flow). In Lens ← / → move a dependency level and ↑ / ↓ move along the level; in Outline → / ← go to the first nested page / the parent and ↑ / ↓ move between rows. |
 | `J` / `K` | Next / previous core |
 | `shift`+`1` | Back to the entry point: the unreviewed core with the least around it, where every load starts |
 | `n` | Next page you haven't reviewed |
