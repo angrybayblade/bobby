@@ -538,47 +538,39 @@ async function uses(app, at, deeper) {
 }
 const SHOW_ELSEWHERE = 200; // the first two groups always show in full; the third up to this
 const BADGE = ["in diff", "in PR", "elsewhere"];
-/** What a use does with the name, from the code around it: imports it, calls it, constructs it, names a type, assigns
- *  it, reaches into it (".del()"), or just refers to it. */
+/** Whether a use imports the name or calls it (directly, or a method reached through it), from the code around it. */
 function useKind(u, name) {
   const text = u.text ?? "", before = text.slice(0, u.col), after = text.slice(u.col + name.length);
-  if (u.scope === "import" || u.scope?.endsWith(" › import")) return { kind: "import", label: "import" }; // inside a multi-line import
-  if (/^\s*(import\b|from\s+\S+\s+import\b|export\s*(\{|\*))/.test(text) || /\brequire\(\s*['"]?$/.test(before)) return { kind: "import", label: "import" };
-  if (/\bnew\s+$/.test(before)) return { kind: "new", label: "new" };
-  if (/^\s*(<[^>()]*>)?\s*\(/.test(after)) return { kind: "call", label: "call" };
-  const member = /^\s*\??\.(\w+)(\s*\()?/.exec(after);
-  if (member) return { kind: member[2] ? "call" : "ref", label: `.${member[1]}${member[2] ? "()" : ""}` };
-  if (/(:|<|\||&|\bextends|\bimplements|\bas|\bsatisfies|\binstanceof)\s*$/.test(before)) return { kind: "type", label: "type" };
-  if (/^\s*[-+*/]?=(?!=)/.test(after) && !/\b(const|let|var)\s+$/.test(before)) return { kind: "write", label: "assign" };
-  return { kind: "ref", label: "reference" };
+  if (u.scope === "import" || u.scope?.endsWith(" › import")) return "import"; // inside a multi-line import
+  if (/^\s*(import\b|from\s+\S+\s+import\b|export\s*(\{|\*))/.test(text) || /\brequire\(\s*['"]?$/.test(before)) return "import";
+  if (/^\s*(<[^>()]*>)?\s*\(/.test(after) || /^\s*\??\.\w+\s*\(/.test(after)) return "call";
+  return null;
 }
 /** A use's line, its leading space trimmed, highlighted, with the name marked. */
-function useCode(u, name) {
+function useCode(u, name, cols = [u.col]) {
   const text = u.text ?? "", lead = text.length - text.trimStart().length;
-  return applyRanges(hlBlock([text.trim()], langOf(u.path))[0], [[u.col - lead, u.col - lead + name.length]], "usemark");
+  return applyRanges(hlBlock([text.trim()], langOf(u.path))[0], cols.map((c) => [c - lead, c - lead + name.length]), "usemark");
 }
 const fileCache = new Map(); // path → its lines at head, for the code a use opens in place
 function usesHtml(app, e) {
-  const shown = (e.list ?? []).map((u, i) => [i, u]).filter(([, u]) => e.filter == null || u.group === e.filter);
+  const shown = (e.list ?? []).map((u, i) => [i, u]).filter(([, u]) => (e.filter == null || u.group === e.filter) && (!e.kindFilter || useKind(u, e.name) === e.kindFilter));
   let room = SHOW_ELSEWHERE - shown.filter(([, u]) => u.group < 2).length, hidden = 0;
   const cards = [];
   for (const [i, u] of shown) {
     if (u.group === 2 && e.filter !== 2 && room-- <= 0) { hidden++; continue; }
     let c = cards.at(-1);
     if (!c || c.path !== u.path || c.group !== u.group) cards.push((c = { path: u.path, group: u.group, items: [] }));
-    c.items.push([i, u]);
+    const prev = c.items.at(-1);
+    if (prev?.[1].line === u.line) { prev[2].push(u.col); continue; } // more than one use on a line: one row, each marked
+    c.items.push([i, u, [u.col]]);
   }
   hidden += Math.max(0, (e.res?.total ?? 0) - (e.list?.length ?? 0));
   return cards.map((c) => {
     const slash = c.path.lastIndexOf("/");
     const head = `<div class="uchead"><span class="ubadge g${c.group}">${BADGE[c.group]}</span><b>${esc(c.path.slice(slash + 1))}</b><span class="udir">&lrm;${esc(c.path.slice(0, slash))}&lrm;</span><span class="ucount">${c.items.length}</span></div>`;
-    const items = c.items.map(([i, u]) => {
-      const k = useKind(u, e.name), open = e.open === i;
-      const scope = u.scope?.replace(/(^| › )import$/, "");
-      const where = scope ? `in <b>${esc(scope)}</b>` : k.kind === "import" ? "imported" : "top level";
-      return `<div class="uitem${open ? " open" : ""}${e.sel === i ? " sel" : ""}" data-use="${i}">
-        <div class="ul1"><span class="ukind k-${k.kind}">${esc(k.label)}</span><span class="uscope">${where}</span><span class="uline">L${u.line}</span></div>
-        <div class="ul2"><code>${useCode(u, e.name)}</code></div></div>${open ? useViewer(app, e, u) : ""}`;
+    const items = c.items.map(([i, u, cols]) => { // one line: where it is, and its code
+      const scope = u.scope?.replace(/(^| › )import$/, "") ?? "";
+      return `<div class="uitem${e.open === i ? " open" : ""}${e.sel === i ? " sel" : ""}" data-use="${i}"><span class="uline">${u.line}</span><span class="uscope" title="${esc(scope)}">${esc(scope)}</span><code>${useCode(u, e.name, cols)}</code></div>${e.open === i ? useViewer(app, e, u) : ""}`;
     }).join("");
     return `<div class="ucard">${head}${items}</div>`;
   }).join("") + (hidden ? `<div class="pkmore">and ${hidden} more elsewhere${e.filter == null ? ": filter to Elsewhere to see more" : ""}</div>` : "");
@@ -603,7 +595,7 @@ function useViewer(app, e, u) {
   const pr = app.graph.pr, inBranch = u.group < 2 && app.pidAt(u.path, u.line);
   const gh = pr.provider !== "local" ? `<a class="btn" href="${esc(`https://github.com/${pr.owner}/${pr.repo}/blob/${pr.headSha}/${u.path}#L${u.line}`)}" target="_blank" rel="noopener">GitHub ↗</a>` : "";
   return `<div class="uview">${from > 1 ? `<button class="umore" data-umore="up">▲ more above</button>` : ""}<div class="pkc">${rows}</div>${to < lines.length ? `<button class="umore" data-umore="down">▼ more below</button>` : ""}
-    <div class="uacts">${inBranch ? `<button class="btn primary" data-uopen="1" title="Close this and focus its diff node · o">Open in diff</button>` : ""}${gh}<span class="uhint">${MOD}-click a name here to inspect it</span></div></div>`;
+    <div class="uacts">${inBranch ? `<button class="btn" data-uopen="1" title="Close this and focus its diff node · o">Open in diff</button>` : ""}${gh}<span class="uhint">${MOD}-click a name here to inspect it</span></div></div>`;
 }
 /** Open in diff: close the window and focus the node it's in; in the diff, its line selected. */
 function openInDiff(app, u) {
@@ -664,8 +656,10 @@ function peekHtml(app) {
     const summary = e.loading ? `<div class="pkw">looking for its uses…</div>`
       : !n ? `<div class="pkw">No uses found${res?.pending ? ": types are still loading, try again in a moment" : res?.via === "syntax" ? " through imports (uses through a value need the language server)" : ""}.</div>`
       : `<div class="pkw">Used ${res.total} time${res.total === 1 ? "" : "s"} in ${files} file${files === 1 ? "" : "s"}</div>
-        <div class="ufilters">${[["All", null, n], ...USE_GROUPS.map((t, g) => [["In the diff", "In the PR's other lines", "Elsewhere"][g], g, counts[g]])].map(([t, g, c]) =>
-          `<button class="ufilter${g != null ? ` g${g}` : ""}" data-ufilter="${g ?? "all"}" aria-pressed="${(e.filter ?? null) === g}"${c ? "" : " disabled"}>${t} <span>${c}</span></button>`).join("")}</div>`;
+        <div class="ufilters">${[["All", null, n], ...USE_GROUPS.map((t, g) => [["In the diff", "In the PR", "Elsewhere"][g], g, counts[g]])].map(([t, g, c]) =>
+          `<button class="ufilter" data-ufilter="${g ?? "all"}" aria-pressed="${(e.filter ?? null) === g}"${c ? "" : " disabled"}>${t} <span>${c}</span></button>`).join("")}
+          <span class="usep"></span>${["call", "import"].map((k) => { const c = (e.list ?? []).filter((u) => useKind(u, e.name) === k).length;
+            return `<button class="ufilter" data-ukind="${k}" aria-pressed="${e.kindFilter === k}"${c ? "" : " disabled"}>${k} <span>${c}</span></button>`; }).join("")}</div>`;
     const head = `<div class="pkh"><div class="pktrail">${trail}<span class="pktag">uses</span></div>${via}<button class="pkx" data-peekclose title="Close · esc" aria-label="Close">✕</button></div>${summary}`;
     const hint = e.loading || !n ? "" : `<div class="pkhint">Click a use to read it here · ↑ ↓ to move, enter to open, o for its diff node · esc to go back</div>`;
     return `<div class="pkwin" role="dialog" aria-label="Uses of ${esc(e.name)}">${head}<div class="pkbody">${e.loading ? "" : usesHtml(app, e)}</div>${hint}</div>`;
@@ -719,6 +713,8 @@ function onPeekClick(app, ev) {
   const e = app.page.peek.stack.at(-1);
   const filter = ev.target.closest("[data-ufilter]");
   if (filter) { e.filter = filter.dataset.ufilter === "all" ? null : Number(filter.dataset.ufilter); e.open = null; return drawPeek(app); }
+  const kind = ev.target.closest("[data-ukind]");
+  if (kind) { e.kindFilter = e.kindFilter === kind.dataset.ukind ? null : kind.dataset.ukind; e.open = null; return drawPeek(app); } // again: off
   if (ev.target.closest("[data-uopen]")) return openInDiff(app, e.list[e.open]);
   const more = ev.target.closest("[data-umore]");
   if (more) { const u = e.list[e.open], r = e.ranges[`${u.path}:${u.line}`]; more.dataset.umore === "up" ? (r.from = Math.max(1, r.from - 12)) : (r.to += 12); return drawPeek(app); }
