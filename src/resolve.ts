@@ -24,7 +24,7 @@ export class Repo {
   private constructor(readonly cwd: string, readonly sha: string) {}
   static async open(cwd: string, sha: string) {
     const r = new Repo(cwd, sha);
-    for (const f of (await git(cwd, ["ls-tree", "-r", "--name-only", sha], true)).split("\n")) if (f) r.files.add(f);
+    for (const f of (await git(cwd, ["ls-tree", "-r", "-z", "--name-only", sha], true)).split("\0")) if (f) r.files.add(f);
     return r;
   }
 

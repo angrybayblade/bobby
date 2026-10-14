@@ -154,6 +154,12 @@ describe("parseGrep", () => {
       { path: "src/b:c.ts", line: 3, text: "y: 2" }, // a colon in the path: the first :<digits>: ends it
     ]);
   });
+  test("reads -z output, whatever the path holds", () => {
+    expect(parseGrep("abc:a:1:b.ts\x0012\x00x = 1\nabc:c.ts\x003\x00y\n", "abc")).toEqual([
+      { path: "a:1:b.ts", line: 12, text: "x = 1" },
+      { path: "c.ts", line: 3, text: "y" },
+    ]);
+  });
   test("cuts long lines", () => {
     expect(parseGrep(`a.ts:1:${"x".repeat(500)}`, "s")[0].text).toHaveLength(300);
   });

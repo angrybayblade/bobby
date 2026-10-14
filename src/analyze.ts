@@ -311,7 +311,7 @@ async function textUpstream(cwd: string, pr: PrInfo, units: Unit[], hunkById: Ma
   for (let i = 0; i < idents.length; i += 150) {
     const chunk = idents.slice(i, i + 150).map((s) => s.replace(/\$/g, "\\$"));
     const pattern = `(function|def|class|interface|type|enum|struct|trait|fn|func|const|let|var|val)[[:space:]]+(${chunk.join("|")})`;
-    const out = await git(cwd, ["grep", "-n", "-I", "-w", "-E", "-e", pattern, pr.headSha, "--", "."], true);
+    const out = await git(cwd, ["grep", "-z", "-n", "-I", "-w", "-E", "-e", pattern, pr.headSha, "--", "."], true);
     for (const hit of parseGrep(out, pr.headSha)) {
       if (addedAt.has(`${hit.path}:${hit.line}`) || NOT_CODE.test(hit.path)) continue;
       for (const d of declsIn(hit.text)) {
@@ -338,18 +338,22 @@ async function textUpstream(cwd: string, pr: PrInfo, units: Unit[], hunkById: Ma
 const reEscape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 export async function grepWords(cwd: string, sha: string, words: string[], extra: string[] = []): Promise<string> {
   const alt = words.map(reEscape).join("|");
-  const base = ["git", "-c", "core.quotePath=false", "grep", "-n", "-I", ...extra];
+  const base = ["git", "-c", "core.quotePath=false", "grep", "-z", "-n", "-I", ...extra];
   const p = Bun.spawn([...base, "-P", "-e", `\\b(?:${alt})\\b`, sha, "--", "."], { cwd, stdout: "pipe", stderr: "pipe" });
   const [out, code] = await Promise.all([new Response(p.stdout).text(), p.exited]);
   if (code === 0 || code === 1) return out; // 1: no matches
   return git(cwd, base.slice(3).concat(["-w", "-E", "-e", `(${alt})`, sha, "--", "."]), true); // no PCRE in this git
 }
 
+/** git grep's hits. With -z (as Bobby runs it), "<sha>:<path>\0<line>\0<text>", so any path reads right; without, the
+ *  first ":<digits>:" ends the path. */
 export function parseGrep(out: string, sha: string) {
   const hits: Array<{ path: string; line: number; text: string }> = [];
   for (const raw of out.split("\n")) {
     if (!raw) continue;
     const line = raw.startsWith(sha + ":") ? raw.slice(sha.length + 1) : raw;
+    const z = line.split("\0");
+    if (z.length >= 3 && /^\d+$/.test(z[1])) { hits.push({ path: z[0], line: Number(z[1]), text: z.slice(2).join("\0").slice(0, 300) }); continue; }
     const m = line.match(/^(.+?):(\d+):(.*)$/);
     if (m) hits.push({ path: m[1], line: Number(m[2]), text: m[3].slice(0, 300) });
   }

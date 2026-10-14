@@ -90,7 +90,7 @@ export async function headTree(cwd: string, pr: { owner: string; repo: string; h
   rmSync(tmp, { recursive: true, force: true });
   mkdirSync(tmp, { recursive: true });
   // git archive fails on a pathspec that matches nothing, so only ask for what the commit has.
-  const names = (await git(cwd, ["ls-tree", "-r", "--name-only", pr.headSha])).split("\n");
+  const names = (await git(cwd, ["ls-tree", "-r", "-z", "--name-only", pr.headSha])).split("\0");
   const has = specs.filter((s) => { const re = globRe(s); return names.some((n) => re.test(n)); });
   if (has.length) {
     const archive = Bun.spawn(["git", "archive", "--format=tar", pr.headSha, "--", ...has], { cwd, stdout: "pipe", stderr: "pipe" });
