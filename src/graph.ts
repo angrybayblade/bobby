@@ -41,6 +41,7 @@ export interface GDiscussion {
   id: string; path: string; line: number; side: "LEFT" | "RIGHT";
   author: string; body: string; url: string; createdAt: string;
   replyTo?: string;
+  startLine?: number; startSide?: "LEFT" | "RIGHT"; // a comment on a range: its first line (line is its last)
   avatar?: string; // the author's GitHub avatar
 }
 
