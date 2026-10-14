@@ -139,7 +139,8 @@ export function startServer(s: Session, port: number) {
         if (!s.servers?.[id]) return json({ error: "no such server in this review" }, 404);
         const act = p.slice("/api/servers/".length);
         if (act === "install") void installServer(s, id); // in the background: its state says how it's going
-        else if (act === "check") await recheckServer(s, id);
+        // looking again is quick, but a server found then starts and loads: answer once it's past the looking
+        else if (act === "check") await Promise.race([recheckServer(s, id), Bun.sleep(2000)]);
         else if (act === "decline") declineServer(s, id, !!never);
         else return json({ error: "not found" }, 404);
         return json({ servers: Object.values(s.servers) });
