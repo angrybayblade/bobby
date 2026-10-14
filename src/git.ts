@@ -7,6 +7,12 @@ export async function run(
   cmd: string[],
   opts: { cwd?: string; input?: string; allowFail?: boolean; env?: Record<string, string>; timeoutMs?: number } = {},
 ): Promise<string> {
+  // A program that isn't installed throws here, not as an exit code: say which, or read it as a failure when allowed
+  const missing = !Bun.which(cmd[0], { PATH: opts.env?.PATH ?? process.env.PATH ?? "" }) && !cmd[0].includes("/");
+  if (missing) {
+    if (opts.allowFail) return "";
+    throw new Error(`${cmd[0]} isn't installed, or isn't on your PATH${{ gh: ": https://cli.github.com", git: ": https://git-scm.com", claude: ": https://claude.com/claude-code" }[cmd[0]] ?? ""}`);
+  }
   const proc = Bun.spawn(cmd, {
     cwd: opts.cwd,
     ...(opts.env ? { env: { ...process.env, ...opts.env } } : {}),
