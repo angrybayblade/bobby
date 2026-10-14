@@ -803,9 +803,9 @@ function bind(app, el, rerender) {
   el.addEventListener("click", (ev) => {
     if (ev.target.closest("a")) return;
     const full = ev.target.closest("[data-cfull]");
-    if (full) return showFull(app, full.dataset.cfull);
+    if (full) return showFull(app, full.dataset.cfull, full.closest(".cthread"));
     const fold = ev.target.closest("[data-tid]");
-    if (fold && !ev.target.closest("[data-del],[data-wip],[data-delnote]")) return toggleItem(app, fold.dataset.tid, fold.dataset.tpath);
+    if (fold && !ev.target.closest("[data-del],[data-wip],[data-delnote]")) return toggleItem(app, fold.dataset.tid, fold.dataset.tpath, fold);
     const code = (ev.metaKey || ev.ctrlKey) && ev.target.closest(".ln[data-key] code");
     if (code) { // the inspector: where it's declared, or (with shift) where it's used
       ev.preventDefault();

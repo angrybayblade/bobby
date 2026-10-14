@@ -46,27 +46,49 @@ const pageState = (app) => (app.commentState ??= { files: new Map(), items: new 
 const prState = (app) => app.settings.comments ?? "open";
 export const fileState = (app, path) => pageState(app).files.get(path) ?? prState(app);
 const itemOpen = (app, id, path) => (pageState(app).items.get(id) ?? fileState(app, path)) === "open";
-/** Collapses or opens one thread or note; a broader choice later replaces it. */
-export function toggleItem(app, id, path) {
-  pageState(app).items.set(id, itemOpen(app, id, path) ? "collapsed" : "open");
+/** Re-renders after a comment change without moving what you're reading: each visible code scroller keeps the thread
+ *  you clicked (if it's in it), else its first line on screen, where it was. */
+function keepPlace(app, clicked) {
+  const scrollerOf = (n) => { for (let e = n; e && e !== document.body; e = e.parentElement) if (e.scrollHeight > e.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(e).overflowY)) return e; return null; };
+  const marks = [];
+  for (const sc of new Set([...document.querySelectorAll("[data-bound]")].filter((b) => b.offsetParent).map((b) => scrollerOf(b) ?? b))) {
+    const box = sc.getBoundingClientRect(), k = sc.clientHeight / (box.height || 1); // on-screen px to the scroller's own (zoom)
+    const thread = clicked?.closest("[data-thread]"); // the thread's own top edge, open or collapsed
+    const anchor = (thread && sc.contains(thread) && thread)
+      || [...sc.querySelectorAll(".ln[data-key]")].find((r) => r.getBoundingClientRect().bottom > box.top + 1);
+    if (!anchor) continue;
+    const sel = anchor.matches(".ln") ? `.ln[data-key="${CSS.escape(anchor.dataset.key)}"]` : `[data-thread="${CSS.escape(anchor.dataset.thread)}"]`;
+    marks.push({ sc, k, sel, top: anchor.getBoundingClientRect().top - box.top, scrollTop: sc.scrollTop });
+  }
   app.emit("comments");
+  for (const m of marks) {
+    const now = m.sc.querySelector(m.sel);
+    if (!now) { m.sc.scrollTop = m.scrollTop; continue; }
+    m.sc.scrollTop += (now.getBoundingClientRect().top - m.sc.getBoundingClientRect().top - m.top) * m.k;
+  }
+}
+/** Collapses or opens one thread or note; a broader choice later replaces it. */
+export function toggleItem(app, id, path, clicked) {
+  pageState(app).items.set(id, itemOpen(app, id, path) ? "collapsed" : "open");
+  keepPlace(app, clicked);
 }
 /** Every comment and note in a file, collapsed or opened together. */
 export function toggleFile(app, path) {
   const s = pageState(app), next = fileState(app, path) === "open" ? "collapsed" : "open";
   s.files.set(path, next);
   for (const id of [...s.items.keys()]) if (commentIndex(app).byPath.get(path)?.some((x) => x.id === id)) s.items.delete(id);
-  app.emit("comments");
+  keepPlace(app);
 }
 /** Every comment in the PR: saved as the default (settings.comments), and the files' and threads' own choices cleared. */
 export function togglePR(app) {
   const s = pageState(app);
   s.files.clear(); s.items.clear();
-  app.saveSettings({ comments: prState(app) === "open" ? "collapsed" : "open" });
-  app.emit("comments");
+  app.settings.comments = prState(app) === "open" ? "collapsed" : "open"; // now, so the redraw below already uses it
+  keepPlace(app);
+  app.saveSettings({ comments: app.settings.comments });
 }
 /** Shows a long comment in full, and remembers it while the page is open. */
-export function showFull(app, ck) { pageState(app).full = (pageState(app).full ?? new Set()).add(ck); app.emit("comments"); }
+export function showFull(app, ck, clicked) { pageState(app).full = (pageState(app).full ?? new Set()).add(ck); keepPlace(app, clicked); }
 /** What the comment state of a file is, for knowing when to redraw it. */
 export const fileStamp = (app, path) => `${fileState(app, path)}:${pageState(app).full?.size ?? 0}:${(commentIndex(app).byPath.get(path) ?? []).map((x) => (itemOpen(app, x.id, path) ? 1 : 0)).join("")}`;
 export const fileCount = (app, path) => (commentIndex(app).byPath.get(path) ?? []).reduce((n, x) => n + (x.items?.length ?? 1), 0);
@@ -83,7 +105,7 @@ function threadHtml(app, t) {
   const open = itemOpen(app, t.id, t.path), first = t.items[0], n = t.items.length;
   if (!open) { // in place, one line: who, how many, and how it starts
     const faces = [...new Map(t.items.map((i) => [i.author, i])).values()].slice(0, 3).map(avatar).join("");
-    return `<div class="cthread slim${t.kind === "draft" ? " draft" : ""}" data-tid="${esc(t.id)}" data-tpath="${esc(t.path)}" title="Show ${n > 1 ? "this thread" : "this comment"}">
+    return `<div class="cthread slim${t.kind === "draft" ? " draft" : ""}" data-thread="${esc(t.id)}" data-tid="${esc(t.id)}" data-tpath="${esc(t.path)}" title="Show ${n > 1 ? "this thread" : "this comment"}">
       <span class="cfaces">${faces}</span><b>${esc(first.author)}</b>${t.kind === "draft" ? `<span class="ctag">${first.wip ? "unfinished" : "draft"}</span>` : ""}
       <span class="cprev">${esc(plain(first.body))}</span>${n > 1 ? `<span class="cn">${n} comments</span>` : ""}${bubble(false)}</div>`;
   }
@@ -93,7 +115,7 @@ function threadHtml(app, t) {
         ${i.wip ? `<button class="cact" data-wip="${esc(i.cid)}" title="Open it again to finish">Continue</button>` : ""}${i.cid ? `<button class="cact" data-del="${esc(i.cid)}" title="Discard this draft">Delete</button>` : ""}
         ${k === 0 ? `<button class="cfold" data-tid="${esc(t.id)}" data-tpath="${esc(t.path)}" title="Collapse${n > 1 ? " this thread" : ""}">${bubble(true)}</button>` : ""}</div>
       <div class="cbody" data-ck="${esc(t.id)}:${k}">${md(i.body)}</div></div></div>`).join("");
-  return `<div class="cthread${t.kind === "draft" ? " draft" : ""}">${items}</div>`;
+  return `<div class="cthread${t.kind === "draft" ? " draft" : ""}" data-thread="${esc(t.id)}">${items}</div>`;
 }
 
 // ---- notes: floating beside their line, over the code's right edge; collapsed to an icon
@@ -101,8 +123,8 @@ function threadHtml(app, t) {
 export function notesFor(app, keys) {
   const idx = commentIndex(app);
   return keys.flatMap((k) => idx.notesByKey.get(k) ?? []).map((n) => {
-    if (!itemOpen(app, n.id, n.path)) return `<button class="fnote slim" data-tid="${esc(n.id)}" data-tpath="${esc(n.path)}" data-at="${esc(keyOf(n))}" title="Your private note: ${esc(plain(n.body))}">${NOTE_ICON}</button>`;
-    return `<div class="fnote${n.wip ? " wip" : ""}" data-at="${esc(keyOf(n))}">
+    if (!itemOpen(app, n.id, n.path)) return `<button class="fnote slim" data-thread="${esc(n.id)}" data-tid="${esc(n.id)}" data-tpath="${esc(n.path)}" data-at="${esc(keyOf(n))}" title="Your private note: ${esc(plain(n.body))}">${NOTE_ICON}</button>`;
+    return `<div class="fnote${n.wip ? " wip" : ""}" data-thread="${esc(n.id)}" data-at="${esc(keyOf(n))}">
       <div class="fnhead">${NOTE_ICON}<span>${n.wip ? "unfinished note" : "private note"}${n.startLine && n.startLine !== n.line ? ` · L${n.startLine}–L${n.line}` : ""}</span><span class="cwhen">${ago(n.createdAt)}</span><span class="cgrow"></span>
         ${n.wip ? `<button class="cact" data-wip="${esc(n.cid)}">Continue</button>` : ""}<button class="cact" ${n.nid ? `data-delnote="${esc(n.nid)}"` : `data-del="${esc(n.cid)}"`} title="Delete">✕</button>
         <button class="cfold" data-tid="${esc(n.id)}" data-tpath="${esc(n.path)}" title="Collapse">–</button></div>
