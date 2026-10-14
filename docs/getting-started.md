@@ -38,6 +38,8 @@ Either way you still need `git` and `gh` on your PATH, and `claude` for the smar
 
 The install script picks the build for your OS and CPU, checks it against the release's `SHA256SUMS`, and tells you if the install folder isn't on your `PATH` or if `git` or `gh` is missing. With no `BOBBY_VERSION`, it takes the latest release, or the newest pre-release while there's no stable one.
 
+Binaries are built for macOS, Linux and Windows. Windows gets the least use, so expect rough edges there. Bobby isn't on npm yet: install it from a release or from GitHub.
+
 Release binaries aren't code-signed. On macOS, if Gatekeeper blocks a downloaded one, run `xattr -d com.apple.quarantine "$(which bobby)"`. Each release has a `SHA256SUMS` file to check downloads against.
 
 The binary is 62–86 MB, depending on the platform (27–41 MB to download), because it carries the Bun runtime and the tree-sitter grammars. The UI's files are embedded in it, so it runs with nothing beside it.

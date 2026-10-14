@@ -6,6 +6,7 @@
 - [Reviewing a PR](reviewing.md): the walk, zoom levels, keys, marks, comments, submitting, focus aids
 - [Views](views.md): Flow, Outline, Lens and Diff, and how to drive each one
 - [Settings](settings.md): every setting and the design choices behind the UI
+- [What leaves your machine](privacy.md): what Bobby sends to Claude, GitHub and others, and how to turn each off
 
 ## Implementation
 

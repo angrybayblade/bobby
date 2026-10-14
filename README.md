@@ -24,7 +24,7 @@ In the UI: `j`/`k` to step, arrow keys to move up and down in the tree, `enter`/
 
 ## Docs
 
-- **User manual**: [getting started](docs/getting-started.md) · [reviewing a PR](docs/reviewing.md) · [views](docs/views.md) · [settings](docs/settings.md)
+- **User manual**: [getting started](docs/getting-started.md) · [reviewing a PR](docs/reviewing.md) · [views](docs/views.md) · [settings](docs/settings.md) · [what leaves your machine](docs/privacy.md)
 - **Implementation**: [architecture](docs/architecture.md) · [extraction pipeline](docs/extraction.md) · [server and state](docs/server-and-state.md) · [browser runtime](docs/frontend.md) · [contributing](docs/contributing.md)
 - **Format**: [review graph v1](SPEC.md), the open format between extraction and views
 
