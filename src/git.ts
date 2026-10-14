@@ -109,14 +109,16 @@ export async function fetchPr({ cwd, remote, owner, repo, meta }: ResolvedPr): P
   };
 }
 
-const fileCache = new Map<string, string[]>();
+// Files read at a commit, the most recently used kept: a long session of inspecting and expanding mustn't hold every
+// file it ever opened.
+const fileCache = new Map<string, string[]>(), KEEP_FILES = 400;
 export async function fileLines(cwd: string, sha: string, path: string): Promise<string[]> {
   const key = `${sha}:${path}`;
   let lines = fileCache.get(key);
-  if (!lines) {
-    lines = (await git(cwd, ["show", key], true)).split("\n");
-    fileCache.set(key, lines);
-  }
+  if (lines) fileCache.delete(key); // to the back: most recently used
+  else lines = (await git(cwd, ["show", key], true)).split("\n");
+  fileCache.set(key, lines);
+  if (fileCache.size > KEEP_FILES) fileCache.delete(fileCache.keys().next().value!);
   return lines;
 }
 
