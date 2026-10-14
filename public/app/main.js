@@ -130,11 +130,14 @@ const page = () => app.pageEl?.isConnected; // the focused node's code is on scr
 /** Does what key k does here: the view's own binding first, then the global one. Returns whether k does anything. */
 /** A key: the action it's bound to (keys.js, yours or the default), run by the view if it has its own way, else here. */
 function press(k, { learn = true } = {}) {
-  const id = actionFor(app.settings, k);
+  // A shifted named key that isn't bound (shift+enter) does what the key alone does.
+  const id = actionFor(app.settings, k) ?? (k.startsWith("Shift+") ? actionFor(app.settings, k.slice(6)) : undefined);
   return id ? runAction(id, { learn }) : false;
 }
+// Moving along the layout is the Diff view's own (Shift + arrows); elsewhere it's what the plain arrow does.
+const ALONG = { treeLeft: "left", treeRight: "right", treeUp: "up", treeDown: "down" };
 function runAction(id, { learn = true } = {}) {
-  const act = current?.keys?.[id] ?? ACTS[id];
+  const act = current?.keys?.[id] ?? current?.keys?.[ALONG[id]] ?? ACTS[id] ?? ACTS[ALONG[id]];
   if (!act) return false;
   if (learn) app.useKey(id); // counted, so its hint fades
   act();

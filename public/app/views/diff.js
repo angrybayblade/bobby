@@ -697,6 +697,7 @@ export default {
     // Leaving the canvas for a page (enter, ⤢, double-click) keeps the camera, and coming back restores it.
     let lastLevel = app.level, beforePage = null;
     function update(reason) {
+      if (reason === "focus" || reason === "mount" || reason === "graph" || reason === "resume") queueMicrotask(visit); // once the view has caught up
       if (reason === "level") {
         if (app.level === 2 && lastLevel < 2) beforePage = { cam: { ...cam }, pan: { ...pan } };
         lastLevel = app.level;
@@ -862,7 +863,7 @@ export default {
     update("mount");
     // Arrows follow the graph: → to a file this one leads into, ← to one that leads into it (the nearest,
     // or failing that the nearest in the next column); ↑ ↓ to the file above or below in the same column.
-    function moveFile(dc, dr) {
+    function moveFile(dc, dr, going) { // going: told the node's path just before the focus moves there
       const act = activeFile();
       const ci = columns.findIndex((col) => col?.includes(act));
       if (ci < 0) return;
@@ -875,11 +876,50 @@ export default {
       } else {
         to = nearest(fileLinks[dc > 0 ? "next" : "prev"].get(act) ?? []) ?? (columns[ci + dc] && nearest(columns[ci + dc]));
       }
-      if (to) { const tv = views.get(to.path); app.setFocus((tv && visible(tv)[0]) ?? to.sections[0].pid); } // what's showing there: its scroll stays
+      if (!to) return false;
+      going?.(to.path);
+      const tv = views.get(to.path);
+      app.setFocus((tv && visible(tv)[0]) ?? to.sections[0].pid); // what's showing there: its scroll stays
+      return true;
+    }
+    // ---- history: every node you've had in focus, by a key or a click, so ← / → trace back and forth through them
+    // like a browser's back and forward, landing on the section you were reading. With nothing that way, they move
+    // along the layout instead, as Shift + arrows always do. Moving anywhere new after going back drops what was ahead.
+    const trail = { back: [], fwd: [], at: null }; // at: the node in focus and the section in it
+    let tracing = null; // the path a back or forth step is going to: arriving there isn't a new visit
+    function visit() {
+      const act = activeFile();
+      if (!act) return;
+      if (trail.at?.path === act.path) { trail.at.pid = app.focus; return; } // reading on in the same node
+      if (trail.at && tracing !== act.path) {
+        trail.back.push(trail.at);
+        if (trail.back.length > 100) trail.back.shift();
+        trail.fwd = [];
+      }
+      tracing = null;
+      trail.at = { path: act.path, pid: app.focus };
+    }
+    function trace(from, to) {
+      while (from.length) {
+        const e = from.pop(), v = views.get(e.path);
+        if (!v) continue; // a node hidden since (tests, untouched code): skip it
+        const pid = M.fileOf.get(M.canon(e.pid) ?? "")?.path === e.path ? e.pid : v.f.sections[0].pid;
+        if (trail.at) to.push(trail.at);
+        tracing = e.path;
+        app.setFocus(pid);
+        return true;
+      }
+      return false;
+    }
+    // Nothing left that way in the history: the layout's neighbour, kept in the same direction. Going back past the
+    // start moves on back, and forth retraces it, rather than bouncing between two nodes.
+    function beyond(dc, to) {
+      return moveFile(dc, 0, (path) => { if (trail.at) to.push(trail.at); tracing = path; });
     }
     const keys = { // by action (keys.js): whichever keys you've bound to them
-      left: () => moveFile(-1, 0), right: () => moveFile(1, 0),
+      left: () => trace(trail.back, trail.fwd) || beyond(-1, trail.fwd), right: () => trace(trail.fwd, trail.back) || beyond(1, trail.back),
       up: () => moveFile(0, -1), down: () => moveFile(0, 1),
+      treeLeft: () => moveFile(-1, 0), treeRight: () => moveFile(1, 0), treeUp: () => moveFile(0, -1), treeDown: () => moveFile(0, 1),
       focus: () => { if (app.level < 2) return fill(); app.setLevel(1); setTimeout(fill, 60); }, // from the page, back to the canvas, filled
       zoomOut: () => (filled && app.level < 2 ? fill() : app.setLevel(app.level - 1)), // focus mode: back to the canvas as it was
       fullScreen: () => { if (app.level === 2) return app.setLevel(1); const act = activeFile(); if (act) openFocus(act.path); }, // full screen and back

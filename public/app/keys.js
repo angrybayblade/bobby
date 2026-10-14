@@ -6,10 +6,14 @@ export const ACTIONS = [
   // moving
   { id: "next", group: "Moving", title: "Next page", keys: ["j", " "] },
   { id: "prev", group: "Moving", title: "Previous page", keys: ["k"] },
-  { id: "left", group: "Moving", title: "Follow the shape: back along an edge (Outline: parent)", keys: ["ArrowLeft"] },
-  { id: "right", group: "Moving", title: "Follow the shape: on along an edge (Outline: first nested page)", keys: ["ArrowRight"] },
-  { id: "up", group: "Moving", title: "Previous page at the same level (Outline: row)", keys: ["ArrowUp"] },
-  { id: "down", group: "Moving", title: "Next page at the same level (Outline: row)", keys: ["ArrowDown"] },
+  { id: "left", group: "Moving", title: "Back: in Diff, the node you were on before; elsewhere, back along an edge (Outline: parent)", keys: ["ArrowLeft"] },
+  { id: "right", group: "Moving", title: "Forth: in Diff, the node you came back from; elsewhere, on along an edge (Outline: first nested page)", keys: ["ArrowRight"] },
+  { id: "up", group: "Moving", title: "Previous page at the same level (Outline: row; Diff: the node above)", keys: ["ArrowUp"] },
+  { id: "down", group: "Moving", title: "Next page at the same level (Outline: row; Diff: the node below)", keys: ["ArrowDown"] },
+  { id: "treeLeft", group: "Moving", title: "Along the layout, back: in Diff, the node this one comes from (elsewhere, as ←)", keys: ["Shift+ArrowLeft"] },
+  { id: "treeRight", group: "Moving", title: "Along the layout, on: in Diff, the node this one leads into (elsewhere, as →)", keys: ["Shift+ArrowRight"] },
+  { id: "treeUp", group: "Moving", title: "Along the layout, up (elsewhere, as ↑)", keys: ["Shift+ArrowUp"] },
+  { id: "treeDown", group: "Moving", title: "Along the layout, down (elsewhere, as ↓)", keys: ["Shift+ArrowDown"] },
   { id: "nextCore", group: "Moving", title: "Next core", keys: ["J"] },
   { id: "prevCore", group: "Moving", title: "Previous core", keys: ["K"] },
   { id: "entry", group: "Moving", title: "Back to the entry point, where a load starts", keys: ["!"] },
@@ -46,8 +50,8 @@ export const keysOf = (settings, id) => settings.keys?.[id] ?? action(id)?.keys 
 export const actionFor = (settings, key) => ACTIONS.find((a) => keysOf(settings, a.id).includes(key))?.id;
 
 const NAMES = { Enter: "enter", Escape: "esc", " ": "space", ArrowLeft: "←", ArrowRight: "→", ArrowUp: "↑", ArrowDown: "↓", "!": "shift 1", Tab: "tab", Backspace: "⌫", Delete: "del" };
-/** How a key is shown: its words, each in its own <kbd> ("shift 1" is two). */
-export const keyText = (k) => NAMES[k] ?? k;
+/** How a key is shown: its words, each in its own <kbd> ("shift 1" is two, "shift ←" too). */
+export const keyText = (k) => (k.startsWith("Shift+") ? `shift ${keyText(k.slice(6))}` : NAMES[k] ?? k);
 export const kbdHtml = (k) => keyText(k).split(" ").map((x) => `<kbd>${esc(x)}</kbd>`).join(" ");
 /** An action's keys for a hint or a sentence: the first (or first n), as <kbd>s; "unbound" if it has none. */
 export function keyHtml(settings, id, n = 1) {
@@ -86,7 +90,11 @@ function tidy(keys) {
 }
 /** Keys that can't be bound: modifiers alone, and what text fields and the browser need. */
 export const bindable = (ev) => !["Shift", "Control", "Alt", "Meta", "CapsLock", "Tab", "Dead", "Unidentified"].includes(ev.key) && !ev.metaKey && !ev.ctrlKey && !ev.altKey;
-/** A keydown as a key: shift+1 is "!" whatever the layout prints, as everywhere else. */
-export const keyOfEvent = (ev) => (ev.shiftKey && ev.code === "Digit1" ? "!" : ev.key);
+/** A keydown as a key: shift+1 is "!" whatever the layout prints; shift with a named key (an arrow, enter) is
+ *  "Shift+<key>". A printed character carries its shift already ("J", "?"). */
+export function keyOfEvent(ev) {
+  if (ev.shiftKey && ev.code === "Digit1") return "!";
+  return ev.shiftKey && ev.key.length > 1 && ev.key !== "Shift" ? `Shift+${ev.key}` : ev.key;
+}
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
