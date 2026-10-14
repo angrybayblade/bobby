@@ -25,6 +25,7 @@ export interface LanguageServer {
   missing(): Promise<{ hint: string; command?: string } | null>;
   installed(): Promise<boolean>;
   offer?: Offer; // set when Bobby can install it, after asking
+  installDir?: string; // its folder in ~/.bobby/servers, when Bobby installs it: other versions' folders are pruned
   install?(log: (m: string) => void): Promise<void>;
   version(): Promise<string>; // part of the cache key: other versions may place names differently
   command(root: string, log: (m: string) => void): Promise<ServerCommand>;

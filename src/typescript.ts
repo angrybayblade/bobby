@@ -15,6 +15,7 @@ export const typescript: LanguageServer = {
   prepareTree: linkWorkspaces,
   async missing() { return null; },
   async installed() { return existsSync(join(serverDir(NAME), CLI)); },
+  installDir: NAME,
   offer: { size: "about 24 MB", from: `npm: typescript-language-server ${V.languageServer} and TypeScript ${V.typescript}` },
   install: (log) => npmInstall(NAME, [`typescript-language-server@${V.languageServer}`, `typescript@${V.typescript}`], CLI, log),
   async version() { return NAME; },

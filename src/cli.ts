@@ -7,7 +7,8 @@ import { parseDiff } from "./diff.ts";
 import { analyze, heuristicTree, type Analysis } from "./analyze.ts";
 import { claudeTree } from "./llm.ts";
 import { buildGraph, GRAPH_SCHEMA, LEGACY_SCHEMAS, VERSION, type ReviewGraph } from "./graph.ts";
-import { hold, holder, loadCachedGraphs, loadCachedTree, loadSettings, loadState, saveCachedGraphs, saveCachedTree } from "./state.ts";
+import { clean, prune } from "./prune.ts";
+import { hold, holder, home, loadCachedGraphs, loadCachedTree, loadSettings, loadState, saveCachedGraphs, saveCachedTree } from "./state.ts";
 import { allow, SERVERS, serverById, startServers, stopServers } from "./servers.ts";
 import type { FileDiff, PrInfo } from "./types.ts";
 import { startServer, type Session } from "./server.ts";
@@ -35,6 +36,7 @@ const { values, positionals } = parseArgs({
     lsp: { type: "boolean", default: false },
     refresh: { type: "boolean", default: false },
     "no-open": { type: "boolean", default: false },
+    repos: { type: "boolean", default: false },
     help: { type: "boolean", short: "h", default: false },
     version: { type: "boolean", short: "v", default: false },
   },
@@ -48,6 +50,8 @@ const USAGE = `bobby: review a PR one focused page at a time
   bobby open <graph.json>            open the UI on an existing graph file
   bobby lsp                          the language servers behind the inspector, by language
   bobby lsp install <language>       install one (typescript, python), or say how (go)
+  bobby clean [--repos]              remove caches and exported trees (and with --repos, the clones
+                                     in ~/.bobby/repos); your reviews' progress stays
 
   --base <ref>   no PR: the branch to compare against (default: this branch's PR base,
                  origin's default branch, then main/master/develop/trunk; asks if none)
@@ -60,7 +64,7 @@ const USAGE = `bobby: review a PR one focused page at a time
   --no-open      don't open the browser
   -v, --version  print the version`;
 
-const [cmd, arg] = ["extract", "open", "lsp"].includes(positionals[0]) ? [positionals[0], positionals[1]] : ["review", positionals[0]];
+const [cmd, arg] = ["extract", "open", "lsp", "clean"].includes(positionals[0]) ? [positionals[0], positionals[1]] : ["review", positionals[0]];
 if (values.version) {
   console.log(pkg.version);
   process.exit(0);
@@ -72,6 +76,15 @@ if (values.help || (cmd === "open" && !arg)) {
 if (!/^\d{1,5}$/.test(values.port!) || Number(values.port) > 65535) fail(`--port takes a port number (0–65535), got "${values.port}"`);
 if (values.repo && !statSync(values.repo, { throwIfNoEntry: false })?.isDirectory()) fail(`--repo takes a folder with a git checkout, got "${values.repo}"`);
 if (cmd === "lsp") process.exit(await lspCommand(arg, positionals[2]));
+if (cmd === "clean") {
+  const freed = clean(SERVERS, !!values.repos);
+  const mb = (b: number) => `${(b / 1e6).toFixed(b < 1e7 ? 1 : 0)} MB`;
+  for (const [what, b] of freed) console.log(`  removed ${what}: ${mb(b)}`);
+  console.log(freed.length ? `✓ freed ${mb(freed.reduce((n, [, b]) => n + b, 0))}${values.repos ? "" : `; the clones in ${home()}/repos stay (--repos removes them too)`}` : "✓ nothing to remove");
+  process.exit(0);
+}
+// Housekeeping, once Bobby is up: caches for commits not opened in a month, other versions of language servers.
+if (cmd !== "extract") setTimeout(() => { try { prune(SERVERS); } catch { /* best effort */ } }, 15_000).unref();
 
 /** bobby lsp: where each language's server stands. bobby lsp install <language>: installs it (or says how), and
  *  clears a "never" given in the UI. */

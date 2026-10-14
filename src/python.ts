@@ -14,6 +14,7 @@ export const python: LanguageServer = {
   treeFiles: ["*.py", "*.pyi", "*pyproject.toml", "*pyrightconfig.json", "*setup.cfg"],
   async missing() { return null; },
   async installed() { return existsSync(join(serverDir(NAME), SCRIPT)); },
+  installDir: NAME,
   offer: { size: "about 35 MB", from: `npm: pyright ${V}` },
   install: (log) => npmInstall(NAME, [`pyright@${V}`], SCRIPT, log),
   async version() { return NAME; },

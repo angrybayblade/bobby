@@ -121,7 +121,7 @@ Everything lives under `~/.bobby/`. If you used Bobby when it was called prfocus
 | Path | Contents |
 |---|---|
 | `repos/<owner>/<repo>/` | Auto-clones, made only when no local clone was found. |
-| `cache/<owner>_<repo>_<n>_<sha12>.graphs.json` | Built graphs (static and Claude) for one head commit. |
+| `cache/<owner>_<repo>_<n>_<sha12>_<base>.graphs.json` | Built graphs (static and Claude) for one head commit and base branch. |
 | `cache/<owner>_<repo>_<n>_<sha12>.tree.<version>.json` | Claude's raw change tree for one head commit and extraction version. |
 | `state/<owner>_<repo>_<n>.json` | Your review progress, draft comments, position and parked thought. |
 | `state/<owner>_<repo>_branch_<branch>.json`, `cache/…_branch_<branch>_<sha12>_<base7>.*` | The same for a local review. `<owner>_<repo>` comes from a GitHub `origin`, else `local_<folder>`. |
@@ -131,6 +131,8 @@ Everything lives under `~/.bobby/`. If you used Bobby when it was called prfocus
 | `settings.json` | UI preferences, shared by every PR. |
 
 Deleting `cache/`, `servers/` or `trees/` is always safe. Deleting a `state/` file forgets your progress on that PR.
+
+Bobby tidies up once a day on its own: cached files for commits not opened in a month, avatars a month old, other versions of the language servers it installed, and what a stopped Bobby left half done. `bobby clean` removes `cache/` and `trees/` at once, and `bobby clean --repos` the clones in `repos/` too; neither touches `state/` or `settings.json`.
 
 The fetch also writes refs under `refs/bobby/<n>/` in the clone. They're harmless; remove them with `git for-each-ref --format='%(refname)' refs/bobby | xargs -n1 git update-ref -d`.
 
