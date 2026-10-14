@@ -1,0 +1,69 @@
+# CI: every push and pull request typechecks, runs the tests, and builds a native binary on each OS that it then runs
+# on a small repo, so a broken embed (the UI, the tree-sitter grammars) fails here rather than in a release.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck, syntax-check and test
+        run: bun run check
+
+  binary:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Build this platform's binary
+        run: bun run build
+
+      - name: Smoke-test it
+        run: |
+          bin="$PWD/dist/bobby"; [ -f "$bin.exe" ] && bin="$bin.exe"
+          test "$("$bin" --version)" = "$(bun -e 'console.log(require("./package.json").version)')"
+          "$bin" --help | head -1
+          # extract a two-commit repo: diffing, the syntax tree and the graph, from the binary alone
+          repo="$RUNNER_TEMP/repo"; mkdir -p "$repo/src" && cd "$repo"
+          git init -q -b main && git config user.name ci && git config user.email ci@ci
+          printf 'export function limit(n: number) {\n  return Math.min(n, 10);\n}\n' > src/limit.ts
+          git add -A && git commit -qm base && git checkout -qb feature
+          printf 'export const MAX = 20;\n\nexport function limit(n: number) {\n  return Math.min(n, MAX);\n}\n' > src/limit.ts
+          git commit -qam "raise the limit"
+          HOME="$RUNNER_TEMP/home" "$bin" extract --no-llm --base main -o "$RUNNER_TEMP/graph.json"
+          grep -q '"schema": "bobby.review-graph/v1"' "$RUNNER_TEMP/graph.json"
+          grep -q '"name": "MAX"' "$RUNNER_TEMP/graph.json"
