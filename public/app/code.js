@@ -36,9 +36,21 @@ function hlBlock(lines, lang) {
 
 // ---- word-level diff: pair removed/added runs line by line, LCS over tokens.
 const tok = (s) => s.match(/\w+|\s+|[^\w\s]/g) ?? [];
+let lcsBudget = 0; // table cells left for the hunk being marked: a big reformatted hunk can't hold up the page
 function changedRanges(a, b) {
-  const A = tok(a), B = tok(b);
-  if (A.length * B.length > 40000) return [[[0, a.length]], [[0, b.length]]];
+  let A = tok(a), B = tok(b);
+  // the same start and end aren't changed: the table only spans what's between (most edits are a word or two)
+  let head = 0, tail = 0;
+  while (head < A.length && head < B.length && A[head] === B[head]) head++;
+  while (tail < A.length - head && tail < B.length - head && A[A.length - 1 - tail] === B[B.length - 1 - tail]) tail++;
+  const lead = (xs) => xs.slice(0, head).join("").length;
+  const offA = lead(A), offB = lead(B);
+  A = A.slice(head, A.length - tail); B = B.slice(head, B.length - tail);
+  const shift = (rs, by) => rs.map(([x, y]) => [x + by, y + by]);
+  if (!A.length || !B.length) return [A.length ? [[offA, offA + A.join("").length]] : [], B.length ? [[offB, offB + B.join("").length]] : []];
+  const cells = A.length * B.length;
+  if (cells > 40000 || cells > lcsBudget) return [[[0, a.length]], [[0, b.length]]];
+  lcsBudget -= cells;
   const dp = Array.from({ length: A.length + 1 }, () => new Uint16Array(B.length + 1));
   for (let i = A.length - 1; i >= 0; i--) for (let j = B.length - 1; j >= 0; j--)
     dp[i][j] = A[i] === B[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
@@ -50,10 +62,11 @@ function changedRanges(a, b) {
     else if (j < B.length && (i === A.length || dp[i][j + 1] >= dp[i + 1][j])) { push(rb, pb, pb + B[j].length); pb += B[j++].length; }
     else { push(ra, pa, pa + A[i].length); pa += A[i++].length; }
   }
-  return [ra, rb];
+  return [shift(ra, offA), shift(rb, offB)];
 }
 function wordRanges(lines) {
   const ranges = new Array(lines.length).fill(null);
+  lcsBudget = 400_000;
   for (let i = 0; i < lines.length;) {
     if (lines[i].t !== "-") { i++; continue; }
     const ds = i; while (i < lines.length && lines[i].t === "-") i++;
