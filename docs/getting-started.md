@@ -19,10 +19,10 @@ Pick one:
 # 1. The install script (macOS, Linux): the latest release binary into ~/.local/bin
 curl -fsSL https://raw.githubusercontent.com/angrybayblade/bobby/main/install.sh | bash
 #    a specific version, or somewhere else:
-curl -fsSL https://raw.githubusercontent.com/angrybayblade/bobby/main/install.sh | BOBBY_VERSION=0.1.0-rc3 BOBBY_INSTALL_DIR=~/bin bash
+curl -fsSL https://raw.githubusercontent.com/angrybayblade/bobby/main/install.sh | BOBBY_VERSION=0.1.0-rc4 BOBBY_INSTALL_DIR=~/bin bash
 
 # 2. A release binary by hand (Windows: the .zip): https://github.com/angrybayblade/bobby/releases
-tar -xzf bobby-0.1.0-rc3-darwin-arm64.tar.gz && mv bobby ~/.local/bin/
+tar -xzf bobby-0.1.0-rc4-darwin-arm64.tar.gz && mv bobby ~/.local/bin/
 #    or build it yourself
 git clone https://github.com/angrybayblade/bobby && cd bobby
 bun install && bun run build           # → dist/bobby for this machine
