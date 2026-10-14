@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
@@ -17,8 +18,13 @@ export function home() {
   return ROOT;
 }
 type PrKey = Pick<PrInfo, "owner" | "repo" | "number" | "branch">;
-// A local review is keyed by its branch, so each branch keeps its own progress.
-const slug = (pr: PrKey) => (pr.branch ? `${pr.owner}_${pr.repo}_branch_${pr.branch.replace(/[^\w.-]+/g, "-")}` : `${pr.owner}_${pr.repo}_${pr.number}`);
+// A local review is keyed by its branch, so each branch keeps its own progress. A branch name that isn't safe as a
+// file name as is gets a hash of itself too: a/b-c and a-b/c both clean to a-b-c.
+const clean = (b: string) => b.replace(/[^\w.-]+/g, "-");
+const slug = (pr: PrKey) => pr.branch
+  ? `${pr.owner}_${pr.repo}_branch_${clean(pr.branch)}${clean(pr.branch) === pr.branch ? "" : `-${createHash("sha1").update(pr.branch).digest("hex").slice(0, 6)}`}`
+  : `${pr.owner}_${pr.repo}_${pr.number}`;
+const legacySlug = (pr: PrKey) => (pr.branch ? `${pr.owner}_${pr.repo}_branch_${clean(pr.branch)}` : slug(pr)); // before the hash
 
 /** A JSON file, or null if there's none. One that won't parse is set aside as .corrupt-<time> (and said so), never
  *  silently taken for empty: the next save would otherwise overwrite what was in it. */
@@ -43,7 +49,8 @@ function writeJson(path: string, value: unknown) {
 /** Marks are keyed by hunk content hash, so they survive force-pushes for hunks that didn't change. */
 export const STATE_VERSION = 1; // bump with a migration in loadState when ReviewState changes shape
 export function loadState(pr: PrKey & { headSha: string }): ReviewState {
-  const s = readJson<ReviewState>(join(ROOT, "state", `${slug(pr)}.json`));
+  const path = join(ROOT, "state", `${slug(pr)}.json`), legacy = join(ROOT, "state", `${legacySlug(pr)}.json`);
+  const s = readJson<ReviewState>(existsSync(path) || !existsSync(legacy) ? path : legacy); // saved under the new name from now on
   return s ? { ...s, version: STATE_VERSION, headSha: pr.headSha } : { version: STATE_VERSION, headSha: pr.headSha, marks: {}, comments: [] };
 }
 export const saveState = (pr: PrKey, s: ReviewState) => writeJson(join(ROOT, "state", `${slug(pr)}.json`), { ...s, version: STATE_VERSION });
