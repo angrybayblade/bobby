@@ -149,7 +149,7 @@ Both trees go through `finalize`:
 - **Walk**: cores in order, bands in order, repeats left out.
 - **Discussion**: existing inline review comments (`reviewComments`, via paginated `gh api .../pulls/<n>/comments`), keeping only those still anchored to a line.
 
-`VERSION` in `graph.ts` is stamped into `generator.version`. **Bump it whenever extraction output changes**: cached graphs with a different version are rebuilt on the next launch.
+`VERSION` in `graph.ts` is the extraction's own version, stamped into `generator.extraction` (`generator.version` is Bobby's, from `package.json`). **Bump it whenever extraction output changes**: cached graphs with a different one are rebuilt on the next launch.
 
 ## 6. Language servers (`servers.ts`, `langserver.ts`, `lsp.ts`, `inspect.ts`)
 

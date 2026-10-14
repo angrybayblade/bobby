@@ -54,7 +54,7 @@ describe("an extracted graph", () => {
 
   test("is a local review of the branch", () => {
     expect(graph.pr).toMatchObject({ provider: "local", branch: "feature", baseRef: "main", number: 0, title: "raise the limit" });
-    expect(graph.generator.tree).toBe("static");
+    expect(graph.generator).toEqual({ name: "bobby", version: pkg.version, extraction: VERSION, tree: "static" });
   });
 
   test("has every changed file and its hunks", () => {

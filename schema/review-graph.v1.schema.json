@@ -13,7 +13,8 @@
       "required": ["name", "version", "tree"],
       "properties": {
         "name": { "type": "string" },
-        "version": { "type": "string" },
+        "version": { "type": "string", "description": "The version of the program that wrote it." },
+        "extraction": { "type": "string", "description": "Optional. The extraction's own version: output from the same one is the same for the same commit." },
         "tree": { "enum": ["static", "claude"], "description": "How cores and placements were chosen." }
       }
     },

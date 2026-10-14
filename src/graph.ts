@@ -7,16 +7,18 @@ import { fileLines } from "./git.ts";
 import type { Analysis } from "./analyze.ts";
 import type { Band, ChangeTree, Definition, DiffLine, FileDiff, PrInfo, TreeNode } from "./types.ts";
 import { BANDS } from "./types.ts";
+import pkg from "../package.json" with { type: "json" };
 
 export const GRAPH_SCHEMA = "bobby.review-graph/v1" as const;
 export const LEGACY_SCHEMAS = ["prfocus.review-graph/v1"]; // the same contract under its old name; still opens
-export const VERSION = "0.6.1"; // bump when extraction output changes: cached graphs from other versions are rebuilt
+
+export const VERSION = "0.6.1"; // the extraction's: bump when its output changes, so cached graphs from other versions are rebuilt
 const SNIPPET_RADIUS = 10;
 
 export interface ReviewGraph {
   schema: typeof GRAPH_SCHEMA;
   generatedAt: string;
-  generator: { name: string; version: string; tree: "static" | "claude" };
+  generator: { name: string; version: string; extraction?: string; tree: "static" | "claude" }; // version: bobby's; extraction: VERSION
   pr: {
     provider: "github" | "local";
     branch?: string; baseRef?: string;
@@ -153,7 +155,7 @@ export async function buildGraph(cwd: string | null, pr: PrInfo, files: FileDiff
   return {
     schema: GRAPH_SCHEMA,
     generatedAt: new Date().toISOString(),
-    generator: { name: "bobby", version: VERSION, tree: tree.source === "claude" ? "claude" : "static" },
+    generator: { name: "bobby", version: pkg.version, extraction: VERSION, tree: tree.source === "claude" ? "claude" : "static" },
     pr: {
       provider: pr.provider ?? "github", ...(pr.branch ? { branch: pr.branch, baseRef: pr.baseRef } : {}), owner: pr.owner, repo: pr.repo, number: pr.number, url: pr.url,
       title: pr.title, body: pr.body, author: pr.author, baseSha: pr.baseSha, headSha: pr.headSha,

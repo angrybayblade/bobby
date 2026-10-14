@@ -125,7 +125,7 @@ if (cmd === "open") {
 
   // Same head commit as last time → reuse the built graphs. Comments still change, so they're always re-read.
   const hit = values.refresh ? null : loadCachedGraphs(key);
-  const cached = hit?.static.generator.version === VERSION ? hit : null;
+  const cached = hit?.static.generator.extraction === VERSION ? hit : null;
   if (arg) discussion = await reviewComments(key);
   if (discussion.length) log(`  ${discussion.length} existing review comment(s)`);
 

@@ -107,7 +107,7 @@ async function run(s: Session, srv: LanguageServer) {
   Object.assign(info, { state: "pending", error: undefined, hint: undefined, offer: undefined });
   const cacheable = pr.provider !== "local"; // a local review reads your working copy, which changes
   try {
-    const key = `${await srv.version()}.${g.generator.version}`; // what it placed depends on the names extraction found
+    const key = `${await srv.version()}.${g.generator.extraction ?? g.generator.version}`; // what it placed depends on the names extraction found
     const cached = cacheable ? loadCachedDefs(pr, key) : null;
     if (cached) merge(s, cached);
     const root = await treeRoot(s);
