@@ -150,6 +150,8 @@ const MAX_FILES = 400; // a common name's candidates, parsed: past this, the res
 /** Without a language server: the uses of the name at a position (a use of it, or its declaration). Candidates are the
  *  files git grep finds the name in; a use counts when it resolves, through imports, to the same declaration. Members
  *  reached through a value (x.name) don't resolve this way, so they're missed. */
+// Answers per declaration: asking for the same name's uses again (another use of it, the same one later) is instant.
+const usesOf = new WeakMap<Repo, Map<string, Promise<Uses["refs"]>>>();
 export async function referencesSyntax(repo: Repo, cwd: string, sha: string, path: string, line: number, col: number): Promise<Uses | null> {
   const syn = await repo.syntax(path);
   if (!syn) return null;
@@ -157,10 +159,17 @@ export async function referencesSyntax(repo: Repo, cwd: string, sha: string, pat
   const name = r?.name ?? wordAt((await repo.read(path))?.split("\n")[line - 1] ?? "", col);
   const decl = r ? await resolveDef(repo, path, syn, r) : syn.decls.find((d) => d.line === line && d.name === name) ? { path, line } : null;
   if (!name || !decl) return { name, refs: [], via: "syntax" };
+  const memo = usesOf.get(repo) ?? usesOf.set(repo, new Map()).get(repo)!, key = `${decl.path}:${decl.line}:${name}`;
+  let refs = memo.get(key);
+  if (!refs) memo.set(key, (refs = usesIn(repo, cwd, sha, name, decl).catch((e) => { memo.delete(key); throw e; })));
+  return { name, refs: await refs, via: "syntax" };
+}
+async function usesIn(repo: Repo, cwd: string, sha: string, name: string, decl: { path: string; line: number }) {
   const files = [...new Set(parseGrep(await grepWords(cwd, sha, [name]), sha).map((h) => h.path))].filter((f) => langOf(f)).slice(0, MAX_FILES);
   await repo.readMany(files);
   const refs: Uses["refs"] = [];
-  for (const f of files) {
+  for (const [i, f] of files.entries()) {
+    if (i % 16 === 15) await Bun.sleep(0); // parsing is synchronous: let other requests (the status poll) in between files
     const s = await repo.syntax(f);
     for (const x of s?.refs ?? []) {
       if (x.name !== name) continue;
@@ -168,7 +177,7 @@ export async function referencesSyntax(repo: Repo, cwd: string, sha: string, pat
       if (d && d.path === decl.path && d.line === decl.line) refs.push({ path: f, line: x.line, col: x.col });
     }
   }
-  return { name, refs, via: "syntax" };
+  return refs;
 }
 
 /** Without a language server: the name at a position, through the syntax tree and imports. */
