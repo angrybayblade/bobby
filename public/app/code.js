@@ -248,10 +248,11 @@ async function closeComposer(app, ta) {
   if (c && !(await keepDraft(app, c, ta.value))) app.page.composing = { ...c, text: ta.value }; // still open, text and all
   if (el) bound.get(el)?.();
 }
-/** What's written in a composer, kept as an unfinished draft on its lines. False if it couldn't be saved. A note on
- *  the whole file isn't kept this way. */
+/** What's written in a composer, kept as an unfinished draft on its lines (a note on the whole file, which has no
+ *  lines, is saved as the note). False if it couldn't be saved. */
 export async function keepDraft(app, c, text = c.text ?? "") {
-  if (!text.trim() || c.file) return true;
+  if (!text.trim()) return true;
+  if (c.file) return app.addNote({ body: text.trim(), path: c.path }).then(() => true, (e) => (app.fail?.(e), false));
   const range = c.start ? { startLine: Number(c.start.line), startSide: c.start.side } : {};
   try {
     // the new draft first: the one it replaces goes only once that's saved
