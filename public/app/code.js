@@ -246,11 +246,14 @@ async function closeComposer(app, ta) {
   const el = owner(ta), c = app.page.composing, text = ta.value.trim();
   app.page.composing = null;
   if (text && c && !c.file) {
-    if (c.editing) await dropDraft(app, c.editing);
     const range = c.start ? { startLine: Number(c.start.line), startSide: c.start.side } : {};
-    const d = await api("/api/comment", { path: c.path, line: Number(c.line), side: c.side, body: text, inDiff: c.indiff === "1" && (!c.start || c.start.indiff === "1"), wip: true, ...(c.kind === "note" ? { kind: "note" } : {}), ...range });
-    app.state.comments.push(d);
-    app.emit("comments");
+    try {
+      // the new draft first: the one it replaces goes only once that's saved
+      const d = await api("/api/comment", { path: c.path, line: Number(c.line), side: c.side, body: text, inDiff: c.indiff === "1" && (!c.start || c.start.indiff === "1"), wip: true, ...(c.kind === "note" ? { kind: "note" } : {}), ...range });
+      app.state.comments.push(d);
+      if (c.editing) await dropDraft(app, c.editing).catch((e) => app.fail?.(e)); // saved either way; the old one may linger
+      app.emit("comments");
+    } catch (e) { app.page.composing = { ...c, text: ta.value }; app.fail?.(e); } // still open, text and all
   }
   if (el) bound.get(el)?.();
 }
@@ -853,7 +856,7 @@ function bind(app, el, rerender) {
       app.page.composing.kind = app.page.kind = ds.ckind;
       return again();
     }
-    if (ds.delnote) { app.deleteNote(ds.delnote); return again(); }
+    if (ds.delnote) return app.deleteNote(ds.delnote).then(again);
     if (ds.expto) { const [id, dir, n] = ds.expto.split(":"), e = (app.page.exp[id] ??= { above: 0, below: 0 }); e[dir] = Math.max(e[dir], Number(n)); return again(); }
     if (ds.viewed) return app.mark(ds.viewed, app.isReviewed(ds.viewed) ? null : "reviewed"); // views restyle .sec.done
     if (ds.go) app.setFocus(ds.go);
@@ -879,10 +882,11 @@ function bind(app, el, rerender) {
       }
       again();
     } else if (ds.del) {
-      api(`/api/comment/${ds.del}`, null, "DELETE");
-      app.state.comments = app.state.comments.filter((c) => c.id !== ds.del);
-      app.emit("comments");
-      again();
+      api(`/api/comment/${ds.del}`, null, "DELETE").then(() => { // gone once the server says so
+        app.state.comments = app.state.comments.filter((c) => c.id !== ds.del);
+        app.emit("comments");
+        again();
+      }, (e) => app.fail?.(e));
     } else if (ds.low) {
       const open = (app.page.lowOpen ??= new Set());
       open.has(ds.low) ? open.delete(ds.low) : open.add(ds.low);
@@ -924,17 +928,23 @@ function bind(app, el, rerender) {
   });
 }
 
+/** Saves the composer's text. Only once the server has it does the box close and a continued draft go; if it can't
+ *  be saved, the box stays open with the text in it. */
 async function saveComment(app, text) {
   const t = app.page.composing;
   app.page.composing = null;
   if (!t || !text.trim()) return;
-  if (t.editing) await dropDraft(app, t.editing); // a continued draft becomes the real thing
   const range = t.start ? { startLine: Number(t.start.line), startSide: t.start.side } : {};
-  if (t.kind === "note") return void (await app.addNote({ body: text.trim(), path: t.path, ...(t.line ? { line: Number(t.line), side: t.side, ...range } : {}) }));
-  // GitHub only takes inline comments inside the diff: a range counts when both ends are.
-  const c = await api("/api/comment", { path: t.path, line: Number(t.line), side: t.side, body: text.trim(), inDiff: t.indiff === "1" && (!t.start || t.start.indiff === "1"), ...range });
-  app.state.comments.push(c);
-  app.emit("comments");
+  try {
+    if (t.kind === "note") await app.addNote({ body: text.trim(), path: t.path, ...(t.line ? { line: Number(t.line), side: t.side, ...range } : {}) });
+    else {
+      // GitHub only takes inline comments inside the diff: a range counts when both ends are.
+      const c = await api("/api/comment", { path: t.path, line: Number(t.line), side: t.side, body: text.trim(), inDiff: t.indiff === "1" && (!t.start || t.start.indiff === "1"), ...range });
+      app.state.comments.push(c);
+    }
+    if (t.editing) await dropDraft(app, t.editing).catch((e) => app.fail?.(e)); // a continued draft became the real thing
+    app.emit("comments");
+  } catch (e) { app.page.composing = { ...t, text }; app.fail?.(e); }
 }
 
 /** `c` key (kind "comment") or `m` key (kind "note"): compose on the selected line, else the most relevant line on the page. */

@@ -529,7 +529,7 @@ function onClick(ev) {
   else if (ds.level) app.setLevel(Number(ds.level));
   else if (ds.set) { const v = /^\d+$/.test(ds.val) ? Number(ds.val) : ds.val; app.saveSettings({ [ds.set]: v }); settings(); }
   else if (ds.submit) doSubmit(ds.submit);
-  else if (ds.gdel) { app.deleteNote(ds.gdel); notes(); }
+  else if (ds.gdel) app.deleteNote(ds.gdel).then(notes);
   else if (ds.gonote) {
     const n = app.state.notes.find((x) => x.id === ds.gonote), pid = n && app.pidAt(n.path, n.line);
     close();

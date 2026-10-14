@@ -112,7 +112,8 @@ async function poll() {
 }
 app.watchServers = poll;
 // A call that failed with no one to catch it (a save, a delete): say so rather than nothing.
-window.addEventListener("unhandledrejection", (ev) => chrome.toast(`Not saved: ${esc(ev.reason?.message ?? ev.reason)}`, 8000)); // after you say yes, check again or no in the UI
+app.fail = (e) => chrome.toast(`Not saved: ${esc(e?.message ?? e)}`, 8000);
+window.addEventListener("unhandledrejection", (ev) => app.fail(ev.reason)); // after you say yes, check again or no in the UI
 app.openKeys = () => chrome.keysEditor(); // for the tour's news, which can't import chrome.js
 if (app.llm === "pending" || busy(app.servers)) poll();
 // The graph and the session are read at once: a server may have finished between them, leaving syntax-only definitions.

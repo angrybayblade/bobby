@@ -145,8 +145,9 @@ export function createApp({ graph, session }) {
     isFlagged(pid) { return app.markKeys(pid).some((x) => app.state.marks[x] === "flagged"); },
     mark(pid, mark) {
       const keys = app.markKeys(pid);
+      const was = keys.map((k) => app.state.marks[k]);
       for (const k of keys) mark ? (app.state.marks[k] = mark) : delete app.state.marks[k];
-      api("/api/mark", { keys, mark });
+      api("/api/mark", { keys, mark }).catch((e) => app.unmark(keys, was, e)); // shown at once; put back if not saved
       app.emit("marks");
     },
     // ---- scroll positions: each node's code remembers where you'd scrolled to, by zoom level (a card and a page lay
@@ -205,9 +206,16 @@ export function createApp({ graph, session }) {
     /** Marks a whole file viewed, or clears it when it already is: one save, one re-render. */
     markFile(path, on = !app.isFileRead(path)) {
       const keys = [...new Set(app.filePages(path).flatMap((p) => app.markKeys(p)))];
+      const was = keys.map((k) => app.state.marks[k]);
       for (const k of keys) on ? (app.state.marks[k] = "reviewed") : delete app.state.marks[k];
-      api("/api/mark", { keys, mark: on ? "reviewed" : null });
+      api("/api/mark", { keys, mark: on ? "reviewed" : null }).catch((e) => app.unmark(keys, was, e));
       app.emit("marks");
+    },
+    /** A mark the server didn't save: back to what it was, and say so. */
+    unmark(keys, was, e) {
+      keys.forEach((k, i) => (was[i] ? (app.state.marks[k] = was[i]) : delete app.state.marks[k]));
+      app.emit("marks");
+      app.fail?.(e);
     },
     progress() {
       const pages = app.index.walk.filter((p) => p !== DONE);
@@ -223,8 +231,8 @@ export function createApp({ graph, session }) {
       app.emit("comments"); // shown where comments are, so views re-render the same way
       return note;
     },
-    deleteNote(id) {
-      api(`/api/notes/${id}`, null, "DELETE");
+    async deleteNote(id) {
+      await api(`/api/notes/${id}`, null, "DELETE"); // gone once the server says so
       app.state.notes = app.state.notes.filter((n) => n.id !== id);
       app.emit("comments");
     },
