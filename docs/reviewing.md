@@ -106,7 +106,7 @@ For TypeScript, JavaScript, Python and Go, a language server answers: it places 
 
 ## Comments
 
-1. Click a line to select it, then click it again (or press `c`) to open the composer. Pressing `c` with nothing selected picks the most relevant line on the page. For several lines, like GitHub's diff, click the first line, then shift-click the last (or drag down the line numbers): the comment or note covers the whole range, shows as `L12–L18`, and posts to GitHub as a multi-line comment. Selecting shows a small popover on the last selected line: **Comment** (a GitHub draft) or **Private note**.
+1. Click a line to select it, then click it again (or press `c`) to open the composer. Pressing `c` with nothing selected picks the most relevant line on the page. For several lines, like GitHub's diff, click the first line, then shift-click the last (or drag down the line numbers): the comment or note covers the whole range, shows as `L12–L18`, and posts to GitHub as a multi-line comment. Selecting shows a small popover on the last selected line: **Comment** (a GitHub draft) or **Private note**. From the keyboard, `]` and `[` select the next or previous line, and `}` and `{` grow the selection, as shift-click does; then `c` or `m`.
 2. The comment box opens where the comment will sit: under the line, the width of the file (in split, on that line's side). Switch it between **Comment** and **Private note** at the top. **Save draft** (or `cmd/ctrl+enter`) saves it; **Cancel** discards it; `esc` closes it and keeps what you wrote as an unfinished draft to **Continue** later.
 3. A draft shows under its line, like a comment, tagged **draft**, and counts in the **"N drafts · S"** pill in the header. Delete it there.
 

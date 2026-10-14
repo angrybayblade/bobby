@@ -659,11 +659,30 @@ function selectLine(app, key) {
   if (!el) return;
   app.page.anchor = { ...row.dataset };
   selectRange(app, el, app.page.anchor, { ...row.dataset });
+  scrollToRow(row, "smooth");
+}
+/** `]` / `[`: select the next or previous line of the code in el, from the selection, else from the first line in view;
+ *  extend (`}` / `{`) grows the selection from where it started instead, as shift-click does. */
+export function moveLine(app, el, d, extend = false) {
+  if (!el.querySelector(".ln[data-key]") && unfoldAll(app)) bound.get(el)?.(); // collapsed: open it first
+  const seen = new Set(), rows = [...el.querySelectorAll(".ln[data-key]")].filter((r) => live(r) && !seen.has(r.dataset.key) && seen.add(r.dataset.key));
+  if (!rows.length) return false;
+  let i = rows.findIndex((r) => r.dataset.key === app.page.sel?.key);
+  if (i < 0) { const top = el.getBoundingClientRect().top; i = Math.max(0, rows.findIndex((r) => r.getBoundingClientRect().bottom > top)) - d; }
+  const row = rows[Math.max(0, Math.min(rows.length - 1, i + d))];
+  if (!extend || !app.page.anchor) app.page.anchor = { ...row.dataset };
+  selectRange(app, el, app.page.anchor, { ...row.dataset });
+  scrollToRow(row, "auto");
+  return true;
+}
+function scrollToRow(row, behavior) {
   let sc = row.parentElement;
   while (sc && !(sc.scrollHeight > sc.clientHeight && /auto|scroll/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
   if (!sc) return;
   const k = sc.clientHeight / (sc.getBoundingClientRect().height || 1); // on-screen px to the scroller's own (zoom)
-  sc.scrollTo({ top: sc.scrollTop + (row.getBoundingClientRect().top - sc.getBoundingClientRect().top) * k - sc.clientHeight / 3, behavior: "smooth" });
+  const at = (row.getBoundingClientRect().top - sc.getBoundingClientRect().top) * k;
+  if (behavior === "auto" && at > 0 && at < sc.clientHeight - row.offsetHeight * 2) return; // stepping: only once it's near the edge
+  sc.scrollTo({ top: sc.scrollTop + at - sc.clientHeight / 3, behavior });
 }
 const VIA = { lsp: ["types", "Found by the language server"], syntax: ["imports", "Found through imports and the syntax tree, without types"] };
 /** The inspector's window: a trail of what you inspected, then where the last one is declared, its type and its code. */

@@ -1,5 +1,5 @@
 import { DONE, api, createApp, esc } from "./core.js";
-import { escapeCode, inspectorKey, inspectorOpen, expandAll, keepDraft, renderFile, renderNode, renderPage, startComment, startFileNote } from "./code.js";
+import { escapeCode, inspectorKey, inspectorOpen, expandAll, keepDraft, moveLine, renderFile, renderNode, renderPage, startComment, startFileNote } from "./code.js";
 import * as chrome from "./chrome.js";
 import * as palette from "./palette.js";
 import * as tour from "./tour.js";
@@ -173,6 +173,8 @@ function runAction(id, { learn = true } = {}) {
   act();
   return true;
 }
+/** Line selection from the keyboard: on the page's code; from further out, zoom in to it first. */
+const lines = (d, extend) => { if (page()) return moveLine(app, app.pageEl, d, extend); app.setLevel(2); setTimeout(() => page() && moveLine(app, app.pageEl, d, extend)); };
 const ACTS = {
   next: () => app.step(1), prev: () => app.step(-1),
   left: () => app.step(-1), right: () => app.step(1), up: () => app.step(-1), down: () => app.step(1), // views follow their shape instead
@@ -185,6 +187,7 @@ const ACTS = {
   comment: () => { if (page()) return startComment(app, app.pageEl); app.setLevel(2); setTimeout(() => page() && startComment(app, app.pageEl)); },
   note: () => { if (page()) return startComment(app, app.pageEl, "note"); app.setLevel(2); setTimeout(() => page() && startComment(app, app.pageEl, "note")); },
   expand: () => page() && expandAll(app, app.pageEl),
+  lineDown: () => lines(1), lineUp: () => lines(-1), lineDownMore: () => lines(1, true), lineUpMore: () => lines(-1, true),
   zoomIn: () => app.setLevel(app.level + 1), zoomOut: () => app.setLevel(app.level - 1),
   nextView: () => app.switchView(views[(views.findIndex((v) => v.id === currentId) + 1) % views.length].id),
   submit: () => chrome.submit(), help: () => chrome.help(), settings: () => chrome.settings(), park: () => chrome.park(), notes: () => chrome.notes(),
