@@ -83,7 +83,7 @@ export async function resolveLocal(dir: string, baseArg?: string): Promise<Local
 /** The working tree's tracked files as a tree, without touching your index, stash or files: a copy of the index,
  *  brought up to the working tree with `add -u`, then written. Unlike `git stash create`, it also works with files
  *  added with `git add -N` and with a merge in progress, where stash refuses. Untracked files stay out. */
-async function snapshot(cwd: string): Promise<string> {
+export async function snapshot(cwd: string): Promise<string> {
   const real = (await git(cwd, ["rev-parse", "--git-path", "index"])).trim(), from = isAbsolute(real) ? real : join(cwd, real);
   const tmp = join(tmpdir(), `bobby-index-${process.pid}-${Date.now()}`), env = { GIT_INDEX_FILE: tmp };
   try {

@@ -8,6 +8,7 @@ import { analyze, heuristicTree, type Analysis } from "./analyze.ts";
 import { claudeTree } from "./llm.ts";
 import { buildGraph, GRAPH_SCHEMA, LEGACY_SCHEMAS, VERSION, type ReviewGraph } from "./graph.ts";
 import { clean, prune } from "./prune.ts";
+import { watchLocal, watchPr } from "./watch.ts";
 import { hold, holder, home, loadCachedGraphs, loadCachedTree, loadSettings, loadState, saveCachedGraphs, saveCachedTree } from "./state.ts";
 import { allow, SERVERS, serverById, startServers, stopServers } from "./servers.ts";
 import type { FileDiff, PrInfo } from "./types.ts";
@@ -225,6 +226,46 @@ if (cmd === "open") {
         .then((g) => { session.claudeGraph = g; session.llm = "done"; log(`  ✓ Claude tree ready: ${g.cores.length} cores`); })
         .catch((e) => { session.llm = "failed"; session.llmError = String(e.message ?? e); console.error(`  ✗ Claude tree failed, keeping static tree: ${session.llmError}`); });
     }
+
+    // Moving to new work when you ask (watch.ts notices it): the same pipeline as a fresh start, on the new head. Marks
+    // carry over by content, so what the push didn't touch stays reviewed; drafts stay as they are.
+    session.baseRef = key.baseRef;
+    session.rebuild = async () => {
+      let next: PrInfo, disc = session.staticGraph.discussion ?? [];
+      if (arg) {
+        const resolved = await resolvePr(arg, values.repo);
+        next = await fetchPr(resolved);
+        disc = await reviewComments(next, true).catch(() => disc);
+        session.baseRef = resolved.meta.baseRefName;
+      } else {
+        next = (await resolveLocal(cwd, session.staticGraph.pr.baseRef)).pr;
+        session.builtHead = (await git(cwd, ["rev-parse", "HEAD"])).trim();
+      }
+      log(`▸ refreshing to ${next.headSha.slice(0, 7)}…`);
+      const files = parseDiff(await git(cwd, ["diff", "--no-color", "--no-ext-diff", "-M", "-U3", next.baseSha, next.headSha]));
+      const analysis = await analyze(cwd, next, files);
+      const g = await buildGraph(cwd, next, files, analysis, heuristicTree(next, analysis, files), disc);
+      const nextKey = arg ? { ...key, headSha: next.headSha, baseRef: session.baseRef } : { ...next };
+      saveCachedGraphs(nextKey, { static: g });
+      await stopServers(session);
+      Object.assign(session, { staticGraph: g, claudeGraph: undefined, definitions: undefined, repo: undefined, root: undefined, llmError: undefined });
+      session.state.headSha = next.headSha;
+      void startServers(session, { ask: true, off: values["no-lsp"], log });
+      log(`  ✓ ${files.length} files · ${files.reduce((n, f) => n + f.hunks.length, 0)} hunks`);
+      session.llm = values["no-llm"] ? "off" : "pending";
+      if (session.llm === "pending") {
+        void claudeTree(next, analysis, files)
+          .then(async (tree) => {
+            saveCachedTree(next, VERSION, tree);
+            const cg = await buildGraph(cwd, next, files, analysis, tree, disc);
+            if (session.staticGraph !== g) return; // refreshed again meanwhile
+            session.claudeGraph = cg; session.llm = "done";
+            saveCachedGraphs(nextKey, { static: g, claude: cg });
+          })
+          .catch((e) => { if (session.staticGraph === g) { session.llm = "failed"; session.llmError = String(e.message ?? e); } });
+      }
+    };
+    if (arg) watchPr(session); else watchLocal(session);
     await serve(session, pr);
   }
 }

@@ -7,6 +7,7 @@ import type { Comment, Definition, PrivateNote, ReviewState } from "./types.ts";
 import { type Inspector, insideRepo, inspectSyntax, referencesSyntax, type Uses } from "./inspect.ts";
 import { declineServer, inspectorFor, installServer, recheckServer, type ServerInfo, serverInfoFor } from "./servers.ts";
 import { Repo } from "./resolve.ts";
+import type { Update } from "./watch.ts";
 
 export interface Session {
   cwd: string | null; // local clone; null when viewing a graph file without one
@@ -24,6 +25,13 @@ export interface Session {
   definitions?: Record<string, Definition[]>;
   repo?: Promise<Repo>; // the head commit's syntax, for the inspector without a language server
   refresh?: boolean; // --refresh: language servers answer afresh rather than from their cache
+  // Keeping it current (watch.ts): when the PR's comments last changed; new work to move to, if any; moving to it.
+  discussionAt?: number;
+  update?: Update;
+  rebuild?: () => Promise<void>;
+  rebuilding?: boolean;
+  baseRef?: string; // a PR's base branch, to notice it being retargeted
+  builtHead?: string; // a local review: HEAD when it was built
 }
 
 const PUBLIC = join(import.meta.dir, "..", "public");
@@ -138,7 +146,17 @@ export function startServer(s: Session, port: number) {
         return json({ state: s.state, settings: loadSettings(), llm: s.llm, llmError: s.llmError, servers: Object.values(s.servers ?? {}), me: await whoAmI(join(home(), "cache", "me.json")), caps: { files: !!s.cwd, inspect: !!s.cwd } });
       // A GitHub avatar, fetched once and kept a week in ~/.bobby/cache/avatars. Only GitHub's own avatar hosts.
       if (p === "/api/avatar") return avatar(url.searchParams.get("u") ?? "");
-      if (p === "/api/status") return json({ llm: s.llm, llmError: s.llmError, claudeReady: !!s.claudeGraph, servers: Object.values(s.servers ?? {}) });
+      if (p === "/api/status") return json({ llm: s.llm, llmError: s.llmError, claudeReady: !!s.claudeGraph, servers: Object.values(s.servers ?? {}), discussionAt: s.discussionAt ?? 0, update: s.rebuilding ? { ...s.update, rebuilding: true } : s.update ?? null });
+      if (p === "/api/discussion") return json(s.staticGraph.discussion ?? []);
+      // Move the review to the new work watch.ts noticed; the page then reads the new graph
+      if (req.method === "POST" && p === "/api/refresh") {
+        if (!s.rebuild || !s.update?.refresh) return json({ ok: false, error: "nothing new to refresh to" }, 400);
+        if (s.rebuilding) return json({ ok: false, error: "already refreshing" }, 409);
+        s.rebuilding = true;
+        try { await s.rebuild(); s.update = undefined; return json({ ok: true, headSha: s.staticGraph.pr.headSha }); }
+        catch (e) { return json({ ok: false, error: String((e as Error).message ?? e) }, 500); }
+        finally { s.rebuilding = false; }
+      }
       // A language server: yes, install it; look again for what you installed yourself; not now, or never.
       if (req.method === "POST" && p.startsWith("/api/servers/")) {
         const { id, never } = (await req.json()) as { id: string; never?: boolean };
