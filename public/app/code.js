@@ -330,6 +330,13 @@ export const layoutBtn = (path, cls = "lay") => {
   return `<button class="${cls}" data-flayout="${esc(path)}" title="${split ? "Show this file inline" : "Show this file split: old beside new"} (d for every file)">${split ? "Inline" : "Split"}</button>`;
 };
 
+/** Whether a hunk shown down to new-side line hi is at the end of its file: a deleted file has no new side, a hunk
+ *  with no lines (a binary file) none at all, and a file whose text is loaded ends where it ends. */
+function endOfFile(app, h, hi) {
+  if (fileStatus(app, h.file) === "deleted" || !h.lines.length) return true;
+  const known = files.get(h.file);
+  return Array.isArray(known) && hi >= known.length - (known.at(-1) === "" ? 1 : 0);
+}
 // ---- folding: pure additions/removals and untouched snippets start collapsed; a mixed diff is always open.
 const statusByGraph = new WeakMap();
 function fileStatus(app, path) {
@@ -383,10 +390,10 @@ function hunkBox(app, h, rerender, opts = {}) {
   return `<div class="code">
     ${head}
     ${cmMore(app, h, "above", above, lo - Math.min(...above.map((x) => x.startLine ?? x.line), lo) + 2)}
-    ${canExpand && h.newStart > 1 ? `<button class="more" data-exp="${h.id}:above">⋯ more above</button>` : ""}
+    ${canExpand && h.newStart > 1 && lo > 1 ? `<button class="more" data-exp="${h.id}:above">⋯ more above</button>` : ""}
     <div class="lines">${lines}</div>
     ${cmMore(app, h, "below", below, Math.max(...below.map((x) => x.line), hi) - hi + 2)}
-    ${canExpand ? `<button class="more" data-exp="${h.id}:below">⋯ more below</button>` : ""}
+    ${canExpand && !endOfFile(app, h, hi) ? `<button class="more" data-exp="${h.id}:below">⋯ more below</button>` : ""}
     ${boxExtras(app, target)}
   </div>`;
 }
