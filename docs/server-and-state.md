@@ -24,6 +24,7 @@ The CLI fills `claudeGraph` and `llm` from the background Claude job while the s
 | `GET /api/status` | → `{ llm, llmError, claudeReady, servers }` | Polled every 3 s while Claude works or a server installs or loads. |
 | `POST /api/servers/install`, `/check`, `/decline` | `{ id, never? }` → `{ servers }` | A language server: yes, install it (in the background); look again for what you installed yourself (gopls); not now, or never (saved). |
 | `GET /api/definitions` | → `{ [path]: Definition[] }` | The graph's, with each finished language server's answers for its files. |
+| `GET /api/references?path=&line=&col=` | → `{ name, refs: [{ path, line, col, text }], total, via, pending?, changed?, server? }` | Every use of the name at a head-side position, the declaration left out, up to 500, each with its line. The file's language server once it's loaded; without one, files git grep finds the name in, keeping the uses that resolve through imports to the same declaration. |
 | `GET /api/inspect?path=&line=&col=` | → `{ name?, to?, ext?, hover?, via, pending?, changed?, server? }` | The inspector: where the name at a head-side position is declared. The file's language server once it's loaded (with `hover`, its type); until then, or without one, the graph's `definitions` and the syntax tree at head. |
 | `POST /api/settings` | patch → merged settings | Merges into `~/.bobby/settings.json`. |
 | `GET /api/file?path=&side=base\|head` | → `{ lines }` | A whole file at the merge-base or head, for "more context". Returns 404 without a clone. |
