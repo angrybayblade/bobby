@@ -29,6 +29,7 @@ export function init(a, viewList) {
     if (ev.target.id === "drift" && ev.key === "Escape") $("#toast").hidden = true;
   });
   $("#overlay").addEventListener("mousedown", (ev) => (downOnOverlay = ev.target.id === "overlay"));
+  document.addEventListener("keydown", trapTab);
   $("#overlay").addEventListener("keydown", (ev) => {
     if (ev.target.id === "gnote" && ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); addGlobalNote(); }
   });
@@ -232,13 +233,27 @@ function renderKeys() {
 // ---------------------------------------------------------------- overlays
 export const isOpen = () => !$("#overlay").hidden;
 let downOnOverlay = false; // the click began on the backdrop itself
+let returnTo = null; // what had focus before a dialog opened, to give it back
 function open(html, cls = "") {
   const o = $("#overlay");
-  o.innerHTML = `<div class="modal ${cls}" role="dialog" aria-modal="true">${html}</div>`;
+  if (o.hidden) returnTo = document.activeElement;
+  o.innerHTML = `<div class="modal ${cls}" role="dialog" aria-modal="true" tabindex="-1">${html}</div>`;
   o.hidden = false;
-  (o.querySelector("textarea") ?? o.querySelector(".btn.primary"))?.focus();
+  (o.querySelector("textarea") ?? o.querySelector(".btn.primary") ?? o.querySelector(".modal"))?.focus();
 }
-export function close() { $("#overlay").hidden = true; }
+export function close() {
+  $("#overlay").hidden = true;
+  if (returnTo?.isConnected && returnTo !== document.body) returnTo.focus({ preventScroll: true });
+  returnTo = null;
+}
+/** Tab stays inside an open dialog, wrapping at its ends, as the page behind it can't be used. */
+function trapTab(ev) {
+  if (ev.key !== "Tab" || !isOpen()) return;
+  const all = [...$("#overlay").querySelectorAll("button, a[href], input, textarea, select, [tabindex]:not([tabindex='-1'])")].filter((x) => !x.disabled && x.offsetParent);
+  if (!all.length) return;
+  const i = all.indexOf(document.activeElement), to = ev.shiftKey ? (i <= 0 ? all.at(-1) : null) : (i === all.length - 1 || i < 0 ? all[0] : null);
+  if (to) { ev.preventDefault(); to.focus(); }
+}
 
 export function help() {
   const keysCell = (id) => keysOf(app.settings, id).map(kbdHtml).join(" <span class=\"or\">or</span> ") || `<span class="unbound">unbound</span>`;
