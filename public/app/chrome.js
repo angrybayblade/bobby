@@ -431,8 +431,9 @@ let trail = []; // recent pages, newest last
 function startTimebox() {
   let active = 0, last = Date.now(), onPage = 0, nudged = false, prompted = false, hiddenAt = 0;
   const input = () => {
-    if (Date.now() - last > AWAY_MS) welcomeBackLite();
-    last = Date.now();
+    const away = Date.now() - last > AWAY_MS;
+    last = Date.now(); // first: a recap that fails mustn't stop the clock, and every nudge with it
+    if (away) welcomeBackLite();
   };
   for (const ev of ["keydown", "pointerdown", "wheel"]) document.addEventListener(ev, input, { passive: true });
   document.addEventListener("visibilitychange", () => {
@@ -472,7 +473,7 @@ function driftPrompt() {
 function welcomeBackLite() {
   const loc = app.get(app.focus);
   if (!loc || isOpen()) return;
-  const before = trail.filter((p) => p !== app.focus).slice(-2).map((p) => esc(app.get(p).pl.title));
+  const before = trail.filter((p) => p !== app.focus).map((p) => app.get(p)).filter(Boolean).slice(-2).map((l) => esc(l.pl.title)); // pages of a tree you've since switched from are gone
   toast(`<span class="intro"><b>Welcome back</b><span style="font-size:13px">You were on <b>${esc(loc.pl.title)}</b> · core ${loc.ci + 1}, ${esc(loc.core.title)}</span>
     ${before.length ? `<span style="font-size:13px;color:var(--muted)">Before that: ${before.join(" → ")}</span>` : ""}
     ${app.state.note ? `<span style="font-size:13px">📌 ${esc(app.state.note)}</span>` : ""}
