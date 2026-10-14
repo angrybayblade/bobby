@@ -1,7 +1,7 @@
 // Comments in place, like GitHub: threads (other reviewers' comments, and your drafts) under the line they're on, and
 // private notes floating beside it. Any of them can be collapsed to a slim marker that stays put: one thread, every
 // comment in a file, or every comment in the PR (settings.comments, the default for all of them).
-import { esc } from "./core.js";
+import { LOW, esc } from "./core.js";
 
 // ---- the icon that says whether comments are showing: filled when they are, an outline when they're collapsed
 export const bubble = (filled) => `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path ${filled ? 'fill="currentColor"' : 'fill="none" stroke="currentColor" stroke-width="1.4"'} d="M2.5 2.5h11a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H8l-3 2.5V11.5H2.5a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1Z"/></svg>`;
@@ -92,7 +92,9 @@ export function showFull(app, ck, clicked) { pageState(app).full = (pageState(ap
 /** What the comment state of a file is, for knowing when to redraw it. */
 export const fileStamp = (app, path) => `${fileState(app, path)}:${pageState(app).full?.size ?? 0}:${(commentIndex(app).byPath.get(path) ?? []).map((x) => (itemOpen(app, x.id, path) ? 1 : 0)).join("")}`;
 export const fileCount = (app, path) => (commentIndex(app).byPath.get(path) ?? []).reduce((n, x) => n + (x.items?.length ?? 1), 0);
-export const prCount = (app) => [...commentIndex(app).byPath.values()].flat().reduce((n, x) => n + (x.items?.length ?? 1), 0);
+/** The PR's comments and notes in files on screen: one hidden by Tests or Untouched isn't counted, as its comments aren't shown. */
+export const prCount = (app) => [...commentIndex(app).byPath].filter(([path]) => !path || shown(app, path)).flatMap(([, xs]) => xs).reduce((n, x) => n + (x.items?.length ?? 1), 0);
+const shown = (app, path) => app.filePages(path).length > 0 || app.hunksOf(LOW).some((h) => h.file === path);
 
 // ---- threads
 const avatar = (a) => `<img class="cav" src="/api/avatar?u=${encodeURIComponent(a.avatar ?? a.author)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`;
