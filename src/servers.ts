@@ -124,6 +124,7 @@ async function run(s: Session, srv: LanguageServer) {
     } else {
       const placed = await insp.definitions(mine);
       merge(s, placed);
+      if (insp.hung) throw new Error("it stopped answering"); // what it placed stands; it isn't cached, so next time asks again
       if (cacheable) saveCachedDefs(pr, key, placed);
     }
     const all = Object.entries(s.definitions ?? {}).filter(([p]) => srv.languageId(p)).flatMap(([, l]) => l);

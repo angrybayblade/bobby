@@ -20,10 +20,12 @@ const FIRST_TIMEOUT = 300_000; // the first answer waits for the server to load 
 const TIMEOUT = 20_000;
 const PARALLEL = 8;
 const KEEP_OPEN = 64; // files sent to the server, least recently asked about closed first
+const HUNG = 3; // answers in a row that time out: the server is hung, and isn't asked again
 
 /** A running language server over a tree of files (a PR's exported head, or a local working copy). */
 export class Inspector {
   private warm = false;
+  private strikes = 0; // answers in a row that timed out
   private openOrder: string[] = [];
   private constructor(readonly server: LanguageServer, readonly root: string, private client: LspClient) {}
 
@@ -38,6 +40,14 @@ export class Inspector {
   onExit(fn: (why: string) => void) { this.client.onExit(fn); }
   stop() { return this.client.stop(); }
 
+  /** A server that keeps timing out is hung (a project it can't load): it isn't asked again, so names fall back to
+   *  imports and the syntax tree instead of waiting minutes each, for hours. */
+  get hung() { return this.strikes >= HUNG; }
+  private async ask<T>(answer: Promise<T>): Promise<T> {
+    try { const r = await answer; this.warm = true; this.strikes = 0; return r; }
+    catch (e) { if (/timed out/.test(String((e as Error)?.message))) this.strikes++; throw e; }
+  }
+
   /** The definitions extraction found in the files this server reads, each name asked of the server instead. */
   async definitions(defs: Record<string, Definition[]>): Promise<Record<string, Definition[]>> {
     const out: Record<string, Definition[]> = {};
@@ -46,9 +56,9 @@ export class Inspector {
       if (!this.open(path)) { out[path] = list; continue; }
       const text = this.text(path);
       out[path] = await pool(list, PARALLEL, async (d) => {
+        if (this.hung) return d;
         try {
-          const ts = await this.client.definition(this.abs(path), { line: d.line - 1, character: d.col }, this.timeout());
-          this.warm = true;
+          const ts = await this.ask(this.client.definition(this.abs(path), { line: d.line - 1, character: d.col }, this.timeout()));
           if (!ts.length) return d;
           const at = await this.withEnd(this.place(ts[0], path, text));
           if (at.unresolved && (d.to || !at.ext)) return d; // the server stopped at an import: what the syntax tree found, if anything
@@ -62,19 +72,17 @@ export class Inspector {
 
   /** Where the name at a position is declared, and its type. */
   async inspect(path: string, line: number, col: number): Promise<Inspection | null> {
-    if (!this.reads(path) || !this.open(path)) return null;
+    if (this.hung || !this.reads(path) || !this.open(path)) return null;
     const pos = { line: line - 1, character: col }, t = this.timeout();
-    const [ts, hover] = await Promise.all([this.client.definition(this.abs(path), pos, t), this.client.hover(this.abs(path), pos, t).catch(() => null)]);
-    this.warm = true;
+    const [ts, hover] = await Promise.all([this.ask(this.client.definition(this.abs(path), pos, t)), this.client.hover(this.abs(path), pos, t).catch(() => null)]);
     const at = ts.length ? await this.withEnd(this.place(ts[0], path, this.text(path))) : null;
     return { ...(at?.to ? { to: at.to } : at?.ext ? { ext: at.ext } : {}), ...(hover ? { hover } : {}), via: "lsp" };
   }
 
   /** Every use of the name at a position, in the repo (the declaration itself left out). */
   async references(path: string, line: number, col: number): Promise<Uses | null> {
-    if (!this.reads(path) || !this.open(path)) return null;
-    const found = await this.client.references(this.abs(path), { line: line - 1, character: col }, this.timeout());
-    this.warm = true;
+    if (this.hung || !this.reads(path) || !this.open(path)) return null;
+    const found = await this.ask(this.client.references(this.abs(path), { line: line - 1, character: col }, this.timeout()));
     const refs = found.flatMap((r) => {
       const rel = relative(this.root, r.path).split(sep).join("/");
       return rel.startsWith("../") || this.server.outside(r.path) || rel.includes(".bobby-stubs/") ? [] : [{ path: rel, line: r.line, col: r.col }];
