@@ -143,6 +143,9 @@ tour.welcome(() => {
 
 // ---- keys
 const typing = (t) => t.matches?.("input, textarea, [contenteditable]");
+// A button, link or other control you've tabbed to takes enter and space as the browser gives them (it activates), not
+// as Bobby's keys. One you clicked keeps focus too, but isn't :focus-visible, so space still turns the page.
+const control = (t) => t.matches?.("button, a[href], select, summary, [role=button]") && t.matches(":focus-visible");
 const page = () => app.pageEl?.isConnected; // the focused node's code is on screen (page or card)
 /** Does what key k does here: the view's own binding first, then the global one. Returns whether k does anything. */
 /** A key: the action it's bound to (keys.js, yours or the default), run by the view if it has its own way, else here. */
@@ -202,9 +205,11 @@ document.addEventListener("keydown", (ev) => {
     ev.preventDefault();
     return palette.open(app, commands());
   }
+  if (chrome.isOpen() && ev.key === "Escape" && !ev.metaKey && !ev.ctrlKey && !ev.altKey) { ev.preventDefault(); return chrome.close(); } // from its text box too
   if (typing(ev.target) || ev.metaKey || ev.ctrlKey || ev.altKey) return;
+  if ((ev.key === "Enter" || ev.key === " ") && control(ev.target)) return;
   if (chrome.isOpen()) {
-    if (ev.key === "Escape" || ev.key === "Enter") { ev.preventDefault(); chrome.close(); }
+    if (ev.key === "Enter") { ev.preventDefault(); chrome.close(); }
     return;
   }
   if (inspectorOpen()) { // the inspector's window is on top: its own keys (a list of uses), esc to step back; others wait

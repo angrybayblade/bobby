@@ -333,9 +333,14 @@ export function submit(msg) {
       <button class="btn" data-act="close" style="margin-left:auto">Cancel</button>
     </div>${msg ? `<div class="err">${esc(msg)}</div>` : ""}`);
 }
+let posting = false; // one review at a time: a second click while one is on its way would post it twice
 async function doSubmit(event) {
-  const r = await api("/api/submit", { event, body: $("#rbody").value }).catch((e) => ({ ok: false, error: e.message }));
-  if (!r.ok) return submit(r.error);
+  if (posting) return;
+  posting = true;
+  document.querySelectorAll("[data-submit]").forEach((b) => (b.disabled = true));
+  const body = $("#rbody").value;
+  const r = await api("/api/submit", { event, body }).catch((e) => ({ ok: false, error: e.message })).finally(() => (posting = false));
+  if (!r.ok) { submit(r.error); $("#rbody").value = body; return; } // the summary you wrote stays
   app.state.comments = app.state.comments.filter((c) => c.wip || c.kind === "note"); // unfinished drafts remain
   if (r.discussion) app.graph.discussion = r.discussion; // what was just posted, now on GitHub
   app.emit("comments");
