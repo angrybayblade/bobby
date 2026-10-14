@@ -319,10 +319,13 @@ export function submit(msg) {
     <p>This is a local review of <b>⎇ ${esc(app.graph.pr.branch)}</b>, with no PR behind it, so your ${cs.length ? `${cs.length} draft(s)` : "drafts"} and notes stay here. Open a PR and review it with <code>bobby &lt;number&gt;</code> to post a review on GitHub.</p>
     <div style="font-size:13px;color:var(--muted);margin-top:10px">${cs.map((c) => `· <code>${esc(c.path)}:${c.line}</code> ${esc(c.body.slice(0, 70))}`).join("<br>")}</div>
     <div class="row"><button class="btn" data-act="close" style="margin-left:auto">Close</button></div>`);
+  // as the server decides: a draft whose line (or range start) the current diff no longer has goes in the summary
+  const lines = new Set(app.graph.hunks.flatMap((h) => h.lines.flatMap((l) => [...(l.n != null && l.t !== "-" ? [`${h.file}:RIGHT:${l.n}`] : []), ...(l.o != null && l.t !== "+" ? [`${h.file}:LEFT:${l.o}`] : [])])));
+  const inline = (c) => c.inDiff && lines.has(`${c.path}:${c.side}:${c.line}`) && (!c.startLine || lines.has(`${c.path}:${c.startSide ?? c.side}:${c.startLine}`));
   open(`<h2>Submit review</h2>
     <p>${cs.length ? `${cs.length} draft comment(s) will be posted together.` : "No draft comments."}${app.state.notes.length ? ` Your ${app.state.notes.length} private note(s) stay here and aren't posted.` : ""}${wip ? ` ${wip} unfinished draft${wip > 1 ? "s" : ""} stay${wip > 1 ? "" : "s"} behind: finish ${wip > 1 ? "them" : "it"} with <i>Continue</i> to include ${wip > 1 ? "them" : "it"}.` : ""}</p>
     <textarea id="rbody" placeholder="Summary (optional for Approve)"></textarea>
-    <div style="font-size:13px;color:var(--muted);margin-top:10px">${cs.map((c) => `· <code>${esc(c.path)}:${c.line}</code> ${esc(c.body.slice(0, 70))}${c.inDiff ? "" : " <i>(goes in summary)</i>"}`).join("<br>")}</div>
+    <div style="font-size:13px;color:var(--muted);margin-top:10px">${cs.map((c) => `· <code>${esc(c.path)}:${c.line}</code> ${esc(c.body.slice(0, 70))}${inline(c) ? "" : " <i>(goes in summary)</i>"}`).join("<br>")}</div>
     <div class="row">
       <button class="btn primary" data-submit="COMMENT">Comment</button>
       <button class="btn" data-submit="APPROVE">Approve</button>
