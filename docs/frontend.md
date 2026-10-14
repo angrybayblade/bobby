@@ -40,6 +40,7 @@ The UI in `public/` is plain ES modules with no build step and no framework. `in
 | `graph` | `replaceGraph` swapped in Claude's tree (focus is kept by node id) |
 | `settings` | A setting changed |
 | `llm` | Claude's or a language server's status changed |
+| `view` | You switched views (the chrome redraws; views don't get it, the new one was just mounted) |
 | `resize` | The window resized (sent to the view by `main.js`) |
 
 `main.js` forwards every reason to the mounted view's `update(reason)`.

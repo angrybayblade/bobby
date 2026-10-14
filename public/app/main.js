@@ -75,9 +75,12 @@ function mount(id) {
 app.switchView = (id) => {
   if (id === currentId) return;
   mount(id);
-  app.saveSettings({ view: id });
+  // remembered without a "settings" event, which would render the view just mounted again; "view" redraws the chrome
+  app.settings.view = id;
+  api("/api/settings", { view: id }).catch(() => {});
+  app.emit("view");
 };
-app.on((why) => why !== "settings" && current?.update?.(why));
+app.on((why) => why !== "settings" && why !== "view" && current?.update?.(why));
 app.on((why) => why === "settings" && current?.update?.("settings"));
 window.addEventListener("resize", () => current?.update?.("resize"));
 

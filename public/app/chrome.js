@@ -11,7 +11,7 @@ let app, views;
 
 export function init(a, viewList) {
   app = a; views = viewList;
-  for (const r of ["focus", "level", "marks", "graph", "settings", "comments", "llm"]) app.on((why) => why === r && render());
+  for (const r of ["focus", "level", "marks", "graph", "settings", "comments", "llm", "view"]) app.on((why) => why === r && render());
   render();
   // Stepping into a new core: lead with its hook, so you know what to look for before reading.
   watchCores();
