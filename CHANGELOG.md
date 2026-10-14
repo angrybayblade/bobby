@@ -1,0 +1,54 @@
+# Changelog
+
+What changed in each release, newest first. Each release's full notes, with install commands, are on [GitHub releases](https://github.com/angrybayblade/bobby/releases).
+
+## Unreleased
+
+**Comments in place**
+- Threads sit under their line, like GitHub's, with avatars, Markdown and **Show more**; in a split diff, on the side they were made on. Private notes float beside their line.
+- Collapse a thread, a file's comments or the whole PR's; markers say how many are above or below.
+- The comment box opens where the comment will sit, with a Comment / Private note switch. **Cancel** discards; `esc` keeps it as an unfinished draft.
+- A first review opens in the Diff view.
+
+**Flow**
+- The arrow keys move at every level; ← always retracts, to the parent and then out a level.
+
+**Reliability**
+- Bobby's server only answers its own page: another website can no longer read your review or post as you.
+- Your progress is written atomically, and a state file that can't be read is kept aside instead of being overwritten.
+- A second `bobby` on the same review opens the one already running instead of saving over it.
+- A draft whose line has left the diff goes into the review's summary instead of making GitHub refuse the whole review.
+- Comment text survives re-renders and moving away; a failed save keeps the box open with its text, and says so.
+- A failed load, save or status check says what happened instead of failing silently.
+- Enter and space work on a button you've tabbed to; enter on **Approve** posts the review instead of closing the dialog, and it can't be posted twice.
+- A local review keeps uncommitted changes when `git stash create` refuses (intent-to-add files, a merge in progress).
+- A fresh machine with Go installed no longer crashes on start.
+- highlight.js ships with Bobby instead of loading from a CDN.
+
+**For tools reading the graph**
+- `generator.version` is Bobby's version; the extraction's own is `generator.extraction`.
+- The schema describes `definitions` and comment ranges (`startLine`, `startSide`); names with no text are no longer emitted.
+
+**Project**
+- Tests (diff parsing, key bindings, an extracted graph validated against the schema) and CI on every push, with a binary smoke test on macOS, Linux and Windows.
+- [What leaves your machine](docs/privacy.md): what Bobby sends to Claude, GitHub and others.
+
+## 0.1.0-rc4 (2026-10-14)
+
+Inspect a name (⌘-click) and list where it's used (⌘⇧-click), with language servers for TypeScript, JavaScript, Python and Go; rebindable keys; back and forth through files in the Diff view.
+
+## 0.1.0-rc3 (2026-10-13)
+
+Dependencies are traced through the syntax tree and imports instead of text search: fewer, right links, and minutes faster on a large repo. Comments on a range of lines, a command palette, a first-run tour, and a Diff canvas that zooms like a map.
+
+## 0.1.0-rc2 (2026-10-12)
+
+Every view shares the Diff view's look, keys and file viewer. Flow is rebuilt as one tree that starts from the changes. Tests, generated files and untouched code are hidden by default.
+
+## 0.1.0-rc1 (2026-10-11)
+
+A GitHub-style Diff view with split diffs and a focus mode, and a one-command install.
+
+## 0.1.0-rc0 (2026-10-10)
+
+The first release candidate.

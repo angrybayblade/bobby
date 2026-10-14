@@ -11,13 +11,13 @@ There's no bundler or dev server. Edit `public/` and reload the page; restart th
 
 ## Releasing
 
-Bump `version` in `package.json`, commit, then tag and push the tag:
+Bump `version` in `package.json`, move `CHANGELOG.md`'s **Unreleased** entries under the new version, commit, then tag and push the tag:
 
 ```sh
 git tag v0.2.0 && git push origin v0.2.0      # the v is optional; 0.2.0-rc0 makes a pre-release
 ```
 
-`.github/workflows/release.yml` takes it from there: it fails if the tag (minus any leading `v`) doesn't match `package.json`, runs `bun run check`, builds every target on one Linux runner, smoke-tests the Linux binary, packages each as `bobby-<tag>-<os>-<arch>.tar.gz` (`.zip` for Windows) with a `SHA256SUMS`, and publishes a GitHub release with generated notes. If it fails after creating the release, delete the release and the tag and push the tag again.
+`.github/workflows/release.yml` takes it from there: it fails if the tag (minus any leading `v`) doesn't match `package.json`, runs `bun run check` (typecheck and tests), builds every target on one Linux runner, smoke-tests the Linux binary, packages each as `bobby-<tag>-<os>-<arch>.tar.gz` (`.zip` for Windows) with a `SHA256SUMS`, and publishes a GitHub release with generated notes. If it fails after creating the release, delete the release and the tag and push the tag again.
 
 - **Package:** bump `version` in `package.json`, then `npm publish` (it runs `bun run check` first). `files` ships `src/`, `public/`, `schema/`, `SPEC.md` and the README; the bin is `src/cli.ts`, so users need bun.
 - **Binaries:** `bun run build --all` writes `dist/bobby-<os>-<arch>` for macOS, Linux and Windows. `scripts/build.ts` generates an entry that embeds every file under `public/` (`src/assets.ts › embed`) before loading the CLI, then runs `bun build --compile`. Cross-compiling downloads each target's Bun runtime the first time.
