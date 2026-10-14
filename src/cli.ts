@@ -141,6 +141,13 @@ if (cmd === "open") {
     return { pr, files, analysis };
   })());
 
+  // The clone may lack the cached graph's commits (a fresh clone, a fork's PR, refs/bobby deleted and collected): the
+  // UI reads files at both, and the language server exports head. Fetch them as a miss would.
+  if (cached && arg) {
+    const has = async (sha: string) => (await Bun.spawn(["git", "cat-file", "-e", `${sha}^{commit}`], { cwd, stderr: "ignore" }).exited) === 0;
+    if (!(await has(cached.static.pr.headSha)) || !(await has(cached.static.pr.baseSha))) { log("▸ fetching PR…"); await getPr(); }
+  }
+
   let staticGraph: ReviewGraph, claudeGraph: ReviewGraph | undefined;
   if (cached) {
     log(`  ✓ unchanged since last time (${key.headSha.slice(0, 7)}), using cached graphs (${secs()})`);
