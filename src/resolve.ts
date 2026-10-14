@@ -13,6 +13,11 @@ import { family, type Lang, type Syntax, langOf, parseSyntax } from "./syntax.ts
 
 const JS_EXT = ["", ".ts", ".tsx", ".d.ts", ".js", ".jsx", ".mjs", ".cjs", "/index.ts", "/index.tsx", "/index.js", "/index.jsx", "/index.mjs"];
 
+// Files' text and syntax kept at once: a session that inspects across a large repo mustn't hold all of it. Past this,
+// the longest-held go first, and are read again if asked for.
+const KEEP = 3000;
+const keep = <K, V>(m: Map<K, V>, k: K, v: V) => { m.set(k, v); if (m.size > KEEP) m.delete(m.keys().next().value!); return v; };
+
 export class Repo {
   files = new Set<string>();
   private text = new Map<string, Promise<string | null>>();
@@ -31,7 +36,7 @@ export class Repo {
   /** File contents at head; many at once go through one git cat-file. */
   read(path: string): Promise<string | null> {
     let p = this.text.get(path);
-    if (!p) this.text.set(path, (p = this.files.has(path) ? git(this.cwd, ["show", `${this.sha}:${path}`], true) : Promise.resolve(null)));
+    if (!p) p = keep(this.text, path, this.files.has(path) ? git(this.cwd, ["show", `${this.sha}:${path}`], true) : Promise.resolve(null));
     return p;
   }
   async readMany(paths: string[]) {
@@ -49,9 +54,9 @@ export class Repo {
         if (nl < 0) break;
         const head = dec.decode(buf.subarray(at, nl)).split(" ");
         at = nl + 1;
-        if (head[1] !== "blob") { this.text.set(path, Promise.resolve(null)); continue; }
+        if (head[1] !== "blob") { keep(this.text, path, Promise.resolve(null)); continue; }
         const size = Number(head[2]);
-        this.text.set(path, Promise.resolve(dec.decode(buf.subarray(at, at + size))));
+        keep(this.text, path, Promise.resolve(dec.decode(buf.subarray(at, at + size))));
         at += size + 1;
       }
     }
@@ -59,7 +64,7 @@ export class Repo {
   /** The file's syntax, or null (unsupported language, missing file, or no tree-sitter). */
   syntax(path: string): Promise<Syntax | null> {
     let p = this.syn.get(path);
-    if (!p) this.syn.set(path, (p = this.read(path).then((t) => (t == null || t.length > 1_500_000 ? null : parseSyntax(path, t)))));
+    if (!p) p = keep(this.syn, path, this.read(path).then((t) => (t == null || t.length > 1_500_000 ? null : parseSyntax(path, t))));
     return p;
   }
 
