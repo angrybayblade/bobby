@@ -500,23 +500,108 @@ async function inspect(app, at, deeper) {
   entry.res = res ?? { via: "none" };
   const srv = res?.server, known = srv && app.servers.find((x) => x.id === srv.id);
   if (known && known.state !== srv.state) { Object.assign(known, srv); app.emit("llm"); } // e.g. its server stopped
-  const to = entry.res.to;
-  if (to && app.caps.files) {
-    const r = await api(`/api/file?path=${encodeURIComponent(to.path)}`).catch(() => null);
-    const end = Math.min(to.end ?? to.line + 12, to.line + 300); // the whole declaration: the window scrolls
-    if (r?.lines?.length) { entry.start = to.line; entry.lines = r.lines.slice(to.line - 1, end); entry.more = (to.end ?? 0) > end; }
-  }
+  if (entry.res.to) await loadCode(app, entry, entry.res.to.line, Math.min(entry.res.to.end ?? entry.res.to.line + 12, entry.res.to.line + 300)); // the whole declaration: the window scrolls
   entry.loading = false;
   if (app.page.peek?.stack.includes(entry)) drawPeek(app);
 }
-const VIA = { lsp: ["types", "Found by the TypeScript language server"], syntax: ["imports", "Found through imports and the syntax tree, without types"] };
+async function loadCode(app, entry, from, to) {
+  if (!app.caps.files) return;
+  const r = await api(`/api/file?path=${encodeURIComponent(entry.res.to.path)}`).catch(() => null);
+  if (!r?.lines?.length) return;
+  entry.start = from; entry.lines = r.lines.slice(from - 1, to); entry.more = (entry.res.to.end ?? 0) > to;
+}
+
+// ---- uses: ⌘⇧-click a name to list where it's used, in three groups: in the diff (what you're reviewing), in the PR's
+// files but outside the diff, and elsewhere in the codebase. A use in the diff jumps there; any other opens its code here.
+const USE_GROUPS = ["In the diff", "In the PR's files, outside the diff", "Elsewhere in the codebase"];
+const diffLines = new WeakMap(); // graph → "path:line" of every new-side line its hunks show
+function inDiff(app, path, line) {
+  let set = diffLines.get(app.graph);
+  if (!set) {
+    set = new Set(app.graph.hunks.flatMap((h) => h.lines.filter((l) => l.t !== "-" && l.n != null).map((l) => `${h.file}:${l.n}`)));
+    diffLines.set(app.graph, set);
+  }
+  return set.has(`${path}:${line}`);
+}
+async function uses(app, at, deeper) {
+  const entry = { ...at, kind: "uses", loading: true };
+  if (deeper && app.page.peek) app.page.peek.stack.push(entry); else app.page.peek = { stack: [entry] };
+  drawPeek(app);
+  const r = app.caps.inspect ? await api(`/api/references?path=${encodeURIComponent(at.path)}&line=${at.line}&col=${at.col}`).catch(() => null) : null;
+  const pr = new Set(app.graph.files.filter((f) => f.status !== "deleted").map((f) => f.path));
+  entry.res = r ?? { via: "none", refs: [], total: 0 };
+  entry.name = r?.name || at.name;
+  entry.list = (r?.refs ?? []).map((u) => ({ ...u, group: inDiff(app, u.path, u.line) ? 0 : pr.has(u.path) ? 1 : 2 }))
+    .sort((a, b) => a.group - b.group || (b.path === at.path) - (a.path === at.path) || a.path.localeCompare(b.path) || a.line - b.line); // yours first
+  entry.loading = false;
+  if (app.page.peek?.stack.includes(entry)) drawPeek(app);
+}
+const SHOW_ELSEWHERE = 200; // the first two groups always show in full; the third up to this
+function usesHtml(app, e) {
+  const groups = USE_GROUPS.map(() => []);
+  for (const [i, u] of (e.list ?? []).entries()) groups[u.group].push([i, u]);
+  const room = Math.max(0, SHOW_ELSEWHERE - groups[0].length - groups[1].length);
+  const hidden = Math.max(0, groups[2].length - room) + Math.max(0, (e.res?.total ?? 0) - (e.list?.length ?? 0));
+  const counts = groups.map((g) => g.length);
+  groups[2] = groups[2].slice(0, room);
+  return groups.map((g, gi) => {
+    if (!counts[gi]) return "";
+    let html = `<div class="ugroup"><div class="uhead">${USE_GROUPS[gi]} <span>${counts[gi]}</span></div>`, file = "", last = 0;
+    for (const [i, u] of g) {
+      if (u.path !== file) { file = u.path; last = 0; html += `<div class="ufile">${esc(u.path)}</div>`; }
+      if (u.line === last) continue; // two uses on one line: one row
+      last = u.line;
+      html += `<div class="pl urow" data-use="${i}" title="${gi === 0 ? "Go there" : "Open it here"}"><span class="no">${u.line}</span><code>${hlBlock([(u.text ?? "").trim()], langOf(u.path))[0]}</code></div>`;
+    }
+    return html + (gi === 2 && hidden ? `<div class="pkmore">and ${hidden} more</div>` : "") + `</div>`;
+  }).join("");
+}
+/** A use clicked in the list: in the diff, go there and select its line; anywhere else, its code in the window. */
+async function openUse(app, u) {
+  const pid = u.group === 0 && app.pidAt(u.path, u.line);
+  if (pid) {
+    app.page.peek = null;
+    drawPeek(app);
+    app.setFocus(pid);
+    return setTimeout(() => selectLine(app, `${u.path}|RIGHT|${u.line}`), 350); // once the view has moved there
+  }
+  const entry = { kind: "code", name: `${u.path.split("/").pop()}:${u.line}`, path: u.path, line: u.line, loading: true, res: { to: { path: u.path, line: u.line } } };
+  app.page.peek.stack.push(entry);
+  drawPeek(app);
+  await loadCode(app, entry, Math.max(1, u.line - 8), u.line + 16);
+  entry.loading = false;
+  if (app.page.peek?.stack.includes(entry)) drawPeek(app);
+}
+/** Selects a line wherever it's on screen, and scrolls the code it's in (never the canvas) to show it. */
+function selectLine(app, key) {
+  const row = [...document.querySelectorAll(`.ln[data-key="${CSS.escape(key)}"]`)].find((r) => r.offsetParent);
+  const el = row && owner(row);
+  if (!el) return;
+  app.page.anchor = { ...row.dataset };
+  selectRange(app, el, app.page.anchor, { ...row.dataset });
+  let sc = row.parentElement;
+  while (sc && !(sc.scrollHeight > sc.clientHeight && /auto|scroll/.test(getComputedStyle(sc).overflowY))) sc = sc.parentElement;
+  if (!sc) return;
+  const k = sc.clientHeight / (sc.getBoundingClientRect().height || 1); // on-screen px to the scroller's own (zoom)
+  sc.scrollTo({ top: sc.scrollTop + (row.getBoundingClientRect().top - sc.getBoundingClientRect().top) * k - sc.clientHeight / 3, behavior: "smooth" });
+}
+const VIA = { lsp: ["types", "Found by the language server"], syntax: ["imports", "Found through imports and the syntax tree, without types"] };
 /** The inspector's window: a trail of what you inspected, then where the last one is declared, its type and its code. */
 function peekHtml(app) {
   const pk = app.page.peek, e = pk.stack.at(-1), res = e.res, pr = app.graph.pr;
   const trail = pk.stack.map((x, i) => i === pk.stack.length - 1 ? `<code class="pkn">${esc(x.name)}</code>`
-    : `<button class="pkcrumb" data-peekto="${i}" title="Back to ${esc(x.name)}">${esc(x.name)}</button><span class="pksep">›</span>`).join("");
+    : `<button class="pkcrumb" data-peekto="${i}" title="Back to ${esc(x.name)}">${esc(x.name)}${x.kind === "uses" ? " · uses" : ""}</button><span class="pksep">›</span>`).join("");
   const via = res && VIA[res.via] ? `<span class="pkv" title="${VIA[res.via][1]}">${VIA[res.via][0]}</span>` : "";
   const gh = res?.to && pr.provider !== "local" ? `https://github.com/${pr.owner}/${pr.repo}/blob/${pr.headSha}/${res.to.path}#L${res.to.line}${res.to.end ? `-L${res.to.end}` : ""}` : "";
+  if (e.kind === "uses") {
+    const n = e.list?.length ?? 0, counts = USE_GROUPS.map((_, g) => (e.list ?? []).filter((u) => u.group === g).length);
+    const summary = e.loading ? "looking for its uses…"
+      : !n ? `no uses found${res?.pending ? ": types are still loading, try again in a moment" : res?.via === "syntax" ? " through imports (uses through a value need the language server)" : ""}`
+      : `${res.total} use${res.total === 1 ? "" : "s"} · ${counts.map((c, g) => `${c} ${["in the diff", "in the PR's files", "elsewhere"][g]}`).join(" · ")}`;
+    const head = `<div class="pkh"><div class="pktrail">${trail}<span class="pktag">uses</span></div>${via}<button class="pkx" data-peekclose title="Close · esc" aria-label="Close">✕</button></div><div class="pkw">${summary}</div>`;
+    const hint = e.loading || !n ? "" : `<div class="pkhint">Click a use to go there (in the diff) or open it · ${MOD}⇧-click a name for its uses · esc to go back</div>`;
+    return `<div class="pkwin" role="dialog" aria-label="Uses of ${esc(e.name)}">${head}<div class="pkbody">${e.loading ? "" : usesHtml(app, e)}</div>${hint}</div>`;
+  }
   const where = e.note ? esc(e.note)
     : e.loading ? "looking…"
     : res?.to ? `${esc(res.to.path)}:${res.to.line}${gh ? ` <a href="${esc(gh)}" target="_blank" rel="noopener" title="Open on GitHub">GitHub ↗</a>` : ""}`
@@ -563,11 +648,13 @@ function onPeekClick(app, ev) {
   if ((ev.target === peekEl && downOnBackdrop) || ev.target.closest("[data-peekclose]")) { app.page.peek = null; return drawPeek(app); }
   const to = ev.target.closest("[data-peekto]");
   if (to) { app.page.peek.stack.length = Number(to.dataset.peekto) + 1; return drawPeek(app); }
-  const code = (ev.metaKey || ev.ctrlKey) && ev.target.closest(".pl code");
+  const use = !(ev.metaKey || ev.ctrlKey) && ev.target.closest("[data-use]");
+  if (use) return openUse(app, app.page.peek.stack.at(-1).list[Number(use.dataset.use)]);
+  const code = (ev.metaKey || ev.ctrlKey) && ev.target.closest(".pl:not(.urow) code");
   if (!code) return;
   ev.preventDefault();
   const w = wordAt(ev, code), line = code.closest(".pl");
-  if (w) inspect(app, { ...w, path: line.dataset.path, line: Number(line.dataset.line) }, true);
+  if (w) (ev.shiftKey ? uses : inspect)(app, { ...w, path: line.dataset.path, line: Number(line.dataset.line) }, true);
 }
 // Holding ⌘/ctrl shows which code can be inspected.
 addEventListener("keydown", (e) => { if (e.key === "Meta" || e.key === "Control") document.body.classList.add("inspecting"); });
@@ -642,7 +729,7 @@ function bind(app, el, rerender) {
   el.addEventListener("click", (ev) => {
     if (ev.target.closest("a")) return;
     const code = (ev.metaKey || ev.ctrlKey) && ev.target.closest(".ln[data-key] code");
-    if (code) { // the inspector
+    if (code) { // the inspector: where it's declared, or (with shift) where it's used
       ev.preventDefault();
       const w = wordAt(ev, code), line = code.closest(".ln");
       if (!w) return;
@@ -650,7 +737,7 @@ function bind(app, el, rerender) {
         app.page.peek = { stack: [{ ...w, note: "Removed lines can't be inspected yet: this code isn't at the PR's head." }] };
         return drawPeek(app);
       }
-      return inspect(app, { ...w, path: line.dataset.path, line: Number(line.dataset.line) }, false);
+      return (ev.shiftKey ? uses : inspect)(app, { ...w, path: line.dataset.path, line: Number(line.dataset.line) }, false);
     }
     const t = ev.target.closest("[data-compose],[data-wip],[data-ghshow],[data-ckind],[data-delnote],[data-viewed],[data-exp],[data-del],[data-low],[data-go],[data-jump],[data-fold],.ln[data-key]");
     if (!t || !el.contains(t)) return;

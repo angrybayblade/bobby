@@ -231,7 +231,8 @@ export function help() {
     <p>Each core change comes with its surroundings, in this order: <b>untouched code it relies on</b> → <b>changed code it relies on</b> → <b>the core</b> → <b>changed code it affects</b> → <b>untouched code it affects</b>. Solid dots ● are changed code, hollow ○ are untouched, and ◆ is the core.</p>
     ${groups.map((g) => `<h4 class="nh">${g}</h4><table>${ACTIONS.filter((a) => a.group === g).map((a) => `<tr><td>${keysCell(a.id)}</td><td>${esc(a.title)}</td></tr>`).join("")}</table>`).join("")}
     <table><tr><td>${PALETTE_KEY.split(" ").map((k) => `<kbd>${k}</kbd>`).join(" ")}</td><td>Command palette: search every command, core, file and page</td></tr>
-      <tr><td>${MOD}-click</td><td>Inspect a name: where it's declared, its type and its code</td></tr></table>
+      <tr><td>${MOD}-click</td><td>Inspect a name: where it's declared, its type and its code</td></tr>
+      <tr><td>${MOD}⇧-click</td><td>Where a name is used: in the diff first, then the PR's files, then the rest of the codebase</td></tr></table>
     <div class="row"><button class="btn primary" data-act="close">Got it</button><button class="btn" data-act="keys">Customize keys</button><button class="btn" data-act="tour">Take the tour</button></div>`);
 }
 
