@@ -258,7 +258,8 @@ export function startServer(s: Session, port: number) {
       }
 
       if (req.method === "POST" && p === "/api/submit") {
-        const { event, body } = (await req.json()) as { event: "COMMENT" | "APPROVE" | "REQUEST_CHANGES"; body: string };
+        const { event, body = "" } = (await req.json().catch(() => ({}))) as { event?: string; body?: unknown };
+        if (!["COMMENT", "APPROVE", "REQUEST_CHANGES"].includes(event ?? "") || typeof body !== "string") return json({ ok: false, error: "event must be COMMENT, APPROVE or REQUEST_CHANGES, and body a string" }, 400);
         if (pr().provider === "local") return json({ ok: false, error: "This is a local review with no PR, so there's nowhere to post. Your drafts stay here." }, 400);
         const ready = s.state.comments.filter((c) => !c.wip && c.kind !== "note"); // unfinished drafts stay behind
         // A draft made on an earlier head may sit on a line the diff no longer has; GitHub would refuse the whole
