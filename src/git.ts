@@ -5,10 +5,11 @@ import { home } from "./state.ts";
 
 export async function run(
   cmd: string[],
-  opts: { cwd?: string; input?: string; allowFail?: boolean } = {},
+  opts: { cwd?: string; input?: string; allowFail?: boolean; env?: Record<string, string> } = {},
 ): Promise<string> {
   const proc = Bun.spawn(cmd, {
     cwd: opts.cwd,
+    ...(opts.env ? { env: { ...process.env, ...opts.env } } : {}),
     stdin: opts.input !== undefined ? new TextEncoder().encode(opts.input) : "ignore",
     stdout: "pipe",
     stderr: "pipe",

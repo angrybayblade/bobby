@@ -1,6 +1,8 @@
 // Local mode: review the branch you're on, inside its repo, with no PR needed. The diff runs from the
 // merge-base with a base branch to your working tree (uncommitted tracked changes included).
-import { basename } from "node:path";
+import { copyFileSync, existsSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, isAbsolute, join } from "node:path";
 import { git, run } from "./git.ts";
 import type { PrInfo } from "./types.ts";
 
@@ -50,12 +52,12 @@ export async function resolveLocal(dir: string, baseArg?: string): Promise<Local
 
   const head = (await git(cwd, ["rev-parse", "HEAD"])).trim();
   const baseSha = (await git(cwd, ["merge-base", base.ref, head])).trim();
-  // Uncommitted tracked changes: `git stash create` snapshots them without touching the working tree or the
-  // stash list. Its tree id is stable while the files are, so cached graphs still hit; git diff, grep and show
-  // all accept a tree.
-  const stash = (await git(cwd, ["stash", "create"], true)).trim();
-  const headSha = stash ? (await git(cwd, ["rev-parse", `${stash}^{tree}`])).trim() : head;
-  if (!stash && baseSha === head) {
+  // Uncommitted tracked changes, as a tree: see snapshot. Its id is stable while the files are, so cached graphs
+  // still hit; git diff, grep and show all accept a tree.
+  const tree = await snapshot(cwd);
+  const dirty = tree !== (await git(cwd, ["rev-parse", "HEAD^{tree}"])).trim();
+  const headSha = dirty ? tree : head;
+  if (!dirty && baseSha === head) {
     throw new Error(`Nothing to review: ${branch || "HEAD"} has no changes since ${base.ref}. Pass a different --base?`);
   }
 
@@ -67,13 +69,29 @@ export async function resolveLocal(dir: string, baseArg?: string): Promise<Local
   const author = (await git(cwd, ["config", "user.name"], true)).trim();
   const untracked = (await git(cwd, ["ls-files", "--others", "--exclude-standard"], true)).split("\n").filter(Boolean).length;
   return {
-    cwd, dirty: !!stash, untracked, why: base.why,
+    cwd, dirty, untracked, why: base.why,
     pr: {
       provider: "local", branch: branch || head.slice(0, 7), baseRef: base.ref,
       owner, repo, number: 0, url: "",
       title: !subjects.length ? "Uncommitted changes" : subjects.length === 1 ? subjects[0] : `${subjects.length} commits, latest: ${subjects[0]}`,
-      body: subjects.map((s) => `- ${s}`).join("\n") + (stash ? `${subjects.length ? "\n" : ""}- (uncommitted changes)` : ""),
+      body: subjects.map((s) => `- ${s}`).join("\n") + (dirty ? `${subjects.length ? "\n" : ""}- (uncommitted changes)` : ""),
       author, baseSha, headSha,
     },
   };
+}
+
+/** The working tree's tracked files as a tree, without touching your index, stash or files: a copy of the index,
+ *  brought up to the working tree with `add -u`, then written. Unlike `git stash create`, it also works with files
+ *  added with `git add -N` and with a merge in progress, where stash refuses. Untracked files stay out. */
+async function snapshot(cwd: string): Promise<string> {
+  const real = (await git(cwd, ["rev-parse", "--git-path", "index"])).trim(), from = isAbsolute(real) ? real : join(cwd, real);
+  const tmp = join(tmpdir(), `bobby-index-${process.pid}-${Date.now()}`), env = { GIT_INDEX_FILE: tmp };
+  try {
+    if (existsSync(from)) copyFileSync(from, tmp);
+    else await run(["git", "read-tree", "HEAD"], { cwd, env });
+    await run(["git", "add", "-u"], { cwd, env });
+    return (await run(["git", "write-tree"], { cwd, env })).trim();
+  } finally {
+    rmSync(tmp, { force: true });
+  }
 }
