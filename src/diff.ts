@@ -8,6 +8,32 @@ const sha1 = (s: string) => createHash("sha1").update(s).digest("hex").slice(0, 
 
 const stripPrefix = (p: string) => p.replace(/^[ab]\//, "");
 
+/** A path as git prints it: as is, or (with a ", \\, a tab or a newline in it) in double quotes with C escapes, bytes
+ *  above ASCII as octal when core.quotePath is on. */
+export function unquote(p: string): string {
+  if (!p.startsWith('"') || !p.endsWith('"') || p.length < 2) return p;
+  const bytes: number[] = [], src = p.slice(1, -1);
+  const ESC: Record<string, number> = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13, '"': 34, "\\": 92 };
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (c !== "\\") { bytes.push(...new TextEncoder().encode(c)); continue; }
+    const o = src.slice(i + 1, i + 4);
+    if (/^[0-7]{3}$/.test(o)) { bytes.push(parseInt(o, 8)); i += 3; }
+    else { bytes.push(ESC[src[i + 1]] ?? src.charCodeAt(i + 1)); i++; }
+  }
+  return new TextDecoder().decode(new Uint8Array(bytes));
+}
+/** The path on a ---/+++ line; git ends one with a space in it with a tab. */
+const fileLine = (raw: string) => raw.slice(4).replace(/\t$/, "");
+/** The two paths of a "diff --git" line: quoted ones are unambiguous; unquoted, " b/" splits them (the ---/+++ and
+ *  rename lines after it say for sure). */
+function headerPaths(rest: string): [string, string] {
+  const q = rest.match(/^("(?:[^"\\]|\\.)*"|\S+(?: \S+)*?) ("(?:[^"\\]|\\.)*"|b\/.*)$/);
+  if (q && (q[1].startsWith('"') || q[2].startsWith('"'))) return [stripPrefix(unquote(q[1])), stripPrefix(unquote(q[2]))];
+  const m = rest.match(/^a\/(.*) b\/(.*)$/);
+  return [m?.[1] ?? "", m?.[2] ?? ""];
+}
+
 export function parseDiff(text: string): FileDiff[] {
   const files: FileDiff[] = [];
   let file: FileDiff | null = null;
@@ -25,8 +51,8 @@ export function parseDiff(text: string): FileDiff[] {
   for (const raw of text.split("\n")) {
     if (raw.startsWith("diff --git ")) {
       finishHunk();
-      const m = raw.match(/^diff --git a\/(.*) b\/(.*)$/);
-      file = { path: m?.[2] ?? "", oldPath: m?.[1] ?? "", status: "modified", binary: false, hunks: [] };
+      const [oldPath, path] = headerPaths(raw.slice(11));
+      file = { path, oldPath, status: "modified", binary: false, hunks: [] };
       files.push(file);
       continue;
     }
@@ -34,11 +60,11 @@ export function parseDiff(text: string): FileDiff[] {
     if (!hunk) {
       if (raw.startsWith("new file mode")) file.status = "added";
       else if (raw.startsWith("deleted file mode")) file.status = "deleted";
-      else if (raw.startsWith("rename from ")) { file.oldPath = raw.slice(12); file.status = "renamed"; }
-      else if (raw.startsWith("rename to ")) file.path = raw.slice(10);
+      else if (raw.startsWith("rename from ")) { file.oldPath = unquote(raw.slice(12)); file.status = "renamed"; }
+      else if (raw.startsWith("rename to ")) file.path = unquote(raw.slice(10));
       else if (raw.startsWith("Binary files")) file.binary = true;
-      else if (raw.startsWith("--- ") && raw !== "--- /dev/null") file.oldPath = stripPrefix(raw.slice(4));
-      else if (raw.startsWith("+++ ") && raw !== "+++ /dev/null") file.path = stripPrefix(raw.slice(4));
+      else if (raw.startsWith("--- ") && raw !== "--- /dev/null") file.oldPath = stripPrefix(unquote(fileLine(raw)));
+      else if (raw.startsWith("+++ ") && raw !== "+++ /dev/null") file.path = stripPrefix(unquote(fileLine(raw)));
       if (file.status === "deleted" && raw === "+++ /dev/null") file.path = file.oldPath;
     }
     const hm = raw.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@ ?(.*)$/);

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseDiff } from "../src/diff.ts";
+import { parseDiff, unquote } from "../src/diff.ts";
 import { parseGrep } from "../src/analyze.ts";
 
 const diff = (...files: string[]) => files.join("\n") + "\n";
@@ -102,6 +102,42 @@ describe("parseDiff", () => {
       "+if (a)  {",
     ));
     expect(files.map((f) => f.noise)).toEqual(["binary", "lockfile", "generated", "whitespace only"]);
+  });
+
+  test("reads the paths git quotes, and the tab it ends a spaced name with", () => {
+    const files = parseDiff(diff(
+      'diff --git a/ünï.ts "b/ren\\"amed.ts"',
+      "similarity index 50%",
+      "rename from ünï.ts",
+      'rename to "ren\\"amed.ts"',
+      "--- a/ünï.ts",
+      '+++ "b/ren\\"amed.ts"',
+      "@@ -1 +1,2 @@",
+      " x",
+      "+y",
+      "diff --git a/sp b/ace.ts b/sp b/ace.ts",
+      "--- a/sp b/ace.ts\t",
+      "+++ b/sp b/ace.ts\t",
+      "@@ -1 +1,2 @@",
+      " x",
+      "+y",
+      'diff --git "a/tab\\tname.ts" "b/tab\\tname.ts"',
+      '--- "a/tab\\tname.ts"',
+      '+++ "b/tab\\tname.ts"',
+      "@@ -1 +1,2 @@",
+      " x",
+      "+y",
+    ));
+    expect(files.map((f) => [f.status, f.oldPath, f.path])).toEqual([
+      ["renamed", "ünï.ts", 'ren"amed.ts'],
+      ["modified", "sp b/ace.ts", "sp b/ace.ts"],
+      ["modified", "tab\tname.ts", "tab\tname.ts"],
+    ]);
+  });
+
+  test("unquotes octal bytes as UTF-8", () => {
+    expect(unquote('"\\303\\274ber.ts"')).toBe("über.ts");
+    expect(unquote("plain.ts")).toBe("plain.ts");
   });
 
   test("gives the same hunk the same hash", () => {
