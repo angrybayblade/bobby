@@ -69,7 +69,7 @@ Once you're in a viewer (you clicked it, or stepped into it with `j`/`k`), every
 - Background lines can be turned off in settings ("Diff edges: Focused only").
 
 **Arrow keys.** In Diff the arrows move between files instead of walk pages (`j`/`k` still walk):
-- **← / →** go back and forth through the files you've had in focus, like a browser's back and forward: every file you moved to, by any key or a click, lands on the section you were reading. Moving to a new file after going back drops what was ahead. With nothing more that way, they move along the layout instead (as below), and that step is kept in the same direction, so going back past the start carries on back and → retraces it.
+- **← / →** go back and forth through the files you've had in focus, like a browser's back and forward: every file you moved to, by any key or a click, lands on the section you were reading. Moving to a new file after going back drops what was ahead. With nothing more that way, they move along the layout instead (as below), and that step is kept in the same direction, so going back past the start carries on back and → retraces it. The history is kept in your browser per PR, so after a reload ← goes back to where you were last.
 - **Shift + → / ←** move along the layout: → follows an edge to a file this one leads into, ← to a file that leads into it, picking the nearest; with no edge that way, the nearest file in the next column.
 - **↑ / ↓** (with or without Shift) move to the file above or below in the same column.
 

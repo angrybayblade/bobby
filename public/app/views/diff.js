@@ -901,12 +901,16 @@ export default {
     // ---- history: every node you've had in focus, by a key or a click, so ← / → trace back and forth through them
     // like a browser's back and forward, landing on the section you were reading. With nothing that way, they move
     // along the layout instead, as Shift + arrows always do. Moving anywhere new after going back drops what was ahead.
-    const trail = { back: [], fwd: [], at: null }; // at: the node in focus and the section in it
+    // Kept in this browser per PR, so a reload (or tomorrow) can still go back: where you were last is one ← away.
+    const pr = app.graph.pr, store = `bobby.trail:${pr.owner}/${pr.repo}#${pr.branch ?? pr.number}`;
+    const saved = (() => { try { return JSON.parse(localStorage.getItem(store) ?? "null"); } catch { return null; } })();
+    const trail = { back: [...(saved?.back ?? []), ...(saved?.at ? [saved.at] : [])].slice(-100), fwd: [], at: null }; // at: the node in focus and the section in it
+    const keepTrail = () => { try { localStorage.setItem(store, JSON.stringify({ back: trail.back, at: trail.at })); } catch { /* private window: this visit only */ } };
     let tracing = null; // the path a back or forth step is going to: arriving there isn't a new visit
     function visit() {
       const act = activeFile();
       if (!act) return;
-      if (trail.at?.path === act.path) { trail.at.pid = app.focus; return; } // reading on in the same node
+      if (trail.at?.path === act.path) { trail.at.pid = app.focus; return keepTrail(); } // reading on in the same node
       if (trail.at && tracing !== act.path) {
         trail.back.push(trail.at);
         if (trail.back.length > 100) trail.back.shift();
@@ -914,6 +918,7 @@ export default {
       }
       tracing = null;
       trail.at = { path: act.path, pid: app.focus };
+      keepTrail();
     }
     function trace(from, to) {
       while (from.length) {
