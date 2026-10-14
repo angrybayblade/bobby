@@ -1,6 +1,6 @@
 // TypeScript and JavaScript: typescript-language-server over a pinned TypeScript, installed from npm by Bobby itself.
 import { existsSync, mkdirSync, readdirSync, readFileSync, symlinkSync } from "node:fs";
-import { dirname, join, relative, sep } from "node:path";
+import { dirname, join, relative, resolve, sep } from "node:path";
 import { type LanguageServer, nodeCommand, npmInstall, serverDir } from "./langserver.ts";
 
 const V = { languageServer: "4.3.3", typescript: "5.8.3" };
@@ -69,6 +69,7 @@ function linkWorkspaces(dir: string) {
     const link = join(dir, "node_modules", name);
     if (existsSync(link)) continue;
     mkdirSync(dirname(link), { recursive: true });
-    try { symlinkSync(relative(dirname(link), at), link, "dir"); } catch { /* a name taken twice: the first wins */ }
+    // Windows: a junction, which needs no Developer Mode (a symlink does), and takes an absolute target
+    try { process.platform === "win32" ? symlinkSync(resolve(at), link, "junction") : symlinkSync(relative(dirname(link), at), link, "dir"); } catch { /* a name taken twice: the first wins */ }
   }
 }
