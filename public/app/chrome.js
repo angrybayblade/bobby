@@ -28,6 +28,7 @@ export function init(a, viewList) {
     if (ev.target.id === "drift" && ev.key === "Enter") { ev.preventDefault(); parkDrift(); }
     if (ev.target.id === "drift" && ev.key === "Escape") $("#toast").hidden = true;
   });
+  $("#overlay").addEventListener("mousedown", (ev) => (downOnOverlay = ev.target.id === "overlay"));
   $("#overlay").addEventListener("keydown", (ev) => {
     if (ev.target.id === "gnote" && ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); addGlobalNote(); }
   });
@@ -218,6 +219,7 @@ function renderKeys() {
 
 // ---------------------------------------------------------------- overlays
 export const isOpen = () => !$("#overlay").hidden;
+let downOnOverlay = false; // the click began on the backdrop itself
 function open(html, cls = "") {
   const o = $("#overlay");
   o.innerHTML = `<div class="modal ${cls}" role="dialog" aria-modal="true">${html}</div>`;
@@ -529,7 +531,7 @@ function onClick(ev) {
   const lay = ev.target.closest("[data-flayout]");
   if (lay) return app.toggleLayout(lay.dataset.flayout);
   const t = ev.target.closest("[data-act],[data-view],[data-level],[data-set],[data-submit],[data-gdel],[data-gonote]");
-  if (!t) { if (ev.target.id === "overlay") close(); return; }
+  if (!t) { if (ev.target.id === "overlay" && downOnOverlay) close(); return; } // not the end of a text selection dragged out
   const ds = t.dataset;
   if (ds.view) app.switchView(ds.view);
   else if (ds.level) app.setLevel(Number(ds.level));
