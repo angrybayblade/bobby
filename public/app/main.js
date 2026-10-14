@@ -82,7 +82,9 @@ app.switchView = (id) => {
 };
 app.on((why) => why !== "settings" && why !== "view" && current?.update?.(why));
 app.on((why) => why === "settings" && current?.update?.("settings"));
-window.addEventListener("resize", () => current?.update?.("resize"));
+// once a frame at most: a window drag fires many
+let resizing = 0;
+window.addEventListener("resize", () => { resizing ||= requestAnimationFrame(() => { resizing = 0; current?.update?.("resize"); }); });
 
 // ---- Claude tree: never swap under the user; offer it.
 app.switchTree = async () => {

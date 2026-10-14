@@ -265,6 +265,8 @@ export default {
     const fitScale = () => Math.max(0.3, ((stage.clientWidth || 1440) - FRAME_PAD * 2) / W);
     const capH = () => Math.round(Math.max(240, ((stage.clientHeight || 900) - FRAME_PAD * 2) / fitScale()));
     let builtCap = 0;
+    // the stage's own size, which the window's resize (forwarded by main.js) also changes: once a frame for both
+    let resized = false;
     new ResizeObserver(() => { if (M && stage.clientWidth) update("resize"); }).observe(stage);
     let builtFrom = "", builtGraph = null, fileSigs = new Map();
     const buildSig = () => JSON.stringify(["diffLayout", "size", "font", "spacing", "palette", "untouched", "tests"].map((k) => app.settings[k]));
@@ -708,6 +710,7 @@ export default {
     // Leaving the canvas for a page (enter, ⤢, double-click) keeps the camera, and coming back restores it.
     let lastLevel = app.level, beforePage = null;
     function update(reason) {
+      if (reason === "resize") { if (resized) return; resized = true; requestAnimationFrame(() => (resized = false)); }
       if (reason === "focus" || reason === "mount" || reason === "graph" || reason === "resume") queueMicrotask(visit); // once the view has caught up
       if (reason === "level") {
         if (app.level === 2 && lastLevel < 2) beforePage = { cam: { ...cam }, pan: { ...pan } };
