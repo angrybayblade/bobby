@@ -99,6 +99,7 @@ async function poll() {
   });
   if (!s) return;
   pollLost = false;
+  const before = JSON.stringify([app.llm, app.claudeReady, app.servers]);
   app.llm = s.llm;
   if (s.claudeReady && !app.claudeReady) {
     app.claudeReady = true;
@@ -108,13 +109,14 @@ async function poll() {
   app.servers = s.servers ?? [];
   // A server finished: its definitions replace the syntax-only ones for its language.
   if (app.servers.some((x) => x.state === "done" && was.get(x.id) !== "done")) app.graph.definitions = await api("/api/definitions").catch(() => app.graph.definitions);
-  app.emit("llm");
+  // only when something changed: every view re-renders on it
+  if (JSON.stringify([app.llm, app.claudeReady, app.servers]) !== before) app.emit("llm");
   if (s.llm === "pending" || busy(app.servers)) pollTimer = setTimeout(poll, 3000);
 }
-app.watchServers = poll;
+app.watchServers = poll; // after you say yes, check again or no in the UI
 // A call that failed with no one to catch it (a save, a delete): say so rather than nothing.
 app.fail = (e) => chrome.toast(`Not saved: ${esc(e?.message ?? e)}`, 8000);
-window.addEventListener("unhandledrejection", (ev) => app.fail(ev.reason)); // after you say yes, check again or no in the UI
+window.addEventListener("unhandledrejection", (ev) => app.fail(ev.reason));
 app.openKeys = () => chrome.keysEditor(); // for the tour's news, which can't import chrome.js
 if (app.llm === "pending" || busy(app.servers)) poll();
 // The graph and the session are read at once: a server may have finished between them, leaving syntax-only definitions.
