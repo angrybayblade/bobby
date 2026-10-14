@@ -41,6 +41,7 @@ export interface GDiscussion {
   id: string; path: string; line: number; side: "LEFT" | "RIGHT";
   author: string; body: string; url: string; createdAt: string;
   replyTo?: string;
+  avatar?: string; // the author's GitHub avatar
 }
 
 export interface GFile {

@@ -1,8 +1,8 @@
 import { join, normalize } from "node:path";
 import { embeddedAsset } from "./assets.ts";
-import { fileLines, reviewComments, run } from "./git.ts";
+import { fileLines, reviewComments, run, whoAmI } from "./git.ts";
 import type { ReviewGraph } from "./graph.ts";
-import { loadSettings, saveSettings, saveState } from "./state.ts";
+import { home, loadSettings, saveSettings, saveState } from "./state.ts";
 import type { Comment, Definition, PrivateNote, ReviewState } from "./types.ts";
 import { type Inspector, insideRepo, inspectSyntax, referencesSyntax, type Uses } from "./inspect.ts";
 import { declineServer, inspectorFor, installServer, recheckServer, type ServerInfo, serverInfoFor } from "./servers.ts";
@@ -58,6 +58,28 @@ function opener(t: string): string | null {
   return null;
 }
 
+const AVATAR_HOSTS = /^https:\/\/(avatars\.githubusercontent\.com|github\.com)\//;
+async function avatar(u: string): Promise<Response> {
+  const src = /^[\w.-]+(\[bot\])?$/.test(u) ? `https://github.com/${u.replace(/\[bot\]$/, "")}.png` : u; // a login, or the URL the API gave
+  if (!AVATAR_HOSTS.test(src)) return new Response("not a GitHub avatar", { status: 400 });
+  const sized = src + (src.includes("?") ? "&" : "?") + "s=64";
+  const file = join(home(), "cache", "avatars", new Bun.CryptoHasher("sha1").update(sized).digest("hex"));
+  const headers = { "cache-control": "max-age=604800" };
+  const cached = Bun.file(file);
+  if ((await cached.exists()) && Date.now() - cached.lastModified < 604_800_000) return new Response(cached, { headers: { ...headers, "content-type": (await Bun.file(file + ".type").text().catch(() => "image/png")) } });
+  try {
+    const r = await fetch(sized, { redirect: "follow" });
+    const type = r.headers.get("content-type") ?? "";
+    if (!r.ok || !type.startsWith("image/") || !AVATAR_HOSTS.test(r.url)) throw new Error(`${r.status}`);
+    const body = new Uint8Array(await r.arrayBuffer());
+    await Bun.write(file, body);
+    await Bun.write(file + ".type", type);
+    return new Response(body, { headers: { ...headers, "content-type": type } });
+  } catch {
+    return (await cached.exists()) ? new Response(cached, { headers }) : new Response("no avatar", { status: 404 }); // offline: an old one beats none
+  }
+}
+
 /** Whether a file in your working copy differs from the snapshot a local review was built from. */
 async function changedSince(cwd: string, snapshot: string, path: string) {
   const live = await Bun.file(join(cwd, path)).text().catch(() => null);
@@ -90,7 +112,9 @@ export function startServer(s: Session, port: number) {
         return json(s.definitions ? { ...g, definitions: s.definitions } : g); // the language server's, once it has answered
       }
       if (p === "/api/session")
-        return json({ state: s.state, settings: loadSettings(), llm: s.llm, llmError: s.llmError, servers: Object.values(s.servers ?? {}), caps: { files: !!s.cwd, inspect: !!s.cwd } });
+        return json({ state: s.state, settings: loadSettings(), llm: s.llm, llmError: s.llmError, servers: Object.values(s.servers ?? {}), me: await whoAmI(join(home(), "cache", "me.json")), caps: { files: !!s.cwd, inspect: !!s.cwd } });
+      // A GitHub avatar, fetched once and kept a week in ~/.bobby/cache/avatars. Only GitHub's own avatar hosts.
+      if (p === "/api/avatar") return avatar(url.searchParams.get("u") ?? "");
       if (p === "/api/status") return json({ llm: s.llm, llmError: s.llmError, claudeReady: !!s.claudeGraph, servers: Object.values(s.servers ?? {}) });
       // A language server: yes, install it; look again for what you installed yourself; not now, or never.
       if (req.method === "POST" && p.startsWith("/api/servers/")) {

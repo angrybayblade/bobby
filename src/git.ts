@@ -108,12 +108,23 @@ export async function fileLines(cwd: string, sha: string, path: string): Promise
 /** Existing inline review comments still anchored to a line of the current diff (outdated ones are dropped).
  *  strict: a failed fetch throws instead of reading as no comments. */
 export async function reviewComments(pr: Pick<PrInfo, "owner" | "repo" | "number">, strict = false) {
-  type Raw = { id: number; path: string; line: number | null; side: "LEFT" | "RIGHT"; in_reply_to_id?: number; start_line?: number | null; start_side?: "LEFT" | "RIGHT" | null; user: { login: string } | null; body: string; html_url: string; created_at: string };
+  type Raw = { id: number; path: string; line: number | null; side: "LEFT" | "RIGHT"; in_reply_to_id?: number; start_line?: number | null; start_side?: "LEFT" | "RIGHT" | null; user: { login: string; avatar_url?: string } | null; body: string; html_url: string; created_at: string };
   // --jq '.[]' prints one compact object per line, so paginated pages concatenate cleanly.
   const out = await run(["gh", "api", "--paginate", "--jq", ".[]", `repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/comments?per_page=100`], { allowFail: !strict });
   const raw = out.split("\n").filter((l) => l.startsWith("{")).map((l) => JSON.parse(l) as Raw);
   return raw.filter((c) => c.line != null).map((c) => ({
     id: String(c.id), path: c.path, line: c.line!, side: c.side, author: c.user?.login ?? "ghost",
-    body: c.body, url: c.html_url, createdAt: c.created_at, ...(c.in_reply_to_id ? { replyTo: String(c.in_reply_to_id) } : {}), ...(c.start_line && c.start_line !== c.line ? { startLine: c.start_line, startSide: c.start_side ?? c.side } : {}),
+    body: c.body, url: c.html_url, createdAt: c.created_at, ...(c.user?.avatar_url ? { avatar: c.user.avatar_url } : {}), ...(c.in_reply_to_id ? { replyTo: String(c.in_reply_to_id) } : {}), ...(c.start_line && c.start_line !== c.line ? { startLine: c.start_line, startSide: c.start_side ?? c.side } : {}),
   }));
+}
+
+/** Who you are on GitHub (gh's login), for your own drafts and notes; asked once a day at most, null if gh can't say. */
+export async function whoAmI(cache: string): Promise<{ login: string; avatar: string } | null> {
+  try {
+    const f = Bun.file(cache);
+    if ((await f.exists()) && Date.now() - f.lastModified < 86_400_000) return await f.json();
+    const me = JSON.parse(await run(["gh", "api", "user", "--jq", "{login: .login, avatar: .avatar_url}"]));
+    await Bun.write(cache, JSON.stringify(me));
+    return me;
+  } catch { return null; }
 }
