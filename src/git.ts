@@ -133,13 +133,16 @@ export async function reviewComments(pr: Pick<PrInfo, "owner" | "repo" | "number
   }));
 }
 
-/** Who you are on GitHub (gh's login), for your own drafts and notes; asked once a day at most, null if gh can't say. */
+/** Who you are on GitHub (gh's login), for your own drafts and notes; asked once a day at most, null if gh can't say
+ *  (not installed, logged out, offline), and then not asked again for an hour. */
+let unknownSince = 0;
 export async function whoAmI(cache: string): Promise<{ login: string; avatar: string } | null> {
   try {
     const f = Bun.file(cache);
     if ((await f.exists()) && Date.now() - f.lastModified < 86_400_000) return await f.json();
+    if (Date.now() - unknownSince < 3_600_000) return null;
     const me = JSON.parse(await run(["gh", "api", "user", "--jq", "{login: .login, avatar: .avatar_url}"]));
     await Bun.write(cache, JSON.stringify(me));
     return me;
-  } catch { return null; }
+  } catch { unknownSince = Date.now(); return null; }
 }
