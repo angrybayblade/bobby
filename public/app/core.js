@@ -260,7 +260,9 @@ export function createApp({ graph, session }) {
       app.focus = pid;
       const fileNote = app.page.composing?.file ? app.page.composing : null; // a note on the whole file outlives moving within it
       if (!fileNote && app.page.composing) app.keepDraft?.(app.page.composing); // moving away keeps what you wrote, as esc does
-      app.page = { exp: app.page.exp, open: app.page.open, kind: app.page.kind, sel: null, selKeys: null, anchor: null, composing: fileNote };
+      // the inspector's window is on top of everything and closes itself: a focus change underneath (a scroll's read
+      // focus, a click) keeps it, or it would stay drawn with nothing behind it, swallowing every key
+      app.page = { exp: app.page.exp, open: app.page.open, kind: app.page.kind, sel: null, selKeys: null, anchor: null, composing: fileNote, peek: app.page.peek };
       if (level !== undefined && level !== app.level) { app.level = level; app.emit("level"); }
       if (changed) {
         app.emit("focus");
