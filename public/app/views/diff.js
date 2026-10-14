@@ -3,6 +3,7 @@
 // What you're reading gets full edges: sections visible in the active viewer connect to related
 // sections in other files, and those viewers scroll so the other end is in view. Every other
 // relationship is a faint background line; ones whose ends are scrolled away merge into one.
+import { bubble, fileCount, fileStamp, fileState, toggleFile } from "../comments.js";
 import { BANDS, esc } from "../core.js";
 import { injectCss } from "./flow.js";
 import { layered } from "./layered.js";
@@ -215,6 +216,7 @@ export default {
       return `<i class="glyph ${f.changed ? "change" : "context"}"></i><span class="p">${esc(dir)}<b>${esc(f.path.split("/").pop())}</b></span><span class="band ${f.band}">${BAND_LABEL[f.band]}</span><span class="st">${stat(f)}</span>`
         + `<button class="frd" data-fviewed="${esc(f.path)}" aria-label="Mark the whole file viewed" title="Every page of this file, at once · local only"><i class="cb"></i><span>Mark viewed</span></button>`
         + `<button class="max lay" data-flayout="${esc(f.path)}" aria-label="Inline or split" data-tip="${app.layoutOf(f.path) === "split" ? "Show this file inline" : "Show this file split"} · d for every file">${app.layoutOf(f.path) === "split" ? "▤" : "◫"}</button>`
+        + (fileCount(app, f.path) ? `<button class="max fcm" data-fcomments="${esc(f.path)}" aria-pressed="${fileState(app, f.path) === "open"}" data-tip="${fileState(app, f.path) === "open" ? "Collapse" : "Show"} the comments in this file">${bubble(fileState(app, f.path) === "open")}<span>${fileCount(app, f.path)}</span></button>` : "")
         + `<button class="max" data-fnote="${esc(f.path)}" aria-label="Note on this file" data-tip="Private note on this file · only you see it">✎</button>`
         + (exit ? `<button class="max" data-exit="1" aria-label="Back to all files" data-tip="Back to all files · esc">⤡</button>`
           : `<button class="max" data-max="${esc(f.path)}" aria-label="Expand this file" data-tip="Expand to full screen · or double-click the header">⤢</button>`);
@@ -258,11 +260,11 @@ export default {
     let builtCap = 0;
     new ResizeObserver(() => { if (M && stage.clientWidth) update("resize"); }).observe(stage);
     let builtFrom = "", builtGraph = null, fileSigs = new Map();
-    const buildSig = () => JSON.stringify(["diffLayout", "size", "font", "spacing", "palette", "prComments", "untouched", "tests"].map((k) => app.settings[k]));
+    const buildSig = () => JSON.stringify(["diffLayout", "size", "font", "spacing", "palette", "untouched", "tests"].map((k) => app.settings[k]));
     const fileSig = (path) => {
       const on = (x) => x.path === path;
       return JSON.stringify([app.layoutOf(path), app.state.comments.filter(on).map((c) => [c.id, c.line, c.body]),
-        app.state.notes.filter(on).map((n) => [n.id, n.line, n.body]), (app.graph.discussion ?? []).filter(on).length]);
+        app.state.notes.filter(on).map((n) => [n.id, n.line, n.body]), (app.graph.discussion ?? []).filter(on).length, fileStamp(app, path)]);
     };
     /** Re-render only the viewers whose content changed, and re-measure only them. Returns the paths re-rendered. */
     function refresh() {
@@ -571,6 +573,8 @@ export default {
       railDown.innerHTML = `<h4>affects</h4>${down.map(card).join("") || `<div class="none">nothing in view affects other code</div>`}`;
     }
     dfocus.addEventListener("click", (ev) => {
+      const fc = ev.target.closest("[data-fcomments]");
+      if (fc) { ev.stopPropagation(); return toggleFile(app, fc.dataset.fcomments); }
       const n = ev.target.closest("[data-fnote]");
       if (n) return app.noteOnFile(big.querySelector(".fvb"), n.dataset.fnote);
       const vf = ev.target.closest("[data-fviewed]");
@@ -772,6 +776,8 @@ export default {
     stage.addEventListener("click", (ev) => {
       const b = ev.target.closest("[data-max]");
       if (b) openFocus(b.dataset.max);
+      const fc = ev.target.closest("[data-fcomments]");
+      if (fc) { ev.stopPropagation(); return toggleFile(app, fc.dataset.fcomments); }
       const n = ev.target.closest("[data-fnote]");
       if (n) { const v = views.get(n.dataset.fnote); engage(true); app.noteOnFile(v.body, v.f.path); }
       const vf = ev.target.closest("[data-fviewed]");

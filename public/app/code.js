@@ -3,6 +3,7 @@
 import { BAND_TEXT, DONE, LOW, api, esc } from "./core.js";
 import { MOD } from "./palette.js";
 import { keyHtml } from "./keys.js";
+import { bubble, notesFor, outside, placeNotes, showFull, threadsAt, toggleItem } from "./comments.js";
 
 const EXT = {
   ts: "typescript", tsx: "typescript", mts: "typescript", cts: "typescript", js: "javascript", jsx: "javascript", mjs: "javascript", cjs: "javascript",
@@ -119,13 +120,13 @@ function row(app, { t, o, n }, html, target, half) {
   const key = `${target.path}|${side}|${line}`;
   const cls = t === "+" ? "add" : t === "-" ? "del" : t === "x" ? "exp" : "ctx";
   const mirror = half === "L" && t !== "-"; // the left copy of an unchanged line in split view: the right copy carries its marks
-  const at = (c) => c.path === target.path && c.side === side && c.line === line;
-  const count = mirror ? 0 : app.state.comments.filter(at).length + (app.graph.discussion ?? []).filter(at).length + app.state.notes.filter(at).length;
+  if (!mirror) target.keys?.push(key); // the lines this box shows, for its floating notes
   const nums = half === "L" ? `<span class="no">${o ?? ""}</span>` : half === "R" ? `<span class="no">${n ?? ""}</span>` : `<span class="no">${o ?? ""}</span><span class="no">${n ?? ""}</span>`;
   const composing = !half && app.page.composing?.key === key;
   const sel = !mirror && (app.page.selKeys ? app.page.selKeys.has(key) : app.page.sel?.key === key);
-  return `<div class="ln ${cls}${count ? " hasc" : ""}${sel ? " sel" : ""}${!mirror && target.hi === n && t !== "-" ? " target" : ""}" data-key="${esc(key)}" data-path="${esc(target.path)}" data-line="${line}" data-side="${side}" data-indiff="${target.inDiff && t !== "x" ? 1 : 0}">
-    <span class="bar"></span>${nums}<span class="sg">${t === "+" ? "+" : t === "-" ? "−" : ""}</span><code${count ? ` data-cn="${count}"` : ""}>${html}</code></div>`
+  return `<div class="ln ${cls}${sel ? " sel" : ""}${!mirror && target.hi === n && t !== "-" ? " target" : ""}" data-key="${esc(key)}" data-path="${esc(target.path)}" data-line="${line}" data-side="${side}" data-indiff="${target.inDiff && t !== "x" ? 1 : 0}">
+    <span class="bar"></span>${nums}<span class="sg">${t === "+" ? "+" : t === "-" ? "−" : ""}</span><code>${html}</code></div>`
+    + (!half ? cmLine(threadsAt(app, key)) : "") // inline: the threads on this line, under it, the width of the node
     + (composing ? composer(app.page.composing) : "");
 }
 /** Diff lines as rows: one column (inline), or old beside new (split), pairing each run of removals with the additions after it. */
@@ -133,9 +134,11 @@ function diffRows(app, lines, html, target) {
   if (app.layoutOf(target.path) !== "split") return lines.map((l, i) => row(app, l, html[i], target)).join("");
   const pair = (L, R) => {
     const cell = (i, half) => i == null ? `<div class="ln none"></div>` : row(app, lines[i], html[i], target, half);
-    const c = app.page.composing;
-    const composing = c && [L, R].some((i) => i != null && c.key === `${target.path}|${lines[i].t === "-" ? "LEFT" : "RIGHT"}|${lines[i].t === "-" ? lines[i].o : lines[i].n}`);
-    return `<div class="srow">${cell(L, "L")}${cell(R, "R")}</div>${composing ? composer(c) : ""}`;
+    const c = app.page.composing, keyAt = (i) => `${target.path}|${lines[i].t === "-" ? "LEFT" : "RIGHT"}|${lines[i].t === "-" ? lines[i].o : lines[i].n}`;
+    const composing = c && [L, R].some((i) => i != null && c.key === keyAt(i));
+    // split: a thread sits on the side it was made on, as wide as that side; an unchanged line's are on the right
+    const left = L != null && lines[L].t === "-" ? threadsAt(app, keyAt(L)) : "", right = R != null && lines[R].t !== "-" ? threadsAt(app, keyAt(R)) : "";
+    return `<div class="srow">${cell(L, "L")}${cell(R, "R")}</div>${left || right ? `<div class="srow cmrow"><div class="cmcell">${left}</div><div class="cmcell">${right}</div></div>` : ""}${composing ? composer(c) : ""}`;
   };
   let out = "";
   for (let i = 0; i < lines.length;) {
@@ -147,6 +150,19 @@ function diffRows(app, lines, html, target) {
   }
   return out;
 }
+const cmLine = (html) => (html ? `<div class="cmline">${html}</div>` : "");
+/** The floating notes on a code box's lines, and "N comments above/below" for comments just outside what it shows. */
+function boxExtras(app, target) {
+  const notes = notesFor(app, [...new Set(target.keys)]);
+  return notes ? `<div class="nlayer">${notes}</div>` : "";
+}
+function cmMore(app, h, dir, list, lines) {
+  if (!list.length) return "";
+  const n = list.reduce((k, x) => k + (x.items?.length ?? 1), 0), what = list.every((x) => x.note) ? `note${n > 1 ? "s" : ""}` : `comment${n > 1 ? "s" : ""}`;
+  return app.caps.files ? `<button class="more cmore" data-expto="${esc(h.id)}:${dir}:${lines}">${bubble(false)} ${n} ${what} ${dir}</button>`
+    : `<div class="more cmore">${bubble(false)} ${n} ${what} ${dir}, outside the diff</div>`;
+}
+
 // A line can take a GitHub draft or a private note; c.file composes a note on a whole file (notes only).
 function composer(c) {
   const note = c.kind === "note";
@@ -261,28 +277,6 @@ export function nodeComments(app, pid) {
   return [...(app.graph.discussion ?? []).filter(hit), ...app.state.comments.filter(hit), ...notes]
     .sort((a, b) => a.path.localeCompare(b.path) || a.line - b.line || !!b.url - !!a.url || String(a.createdAt).localeCompare(String(b.createdAt)));
 }
-// Other reviewers' comments start hidden behind a toggle (settings.prComments), so the code comes first.
-function notesHtml(app, pid) {
-  const all = nodeComments(app, pid), gh = all.filter((c) => c.url).length;
-  const shown = app.settings.prComments === "show" || app.page.open.has(`gh:${pid}`);
-  const list = shown ? all : all.filter((c) => !c.url);
-  if (!all.length) return "";
-  const toggle = gh && app.settings.prComments !== "show"
-    ? `<button class="ghtoggle" data-ghshow="${pid}">${shown ? "Hide" : "Show"} ${gh} comment${gh > 1 ? "s" : ""} from the PR</button>` : "";
-  if (!list.length) return `<section class="notes">${toggle}</section>`;
-  return `<section class="notes"><h4>${list.some((c) => c.private) ? "Comments & notes" : "Comments"} · ${list.length}</h4>${toggle}${list.map((c) => {
-    const key = esc(jumpKey(c));
-    const where = rangeLabel(c);
-    if (c.private) return privateNote(c, where, key);
-    if (c.url) {
-      const link = /^https:\/\//.test(c.url) ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">${where} ↗</a>` : where;
-      return `<div class="note gh${c.replyTo ? " reply" : ""}" data-jump="${key}"><div class="who">@${esc(c.author)} · ${link}</div><div class="body">${esc(c.body)}</div></div>`;
-    }
-    if (c.wip) return `<div class="note draft wip" data-jump="${key}"><div class="who">You · unfinished ${c.kind === "note" ? "private note" : "comment"} · ${where}<button class="cont" data-wip="${c.id}" title="Open it again to finish">Continue</button><button class="x" data-del="${c.id}" title="Discard">✕</button></div><div class="body">${esc(c.body)}</div></div>`;
-    return `<div class="note draft" data-jump="${key}"><div class="who">You · draft · ${where}<button class="x" data-del="${c.id}" title="Delete draft">✕</button></div><div class="body">${esc(c.body)}</div>${c.inDiff ? "" : `<div class="hint">Outside the diff, so this goes into the review summary.</div>`}</div>`;
-  }).join("")}</section>`;
-}
-
 function privateNote(n, where, key) {
   return `<div class="note mine"${key ? ` data-jump="${key}"` : ""}><div class="who">You · private note${where ? ` · ${where}` : ""}<button class="x" data-delnote="${n.id}" title="Delete note">✕</button></div><div class="body">${esc(n.body)}</div></div>`;
 }
@@ -343,7 +337,7 @@ function hunkBox(app, h, rerender, opts = {}) {
   if (fold && folded(app, h.id)) return foldedBox(h.id, h.file, fold);
   const e = app.page.exp[h.id] ?? { above: 0, below: 0 };
   const file = e.above || e.below ? fileLines(app, h.file, rerender) : null;
-  const target = { path: h.file, inDiff: true };
+  const target = { path: h.file, inDiff: true, keys: [] };
   const lastN = h.newStart + h.lines.filter((l) => l.t !== "-").length - 1;
   const lastO = h.oldStart + h.lines.filter((l) => l.t !== "+").length - 1;
   const ctxRows = (from, to, offset) => {
@@ -358,11 +352,19 @@ function hunkBox(app, h, rerender, opts = {}) {
   const ctx = h.context ? ` <span style="color:var(--faint)">· ${esc(h.context)}</span>` : "";
   const stat = `<span class="st"><span style="color:var(--ok)">+${a}</span> <span style="color:var(--risk)">−${d}</span>${fold ? hideBtn(h.id) : ""}</span>`;
   const head = opts.whole ? lineHead(`L${h.newStart}`, ctx, stat) : fileHead(h.file, ctx, stat);
+  const lines = `${ctxRows(Math.max(1, h.newStart - e.above), h.newStart - 1, h.oldStart - h.newStart)}${diffRows(app, h.lines, html, target)}${ctxRows(lastN + 1, lastN + e.below, lastO - lastN)}`;
+  // comments between this hunk and the next one in the file (and, for the first, before it): a marker that opens the code to them
+  const sib = app.graph.hunks.filter((x) => x.file === h.file).sort((a, b) => a.newStart - b.newStart), at = sib.findIndex((x) => x.id === h.id);
+  const lo = Math.max(1, h.newStart - e.above), hi = lastN + e.below, next = sib[at + 1]?.newStart ?? Infinity;
+  const below = outside(app, h.file, hi + 1, next - 1), above = at === 0 ? outside(app, h.file, 1, lo - 1) : [];
   return `<div class="code">
     ${head}
+    ${cmMore(app, h, "above", above, lo - Math.min(...above.map((x) => x.startLine ?? x.line), lo) + 2)}
     ${canExpand && h.newStart > 1 ? `<button class="more" data-exp="${h.id}:above">⋯ more above</button>` : ""}
-    <div class="lines">${ctxRows(Math.max(1, h.newStart - e.above), h.newStart - 1, h.oldStart - h.newStart)}${diffRows(app, h.lines, html, target)}${ctxRows(lastN + 1, lastN + e.below, lastO - lastN)}</div>
+    <div class="lines">${lines}</div>
+    ${cmMore(app, h, "below", below, Math.max(...below.map((x) => x.line), hi) - hi + 2)}
     ${canExpand ? `<button class="more" data-exp="${h.id}:below">⋯ more below</button>` : ""}
+    ${boxExtras(app, target)}
   </div>`;
 }
 
@@ -379,7 +381,7 @@ function contextBox(app, node, rerender, opts = {}) {
   const hi = file ? Math.min(file.length, r.end) : Math.min(r.end, snip.start + snip.lines.length - 1);
   const nums = []; for (let n = lo; n <= hi; n++) nums.push(n);
   const html = hlBlock(nums.map((n) => src(n) ?? ""), langOf(path));
-  const target = { path, inDiff: false, hi: line };
+  const target = { path, inDiff: false, hi: line, keys: [] };
   const canMore = app.caps.files || lo > snip.start || hi < snip.start + snip.lines.length - 1;
   return `<div class="code">
     ${opts.whole
@@ -388,6 +390,7 @@ function contextBox(app, node, rerender, opts = {}) {
     ${canMore && lo > 1 ? `<button class="more" data-exp="${esc(key)}:above">⋯ more above</button>` : ""}
     <div class="lines">${nums.map((n, i) => row(app, { t: " ", o: null, n }, html[i], target)).join("")}</div>
     ${canMore ? `<button class="more" data-exp="${esc(key)}:below">⋯ more below</button>` : ""}
+    ${boxExtras(app, target)}
   </div>`;
 }
 
@@ -426,7 +429,7 @@ export function renderNode(app, el, pid, { head = true } = {}) {
   else if (pid === LOW) body = lowPage(app);
   else if (!head) {
     const node = app.nodeOf(pid);
-    body = fileNotesHtml(app, pathOf(node)) + notesHtml(app, pid) + (node.kind === "change" ? app.hunksOf(pid).map((h) => hunkBox(app, h, rerender)).join("") : contextBox(app, node, rerender));
+    body = fileNotesHtml(app, pathOf(node)) + (node.kind === "change" ? app.hunksOf(pid).map((h) => hunkBox(app, h, rerender)).join("") : contextBox(app, node, rerender));
   } else {
     const { pl } = app.get(pid);
     const node = app.nodeOf(pid);
@@ -440,13 +443,13 @@ export function renderNode(app, el, pid, { head = true } = {}) {
       <h1>${esc(pl.title)}${badges ? `<span class="badges">${badges}</span>` : ""}</h1>
       <p class="why">${esc(pl.why)}</p>
       ${fileNotesHtml(app, pathOf(node))}
-      ${notesHtml(app, pid)}
       ${node.kind === "change" ? app.hunksOf(pid).map((h) => hunkBox(app, h, rerender)).join("") : contextBox(app, node, rerender)}`;
   }
   el.innerHTML = `<div class="node ${head ? "page" : "body"}">${body}</div>`;
   const ta = el.querySelector("textarea[data-composer]");
   if (ta) ta.focus({ preventScroll: !head });
   syncPop(app, el);
+  placeNotes(el, app);
 }
 export const renderPage = (app, el, pid) => renderNode(app, el, pid);
 
@@ -461,11 +464,12 @@ export function renderFile(app, el, pids) {
     const code = node.kind === "change" ? app.hunksOf(pid).map((h) => hunkBox(app, h, rerender, opts)).join("") : contextBox(app, node, rerender, opts);
     return `<section class="sec ${pid === app.focus ? "cur" : ""} ${done ? "done" : ""}" data-pid="${pid}">
       <div class="sech"><i class="glyph ${pl.band === "core" ? "core" : node.kind}"></i><span>${esc(pl.title)}</span>${pl.risk === "high" ? `<i class="riskdot"></i>` : ""}${app.isFlagged(pid) ? `<span class="status flag">⚑</span>` : ""}<button class="vw" data-viewed="${pid}" title="Mark viewed: tracks your progress here only, not on GitHub"><span class="on"><i class="cb">✓</i>Viewed</span><span class="off"><i class="cb"></i>Viewed</span></button></div>
-      ${notesHtml(app, pid)}${code}</section>`;
+      ${code}</section>`;
   }).join("")}</div>`;
   const ta = el.querySelector("textarea[data-composer]");
   if (ta) ta.focus({ preventScroll: true });
   syncPop(app, el);
+  placeNotes(el, app);
 }
 
 // ---- the inspector: ⌘/ctrl-click a name to see where it's declared (and, with a language server, its type) without
@@ -798,6 +802,10 @@ function bind(app, el, rerender) {
   el.dataset.bound = "1";
   el.addEventListener("click", (ev) => {
     if (ev.target.closest("a")) return;
+    const full = ev.target.closest("[data-cfull]");
+    if (full) return showFull(app, full.dataset.cfull);
+    const fold = ev.target.closest("[data-tid]");
+    if (fold && !ev.target.closest("[data-del],[data-wip],[data-delnote]")) return toggleItem(app, fold.dataset.tid, fold.dataset.tpath);
     const code = (ev.metaKey || ev.ctrlKey) && ev.target.closest(".ln[data-key] code");
     if (code) { // the inspector: where it's declared, or (with shift) where it's used
       ev.preventDefault();
@@ -809,7 +817,7 @@ function bind(app, el, rerender) {
       }
       return (ev.shiftKey ? uses : inspect)(app, { ...w, path: line.dataset.path, line: Number(line.dataset.line) }, false);
     }
-    const t = ev.target.closest("[data-compose],[data-wip],[data-ghshow],[data-ckind],[data-delnote],[data-viewed],[data-exp],[data-del],[data-low],[data-go],[data-jump],[data-fold],.ln[data-key]");
+    const t = ev.target.closest("[data-compose],[data-wip],[data-expto],[data-ckind],[data-delnote],[data-viewed],[data-exp],[data-del],[data-low],[data-go],[data-jump],[data-fold],.ln[data-key]");
     if (!t || !el.contains(t)) return;
     const again = () => bound.get(el)();
     const ds = t.dataset;
@@ -829,7 +837,7 @@ function bind(app, el, rerender) {
       return again();
     }
     if (ds.delnote) { app.deleteNote(ds.delnote); return again(); }
-    if (ds.ghshow) { const k = `gh:${ds.ghshow}`; app.page.open.has(k) ? app.page.open.delete(k) : app.page.open.add(k); return again(); }
+    if (ds.expto) { const [id, dir, n] = ds.expto.split(":"), e = (app.page.exp[id] ??= { above: 0, below: 0 }); e[dir] = Math.max(e[dir], Number(n)); return again(); }
     if (ds.viewed) return app.mark(ds.viewed, app.isReviewed(ds.viewed) ? null : "reviewed"); // views restyle .sec.done
     if (ds.go) app.setFocus(ds.go);
     else if (ds.fold) {

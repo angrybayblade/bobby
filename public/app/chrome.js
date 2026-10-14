@@ -3,6 +3,7 @@ import { BAND_TEXT, DONE, LEVELS, LOW, api, esc, inline } from "./core.js";
 import { MOD } from "./palette.js";
 import * as tour from "./tour.js";
 import { ACTIONS, action, bind, bindable, kbdHtml, keyHtml, keyOfEvent, keysOf, keyText, reset, unbind } from "./keys.js";
+import { bubble, prCount, togglePR } from "./comments.js";
 
 const $ = (q) => document.querySelector(q);
 const PALETTE_KEY = MOD === "⌘" ? "⌘K" : "ctrl k";
@@ -137,7 +138,7 @@ function renderTop() {
     <div class="brand"><img src="/bobby.svg" alt="" width="22" height="22">bobby</div>
     ${g.pr.provider === "local" ? `<span class="prtitle" title="Local review: ${esc(g.pr.branch)} compared with ${esc(g.pr.baseRef)}">⎇ ${esc(g.pr.branch)} → ${esc(g.pr.baseRef)} · ${esc(g.pr.title)}</span>`
       : `<a class="prtitle" href="${esc(g.pr.url)}" target="_blank" rel="noopener">#${g.pr.number} ${esc(g.pr.title)}</a>`}
-    ${llm}${lsp}
+    ${llm}${lsp}${commentsButton()}
     ${coreProgress()}
     <div class="prog" title="${done} of ${total} pages reviewed"><div class="bar"><i style="width:${pct}%"></i></div>${done}/${total}${mins && done < total ? ` · ~${mins}m` : ""}</div>
     <div class="seg" role="group" aria-label="View">${views.map((v) => `<button data-view="${v.id}" aria-pressed="${app.viewId === v.id}" title="${esc(v.hint)} (${esc(keysOf(app.settings, "nextView").map(keyText)[0] ?? "")})">${esc(v.name)}</button>`).join("")}</div>
@@ -297,7 +298,7 @@ const SETTINGS = [
   ["timebox", "Break reminder", [[0, "Off"], [15, "15m"], [25, "25m"], [45, "45m"]]],
   ["rabbit", "Rabbit-hole nudge", [[0, "Off"], [8, "8m"], [12, "12m"], [20, "20m"]]],
   ["drift", "Drift prompt", [["on", "On"], ["off", "Off"]]],
-  ["prComments", "PR comments", [["hide", "Hidden, show per page"], ["show", "Always shown"]]],
+  ["comments", "Comments", [["open", "Open"], ["collapsed", "Collapsed"]]],
   ["untouched", "Untouched code", [["hide", "Hidden"], ["show", "Shown"]]],
   ["fileTree", "File tree", [["show", "Shown"], ["hide", "Hidden"]]],
   ["fileTreeSide", "File tree side", [["right", "Right"], ["left", "Left"]]],
@@ -469,6 +470,12 @@ function welcomeBackLite() {
     ${loc.core.hook ? `<span class="hook">${inline(loc.core.hook)}</span>` : ""}</span>`, 15000);
 }
 
+// Every comment in the PR, open or collapsed in place: filled when they're showing.
+function commentsButton() {
+  const n = prCount(app), open = (app.settings.comments ?? "open") === "open";
+  return n ? `<button class="pill cmpill" data-act="pr-comments" aria-pressed="${open}" title="${open ? "Collapse" : "Show"} every comment in the PR">${bubble(open)} ${n}</button>` : "";
+}
+
 // ---------------------------------------------------------------- language servers
 // A chip for each language whose server needs you (a yes, something to install) or is on its way; nothing once it's up.
 function serverChip(s) {
@@ -542,6 +549,7 @@ function onClick(ev) {
     tests: () => app.saveSettings({ tests: app.settings.tests === "show" ? "hide" : "show" }),
     files: () => toggleFiles(),
     keys: () => keysEditor(),
+    "pr-comments": () => togglePR(app),
     "key-add": () => keyEdit("key-add", ds.id), "key-unbind": () => keyEdit("key-unbind", ds.id, ds.key), "key-reset": () => keyEdit("key-reset", ds.id),
     "key-reset-all": () => keyEdit("key-reset-all"),
     server: () => serverCard(ds.id),

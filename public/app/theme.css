@@ -264,7 +264,7 @@ kbd {
 .code .fold-t:hover { color: var(--text); }
 .code .more { display: block; width: 100%; text-align: left; padding: 0 10px 0 82px; font: 11px/20px var(--font-code); color: var(--faint); background: var(--hunk); }
 .code .more:hover { color: var(--text); }
-.lines { font: calc(var(--code-size) - 1px)/1.55 var(--font-code); overflow-x: auto; word-spacing: 0; font-variant-ligatures: none; } /* "=>" must look like "=>" in a review */
+.lines { font: calc(var(--code-size) - 1px)/1.55 var(--font-code); overflow-x: auto; word-spacing: 0; font-variant-ligatures: none; container-type: inline-size; } /* "=>" must look like "=>" in a review */
 .ln { display: grid; grid-template-columns: 3px 38px 38px 14px 1fr; min-width: max-content; cursor: pointer; }
 .ln .bar { background: transparent; }
 .ln .no { color: var(--faint); text-align: right; padding-right: 8px; user-select: none; font-size: calc(var(--code-size) - 2px); }
@@ -285,6 +285,67 @@ kbd {
 :is(.fvb, .fvb *, .code *)::-webkit-scrollbar-track, :is(.fvb, .fvb *, .code *)::-webkit-scrollbar-corner { background: transparent; }
 /* Symbol highlights: every use of the symbol under the pointer (code.js, CSS Highlight API). */
 ::highlight(bobby-sym) { background-color: color-mix(in srgb, var(--signal) 22%, transparent); }
+/* Comments in place (comments.js): a thread under its line, as wide as the node (inline: pinned left as the code scrolls
+   sideways) or as one side (split); collapsed, a slim line in the same spot. Notes float over the code's right edge. */
+.cmline { position: sticky; left: 0; width: 100cqw; box-sizing: border-box; padding: 6px 12px 10px; }
+.cmrow .cmcell { min-width: 0; padding: 6px 10px 10px; }
+.cmrow .cmcell:empty { padding: 0; }
+.cmline > .cthread + .cthread, .cmcell > .cthread + .cthread { margin-top: 6px; }
+.cthread { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); font: 13px/1.5 var(--font-ui); overflow: hidden; white-space: normal; }
+.cthread.draft { border-color: color-mix(in srgb, var(--signal) 30%, var(--line)); }
+.citem { display: flex; gap: 10px; padding: 10px 12px; }
+.citem + .citem { border-top: 1px solid var(--line-soft); }
+.cav { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--raised); object-fit: cover; }
+.cmain { flex: 1; min-width: 0; }
+.cwho { display: flex; align-items: center; gap: 8px; font: 13px var(--font-ui); color: var(--muted); }
+.cwho b { color: var(--text); font-weight: 600; }
+.cgrow { flex: 1; }
+.cwhen { color: var(--faint); font-size: 12px; }
+.crange { font: 11.5px var(--font-code); color: var(--faint); }
+.ctag { font: 11px/16px var(--font-ui); color: var(--muted); border: 1px solid var(--line); border-radius: 10px; padding: 0 7px; }
+.clink { color: var(--faint); text-decoration: none; }
+.clink:hover, .cact:hover, .cfold:hover { color: var(--text); }
+.cact { font: 12px var(--font-ui); color: var(--muted); padding: 0 4px; }
+.cfold { display: inline-flex; color: var(--faint); padding: 2px; }
+.cbody { margin-top: 3px; color: var(--text); overflow-wrap: anywhere; max-height: 18em; overflow: hidden; } /* long ones: Show more */
+.cbody.full { max-height: none; }
+.cbody:has(+ .cshow) { -webkit-mask-image: linear-gradient(#000 75%, transparent); mask-image: linear-gradient(#000 75%, transparent); }
+.cshow { margin-top: 2px; font: 12px var(--font-ui); color: var(--signal); }
+.ctable { border-collapse: collapse; margin: 6px 0; font-size: 12.5px; }
+.ctable th, .ctable td { border: 1px solid var(--line-soft); padding: 3px 8px; text-align: left; vertical-align: top; }
+.ctable th { background: var(--raised); font-weight: 600; }
+.cbody code { font: .88em var(--font-code); background: var(--raised); padding: 1px 4px; border-radius: 3px; }
+.cbody pre.ccode { margin: 6px 0; padding: 8px 10px; background: var(--bg); border: 1px solid var(--line-soft); border-radius: 4px; overflow: auto; font: 12.5px/1.5 var(--font-code); white-space: pre; }
+.cbody pre code { background: none; padding: 0; font: inherit; }
+.cbody ul { margin: 4px 0; padding-left: 20px; }
+.cbody blockquote { margin: 4px 0; padding-left: 10px; border-left: 3px solid var(--line); color: var(--muted); }
+.cbody details { margin: 4px 0; } .cbody summary { cursor: pointer; color: var(--muted); }
+.cbody .ch { font-weight: 600; margin: 4px 0 2px; }
+.cbody a { color: var(--signal); }
+.csug { margin-top: 6px; font: 12px var(--font-ui); color: var(--muted); }
+.cthread.slim { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 14px; cursor: pointer; font: 12.5px var(--font-ui); color: var(--muted); }
+.cthread.slim:hover { border-color: var(--muted); }
+.cthread.slim b { color: var(--text); font-weight: 600; }
+.cthread.slim svg { flex: none; color: var(--faint); }
+.cfaces { display: flex; }
+.cfaces .cav { width: 18px; height: 18px; margin-right: -5px; border: 2px solid var(--surface); }
+.cfaces .cav:last-child { margin-right: 0; }
+.cprev { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--faint); }
+.cn { flex: none; color: var(--faint); }
+.nlayer { position: absolute; inset: 0; pointer-events: none; }
+.fnote { position: absolute; right: 12px; z-index: 3; width: min(300px, 45%); pointer-events: auto; padding: 6px 10px 8px; border: 1px solid color-mix(in srgb, var(--hl-attr) 35%, var(--line)); border-radius: 4px; background: color-mix(in srgb, var(--hl-attr) 10%, var(--surface)); box-shadow: var(--shadow); font: 13px/1.45 var(--font-ui); white-space: normal; }
+.fnote.wip { border-style: dashed; }
+.fnote .fnhead { display: flex; align-items: center; gap: 6px; font: 11.5px var(--font-ui); color: var(--muted); }
+.fnote .fnhead svg { color: color-mix(in srgb, var(--hl-attr) 70%, var(--muted)); }
+.fnote .cbody { font-size: 13px; }
+.fnote.slim { width: auto; padding: 2px 5px; cursor: pointer; color: color-mix(in srgb, var(--hl-attr) 70%, var(--muted)); box-shadow: none; }
+.cmore { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.cmore svg { color: var(--faint); }
+.cmpill { display: inline-flex; align-items: center; gap: 5px; }
+.cmpill[aria-pressed="false"] { color: var(--faint); }
+:is(.dv, .fvw) .fvh .fcm { display: inline-flex; align-items: center; gap: 3px; font: 11.5px var(--font-ui); }
+:is(.dv, .fvw) .fvh .fcm[aria-pressed="false"] { color: var(--faint); }
+
 /* The inspector: a window over the app (code.js › drawPeek). ⌘/ctrl held shows what can be clicked. */
 body.inspecting .ln[data-side="RIGHT"] code, body.inspecting .inspector .pl code { cursor: pointer; }
 .inspector { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-start; justify-content: center; padding: 9vh 24px 24px; background: color-mix(in srgb, var(--bg) 70%, transparent); } /* no blur: it would repaint the whole canvas */
@@ -372,7 +433,6 @@ body.inspecting .ln[data-side="RIGHT"] code, body.inspecting .inspector .pl code
 .ln.none { background: repeating-linear-gradient(135deg, transparent 0 6px, var(--line-soft) 6px 7px); cursor: default; }
 mark.wa { background: var(--add-word); color: inherit; border-radius: 0; }
 mark.wd { background: var(--del-word); color: inherit; border-radius: 0; }
-.ln.hasc code::after { content: "  ◂ " attr(data-cn); color: var(--signal); font: 600 11px var(--font-ui); }
 .notes { margin: 0 0 18px; display: flex; flex-direction: column; gap: 8px; max-width: 80ch; }
 .ghtoggle { align-self: flex-start; font: 12px var(--font-ui); color: var(--muted); padding: 3px 10px; border: 1px solid var(--line-soft); border-radius: 1px; }
 .ghtoggle:hover { color: var(--text); border-color: var(--muted); }

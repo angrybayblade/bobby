@@ -23,7 +23,7 @@ export const DEFAULT_SETTINGS = {
   edges: "all", // all | focus: Diff draws background edges, or only the focused ones
   rabbit: 12, // minutes on one page before offering to flag it and move on; 0 = off
   drift: "on", // on | off: after 90s idle on a page, offer to park a thought
-  prComments: "hide", // hide | show: other reviewers' comments, behind a per-page toggle when hidden
+  comments: "open", // open | collapsed: comments and notes in place, open or as a slim marker (per file and thread too)
   untouched: "hide", // hide | show: untouched code the changes rely on or affect, in every view (the top bar's switch)
   tests: "hide", // hide | show: test files and generated files, in every view (the top bar's switch)
   fileTree: "show", // show | hide: the file tree beside the view (t)
@@ -89,7 +89,8 @@ export function createApp({ graph, session }) {
     settings: { ...DEFAULT_SETTINGS, ...session.settings },
     caps: session.caps,
     llm: session.llm,
-    servers: session.servers ?? [], // a language server per language in the review: where each stands (servers.ts)
+    servers: session.servers ?? [],
+    me: session.me ?? null, // your GitHub login and avatar, for your drafts // a language server per language in the review: where each stands (servers.ts)
     focus: null,
     level: 0,
     page: { exp: {}, open: new Set(), sel: null, composing: null }, // transient code-page state; open = unfolded blocks
