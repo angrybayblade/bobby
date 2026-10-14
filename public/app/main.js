@@ -44,6 +44,8 @@ function applySettings() {
 }
 applySettings();
 app.on((why) => why === "settings" && applySettings());
+// System theme and motion follow the OS as it changes (dark mode at sunset), not only at load
+for (const q of ["(prefers-color-scheme: light)", "(prefers-reduced-motion: reduce)"]) window.matchMedia(q).addEventListener("change", applySettings);
 
 // ---- views
 // Each view mounts into its own slot. Diff is costly to build, so it's kept alive when you switch away: its slot is
