@@ -140,6 +140,14 @@ function renderFiles() {
   el.querySelector(".ffile.cur")?.scrollIntoView({ block: "nearest" });
 }
 
+/** New work on the PR or the branch (watch.ts), offered as GitHub does: a prompt to refresh, never a swap. */
+function updatePill() {
+  const u = app.update;
+  if (!u) return "";
+  if (!u.refresh) return `<span class="pill" title="${esc(u.detail)}">Branch switched</span>`;
+  const what = u.detail === "new commits" ? "New commits" : u.detail === "changed files" ? "Files changed" : "Base changed";
+  return `<button class="pill signal" data-act="refresh" title="${esc(u.detail)}: refresh to review them"${u.rebuilding ? " disabled" : ""}>${u.rebuilding ? "Refreshing…" : `${what} · Refresh`}</button>`;
+}
 function renderTop() {
   const { done, total, mins } = app.progress();
   const pct = total ? Math.round((done / total) * 100) : 100;
@@ -152,7 +160,7 @@ function renderTop() {
     <div class="brand"><img src="/bobby.svg" alt="" width="22" height="22">bobby</div>
     ${g.pr.provider === "local" ? `<span class="prtitle" title="Local review: ${esc(g.pr.branch)} compared with ${esc(g.pr.baseRef)}">⎇ ${esc(g.pr.branch)} → ${esc(g.pr.baseRef)} · ${esc(g.pr.title)}</span>`
       : `<a class="prtitle" href="${esc(g.pr.url)}" target="_blank" rel="noopener">#${g.pr.number} ${esc(g.pr.title)}</a>`}
-    ${llm}${lsp}
+    ${updatePill()}${llm}${lsp}
     ${coreProgress()}
     <div class="prog" title="${done} of ${total} pages reviewed"><div class="bar"><i style="width:${pct}%"></i></div>${done}/${total}${mins && done < total ? ` · ~${mins}m` : ""}</div>
     <div class="seg" role="group" aria-label="View">${views.map((v) => `<button data-view="${v.id}" aria-pressed="${app.viewId === v.id}" title="${esc(v.hint)} (${esc(keysOf(app.settings, "nextView").map(keyText)[0] ?? "")})">${esc(v.name)}</button>`).join("")}</div>
@@ -577,6 +585,7 @@ function onClick(ev) {
     overview: () => { close(); app.setLevel(0); },
     resume: () => { close(); if (resumeTo) app.setFocus(resumeTo.pid, { level: resumeTo.level }); },
     "switch-tree": () => app.switchTree(),
+    refresh: () => { $("#toast").hidden = true; app.refreshReview(); },
     undo: () => { const put = app._undo; app._undo = null; $("#toast").hidden = true; put?.(); },
     tour: () => { close(); tour.start(); },
     "save-note": () => saveNote($("#note").value.trim()),

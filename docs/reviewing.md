@@ -128,6 +128,14 @@ Notes are for you: reminders, questions to come back to, half-formed thoughts. *
 
 A note on a line **floats beside it**, over the right edge of the code, like a sticky note; notes on nearby lines stack. Collapse one to a small icon on its line with –, delete it with ✕. Notes follow the same file and PR collapsing as comments. The **Notes** panel (`M`) also lists every note on code; click one to jump to its page. The composer is dashed while it's in note mode.
 
+## When the PR moves on
+
+While a review is open, Bobby keeps it current, the way GitHub does:
+
+- **New comments** on the PR appear on their lines by themselves (checked every minute), with a note saying who wrote them.
+- **New commits** on the PR, or a new base branch, aren't swapped in under you. A **New commits · Refresh** prompt appears in the top bar instead. Refresh rebuilds the review on them, on the same node. What the push didn't change keeps its marks; what it changed shows as unreviewed.
+- **A local review** has no comments, but notices your new commits and edits (every 10 seconds) and offers **Files changed · Refresh** the same way. Switching branches can't be followed: run `bobby` again to review the other branch.
+
 ## Submitting
 
 Press `s`. Add an optional summary, then choose **Comment**, **Approve** or **Request changes**. Only drafts are posted; private notes and viewed marks stay local. All drafts are posted together as one GitHub review on the PR's current head commit, and you get a link to it. Drafts are cleared only once GitHub accepts the review.

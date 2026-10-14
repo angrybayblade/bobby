@@ -118,17 +118,54 @@ async function poll() {
   if (app.servers.some((x) => x.state === "done" && was.get(x.id) !== "done")) app.graph.definitions = await api("/api/definitions").catch(() => app.graph.definitions);
   // only when something changed: every view re-renders on it
   if (JSON.stringify([app.llm, app.claudeReady, app.servers]) !== before) app.emit("llm");
-  if (s.llm === "pending" || busy(app.servers)) pollTimer = setTimeout(poll, 3000);
+  await keepCurrent(s);
+  // quickly while something's on its way, else slowly, to hear of new comments and new work (watch.ts)
+  pollTimer = setTimeout(poll, s.llm === "pending" || busy(app.servers) ? 3000 : 10_000);
 }
+// ---- keeping the review current: new comments on a PR appear by themselves; new work is offered, never swapped in
+let seenDiscussion = null, announced = "";
+async function keepCurrent(s) {
+  if (seenDiscussion === null) seenDiscussion = s.discussionAt; // as of the graph this page loaded
+  else if (s.discussionAt !== seenDiscussion) {
+    seenDiscussion = s.discussionAt;
+    const d = await api("/api/discussion").catch(() => null);
+    if (d) {
+      const had = new Set((app.graph.discussion ?? []).map((c) => c.id)), fresh = d.filter((c) => !had.has(c.id) && c.author !== app.me?.login);
+      app.graph.discussion = d;
+      app.emit("comments");
+      if (fresh.length) chrome.toast(`<span>${fresh.length} new comment${fresh.length > 1 ? "s" : ""} from ${esc([...new Set(fresh.map((c) => c.author))].join(", "))}.</span>`, 6000);
+    }
+  }
+  const was = JSON.stringify(app.update ?? null);
+  app.update = s.update && !s.update.rebuilding ? s.update : app.update?.rebuilding ? app.update : null;
+  if (JSON.stringify(app.update ?? null) !== was) app.emit("view"); // the top bar's prompt
+  if (app.update?.refresh && announced !== app.update.headSha) {
+    announced = app.update.headSha;
+    const local = app.graph.pr.provider === "local";
+    chrome.toast(`<span>${local ? "Your branch has changed" : "This PR has new commits"}. Refresh to review them; what you've reviewed that they didn't change stays reviewed.</span> <button class="btn" data-act="refresh">Refresh</button>`);
+  }
+}
+/** Moves the review to the new work: the server rebuilds, then the page reads the new graph, on the same node. */
+app.refreshReview = async () => {
+  if (!app.update?.refresh || app.update.rebuilding) return;
+  app.update = { ...app.update, rebuilding: true };
+  app.emit("view");
+  const r = await api("/api/refresh", {}).catch((e) => ({ ok: false, error: e.message }));
+  if (!r.ok) { app.update = { ...app.update, rebuilding: false }; app.emit("view"); return chrome.toast(`Couldn't refresh: ${esc(r.error)}`, 8000); }
+  app.update = null; app.claudeReady = false;
+  app.replaceGraph(await api("/api/graph"));
+  chrome.toast(`<span>Up to date at ${esc(r.headSha.slice(0, 7))}. What the new work changed is unreviewed; the rest keeps its marks.</span>`, 6000);
+  poll();
+};
 app.watchServers = poll; // after you say yes, check again or no in the UI
 // A call that failed with no one to catch it (a save, a delete): say so rather than nothing.
 app.fail = (e) => chrome.toast(`Not saved: ${esc(e?.message ?? e)}`, 8000);
 app.toastUndo = (what) => chrome.toast(`<span>${esc(what)}.</span> <button class="btn" data-act="undo">Undo</button>`, 8000);
 window.addEventListener("unhandledrejection", (ev) => app.fail(ev.reason));
 app.openKeys = () => chrome.keysEditor(); // for the tour's news, which can't import chrome.js
-if (app.llm === "pending" || busy(app.servers)) poll();
 // The graph and the session are read at once: a server may have finished between them, leaving syntax-only definitions.
-else if (app.servers.some((x) => x.state === "done")) api("/api/definitions").then((d) => { app.graph.definitions = d; }, () => {});
+if (!(app.llm === "pending" || busy(app.servers)) && app.servers.some((x) => x.state === "done")) api("/api/definitions").then((d) => { app.graph.definitions = d; }, () => {});
+poll(); // always: it also hears of new comments and new work
 
 // ---- start: at the entry point (the unreviewed core with the least around it), on every load. Where you were last is
 // offered on the welcome-back card instead of being jumped to.
