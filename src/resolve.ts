@@ -27,6 +27,21 @@ export class Repo {
   private goMods: Promise<Array<{ module: string; dir: string }>> | null = null;
 
   private constructor(readonly cwd: string, readonly sha: string) {}
+
+  // The repo's files by folder and by name, built once: lookups by package or module path would otherwise scan every
+  // file, on every unresolved name.
+  private index?: { inDir: Map<string, string[]>; named: Map<string, string[]> };
+  private files_() {
+    if (this.index) return this.index;
+    const inDir = new Map<string, string[]>(), named = new Map<string, string[]>();
+    const add = (m: Map<string, string[]>, k: string, f: string) => (m.get(k) ?? m.set(k, []).get(k)!).push(f);
+    for (const f of this.files) { const i = f.lastIndexOf("/"); add(inDir, i < 0 ? "" : f.slice(0, i), f); add(named, f.slice(i + 1), f); }
+    return (this.index = { inDir, named });
+  }
+  /** Files directly in a folder ("" for the top). */
+  inDir(dir: string): string[] { return this.files_().inDir.get(dir === "." ? "" : dir) ?? []; }
+  /** Files whose path is t, or ends with /t. */
+  endingWith(t: string): string[] { return (this.files_().named.get(t.slice(t.lastIndexOf("/") + 1)) ?? []).filter((f) => f === t || f.endsWith("/" + t)); }
   static async open(cwd: string, sha: string) {
     const r = new Repo(cwd, sha);
     for (const f of (await git(cwd, ["ls-tree", "-r", "-z", "--name-only", sha], true)).split("\0")) if (f) r.files.add(f);
@@ -187,7 +202,7 @@ export class Repo {
     const tails = [segs.join("/") + ".py", segs.join("/") + ".pyi", segs.join("/") + "/__init__.py"];
     const subTails = name && name !== "*" ? [[...segs, name].join("/") + ".py", [...segs, name].join("/") + "/__init__.py"] : [];
     const near = (cands: string[]) => cands.sort((a, b) => common(b, from) - common(a, from) || a.length - b.length)[0];
-    const pick = (ts: string[]) => near([...this.files].filter((f) => ts.some((t) => f === t || f.endsWith("/" + t))));
+    const pick = (ts: string[]) => near(ts.flatMap((t) => this.endingWith(t)));
     const sub = subTails.length ? pick(subTails) : undefined;
     const mod = pick(tails);
     return [sub ?? mod].filter((x): x is string => !!x);
@@ -196,7 +211,7 @@ export class Repo {
   private async goPackage(path: string): Promise<string[]> {
     this.goMods ??= (async () => {
       const mods = [];
-      for (const f of [...this.files].filter((x) => x === "go.mod" || x.endsWith("/go.mod"))) {
+      for (const f of this.endingWith("go.mod")) {
         const m = (await this.read(f))?.match(/^module\s+(\S+)/m);
         if (m) mods.push({ module: m[1], dir: dirname(f) });
       }
@@ -211,21 +226,21 @@ export class Repo {
   }
   /** A Go package: the non-test .go files directly in a directory. */
   goFilesIn(dir: string): string[] {
-    const d = dir === "." ? "" : dir + "/";
-    return [...this.files].filter((f) => f.startsWith(d) && f.endsWith(".go") && !f.endsWith("_test.go") && !f.slice(d.length).includes("/"));
+    return this.inDir(dir).filter((f) => f.endsWith(".go") && !f.endsWith("_test.go"));
   }
 
   private resolveJava(source: string, name?: string): string[] {
     const segs = source.split(".");
-    if (name === "*") { const tail = "/" + segs.join("/") + "/"; return [...this.files].filter((f) => f.endsWith(".java") && ("/" + f).includes(tail) && !("/" + f).slice(("/" + f).indexOf(tail) + tail.length).includes("/")); }
-    const tail = segs.join("/") + ".java";
-    const hit = [...this.files].find((f) => f === tail || f.endsWith("/" + tail));
+    if (name === "*") { // every class in a folder whose path ends with the package's
+      const tail = "/" + segs.join("/");
+      return [...this.files_().inDir].filter(([d]) => ("/" + d).endsWith(tail)).flatMap(([, fs]) => fs.filter((f) => f.endsWith(".java")));
+    }
+    const hit = this.endingWith(segs.join("/") + ".java")[0];
     return hit ? [hit] : [];
   }
   /** Java: the other classes in a file's own package (its directory). */
   javaPackage(file: string): string[] {
-    const d = dirname(file) + "/";
-    return [...this.files].filter((f) => f.startsWith(d) && f.endsWith(".java") && !f.slice(d.length).includes("/"));
+    return this.inDir(dirname(file)).filter((f) => f.endsWith(".java"));
   }
 
   private resolveRust(from: string, path: string): string[] {
