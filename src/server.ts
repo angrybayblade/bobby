@@ -80,10 +80,15 @@ async function avatar(u: string): Promise<Response> {
   }
 }
 
-/** Whether a file in your working copy differs from the snapshot a local review was built from. */
+/** Whether a file in your working copy differs from the snapshot a local review was built from. Compared as git
+ *  stores them (hash-object runs the same filters as git add: line endings under autocrlf, LFS), so a checkout's CRLFs
+ *  aren't a change. */
 async function changedSince(cwd: string, snapshot: string, path: string) {
-  const live = await Bun.file(join(cwd, path)).text().catch(() => null);
-  return live !== (await fileLines(cwd, snapshot, path)).join("\n");
+  const [live, then] = await Promise.all([
+    run(["git", "hash-object", `--path=${path}`, "--", join(cwd, path)], { cwd, allowFail: true }),
+    run(["git", "rev-parse", "--verify", "--quiet", `${snapshot}:${path}`], { cwd, allowFail: true }),
+  ]);
+  return live.trim() !== then.trim();
 }
 
 /** Only Bobby's own page may use the server. A website you have open could otherwise post a review as you (a no-cors
