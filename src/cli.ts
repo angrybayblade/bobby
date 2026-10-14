@@ -163,11 +163,11 @@ if (cmd === "open") {
   if (cached) {
     log(`  ✓ unchanged since last time (${key.headSha.slice(0, 7)}), using cached graphs (${secs()})`);
     staticGraph = { ...cached.static, discussion };
-    claudeGraph = cached.claude && { ...cached.claude, discussion };
+    claudeGraph = values["no-llm"] ? undefined : cached.claude && { ...cached.claude, discussion }; // --no-llm: not even a cached one
   } else {
     const { pr, files, analysis } = await extract();
     staticGraph = await buildGraph(cwd, pr, files, analysis, heuristicTree(pr, analysis, files), discussion);
-    const tree = values.refresh ? null : loadCachedTree(pr, VERSION);
+    const tree = values.refresh || values["no-llm"] ? null : loadCachedTree(pr, VERSION);
     claudeGraph = tree?.source === "claude" ? await buildGraph(cwd, pr, files, analysis, tree, discussion) : undefined;
     saveCachedGraphs(key, { static: staticGraph, claude: claudeGraph });
   }
@@ -176,7 +176,9 @@ if (cmd === "open") {
 
   const claude = async () => {
     const { pr, files, analysis } = await extract();
-    const tree = await claudeTree(pr, analysis, files);
+    // Claude's tree may be cached when the graphs aren't (built with --no-llm): it isn't asked twice
+    const cachedTree = values.refresh ? null : loadCachedTree(pr, VERSION);
+    const tree = cachedTree?.source === "claude" ? cachedTree : await claudeTree(pr, analysis, files);
     saveCachedTree(pr, VERSION, tree);
     const g = await buildGraph(cwd, pr, files, analysis, tree, discussion);
     saveCachedGraphs(key, { static: staticGraph, claude: g });
