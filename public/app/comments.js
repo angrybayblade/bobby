@@ -153,8 +153,14 @@ export function placeNotes(el, app) {
 }
 
 // ---- comments outside the lines a hunk shows: "2 comments below", which opens the code down to them
-export function outside(app, path, from, to) {
-  return (commentIndex(app).byPath.get(path) ?? []).filter((x) => x.side === "RIGHT" && x.line >= from && x.line <= to);
+// One on the old side (GitHub's LEFT) counts where its line is in the new file: old + shift, the hunks above having added
+// shift lines. Returned with line and startLine in new-file numbers, for how far to open.
+export function outside(app, path, from, to, shift = 0) {
+  return (commentIndex(app).byPath.get(path) ?? []).flatMap((x) => {
+    const at = (l, side) => (l == null ? l : side === "LEFT" ? l + shift : l);
+    const line = at(x.line, x.side);
+    return line >= from && line <= to ? [{ ...x, line, ...(x.startLine ? { startLine: at(x.startLine, x.startSide ?? x.side) } : {}) }] : [];
+  });
 }
 
 // ---- a comment's text: GitHub-flavoured Markdown, the safe part of it. Everything is escaped first; a few plain tags

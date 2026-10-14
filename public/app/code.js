@@ -373,7 +373,7 @@ function hunkBox(app, h, rerender, opts = {}) {
   // comments between this hunk and the next one in the file (and, for the first, before it): a marker that opens the code to them
   const sib = app.graph.hunks.filter((x) => x.file === h.file).sort((a, b) => a.newStart - b.newStart), at = sib.findIndex((x) => x.id === h.id);
   const lo = Math.max(1, h.newStart - e.above), hi = lastN + e.below, next = sib[at + 1]?.newStart ?? Infinity;
-  const below = outside(app, h.file, hi + 1, next - 1), above = at === 0 ? outside(app, h.file, 1, lo - 1) : [];
+  const below = outside(app, h.file, hi + 1, next - 1, lastN - lastO), above = at === 0 ? outside(app, h.file, 1, lo - 1, h.newStart - h.oldStart) : [];
   return `<div class="code">
     ${head}
     ${cmMore(app, h, "above", above, lo - Math.min(...above.map((x) => x.startLine ?? x.line), lo) + 2)}
