@@ -12,7 +12,7 @@ export const LOW = "@low"; // pseudo-placement: low-signal hunks
 export const DONE = "@done"; // pseudo-placement: end of walk
 
 export const DEFAULT_SETTINGS = {
-  view: "flow",
+  view: "diff", // the first view; after that, the one you used last
   theme: "system", // system | dark | light
   font: "sans", // sans | hyper | serif | mono
   size: 15,

@@ -1,6 +1,6 @@
 # Views
 
-There are four views of the same review. Switch with `v` or the toggle in the header. Your focus, progress and comments are shared between them, and the last view you used is remembered.
+There are four views of the same review. Switch with `v` or the toggle in the header. Your focus, progress and comments are shared between them. A review opens in Diff the first time; after that, in the last view you used.
 
 | View | Shape | Good for |
 |---|---|---|
