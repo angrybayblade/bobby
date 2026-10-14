@@ -68,8 +68,10 @@ export function hold(pr: PrKey, port: number) {
   process.once("exit", () => { try { if (JSON.parse(readFileSync(path, "utf8")).pid === process.pid) unlinkSync(path); } catch { /* gone already */ } });
 }
 
-// A local review's diff also depends on the base it's compared with, so that's part of its cache key.
-const rev = (pr: { headSha: string; baseSha?: string; branch?: string }) => pr.headSha.slice(0, 12) + (pr.branch && pr.baseSha ? `_${pr.baseSha.slice(0, 7)}` : "");
+// The diff also depends on the base it's compared with, so that's part of the cache key: a local review's base commit,
+// a PR's base branch (retargeting a PR changes its diff without a new push).
+const rev = (pr: { headSha: string; baseSha?: string; branch?: string; baseRef?: string }) =>
+  pr.headSha.slice(0, 12) + (pr.branch && pr.baseSha ? `_${pr.baseSha.slice(0, 7)}` : !pr.branch && pr.baseRef ? `_${pr.baseRef.replace(/[^\w.-]+/g, "-")}` : "");
 // Claude's tree names extraction's units, which another extraction version may number differently: keyed by it too.
 const treePath = (pr: PrInfo, version: string) => join(ROOT, "cache", `${slug(pr)}_${rev(pr)}.tree.${version}.json`);
 export const loadCachedTree = (pr: PrInfo, version: string) => readJson<ChangeTree>(treePath(pr, version));
@@ -77,7 +79,7 @@ export const saveCachedTree = (pr: PrInfo, version: string, t: ChangeTree) => wr
 
 /** Built graphs per head commit, so reopening an unchanged PR skips fetching, diffing and analysis. */
 export interface CachedGraphs { static: ReviewGraph; claude?: ReviewGraph }
-type GraphKey = PrKey & { headSha: string; baseSha?: string };
+type GraphKey = PrKey & { headSha: string; baseSha?: string; baseRef?: string };
 const graphPath = (pr: GraphKey) => join(ROOT, "cache", `${slug(pr)}_${rev(pr)}.graphs.json`);
 export const loadCachedGraphs = (pr: GraphKey) => readJson<CachedGraphs>(graphPath(pr));
 export const saveCachedGraphs = (pr: GraphKey, g: CachedGraphs) => writeJson(graphPath(pr), g);

@@ -90,7 +90,7 @@ export async function fetchPr({ cwd, remote, owner, repo, meta }: ResolvedPr): P
   const baseSha = (await git(cwd, ["merge-base", baseTip, headSha])).trim();
 
   return {
-    owner, repo, number: meta.number, title: meta.title, body: meta.body ?? "",
+    owner, repo, number: meta.number, title: meta.title, body: meta.body ?? "", baseRef: meta.baseRefName,
     url: meta.url, author: meta.author?.login ?? "", baseSha, headSha,
   };
 }

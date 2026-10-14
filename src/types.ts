@@ -82,7 +82,7 @@ export interface ChangeTree {
 export interface PrInfo {
   provider?: "github" | "local"; // local: the branch you're on, no PR (number 0, url "")
   branch?: string; // local only
-  baseRef?: string; // local only: the branch it's compared against
+  baseRef?: string; // the branch it's compared against: a PR's base branch, or a local review's base
   owner: string;
   repo: string;
   number: number;

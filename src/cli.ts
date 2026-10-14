@@ -103,13 +103,13 @@ if (cmd === "open") {
   const t0 = Date.now();
   const secs = () => `${((Date.now() - t0) / 1000).toFixed(1)}s`;
   // Where the change comes from: a PR (fetched), or with no PR argument, the branch you're on.
-  let cwd: string, key: { owner: string; repo: string; number: number; branch?: string; headSha: string; baseSha?: string };
+  let cwd: string, key: { owner: string; repo: string; number: number; branch?: string; headSha: string; baseSha?: string; baseRef?: string };
   let getPr: () => Promise<PrInfo>, discussion: Awaited<ReturnType<typeof reviewComments>> = [];
   if (arg) {
     log("▸ fetching PR…");
     const resolved = await resolvePr(arg, values.repo);
     cwd = resolved.cwd;
-    key = { owner: resolved.owner, repo: resolved.repo, number: resolved.meta.number, headSha: resolved.meta.headRefOid };
+    key = { owner: resolved.owner, repo: resolved.repo, number: resolved.meta.number, headSha: resolved.meta.headRefOid, baseRef: resolved.meta.baseRefName };
     log(`  #${key.number} ${resolved.meta.title}`);
     getPr = () => fetchPr(resolved);
   } else {
