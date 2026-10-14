@@ -217,9 +217,11 @@ kbd {
 #files .ffile .flvl.l0 { color: var(--text); border-color: var(--muted); }
 #files .ffile .flvl.up { border-style: dashed; }
 #files .ffile .flvl.other { opacity: .45; }
-#files .ffile .ok { flex: none; display: inline-grid; place-items: center; width: 11px; height: 11px; border: 1px solid var(--faint); color: var(--ok); font: 700 8px/1 var(--font-ui); opacity: 0; }
-#files .ffile:hover .ok { opacity: 1; } #files .ffile .ok:hover { border-color: var(--text); }
-#files .ffile.done .ok { opacity: 1; border-color: var(--ok); }
+#files .frow { position: relative; }
+#files .frow .ffile { padding-right: 30px; }
+#files .frow .ok { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 11px; height: 11px; padding: 0; display: inline-grid; place-items: center; border: 1px solid var(--faint); color: var(--ok); font: 700 8px/1 var(--font-ui); opacity: 0; }
+#files .frow:hover .ok, #files .frow .ok:focus-visible { opacity: 1; } #files .frow .ok:hover { background: none; border-color: var(--text); }
+#files .frow .ok.on { opacity: 1; border-color: var(--ok); }
 #files .none { padding: 10px 12px; color: var(--faint); }
 @media (max-width: 900px) { #files { display: none; } }
 #view > .vslot { position: absolute; inset: 0; }

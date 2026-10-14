@@ -36,7 +36,18 @@ export function init(a, viewList) {
 }
 
 export function render() {
+  const back = focusAgain();
   renderTop(); renderWhere(); renderKeys(); renderFiles();
+  back();
+}
+/** The chrome is rebuilt on most events; a control you'd tabbed to (a file, its viewed box, a top-bar button) gets
+ *  focus back afterwards, found again by its data attribute. */
+function focusAgain() {
+  const a = document.activeElement;
+  if (!a || a === document.body || !a.closest("#top, #where, #files")) return () => {};
+  const attr = [...a.attributes].find((x) => x.name.startsWith("data-"));
+  const sel = attr && `${a.tagName.toLowerCase()}[${attr.name}="${CSS.escape(attr.value)}"]`;
+  return () => { if (sel && !a.isConnected) document.querySelector(`:is(#top, #where, #files) ${sel}`)?.focus({ preventScroll: true }); };
 }
 
 // ---------------------------------------------------------------- file tree
@@ -87,7 +98,7 @@ function renderFiles() {
       if (fr) { ev.stopPropagation(); return app.markFile(fr.dataset.fread); }
       const t = ev.target.closest("[data-fdir],[data-ffile]");
       if (!t) return;
-      if (t.dataset.fdir != null) { closedDirs.has(t.dataset.fdir) ? closedDirs.delete(t.dataset.fdir) : closedDirs.add(t.dataset.fdir); return renderFiles(); }
+      if (t.dataset.fdir != null) { closedDirs.has(t.dataset.fdir) ? closedDirs.delete(t.dataset.fdir) : closedDirs.add(t.dataset.fdir); const back = focusAgain(); renderFiles(); return back(); }
       const f = filesOf().get(t.dataset.ffile);
       const to = f && (f.pids.find((p) => !app.isReviewed(p)) ?? f.pids[0]);
       if (to) app.setFocus(to, { level: Math.max(1, app.level) });
@@ -118,7 +129,8 @@ function renderFiles() {
     }
     for (const { name, f } of d.files.sort((a, b) => a.name.localeCompare(b.name))) {
       const done = f.pids.every((p) => app.isReviewed(p)), n = talk(f.path);
-      rows.push(`<button class="ffile ${f.path === curPath ? "cur" : ""} ${done ? "done" : ""}" data-ffile="${esc(f.path)}" style="--d:${depth}" title="${esc(f.path)}"><i class="glyph ${f.core ? "core" : f.changed ? "change" : "context"}"></i><span class="nm">${esc(name)}</span>${lvlTag(f.path)}${n ? `<span class="fc">◂ ${n}</span>` : ""}${f.changed ? `<span class="fs"><span class="a">+${f.a}</span> <span class="d">−${f.d}</span></span>` : ""}<span class="ok" data-fread="${esc(f.path)}" role="checkbox" aria-checked="${done}" title="${done ? "Unmark the whole file" : "Mark the whole file viewed"}">${done ? "✓" : ""}</span></button>`);
+      // the viewed box is a button of its own beside the row's, so the keyboard reaches it too
+      rows.push(`<div class="frow"><button class="ffile ${f.path === curPath ? "cur" : ""} ${done ? "done" : ""}" data-ffile="${esc(f.path)}" style="--d:${depth}" title="${esc(f.path)}"><i class="glyph ${f.core ? "core" : f.changed ? "change" : "context"}"></i><span class="nm">${esc(name)}</span>${lvlTag(f.path)}${n ? `<span class="fc">◂ ${n}</span>` : ""}${f.changed ? `<span class="fs"><span class="a">+${f.a}</span> <span class="d">−${f.d}</span></span>` : ""}</button><button class="ok${done ? " on" : ""}" data-fread="${esc(f.path)}" role="checkbox" aria-checked="${done}" aria-label="${done ? "Unmark" : "Mark"} ${esc(name)} viewed" title="${done ? "Unmark the whole file" : "Mark the whole file viewed"}">${done ? "✓" : ""}</button></div>`);
     }
   };
   walk(root, 0, "");
