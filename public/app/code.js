@@ -442,8 +442,10 @@ function donePage(app) {
   const { done, total } = app.progress();
   const flagged = app.index.walk.filter((p) => p !== DONE && app.isFlagged(p));
   return `<div style="text-align:center;margin-top:12vh">
-    <h1 style="font-family:var(--font-ui)">${done === total ? "All reviewed ✓" : "End of the walk"}</h1>
-    <p class="why" style="margin:0 auto 24px">${done === total
+    <h1 style="font-family:var(--font-ui)">${!total ? "Nothing to walk" : done === total ? "All reviewed ✓" : "End of the walk"}</h1>
+    <p class="why" style="margin:0 auto 24px">${!total
+      ? "No pages to review here: the PR has no changes Bobby can show, or ⚗ Tests and ○ Untouched hide them all."
+      : done === total
       ? `${app.state.comments.length} draft comment(s). Press ${keyHtml(app.settings, "submit")} to submit your review.`
       : `${total - done} page(s) still unreviewed. Press ${keyHtml(app.settings, "nextUnreviewed")} to jump to the next one.`}</p>
     ${flagged.length ? `<div class="band" style="justify-content:center;margin-top:30px">Flagged for a second look</div>${flagged.map((p) => `<p><button class="pill" data-go="${p}">${esc(app.get(p)?.pl.title ?? "Low-signal changes")}</button></p>`).join("")}` : ""}

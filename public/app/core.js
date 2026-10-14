@@ -288,11 +288,14 @@ export function createApp({ graph, session }) {
       app.setFocus(app.index.walk[Math.max(0, Math.min(app.index.walk.length - 1, i + d))]);
     },
     stepCore(d) {
-      const cur = app.get(app.focus)?.ci ?? (d > 0 ? graph.cores.length : -1);
+      const cur = app.get(app.focus)?.ci ?? graph.cores.length; // the Low-signal and End pages come after every core
       let target = cur + d, first;
       while (target >= 0 && target < graph.cores.length && !(first = app.index.walk.find((p) => app.get(p)?.ci === target))) target += d; // skip cores the switches emptied
       if (target < 0) return;
-      if (target >= graph.cores.length) return app.setFocus(app.index.walk.find((p) => !app.get(p)) ?? DONE);
+      if (target >= graph.cores.length) { // past the last core: Low-signal, then End
+        const after = app.index.walk.filter((p) => !app.get(p));
+        return app.setFocus(after[after.indexOf(app.focus) + 1] ?? after.at(-1) ?? DONE);
+      }
       app.setFocus(first);
     },
     /**
