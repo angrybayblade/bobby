@@ -53,7 +53,7 @@ const CSS = `
 .flow .card.pr .t { white-space: normal; font: 600 13.5px/1.35 var(--font-prose); }
 .flow .card.pr .t span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .flow .card.grp .t small { color: var(--faint); font-weight: 400; flex: none; }
-.flow .card.grp.open { border-color: var(--signal); }
+.flow .card.grp.open, .flow .card.grp.cur { border-color: var(--signal); }
 .flow .card.grp.done { opacity: .55; }
 .flow .card .t .bandc { font: 500 9.5px var(--font-ui); letter-spacing: .06em; text-transform: uppercase; color: var(--faint); white-space: nowrap; padding: 0 5px; border: 1px solid var(--line-soft); border-radius: 1px; flex: none; }
 .flow .card.core .t .bandc { color: var(--text); border-color: var(--muted); }
@@ -255,7 +255,8 @@ export default {
       if (it.kind === "grp") {
         const g = it.g, lead = byIdAll(g.roots[0]), pages = app.index.walk.filter((p) => g.ids.includes(app.canonical(p))), done = pages.filter((p) => app.isReviewed(p)).length;
         const name = g.id.split("/").slice(-2).join("/");
-        return { cls: `grp ${it.open ? "open" : ""} ${done === pages.length && pages.length ? "done" : ""}`, html: `<div class="t"><i class="glyph core"></i><span>${esc(name)}</span><small>${g.cores.length} change${g.cores.length > 1 ? "s" : ""}</small></div><div class="m">${esc(lead?.title ?? "")}${g.cores.length > 1 ? ` +${g.cores.length - 1}` : ""} · ${done}/${pages.length} reviewed</div>`, data: { group: g.id }, title: g.roots.map((r) => byIdAll(r)?.title).join(" · ") };
+        const mine = app.level === 0 && g.ids.includes(app.canonical(app.focus)); // the Overview: the concern you're on
+        return { cls: `grp ${it.open ? "open" : ""}${mine ? " cur" : ""} ${done === pages.length && pages.length ? "done" : ""}`, html: `<div class="t"><i class="glyph core"></i><span>${esc(name)}</span><small>${g.cores.length} change${g.cores.length > 1 ? "s" : ""}</small></div><div class="m">${esc(lead?.title ?? "")}${g.cores.length > 1 ? ` +${g.cores.length - 1}` : ""} · ${done}/${pages.length} reviewed</div>`, data: { group: g.id }, title: g.roots.map((r) => byIdAll(r)?.title).join(" · ") };
       }
       if (it.kind === "agg") return { cls: "agg", html: `+${it.n} more`, data: { expand: it.key } };
       if (it.kind === "low") return { cls: `${it.current ? "focus" : ""} ${app.isReviewed(LOW) ? "done" : ""}`, html: `<div class="t"><i class="glyph context"></i><span>Low-signal changes</span>${app.isReviewed(LOW) ? "✓" : ""}</div>`, data: { go: LOW } };
@@ -485,19 +486,46 @@ export default {
 
     // ---- arrows follow the flow: → one order deeper (the first page reached from this one), ← back toward the core
     // change (and from it, to what it relies on), ↑/↓ the page above or below in the same column.
+    // Arrows follow the tree first (→ / ← along edges, ↑ / ↓ along a level). With nothing that way in the tree, they
+    // go to the nearest card that way on the canvas, a concern included, so they always move; at the Overview, where
+    // only concerns show, ↑ / ↓ go between them and → opens the one you're on.
+    const groupOf = (pid) => [...(lastGroups?.values() ?? [])].find((g) => g.ids.includes(app.canonical(pid)));
     function move(dc, dr) {
-      const f = app.canonical(app.focus);
-      const its = (lastL?.items ?? []).filter((i) => i.kind === "pl");
-      const at = its.find((i) => i.pl.id === f);
-      if (!G || !at) return;
+      const f = app.canonical(app.focus), all = lastL?.items ?? [];
+      const its = all.filter((i) => i.kind === "pl");
       const shown = (id) => its.some((i) => i.pl.id === id);
+      const at = its.find((i) => i.pl.id === f) ?? all.find((i) => i.kind === "grp" && i.g === groupOf(f)); // a page, or (Overview) its concern
+      if (!G || !at) return;
+      if (at.kind === "grp" && dc > 0) return enter(at.g, 1);
       let to;
-      if (dr) { // the previous / next page at the same level, in pre-order (top to bottom)
-        const lvl = its.filter((i) => i.depth === at.depth).sort((a, b) => a.y - b.y || a.x - b.x);
-        to = lvl[lvl.indexOf(at) + dr]?.pl.id;
-      } else if (dc > 0) to = G.feeds.get(f) ?? (G.kids.get(f) ?? []).find(shown);
-      else to = G.parent.get(f) ?? [...G.feeds].find(([, t]) => t === f)?.[0];
-      if (to && shown(to)) app.setFocus(to);
+      if (at.kind === "pl") {
+        if (dr) { // the previous / next page at the same level, in pre-order (top to bottom)
+          const lvl = its.filter((i) => i.depth === at.depth).sort((a, b) => a.y - b.y || a.x - b.x);
+          to = lvl[lvl.indexOf(at) + dr]?.pl.id;
+        } else if (dc > 0) to = G.feeds.get(f) ?? (G.kids.get(f) ?? []).find(shown);
+        else to = G.parent.get(f) ?? [...G.feeds].find(([, t]) => t === f)?.[0];
+        if (to && shown(to)) return app.setFocus(to);
+      }
+      const near = nearest(at, all.filter((i) => (i.kind === "pl" || i.kind === "grp") && i !== at && !(i.kind === "grp" && i.g === groupOf(f))), dc, dr);
+      if (near?.kind === "pl") app.setFocus(near.pl.id);
+      else if (near?.kind === "grp") enter(near.g, app.level);
+    }
+    /** The card nearest `from` in a direction, by centres: along it first, then across. */
+    function nearest(from, cands, dc, dr) {
+      const cx = (i) => i.x + i.w / 2, cy = (i) => i.y + i.h / 2, x0 = cx(from), y0 = cy(from);
+      let best = null, score = Infinity;
+      for (const i of cands) {
+        const dx = cx(i) - x0, dy = cy(i) - y0, along = dc ? dx * dc : dy * dr, across = Math.abs(dc ? dy : dx);
+        if (along <= 1) continue;
+        const sc = along + across * 3;
+        if (sc < score) { score = sc; best = i; }
+      }
+      return best;
+    }
+    /** A concern, as a click opens it: its first unreviewed core change. At the Overview it's only marked as yours. */
+    function enter(g, level) {
+      const to = g.roots.find((r) => !app.isReviewed(r)) ?? g.roots[0];
+      if (to) app.setFocus(to, level > 0 ? { level: Math.max(1, level) } : {});
     }
     const keys = { // by action (keys.js): whichever keys you've bound to them
       left: () => move(-1, 0), right: () => move(1, 0), up: () => move(0, -1), down: () => move(0, 1),
