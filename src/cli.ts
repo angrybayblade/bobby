@@ -56,7 +56,7 @@ const USAGE = `bobby: review a PR one focused page at a time
   --no-llm       static analysis only; skip Claude
   --no-lsp       don't start language servers (the inspector then answers from imports alone)
   --lsp          extract: ask the installed language servers too (slower: they load the project first)
-  --refresh      rebuild everything for this commit (ignore cached graphs and Claude tree)
+  --refresh      rebuild everything for this commit (ignore cached graphs, Claude tree and language server answers)
   --no-open      don't open the browser
   -v, --version  print the version`;
 
@@ -107,7 +107,7 @@ if (cmd === "open") {
     if (discussion) graph.discussion = discussion;
   }
   if (await alreadyOpen(graph.pr)) process.exit(0);
-  const session: Session = { cwd: values.repo ?? null, staticGraph: graph, state: loadState({ ...graph.pr }), llm: "off" };
+  const session: Session = { cwd: values.repo ?? null, staticGraph: graph, state: loadState({ ...graph.pr }), llm: "off", refresh: values.refresh };
   void startServers(session, { ask: true, off: values["no-lsp"], log });
   await serve(session, graph.pr);
 } else {
@@ -192,7 +192,7 @@ if (cmd === "open") {
       graph = await claude().catch((e) => (log(`  ✗ Claude failed, writing static graph: ${e.message}`), staticGraph));
     }
     if (values.lsp) { // the servers that are installed; none is installed without asking
-      const s: Session = { cwd, staticGraph: graph, state: { headSha: graph.pr.headSha, marks: {}, comments: [] }, llm: "off" };
+      const s: Session = { cwd, staticGraph: graph, state: { headSha: graph.pr.headSha, marks: {}, comments: [] }, llm: "off", refresh: values.refresh };
       await startServers(s, { ask: false, log });
       await stopServers(s);
       if (s.definitions) graph = { ...graph, definitions: s.definitions };
@@ -203,7 +203,7 @@ if (cmd === "open") {
   } else {
     const session: Session = {
       cwd, staticGraph, claudeGraph, state: loadState(pr),
-      llm: claudeGraph ? "done" : wantLlm ? "pending" : "off",
+      llm: claudeGraph ? "done" : wantLlm ? "pending" : "off", refresh: values.refresh,
     };
     void startServers(session, { ask: true, off: values["no-lsp"], log });
     if (wantLlm) {

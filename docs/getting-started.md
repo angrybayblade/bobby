@@ -108,7 +108,7 @@ bobby lsp install <language>          # install one (typescript, python), or say
 | `--no-llm` | off | Static analysis only; skip Claude. |
 | `--no-lsp` | off | Don't start language servers. The inspector then finds what imports can. |
 | `--lsp` | off | `extract` only: ask the installed language servers too, and write their definitions. Nothing is installed. |
-| `--refresh` | off | Rebuild everything for this commit, ignoring the cached graphs and Claude tree. |
+| `--refresh` | off | Rebuild everything for this commit, ignoring the cached graphs, Claude tree and language-server answers. |
 | `--no-open` | off | Don't open the browser. |
 | `-o, --out <file>` | stdout | Output file for `extract`. |
 

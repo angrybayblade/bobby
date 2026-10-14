@@ -23,6 +23,7 @@ export interface Session {
   log?: (m: string) => void;
   definitions?: Record<string, Definition[]>;
   repo?: Promise<Repo>; // the head commit's syntax, for the inspector without a language server
+  refresh?: boolean; // --refresh: language servers answer afresh rather than from their cache
 }
 
 const PUBLIC = join(import.meta.dir, "..", "public");
