@@ -86,6 +86,21 @@ async function changedSince(cwd: string, snapshot: string, path: string) {
   return live !== (await fileLines(cwd, snapshot, path)).join("\n");
 }
 
+/** Only Bobby's own page may use the server. A website you have open could otherwise post a review as you (a no-cors
+ *  POST needs no preflight), and one that rebinds its name to 127.0.0.1 could read your code. So: the Host must be this
+ *  server's own (defeats DNS rebinding), a request that changes something must come from this page's own Origin, and a
+ *  POST must be JSON (which a foreign page can't send without a preflight, and the server answers none). */
+function guard(req: Request, port: number): Response | null {
+  const here = [`127.0.0.1:${port}`, `localhost:${port}`], host = req.headers.get("host") ?? "";
+  if (!here.includes(host)) return new Response("Bobby only answers its own page (unexpected Host).", { status: 403 });
+  if (req.method === "GET" || req.method === "HEAD") return null;
+  const origin = req.headers.get("origin");
+  if (origin && !here.some((h) => origin === `http://${h}`)) return new Response("Bobby only answers its own page (foreign Origin).", { status: 403 });
+  if (req.method === "POST" && !(req.headers.get("content-type") ?? "").toLowerCase().startsWith("application/json"))
+    return new Response("Bobby only takes JSON.", { status: 415 });
+  return null;
+}
+
 export function startServer(s: Session, port: number) {
   const pr = () => s.staticGraph.pr;
   const persist = () => saveState({ owner: pr().owner, repo: pr().repo, number: pr().number, branch: pr().branch }, s.state);
@@ -93,9 +108,11 @@ export function startServer(s: Session, port: number) {
   return Bun.serve({
     port,
     hostname: "127.0.0.1",
-    async fetch(req) {
+    async fetch(req, server) {
       const url = new URL(req.url);
       const p = url.pathname;
+      const refused = guard(req, server.port);
+      if (refused) return refused;
 
       if (!p.startsWith("/api/")) {
         const rel = normalize(p === "/" ? "index.html" : p.slice(1));
