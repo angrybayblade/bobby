@@ -30,6 +30,7 @@
   "scripts": {
     "review": "bun run src/cli.ts",
     "check": "sh scripts/check.sh",
+    "test": "bun test",
     "typecheck": "bunx tsc --noEmit",
     "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true",
     "build": "bun scripts/build.ts",
