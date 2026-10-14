@@ -521,11 +521,11 @@ mark.wd { background: var(--del-word); color: inherit; border-radius: 0; }
 /* Keyboard shortcuts: the key sheet and the editor (chrome.js › help, keysEditor). */
 .unbound { color: var(--faint); font-style: italic; font-size: 12px; }
 .or { color: var(--faint); font-size: 11px; margin: 0 2px; }
-.modal.keys { width: min(720px, calc(100vw - 32px)); max-height: 86vh; overflow: auto; }
+.modal.keys { width: min(720px, calc(100vw - 32px)); max-height: 86vh; overflow: hidden auto; }
 .ktable { width: 100%; border-collapse: collapse; }
 .ktable td { padding: 5px 0; border-bottom: 1px solid var(--line-soft); vertical-align: middle; font-size: 13.5px; }
 .ktable td:last-child { width: 1%; white-space: nowrap; }
-.ktable td:first-child { color: var(--text); padding-right: 16px; }
+.ktable td:first-child { width: auto; white-space: normal; overflow-wrap: anywhere; color: var(--text); padding-right: 16px; } /* not the key sheet's nowrap: long titles wrap */
 .ktable tr.rec td { background: var(--signal-soft); }
 .kcell { display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; justify-content: flex-end; white-space: nowrap; }
 .kchip { display: inline-flex; align-items: center; gap: 2px; }
