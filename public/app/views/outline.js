@@ -173,8 +173,9 @@ export default {
         const body = doc.querySelector(".step.cur .nbody"); // only the focused step shows its comments + code
         if (body) { app.renderFile(body, [app.focus]); app.pageEl = body; }
         if (key !== lastDoc) doc.scrollTop = 0;
-        if (reason === "marks" || reason === "comments") doc.scrollTop = top;
-        else doc.querySelector(".step.cur")?.scrollIntoView({ block: "start", behavior: "smooth" });
+        // to the current step only when you moved; anything else (a mark, a comment, a status or setting) keeps your place
+        if (key !== lastDoc || reason === "focus" || reason === "level" || reason === "graph") doc.querySelector(".step.cur")?.scrollIntoView({ block: "start", behavior: "smooth" });
+        else doc.scrollTop = top;
       }
       lastDoc = key;
     }
