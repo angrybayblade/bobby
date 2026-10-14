@@ -486,9 +486,10 @@ export default {
 
     // ---- arrows follow the flow: → one order deeper (the first page reached from this one), ← back toward the core
     // change (and from it, to what it relies on), ↑/↓ the page above or below in the same column.
-    // Arrows follow the tree first (→ / ← along edges, ↑ / ↓ along a level). With nothing that way in the tree, they
-    // go to the nearest card that way on the canvas, a concern included, so they always move; at the Overview, where
-    // only concerns show, ↑ / ↓ go between them and → opens the one you're on.
+    // Arrows follow the tree first (→ / ← along edges, ↑ / ↓ along a level). ← always retracts: to the parent, and from
+    // a tree's root, out a level (the page to its node, the node to its concern at the Overview). With nothing that way
+    // in the tree, → ↑ ↓ go to the nearest card that way on the canvas, a concern included; at the Overview, where only
+    // concerns show, ↑ / ↓ go between them and → opens the one you're on.
     const groupOf = (pid) => [...(lastGroups?.values() ?? [])].find((g) => g.ids.includes(app.canonical(pid)));
     function move(dc, dr) {
       const f = app.canonical(app.focus), all = lastL?.items ?? [];
@@ -506,6 +507,7 @@ export default {
         else to = G.parent.get(f) ?? [...G.feeds].find(([, t]) => t === f)?.[0];
         if (to && shown(to)) return app.setFocus(to);
       }
+      if (dc < 0) return app.level > 0 ? app.setLevel(app.level - 1) : undefined; // nothing back: out a level, never sideways
       const near = nearest(at, all.filter((i) => (i.kind === "pl" || i.kind === "grp") && i !== at && !(i.kind === "grp" && i.g === groupOf(f))), dc, dr);
       if (near?.kind === "pl") app.setFocus(near.pl.id);
       else if (near?.kind === "grp") enter(near.g, app.level);
