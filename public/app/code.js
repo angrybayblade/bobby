@@ -1,6 +1,6 @@
 // A node, laid out top to bottom: title, why it matters, the comments on it, then its code.
 // Views show it as the level-2 page, or as the body of the focused card (no title block).
-import { BAND_TEXT, DONE, LOW, api, esc } from "./core.js";
+import { BAND_TEXT, DONE, LOW, api, esc, live } from "./core.js";
 import { MOD } from "./palette.js";
 import { keyHtml, keyName } from "./keys.js";
 import { bubble, notesFor, outside, placeNotes, showFull, threadsAt, toggleItem } from "./comments.js";
@@ -232,9 +232,9 @@ export function escapeCode(app) {
     drawPeek(app);
     return true;
   }
-  const ta = document.querySelector("textarea[data-composer]");
+  const ta = [...document.querySelectorAll("textarea[data-composer]")].find(live);
   if (app.page.composing && ta) { closeComposer(app, ta); return true; }
-  if (app.page.sel && document.querySelector(".ln.sel")) {
+  if (app.page.sel && [...document.querySelectorAll(".ln.sel")].some(live)) {
     app.page.sel = app.page.selKeys = app.page.anchor = null;
     document.querySelectorAll(".ln.sel").forEach((r) => r.classList.remove("sel"));
     document.querySelectorAll(".selpop").forEach((p) => p.remove());
@@ -667,7 +667,7 @@ export function inspectorKey(app, ev) {
 
 /** Selects a line wherever it's on screen, and scrolls the code it's in (never the canvas) to show it. */
 function selectLine(app, key) {
-  const row = [...document.querySelectorAll(`.ln[data-key="${CSS.escape(key)}"]`)].find((r) => r.offsetParent);
+  const row = [...document.querySelectorAll(`.ln[data-key="${CSS.escape(key)}"]`)].find(live);
   const el = row && owner(row);
   if (!el) return;
   app.page.anchor = { ...row.dataset };
@@ -807,7 +807,7 @@ function showSymbol(sym) {
   if (!sym) return CSS.highlights.delete("bobby-sym");
   const uses = symIndex.bySym.get(sym) ?? [], want = new Map();
   for (const u of uses) (want.get(`${u.path}|RIGHT|${u.line}`) ?? want.set(`${u.path}|RIGHT|${u.line}`, []).get(`${u.path}|RIGHT|${u.line}`)).push(u);
-  for (const row of document.querySelectorAll(".ln[data-key]")) { // one pass over the rows, whatever the symbol's count
+  for (const row of document.querySelectorAll(":is(#view > .vslot:not(.parked), .inspector) .ln[data-key]")) { // one pass over the rows on screen, whatever the symbol's count
     const list = want.get(row.dataset.key), code = list && row.querySelector("code");
     if (code) for (const u of list) { const r = textRange(code, u.col, u.len); if (r) hoverRanges.push(r); }
   }

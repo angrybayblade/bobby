@@ -1,7 +1,7 @@
 // Comments in place, like GitHub: threads (other reviewers' comments, and your drafts) under the line they're on, and
 // private notes floating beside it. Any of them can be collapsed to a slim marker that stays put: one thread, every
 // comment in a file, or every comment in the PR (settings.comments, the default for all of them).
-import { LOW, esc } from "./core.js";
+import { LOW, esc, live } from "./core.js";
 
 // ---- the icon that says whether comments are showing: filled when they are, an outline when they're collapsed
 export const bubble = (filled) => `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path ${filled ? 'fill="currentColor"' : 'fill="none" stroke="currentColor" stroke-width="1.4"'} d="M2.5 2.5h11a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H8l-3 2.5V11.5H2.5a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1Z"/></svg>`;
@@ -51,7 +51,7 @@ const itemOpen = (app, id, path) => (pageState(app).items.get(id) ?? fileState(a
 function keepPlace(app, clicked) {
   const scrollerOf = (n) => { for (let e = n; e && e !== document.body; e = e.parentElement) if (e.scrollHeight > e.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(e).overflowY)) return e; return null; };
   const marks = [];
-  for (const sc of new Set([...document.querySelectorAll("[data-bound]")].filter((b) => b.offsetParent).map((b) => scrollerOf(b) ?? b))) {
+  for (const sc of new Set([...document.querySelectorAll("[data-bound]")].filter(live).map((b) => scrollerOf(b) ?? b))) {
     const box = sc.getBoundingClientRect(), k = sc.clientHeight / (box.height || 1); // on-screen px to the scroller's own (zoom)
     const thread = clicked?.closest("[data-thread]"); // the thread's own top edge, open or collapsed
     const anchor = (thread && sc.contains(thread) && thread)

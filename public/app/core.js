@@ -35,6 +35,9 @@ export const DEFAULT_SETTINGS = {
   news: [], // ids of the what's-new notes already seen
 };
 
+/** Whether an element is on screen in the current view: laid out, and not in the Diff view kept parked while you're in
+ *  another (content-visibility: hidden keeps its layout, so offsetParent alone says yes). */
+export const live = (el) => !!el?.offsetParent && !el.closest(".parked");
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 /** Escaped text with `backtick` spans as <code>, for model-written prose like hooks. */
 export const inline = (s) => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
