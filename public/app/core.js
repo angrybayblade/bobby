@@ -378,8 +378,7 @@ export function createApp({ graph, session }) {
         const to = e && (e.from === was ? e.to : e.from); // a hidden page: go to what it fed, or what it hung off
         app.focus = (to && app.index.walkPos.has(to) ? to : null) ?? (loc && app.band(loc.core, "core")[0]?.id) ?? app.entryPoint()?.pid ?? app.index.walk[0];
       }
-      app.emit("settings");
-      app.emit("graph");
+      app.emit("graph"); // one event: every view rebuilds on it, and a "settings" too would rebuild them twice
     },
     replaceGraph(g) {
       const keepNode = app.nodeOf(app.focus)?.id;
