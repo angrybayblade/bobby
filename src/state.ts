@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { mkdirSync, existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import type { ReviewGraph } from "./graph.ts";
 import type { ChangeTree, PrInfo, ReviewState } from "./types.ts";
 
@@ -20,14 +20,24 @@ type PrKey = Pick<PrInfo, "owner" | "repo" | "number" | "branch">;
 // A local review is keyed by its branch, so each branch keeps its own progress.
 const slug = (pr: PrKey) => (pr.branch ? `${pr.owner}_${pr.repo}_branch_${pr.branch.replace(/[^\w.-]+/g, "-")}` : `${pr.owner}_${pr.repo}_${pr.number}`);
 
+/** A JSON file, or null if there's none. One that won't parse is set aside as .corrupt-<time> (and said so), never
+ *  silently taken for empty: the next save would otherwise overwrite what was in it. */
 function readJson<T>(path: string): T | null {
   home();
-  try { return existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : null; } catch { return null; }
+  if (!existsSync(path)) return null;
+  try { return JSON.parse(readFileSync(path, "utf8")); } catch (e) {
+    const aside = `${path}.corrupt-${Date.now()}`;
+    try { renameSync(path, aside); console.error(`  ! ${path} couldn't be read (${(e as Error).message}); kept as ${aside}`); } catch { /* read-only: leave it */ }
+    return null;
+  }
 }
+/** Written beside, then renamed into place: a crash mid-write leaves the old file whole, never half a new one. */
 function writeJson(path: string, value: unknown) {
   home();
   mkdirSync(join(path, ".."), { recursive: true });
-  writeFileSync(path, JSON.stringify(value, null, 1));
+  const tmp = `${path}.${process.pid}.tmp`;
+  writeFileSync(tmp, JSON.stringify(value, null, 1));
+  renameSync(tmp, path);
 }
 
 /** Marks are keyed by hunk content hash, so they survive force-pushes for hunks that didn't change. */
