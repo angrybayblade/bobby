@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 import { parseArgs } from "node:util";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, statSync, writeFileSync } from "node:fs";
 import { fetchPr, git, resolvePr, reviewComments, run } from "./git.ts";
 import { resolveLocal } from "./local.ts";
 import { parseDiff } from "./diff.ts";
@@ -70,6 +70,7 @@ if (values.help || (cmd === "open" && !arg)) {
   process.exit(values.help ? 0 : 1);
 }
 if (!/^\d{1,5}$/.test(values.port!) || Number(values.port) > 65535) fail(`--port takes a port number (0–65535), got "${values.port}"`);
+if (values.repo && !statSync(values.repo, { throwIfNoEntry: false })?.isDirectory()) fail(`--repo takes a folder with a git checkout, got "${values.repo}"`);
 if (cmd === "lsp") process.exit(await lspCommand(arg, positionals[2]));
 
 /** bobby lsp: where each language's server stands. bobby lsp install <language>: installs it (or says how), and
