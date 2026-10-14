@@ -331,7 +331,8 @@ export default {
       const sw = stage.clientWidth || 1440, sh = stage.clientHeight || 900, w = bodyW(app, app.focus), s = (sw - PAD * 2) / w;
       root.style.setProperty("--viewer-h", `${Math.max(200, Math.round((sh - PAD * 2) / s - 150))}px`);
     }
-    new ResizeObserver(() => { const was = root.style.getPropertyValue("--viewer-h"); sizeViewer(); if (root.style.getPropertyValue("--viewer-h") !== was && app.level === 1) update("measure"); }).observe(stage);
+    const stageRo = new ResizeObserver(() => { const was = root.style.getPropertyValue("--viewer-h"); sizeViewer(); if (root.style.getPropertyValue("--viewer-h") !== was && app.level === 1) update("measure"); });
+    stageRo.observe(stage);
     function update(reason) {
       sizeViewer();
       if (reason === "level") {
@@ -427,6 +428,8 @@ export default {
       if (ev.pointerType === "mouse") ev.preventDefault(); // a press-and-drag pans; it must not start a text selection
       drag = { x: ev.clientX, y: ev.clientY, v: { ...view } }; moved = false;
     });
+    // on window, so a drag keeps going outside the stage; removed on destroy, or each visit to Flow would keep the last alive
+    const off = new AbortController();
     window.addEventListener("pointermove", (ev) => {
       if (!drag) return;
       const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
@@ -435,8 +438,8 @@ export default {
       if (filled) unfill(false);
       view = { ...drag.v, tx: drag.v.tx + dx, ty: drag.v.ty + dy }; mine = true;
       requestAnimationFrame(apply);
-    });
-    window.addEventListener("pointerup", () => { drag = null; root.classList.remove("dragging"); setTimeout(() => (moved = false)); });
+    }, { signal: off.signal });
+    window.addEventListener("pointerup", () => { drag = null; root.classList.remove("dragging"); setTimeout(() => (moved = false)); }, { signal: off.signal });
     stage.addEventListener("wheel", (ev) => {
       if (app.level === 2) return;
       const r = stage.getBoundingClientRect();
@@ -537,7 +540,7 @@ export default {
     };
 
     update("mount");
-    return { update, keys, destroy() { ro.disconnect(); } };
+    return { update, keys, destroy() { ro.disconnect(); stageRo.disconnect(); off.abort(); } };
   },
 };
 
