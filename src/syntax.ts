@@ -90,7 +90,7 @@ function walk(lang: Lang, root: N): Syntax {
     out.decls.push({ name: nameNode.text, line: line(nameNode), start: line(whole), end: whole.endPosition.row + 1, top, ...(member ? { member } : {}) });
   };
   const ref = (n: N, qual?: N | null) => {
-    if (declNames.has(n.id)) return;
+    if (declNames.has(n.id) || !n.text) return; // a zero-width node: what error recovery inserts for a missing name
     out.refs.push({ name: n.text, line: line(n), col: col(n), ...(qual ? { qual: qual.text } : {}) });
   };
   const handlers = { ts: jsNode, tsx: jsNode, js: jsNode, py: pyNode, go: goNode, java: javaNode, rust: rustNode }[lang];
