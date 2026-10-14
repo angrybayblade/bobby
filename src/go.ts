@@ -6,7 +6,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 import { dirsWith, type LanguageServer } from "./langserver.ts";
-import { home } from "./state.ts";
+import { tmpdir } from "node:os"; // a neutral folder for `go env`: outside any module, and always there (~/.bobby may not be yet)
 
 const LOCKED = { GOTOOLCHAIN: "local", GOPROXY: "off", GOSUMDB: "off", GOFLAGS: "-mod=readonly", CGO_ENABLED: "0" };
 const INSTALL = "go install golang.org/x/tools/gopls@latest";
@@ -19,7 +19,7 @@ function goEnv(fresh = false): Promise<GoEnv | null> {
   return (env = (async () => {
     const go = Bun.which("go");
     if (!go) return null;
-    const p = Bun.spawn([go, "env", "-json", "GOPATH", "GOROOT", "GOMODCACHE"], { cwd: home(), env: { ...process.env, GOTOOLCHAIN: "local" }, stdout: "pipe", stderr: "ignore" });
+    const p = Bun.spawn([go, "env", "-json", "GOPATH", "GOROOT", "GOMODCACHE"], { cwd: tmpdir(), env: { ...process.env, GOTOOLCHAIN: "local" }, stdout: "pipe", stderr: "ignore" });
     const e = JSON.parse((await new Response(p.stdout).text()) || "{}") as Record<string, string>;
     await p.exited;
     const inGopath = (e.GOPATH ?? "").split(process.platform === "win32" ? ";" : ":").filter(Boolean).map((d) => join(d, "bin", process.platform === "win32" ? "gopls.exe" : "gopls"));

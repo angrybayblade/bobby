@@ -38,7 +38,10 @@ export async function startServers(s: Session, opts: { ask: boolean; off?: boole
   for (const srv of wanted) s.servers[srv.id] = { id: srv.id, title: srv.title, state: opts.off || !s.cwd ? "off" : "pending" }; // pending until decided: the page polls
   if (opts.off || !s.cwd) return;
   process.once("SIGINT", () => void stopServers(s).finally(() => process.exit(130)));
-  await Promise.all(wanted.map((srv) => decide(s, srv, opts.ask)));
+  await Promise.all(wanted.map((srv) => decide(s, srv, opts.ask).catch((e) => { // never takes the review down: that language just has no server
+    Object.assign(s.servers![srv.id], { state: "failed", error: String((e as Error).message ?? e) });
+    console.error(`  ✗ ${srv.title} language server: ${s.servers![srv.id].error}`);
+  })));
 }
 
 async function decide(s: Session, srv: LanguageServer, ask: boolean) {
