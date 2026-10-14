@@ -118,6 +118,7 @@ async function poll() {
 app.watchServers = poll; // after you say yes, check again or no in the UI
 // A call that failed with no one to catch it (a save, a delete): say so rather than nothing.
 app.fail = (e) => chrome.toast(`Not saved: ${esc(e?.message ?? e)}`, 8000);
+app.toastUndo = (what) => chrome.toast(`<span>${esc(what)}.</span> <button class="btn" data-act="undo">Undo</button>`, 8000);
 window.addEventListener("unhandledrejection", (ev) => app.fail(ev.reason));
 app.openKeys = () => chrome.keysEditor(); // for the tour's news, which can't import chrome.js
 if (app.llm === "pending" || busy(app.servers)) poll();

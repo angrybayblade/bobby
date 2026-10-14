@@ -232,10 +232,14 @@ export function createApp({ graph, session }) {
       return note;
     },
     async deleteNote(id) {
+      const n = app.state.notes.find((x) => x.id === id);
       await api(`/api/notes/${id}`, null, "DELETE"); // gone once the server says so
-      app.state.notes = app.state.notes.filter((n) => n.id !== id);
+      app.state.notes = app.state.notes.filter((x) => x.id !== id);
       app.emit("comments");
+      if (n) { const { id: _, createdAt: __, ...fields } = n; app.offerUndo("Note deleted", () => app.addNote(fields)); }
     },
+    /** Something just deleted: a toast offers to put it back, until the next one. */
+    offerUndo(what, restore) { app._undo = restore; app.toastUndo?.(what); },
     /** The page that shows a file's line (or just the file), for jumping to a note. */
     pidAt(path, line) {
       let first = null;

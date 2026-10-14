@@ -899,10 +899,15 @@ function bind(app, el, rerender) {
       }
       again();
     } else if (ds.del) {
+      const gone = app.state.comments.find((c) => c.id === ds.del);
       api(`/api/comment/${ds.del}`, null, "DELETE").then(() => { // gone once the server says so
         app.state.comments = app.state.comments.filter((c) => c.id !== ds.del);
         app.emit("comments");
         again();
+        if (gone) {
+          const { id: _, ...fields } = gone;
+          app.offerUndo("Draft deleted", () => api("/api/comment", fields).then((c) => { app.state.comments.push(c); app.emit("comments"); }));
+        }
       }, (e) => app.fail?.(e));
     } else if (ds.low) {
       const open = (app.page.lowOpen ??= new Set());

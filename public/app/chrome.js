@@ -550,6 +550,7 @@ function onClick(ev) {
     overview: () => { close(); app.setLevel(0); },
     resume: () => { close(); if (resumeTo) app.setFocus(resumeTo.pid, { level: resumeTo.level }); },
     "switch-tree": () => app.switchTree(),
+    undo: () => { const put = app._undo; app._undo = null; $("#toast").hidden = true; put?.(); },
     tour: () => { close(); tour.start(); },
     "save-note": () => saveNote($("#note").value.trim()),
     "clear-note": () => saveNote(""),
