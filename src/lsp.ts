@@ -95,6 +95,12 @@ export class LspClient {
       ? { path: fileURLToPath(x.targetUri), span: x.targetRange, at: x.targetSelectionRange }
       : { path: fileURLToPath(x.uri), span: x.range, at: x.range });
   }
+  /** Every use of the name at a position, its declaration left out. */
+  async references(path: string, pos: LspPosition, timeoutMs?: number): Promise<Array<{ path: string; line: number; col: number }>> {
+    const r = await this.request<Array<{ uri: string; range: LspRange }> | null>("textDocument/references",
+      { textDocument: { uri: pathToFileURL(path).href }, position: pos, context: { includeDeclaration: false } }, timeoutMs);
+    return (r ?? []).map((x) => ({ path: fileURLToPath(x.uri), line: x.range.start.line + 1, col: x.range.start.character }));
+  }
   /** The hover text at a position (a signature or type, usually a code block), or null. */
   async hover(path: string, pos: LspPosition, timeoutMs?: number): Promise<string | null> {
     type Content = string | { language?: string; value: string; kind?: string };

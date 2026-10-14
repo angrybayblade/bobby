@@ -4,7 +4,7 @@ import { fileLines, reviewComments, run } from "./git.ts";
 import type { ReviewGraph } from "./graph.ts";
 import { loadSettings, saveSettings, saveState } from "./state.ts";
 import type { Comment, Definition, PrivateNote, ReviewState } from "./types.ts";
-import { type Inspector, insideRepo, inspectSyntax } from "./inspect.ts";
+import { type Inspector, insideRepo, inspectSyntax, referencesSyntax, type Uses } from "./inspect.ts";
 import { declineServer, inspectorFor, installServer, recheckServer, type ServerInfo, serverInfoFor } from "./servers.ts";
 import { Repo } from "./resolve.ts";
 
@@ -77,6 +77,24 @@ export function startServer(s: Session, port: number) {
 
       // The inspector: where the name at path:line:col (head side) is declared. The language server once it's loaded;
       // until then, or without one, what extraction stored and the syntax tree at head.
+      // Every use of the name at path:line:col (head side), each with its line, for the inspector's list. The file's
+      // language server once it's loaded; until then, or without one, the syntax tree and imports.
+      if (p === "/api/references") {
+        const path = url.searchParams.get("path") ?? "", line = Number(url.searchParams.get("line")), col = Number(url.searchParams.get("col"));
+        if (!insideRepo(path) || !Number.isInteger(line) || !Number.isInteger(col)) return json({ error: "a repo-relative path, a line and a column" }, 400);
+        const server = serverInfoFor(s, path), state = { pending: server?.state === "pending" || server?.state === "installing", ...(server ? { server } : {}) };
+        const changed = pr().provider === "local" && !!s.cwd && (await changedSince(s.cwd, pr().headSha, path));
+        const insp = inspectorFor(s, path);
+        let uses: Uses | null = insp && !changed ? await insp.references(path, line, col).catch(() => null) : null;
+        if (!uses && s.cwd) {
+          s.repo ??= Repo.open(s.cwd, pr().headSha);
+          uses = await referencesSyntax(await s.repo, s.cwd, pr().headSha, path, line, col).catch(() => null);
+        }
+        if (!uses) return json({ refs: [], total: 0, via: "none", ...state });
+        const MAX = 500, refs = uses.refs.slice(0, MAX), lines = new Map<string, string[]>();
+        for (const r of refs) if (!lines.has(r.path)) lines.set(r.path, s.cwd ? await fileLines(s.cwd, pr().headSha, r.path).catch(() => []) : []);
+        return json({ name: uses.name, refs: refs.map((r) => ({ ...r, text: (lines.get(r.path)?.[r.line - 1] ?? "").slice(0, 400) })), total: uses.refs.length, via: uses.via, ...state, ...(changed ? { changed } : {}) });
+      }
       if (p === "/api/inspect") {
         const path = url.searchParams.get("path") ?? "", line = Number(url.searchParams.get("line")), col = Number(url.searchParams.get("col"));
         if (!insideRepo(path) || !Number.isInteger(line) || !Number.isInteger(col)) return json({ error: "a repo-relative path, a line and a column" }, 400);

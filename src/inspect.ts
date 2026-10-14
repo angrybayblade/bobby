@@ -3,11 +3,11 @@
 // imports answer what they can. The server is any LanguageServer (langserver.ts): this file knows none of them.
 import { readFileSync } from "node:fs";
 import { isAbsolute, join, normalize, relative, sep } from "node:path";
-import { resolveDef } from "./analyze.ts";
+import { grepWords, parseGrep, resolveDef } from "./analyze.ts";
 import type { LanguageServer } from "./langserver.ts";
 import { LspClient, type LspTarget } from "./lsp.ts";
 import type { Repo } from "./resolve.ts";
-import { parseSyntax } from "./syntax.ts";
+import { langOf, parseSyntax } from "./syntax.ts";
 import type { Definition } from "./types.ts";
 
 export interface Inspection extends Pick<Definition, "to" | "ext"> {
@@ -70,6 +70,18 @@ export class Inspector {
     return { ...(at?.to ? { to: at.to } : at?.ext ? { ext: at.ext } : {}), ...(hover ? { hover } : {}), via: "lsp" };
   }
 
+  /** Every use of the name at a position, in the repo (the declaration itself left out). */
+  async references(path: string, line: number, col: number): Promise<Uses | null> {
+    if (!this.reads(path) || !this.open(path)) return null;
+    const found = await this.client.references(this.abs(path), { line: line - 1, character: col }, this.timeout());
+    this.warm = true;
+    const refs = found.flatMap((r) => {
+      const rel = relative(this.root, r.path).split(sep).join("/");
+      return rel.startsWith("../") || this.server.outside(r.path) || rel.includes(".bobby-stubs/") ? [] : [{ path: rel, line: r.line, col: r.col }];
+    });
+    return { name: wordAt(this.text(path)?.split("\n")[line - 1] ?? "", col), refs, via: "lsp" };
+  }
+
   private timeout() { return this.warm ? TIMEOUT : FIRST_TIMEOUT; }
   private abs(path: string) { return join(this.root, path); }
   private text(path: string) { if (!insideRepo(path)) return null; try { return readFileSync(this.abs(path), "utf8"); } catch { return null; } }
@@ -116,6 +128,39 @@ export class Inspector {
 export function insideRepo(path: string) {
   const n = normalize(path);
   return !!path && !isAbsolute(path) && !/^[a-zA-Z]:/.test(path) && n !== ".." && !n.startsWith(`..${sep}`) && !n.startsWith("../");
+}
+
+export interface Uses { name: string; refs: Array<{ path: string; line: number; col: number }>; via: "lsp" | "syntax" }
+const wordAt = (text: string, col: number) => {
+  let a = col, b = col;
+  while (a > 0 && /[\w$]/.test(text[a - 1])) a--;
+  while (b < text.length && /[\w$]/.test(text[b])) b++;
+  return text.slice(a, b);
+};
+const MAX_FILES = 400; // a common name's candidates, parsed: past this, the rest are left out
+
+/** Without a language server: the uses of the name at a position (a use of it, or its declaration). Candidates are the
+ *  files git grep finds the name in; a use counts when it resolves, through imports, to the same declaration. Members
+ *  reached through a value (x.name) don't resolve this way, so they're missed. */
+export async function referencesSyntax(repo: Repo, cwd: string, sha: string, path: string, line: number, col: number): Promise<Uses | null> {
+  const syn = await repo.syntax(path);
+  if (!syn) return null;
+  const r = syn.refs.find((x) => x.line === line && col >= x.col && col < x.col + x.name.length);
+  const name = r?.name ?? wordAt((await repo.read(path))?.split("\n")[line - 1] ?? "", col);
+  const decl = r ? await resolveDef(repo, path, syn, r) : syn.decls.find((d) => d.line === line && d.name === name) ? { path, line } : null;
+  if (!name || !decl) return { name, refs: [], via: "syntax" };
+  const files = [...new Set(parseGrep(await grepWords(cwd, sha, [name]), sha).map((h) => h.path))].filter((f) => langOf(f)).slice(0, MAX_FILES);
+  await repo.readMany(files);
+  const refs: Uses["refs"] = [];
+  for (const f of files) {
+    const s = await repo.syntax(f);
+    for (const x of s?.refs ?? []) {
+      if (x.name !== name) continue;
+      const d = await resolveDef(repo, f, s!, x);
+      if (d && d.path === decl.path && d.line === decl.line) refs.push({ path: f, line: x.line, col: x.col });
+    }
+  }
+  return { name, refs, via: "syntax" };
 }
 
 /** Without a language server: the name at a position, through the syntax tree and imports. */

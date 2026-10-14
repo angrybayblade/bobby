@@ -345,7 +345,7 @@ export async function grepWords(cwd: string, sha: string, words: string[], extra
   return git(cwd, base.slice(3).concat(["-w", "-E", "-e", `(${alt})`, sha, "--", "."]), true); // no PCRE in this git
 }
 
-function parseGrep(out: string, sha: string) {
+export function parseGrep(out: string, sha: string) {
   const hits: Array<{ path: string; line: number; text: string }> = [];
   for (const raw of out.split("\n")) {
     if (!raw) continue;
