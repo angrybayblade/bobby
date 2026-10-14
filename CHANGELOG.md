@@ -13,6 +13,20 @@ What changed in each release, newest first. Each release's full notes, with inst
 **Flow**
 - The arrow keys move at every level; ← always retracts, to the parent and then out a level.
 
+**Keyboard**
+- `]` / `[` select the next or previous line and `}` / `{` grow the selection, so `c` and `m` can comment on a line you chose.
+- Enter and space work on a button you've tabbed to; Tab stays inside an open dialog, and closing it gives focus back.
+- A file's viewed box in the file tree can be reached by keyboard, and focus stays put when the chrome redraws.
+- Diff's ← / → history survives a reload.
+- Every hint and tooltip shows your own keys.
+
+**Review**
+- Undo after deleting a draft or a note.
+- Binary files, pure renames, mode changes and empty files appear on the Low-signal page; a renamed file's header shows where it came from.
+- GitHub comments on the old side of an unchanged line show, and count in "comments below".
+- "More below" only where the file has more; the Low-signal page says when it cuts a long hunk short.
+- `bobby clean [--repos]`, and a daily tidy of caches older than a month and old language-server versions.
+
 **Reliability**
 - Bobby's server only answers its own page: another website can no longer read your review or post as you.
 - Your progress is written atomically, and a state file that can't be read is kept aside instead of being overwritten.
@@ -24,6 +38,19 @@ What changed in each release, newest first. Each release's full notes, with inst
 - A local review keeps uncommitted changes when `git stash create` refuses (intent-to-add files, a merge in progress).
 - A fresh machine with Go installed no longer crashes on start.
 - highlight.js ships with Bobby instead of loading from a CDN.
+- A retargeted PR is rebuilt (the cache key includes the base branch); a cached PR fetches its commits if the clone lacks them.
+- `--no-llm` shows no Claude tree, even a cached one; `--refresh` asks the language servers afresh.
+- A language server that keeps timing out is dropped for imports instead of leaving names loading for hours; Check again answers at once.
+- Claude gives up after 15 minutes; a review GitHub took is counted as posted even if its reply was lost.
+- File names git quotes (or ends with a tab) are read right; GitHub Enterprise URLs and a missing `gh` say so instead of crashing; CLI failures are one line.
+- Windows: line endings no longer read as changes in a local review, and monorepo workspaces link without Developer Mode.
+- The inspector's window no longer gets stuck after a focus change, and the focus nudges keep working after switching trees.
+
+**Faster**
+- Toggling Tests or Untouched builds the views once (about twice as fast); switching views renders once; resizes are handled once a frame.
+- Word marks can't freeze the page on big reformatted hunks; Flow no longer leaks a canvas per visit.
+- The status poll redraws only when something changed. Finding uses without a language server is remembered and doesn't stall the server.
+- Reading a language server's large answers, resolving Go, Java and Python imports, and caches of files read are all bounded or indexed.
 
 **For tools reading the graph**
 - `generator.version` is Bobby's version; the extraction's own is `generator.extraction`.
