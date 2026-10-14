@@ -18,7 +18,7 @@ untouched code it relies on → changed code it relies on → CORE CHANGE → ch
 | **Affects · changed** | Other changes that exist because of the core, such as callers and tests. |
 | **Affects · untouched** | Code the PR didn't touch but whose behaviour it can change. This is where bugs usually hide. |
 
-Cores are ordered foundations first. After the last core you get a **Low-signal changes** page (lockfiles, generated files, whitespace-only hunks, collapsed by default) and then an **End** page.
+Cores are ordered foundations first. After the last core you get a **Low-signal changes** page (lockfiles, generated files, whitespace-only hunks, binary files and renames without changes, collapsed by default) and then an **End** page.
 
 Each stop on the walk is a **page**: a title, one sentence on why it matters, any comments, then the code. Changed code is drawn with a solid dot ●, untouched code with a hollow dot ○.
 

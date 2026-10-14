@@ -91,6 +91,14 @@ export function parseDiff(text: string): FileDiff[] {
   }
   finishHunk();
 
+  // A change with no lines to show (a binary file, a pure rename, a mode change, an empty file) still gets a hunk, with
+  // none, so it's listed with the low-signal changes instead of missing from the review.
+  for (const f of files) {
+    if (f.hunks.length) continue;
+    f.noise = f.binary ? "binary" : f.status === "renamed" ? "renamed, unchanged" : f.status === "modified" ? "mode change" : "empty file";
+    f.hunks.push({ id: "", file: f.path, oldFile: f.oldPath, header: "", ctx: "", oldStart: 0, newStart: 0, lines: [], hash: sha1(`${f.status}\n${f.oldPath}\n${f.path}`), noise: f.noise });
+  }
+
   // Simple ids in file order; the path is assigned here because rename headers come after "diff --git".
   let i = 0;
   for (const f of files) for (const h of f.hunks) { h.id = `h${++i}`; h.file = f.path; h.oldFile = f.oldPath; }

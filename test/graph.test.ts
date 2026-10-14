@@ -30,12 +30,16 @@ beforeAll(() => {
   write("src/limit.ts", `export function limit(n: number) {\n  return Math.min(n, 10);\n}\n`);
   write("src/api.ts", `import { limit } from "./limit";\n\nexport function handler(n: number) {\n  return limit(n);\n}\n`);
   write("app/util.py", `def clamp(x):\n    return max(0, x)\n`);
+  write("docs/old-name.md", "# Notes\n\nUnchanged by the move.\n");
+  writeFileSync(join(repo, "logo.bin"), new Uint8Array([0, 1, 2, 3, 0, 255]));
   git("add", "-A");
   git("commit", "-qm", "base");
   git("checkout", "-qb", "feature");
   write("src/limit.ts", `export const MAX = 20;\n\nexport function limit(n: number, max = MAX) {\n  return Math.min(n, max);\n}\n`);
   write("app/util.py", `def clamp(x, lo=0):\n    return max(lo, x)\n`);
   write("src/new.ts", `import { MAX } from "./limit";\nexport const half = MAX / 2;\n`);
+  git("mv", "docs/old-name.md", "docs/new-name.md"); // a pure rename: no lines to show
+  writeFileSync(join(repo, "logo.bin"), new Uint8Array([0, 9, 9, 9, 0, 255]));
   git("add", "-A");
   git("commit", "-qm", "raise the limit");
   const cli = join(import.meta.dir, "..", "src", "cli.ts"), out = join(root, "graph.json");
@@ -58,7 +62,7 @@ describe("an extracted graph", () => {
   });
 
   test("has every changed file and its hunks", () => {
-    expect(graph.files.map((f) => [f.path, f.status]).sort()).toEqual([["app/util.py", "modified"], ["src/limit.ts", "modified"], ["src/new.ts", "added"]]);
+    expect(graph.files.map((f) => [f.path, f.status]).sort()).toEqual([["app/util.py", "modified"], ["docs/new-name.md", "renamed"], ["logo.bin", "modified"], ["src/limit.ts", "modified"], ["src/new.ts", "added"]]);
     const files = new Set(graph.files.map((f) => f.path));
     for (const h of graph.hunks) expect(files.has(h.file)).toBe(true);
   });
@@ -70,6 +74,15 @@ describe("an extracted graph", () => {
     for (const n of graph.nodes) if (n.kind === "change") for (const h of n.hunkIds) expect(hunks.has(h)).toBe(true);
     for (const e of graph.edges) { expect(placements.has(e.from)).toBe(true); expect(placements.has(e.to)).toBe(true); }
     for (const id of graph.walk) expect(placements.has(id) || id === "low").toBe(true);
+  });
+
+  test("lists a change with no lines among the low-signal ones", () => {
+    const low = new Set(graph.lowSignal);
+    for (const [path, why] of [["docs/new-name.md", "renamed, unchanged"], ["logo.bin", "binary"]]) {
+      const h = graph.hunks.find((x) => x.file === path);
+      expect(h).toMatchObject({ lines: [], lowSignal: why });
+      expect(low.has(h!.id)).toBe(true);
+    }
   });
 
   test("shows every changed hunk somewhere", () => {

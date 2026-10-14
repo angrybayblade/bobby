@@ -423,7 +423,7 @@ function lowPage(app) {
   const open = app.page.lowOpen ?? new Set();
   return `<div class="band">Low-signal changes</div>
     <h1>Skim, don't read${app.isReviewed(LOW) ? `<span class="badges"><span class="badge done">✓ reviewed</span></span>` : ""}</h1>
-    <p class="why">Lockfiles, generated output and whitespace-only edits. Open anything that looks surprising, then press ${keyHtml(app.settings, "reviewed")}.</p>
+    <p class="why">Lockfiles, generated output, whitespace-only edits, binary files and moves without changes. Open anything that looks surprising, then press ${keyHtml(app.settings, "reviewed")}.</p>
     ${[...byFile].map(([file, hs]) => {
       let a = 0, d = 0; for (const h of hs) for (const l of h.lines) l.t === "+" ? a++ : l.t === "-" ? d++ : 0;
       return `<div class="code"><button class="fh" style="width:100%;text-align:left" data-low="${esc(file)}"><span><b>${esc(file)}</b> <span style="color:var(--faint)">· ${esc(hs[0].lowSignal)}</span></span><span class="ctx"></span><span class="st">+${a} −${d} · ${open.has(file) ? "hide" : "show"}</span></button>

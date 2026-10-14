@@ -27,7 +27,7 @@ How a PR becomes a review graph. The code lives in `src/`; the output format is 
 - Hunk ids are `h1…hN` in file order.
 - **`hunk.hash`** is a SHA-1 of the file path plus the hunk's lines. It's identical across force-pushes when the hunk didn't change, and review marks are keyed on it.
 
-**Low-signal classification.** A hunk gets a `noise` reason if its file is a lockfile (`package-lock.json`, `bun.lock`, `go.sum`, …), generated (`dist/`, `vendor/`, `*.min.js`, `*.pb.go`, snapshots, …) or binary, or if the hunk is whitespace-only (added and removed lines are equal once whitespace is stripped). Low-signal hunks skip analysis and end up on the single "Low-signal changes" page.
+**Low-signal classification.** A hunk gets a `noise` reason if its file is a lockfile (`package-lock.json`, `bun.lock`, `go.sum`, …), generated (`dist/`, `vendor/`, `*.min.js`, `*.pb.go`, snapshots, …) or binary, or if the hunk is whitespace-only (added and removed lines are equal once whitespace is stripped). A file with no lines to show (a binary file, a rename without changes, a mode change, an empty file) gets one hunk with no lines, marked `binary`, `renamed, unchanged`, `mode change` or `empty file`, so it's still listed. Low-signal hunks skip analysis and end up on the single "Low-signal changes" page.
 
 ## 3. Static analysis (`analyze.ts`, `syntax.ts`, `resolve.ts`)
 
