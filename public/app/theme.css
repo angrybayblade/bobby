@@ -127,6 +127,61 @@
 }
 [data-palette="github"] .hljs-comment, [data-palette="github"] .hljs-quote { font-style: normal; }
 
+/* Silverpoint: after the drawing technique, fine grey lines on a toned ground. Graphite and silver neutrals, cool and
+   quiet; one muted steel accent; additions and removals in desaturated green and red. */
+[data-palette="silverpoint"][data-theme="dark"] {
+  --bg: #16181b;
+  --surface: #1b1d21;
+  --raised: #23262b;
+  --line: #343840;
+  --line-soft: #272a30;
+  --text: #e4e6ea;
+  --muted: #a2a7b0;
+  --faint: #6f747d;
+  --signal: #9fb4cc;
+  --focus: #7f93aa;
+  --signal-ink: #16181b;
+  --signal-soft: rgba(159, 180, 204, .14);
+  --risk: #d58a86;
+  --risk-soft: rgba(213, 138, 134, .14);
+  --ok: #8fb39a;
+  --add-tint: rgba(143, 179, 154, .08);
+  --add-word: rgba(143, 179, 154, .28);
+  --del-tint: rgba(213, 138, 134, .08);
+  --del-word: rgba(213, 138, 134, .28);
+  --target: rgba(159, 180, 204, .10);
+  --shadow: 0 10px 36px rgba(0, 0, 0, .45);
+  --hl-kw: #b8a6d9; --hl-str: #9fc2ad; --hl-num: #d7b98f; --hl-com: #6f747d;
+  --hl-fn: #9cb8d8; --hl-type: #c9c1df; --hl-attr: #b9c7a5;
+  --hunk: rgba(159, 180, 204, .07);
+}
+[data-palette="silverpoint"][data-theme="light"] {
+  --bg: #f2f1ed;
+  --surface: #fbfaf7;
+  --raised: #e9e8e3;
+  --line: #d3d2cc;
+  --line-soft: #e2e1dc;
+  --text: #26282c;
+  --muted: #5e626a;
+  --faint: #959891;
+  --signal: #4e6884;
+  --focus: #6c8198;
+  --signal-ink: #fbfaf7;
+  --signal-soft: rgba(78, 104, 132, .10);
+  --risk: #a3524b;
+  --risk-soft: rgba(163, 82, 75, .10);
+  --ok: #4d7a5c;
+  --add-tint: rgba(77, 122, 92, .08);
+  --add-word: rgba(77, 122, 92, .22);
+  --del-tint: rgba(163, 82, 75, .07);
+  --del-word: rgba(163, 82, 75, .22);
+  --target: rgba(78, 104, 132, .09);
+  --shadow: 0 10px 36px rgba(40, 44, 52, .10);
+  --hl-kw: #6b4c8a; --hl-str: #3f6f52; --hl-num: #8a5a1f; --hl-com: #959891;
+  --hl-fn: #3d5f86; --hl-type: #5d5590; --hl-attr: #6b6a2a;
+  --hunk: rgba(78, 104, 132, .06);
+}
+
 [data-motion="off"] { --dur: 0ms; }
 [data-motion="off"] *, [data-motion="off"] *::before, [data-motion="off"] *::after { animation: none !important; transition: none !important; }
 

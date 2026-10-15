@@ -33,7 +33,7 @@ const [graph, session] = await (async () => {
 function look(s) {
   const root = document.documentElement;
   root.dataset.theme = (s.theme ?? "system") === "system" ? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark") : s.theme;
-  root.dataset.palette = (s.palette ?? "github") === "github" ? "github" : "warm";
+  root.dataset.palette = ["warm", "silverpoint"].includes(s.palette) ? s.palette : "github";
   if (s.size) root.style.setProperty("--size", `${s.size}px`);
   try { localStorage.setItem("bobby.look", JSON.stringify({ theme: s.theme ?? "system", palette: s.palette ?? "github" })); } catch { /* private window */ }
 }
@@ -86,7 +86,7 @@ function applySettings() {
   try { localStorage.setItem("bobby.look", JSON.stringify({ theme: s.theme, palette: s.palette })); } catch { /* private window */ }
   root.dataset.theme = s.theme === "system" ? (media("(prefers-color-scheme: light)") ? "light" : "dark") : s.theme;
   root.dataset.files = s.fileTreeSide === "left" ? "left" : "right";
-  root.dataset.palette = s.palette === "github" ? "github" : "warm";
+  root.dataset.palette = ["warm", "silverpoint"].includes(s.palette) ? s.palette : "github";
   root.dataset.motion = s.motion === "system" ? (media("(prefers-reduced-motion: reduce)") ? "off" : "on") : s.motion;
   root.style.setProperty("--font-prose", FONTS[s.font] ?? FONTS.sans);
   root.style.setProperty("--size", `${s.size}px`);

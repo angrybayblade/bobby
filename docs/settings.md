@@ -4,7 +4,7 @@ Open settings with `,` or the gear in the header. Changes apply immediately and 
 
 | Setting | Options | Default |
 |---|---|---|
-| Style | GitHub · Warm | GitHub |
+| Style | GitHub · Warm · Silverpoint | GitHub |
 | Theme | System · Dark · Light | System |
 | Reading font | Sans (Inter) · Hyperlegible (Atkinson) · Serif (Literata) · Mono (JetBrains Mono) | Sans |
 | Text size | 14 · 15 · 16 · 18 | 15 |
@@ -22,7 +22,7 @@ Open settings with `,` or the gear in the header. Changes apply immediately and 
 | File tree side | Right · Left (also ⇄ in the tree's header) | Right |
 | Tests & generated files | Hidden · Shown (also the top bar's **⚗ Tests**) | Hidden |
 
-**Style** picks the colours. GitHub is the default. Warm is the alternative: warm neutrals with one amber signal colour. GitHub uses GitHub's colours and fonts: its accent blue as the signal, its diff greens and reds, blue hunk rows, its syntax colours, and the system UI and monospace fonts. Either comes in dark and light.
+**Style** picks the colours. GitHub is the default. Warm is the alternative: warm neutrals with one amber signal colour. GitHub uses GitHub's colours and fonts: its accent blue as the signal, its diff greens and reds, blue hunk rows, its syntax colours, and the system UI and monospace fonts. Silverpoint, after the drawing technique, is fine grey lines on a toned ground: graphite and silver neutrals, one muted steel accent, and desaturated greens and reds for the diff. Each comes in dark and light.
 
 **Tests & generated files** are skipped by default: test files (`*.test.*`, `*.spec.*`, `__tests__/`, `tests/`, fixtures, `test_*.py`, `*_test.go`, …) and generated files (`__generated__/`, `*.generated.*`, `*_pb2.py`, OpenAPI specs, or code carrying a generated-file marker such as `@generated` or "DO NOT EDIT"). Hidden, they leave every view, `j`/`k` and progress; the **⚗ Tests** switch in the top bar brings them back. **Untouched code** works the same way and is also hidden by default; **○ Untouched** brings back the untouched code the changes rely on and the untouched code they affect. Lockfiles, `dist/` and the like are already set aside on the low-signal page.
 

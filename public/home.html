@@ -7,7 +7,7 @@
   <link rel="icon" href="/bobby.svg" type="image/svg+xml" />
   <script>/* your style and theme from the first paint (main.js and home.js remember them), not the defaults */
     try { const l = JSON.parse(localStorage.getItem("bobby.look") || "null"), r = document.documentElement;
-      if (l) { r.dataset.palette = l.palette === "warm" ? "warm" : "github"; r.dataset.theme = l.theme === "system" || !l.theme ? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark") : l.theme; }
+      if (l) { r.dataset.palette = ["warm", "silverpoint"].includes(l.palette) ? l.palette : "github"; r.dataset.theme = l.theme === "system" || !l.theme ? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark") : l.theme; }
     } catch {}</script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

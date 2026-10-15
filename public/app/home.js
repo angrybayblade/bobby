@@ -17,7 +17,7 @@ const home = await json("/api/home").catch((e) => ({ error: e.message, recents: 
 // the theme you chose for reviews
 const s = home.settings ?? {}, root = document.documentElement;
 root.dataset.theme = (s.theme ?? "system") === "system" ? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark") : s.theme;
-root.dataset.palette = (s.palette ?? "github") === "github" ? "github" : "warm";
+root.dataset.palette = ["warm", "silverpoint"].includes(s.palette) ? s.palette : "github";
 root.style.setProperty("--size", `${s.size ?? 15}px`);
 try { localStorage.setItem("bobby.look", JSON.stringify({ theme: s.theme ?? "system", palette: s.palette ?? "github" })); } catch { /* private window */ }
 $(".ver").textContent = home.version ? `v${home.version}` : "";

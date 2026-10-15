@@ -30,7 +30,7 @@ export const DEFAULT_SETTINGS = {
   fileTree: "show", // show | hide: the file tree beside the view (t)
   fileTreeSide: "right", // right | left
   diffLayout: "split", // split | inline: old beside new, or changed lines in one column
-  palette: "github", // github | warm: colours (and, for github, fonts); theme picks dark or light
+  palette: "github", // github | warm | silverpoint: colours (and, for github, fonts); theme picks dark or light
   hintUses: {},
   tour: "unseen", // unseen | seen: the first-run tour is offered once
   news: [], // ids of the what's-new notes already seen

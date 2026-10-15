@@ -337,7 +337,7 @@ addEventListener("keydown", (ev) => {
 }, true);
 
 const SETTINGS = [
-  ["palette", "Style", [["github", "GitHub"], ["warm", "Warm"]]],
+  ["palette", "Style", [["github", "GitHub"], ["warm", "Warm"], ["silverpoint", "Silverpoint"]]],
   ["theme", "Theme", [["system", "System"], ["dark", "Dark"], ["light", "Light"]]],
   ["font", "Reading font", [["sans", "Sans"], ["hyper", "Hyperlegible"], ["serif", "Serif"], ["mono", "Mono"]]],
   ["size", "Text size", [[14, "14"], [15, "15"], [16, "16"], [18, "18"]]],
