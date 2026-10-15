@@ -4,6 +4,8 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- Upgrading from an rc: the home page's Recents starts with the PRs you'd already reviewed (from their saved progress), and a Bobby from an earlier rc still running on a review is detected rather than overwritten.
+
 - A home page: paste a PR, or pick one from Recents (with your progress), Review requested, My PRs and All, filtered by repo, author and title. `bobby` outside a repo, or `bobby home`, opens it.
 - One Bobby holds every review you open, each at its own address; `bobby <PR>` while one is running opens it there. Reviews no page has looked at for 15 minutes are closed to free memory.
 

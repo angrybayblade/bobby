@@ -3,7 +3,7 @@
 // everything GitHub lists as involving you, through gh's search API, filtered by repo, author and text.
 import { join } from "node:path";
 import { run } from "./git.ts";
-import { home } from "./state.ts";
+import { home, savedPrReviews } from "./state.ts";
 import type { PrInfo } from "./types.ts";
 
 export interface Recent {
@@ -23,7 +23,20 @@ const path = () => join(home(), "recents.json");
 
 export async function loadRecents(): Promise<Recent[]> {
   const f = Bun.file(path());
-  return (await f.exists()) ? ((await f.json().catch(() => [])) as Recent[]) : [];
+  if (await f.exists()) return (await f.json().catch(() => [])) as Recent[];
+  return seedFromState();
+}
+// TODO(0.1.0): remove with the other rc compatibility guards. Recents arrived after 0.1.0-rc6: on the first run after
+// upgrading there's no recents.json, though the PRs you reviewed kept their progress in state/. Seed recents from those
+// (titles come when each is next opened); written once, so it never runs again.
+async function seedFromState(): Promise<Recent[]> {
+  const seeded = savedPrReviews().sort((a, b) => b.savedAt - a.savedAt).slice(0, KEEP).map((r): Recent => ({
+    id: `${r.owner}/${r.repo}/${r.number}`, kind: "pr", owner: r.owner, repo: r.repo, number: r.number,
+    title: `${r.owner}/${r.repo}#${r.number}`, url: `https://github.com/${r.owner}/${r.repo}/pull/${r.number}`,
+    arg: `https://github.com/${r.owner}/${r.repo}/pull/${r.number}`, openedAt: new Date(r.savedAt || Date.now()).toISOString(),
+  }));
+  await Bun.write(path(), JSON.stringify(seeded, null, 1)).catch(() => {});
+  return seeded;
 }
 let writing = Promise.resolve();
 /** Adds or updates a review in recents, at the top when it's an open (openedAt given). */
