@@ -4,6 +4,9 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- Bobby says when a newer version is out (at start and every 6 hours), with the command to update. Off in Settings or with `BOBBY_NO_UPDATE_CHECK=1`.
+- The Diff view skips drawing off-screen files' code: smoother panning on large PRs.
+
 ## 0.1.0-rc5 (2026-10-15)
 
 Bobby is now MIT-licensed. Comments show in place, as GitHub threads; an open review keeps up with the PR; and a long list of fixes from an audit before the stable release.

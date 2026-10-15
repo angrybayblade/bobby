@@ -114,7 +114,7 @@ bobby lsp install <language>          # install one (typescript, python), or say
 | `--no-open` | off | Don't open the browser. |
 | `-o, --out <file>` | stdout | Output file for `extract`. |
 
-Environment: `BOBBY_MODEL` picks the Claude model passed to `claude --model` (the old `PRFOCUS_MODEL` still works).
+Environment: `BOBBY_MODEL` picks the Claude model passed to `claude --model` (the old `PRFOCUS_MODEL` still works). `BOBBY_NO_UPDATE_CHECK=1` turns off the check for new versions.
 
 ## What it writes to disk
 
