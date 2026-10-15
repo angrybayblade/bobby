@@ -37,6 +37,7 @@ export function reviewId(pr: Pick<PrInfo, "owner" | "repo" | "number" | "branch"
 export interface Resolved {
   id: string;
   title: string;
+  key: Key; // what names its state and caches
   build(): Promise<Prepared>;
 }
 export interface Prepared {
@@ -80,7 +81,7 @@ export async function resolve(arg: string | undefined, o: ReviewOptions): Promis
     getPr = async () => pr;
   }
   const id = reviewId({ ...key, provider: arg ? "github" : "local", repo: arg ? key.repo : basename(cwd) });
-  return { id, title, build: () => build(arg, cwd, key, getPr, o) };
+  return { id, title, key, build: () => build(arg, cwd, key, getPr, o) };
 }
 
 async function build(arg: string | undefined, cwd: string, key: Key, getPr: () => Promise<PrInfo>, o: ReviewOptions): Promise<Prepared> {

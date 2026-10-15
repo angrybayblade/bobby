@@ -6,7 +6,7 @@ import { git, reviewComments, run } from "./git.ts";
 import { GRAPH_SCHEMA, LEGACY_SCHEMAS, type ReviewGraph } from "./graph.ts";
 import { clean, prune } from "./prune.ts";
 import { watchReleases } from "./updates.ts";
-import { hold, holder, home, loadSettings, loadState } from "./state.ts";
+import { hold, holder, home, legacyHolder, loadSettings, loadState } from "./state.ts";
 import { allow, SERVERS, serverById, startServers, stopServers } from "./servers.ts";
 import { resolve, reviewId, start, type ReviewOptions } from "./review.ts";
 import { noteRecent, recentOf } from "./recents.ts";
@@ -163,6 +163,9 @@ app.open = async (a, o) => {
   const ro: ReviewOptions = { ...opts, ...o, log: (m) => { opts.log(m); steps.push(m.trim()); } };
   const resolved = await resolve(a, ro);
   const id = resolved.id;
+  // TODO(0.1.0): remove with legacyHolder (state.ts): an rc Bobby still serving this review can't be handed it
+  const old = legacyHolder(resolved.key);
+  if (old) throw new Error(`An older Bobby (pid ${old.pid}) has this review open at http://127.0.0.1:${old.port}: stop it first, or the two would save over each other's progress.`);
   if (app.reviews.has(id) || (app.loading.has(id) && !app.loading.get(id)!.error)) return id;
   app.loading.set(id, { title: resolved.title, steps, startedAt: Date.now() });
   resolved.build().then(

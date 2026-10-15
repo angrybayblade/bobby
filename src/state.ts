@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import type { ReviewGraph } from "./graph.ts";
 import type { ChangeTree, PrInfo, ReviewState } from "./types.ts";
 
@@ -66,6 +66,30 @@ export function holder(name = "app"): { pid: number; port: number } | null {
   try { l = JSON.parse(readFileSync(lockPath(name), "utf8")); } catch { return null; }
   return l && l.pid !== process.pid && alive(l.pid) ? l : null;
 }
+// TODO(0.1.0): remove with the other rc compatibility guards. Up to 0.1.0-rc6, each Bobby served one review and locked
+// it as state/<review>.lock, which an app (app.lock) doesn't see: an rc Bobby still running on a review would hold its
+// progress in memory beside this one's, and the two would save over each other.
+/** An older (≤ rc6) Bobby still serving this review, if any. */
+export function legacyHolder(pr: PrKey): { pid: number; port: number } | null {
+  let l: { pid: number; port: number } | null = null;
+  try { l = JSON.parse(readFileSync(join(ROOT, "state", `${slug(pr)}.lock`), "utf8")); } catch { return null; }
+  return l && l.pid !== process.pid && alive(l.pid) ? l : null;
+}
+/** The reviews progress was kept for, by file: owner, repo and number for a PR's (a branch's or one commit's can't be
+ *  opened from its name alone). */
+export function savedPrReviews(): Array<{ owner: string; repo: string; number: number; savedAt: number }> {
+  let names: string[] = [];
+  try { names = readdirSync(join(ROOT, "state")); } catch { return []; }
+  // GitHub owners have no underscores, so the first one ends the owner; the number ends the name
+  return names.flatMap((n) => {
+    const m = /^([^_]+)_(.+)_(\d+)\.json$/.exec(n);
+    if (!m || /_branch_/.test(n)) return [];
+    let savedAt = 0;
+    try { savedAt = statSync(join(ROOT, "state", n)).mtimeMs; } catch { /* gone meanwhile */ }
+    return [{ owner: m[1], repo: m[2], number: Number(m[3]), savedAt }];
+  });
+}
+
 /** Marks this process as the running app, until it exits. */
 export function hold(port: number, name = "app") {
   const path = lockPath(name);
