@@ -83,6 +83,7 @@
   --muted: #9198a1;
   --faint: #6e7681;
   --signal: #4493f8;
+  --focus: #6e8aa8; /* focus rings and borders: a steel blue, quieter than the signal's */
   --signal-ink: #0d1117;
   --signal-soft: rgba(56, 139, 253, .15);
   --risk: #f85149;
@@ -108,6 +109,7 @@
   --muted: #59636e;
   --faint: #818b98;
   --signal: #0969da;
+  --focus: #4f6d8e;
   --signal-ink: #ffffff;
   --signal-soft: rgba(9, 105, 218, .1);
   --risk: #d1242f;
@@ -143,7 +145,7 @@ kbd {
   font: 500 11px/1 var(--font-code); padding: 3px 6px; border-radius: 1px;
   border: 1px solid var(--line); border-bottom-width: 2px; background: var(--surface); color: var(--muted);
 }
-:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--focus, color-mix(in srgb, var(--signal) 60%, var(--muted))); outline-offset: 2px; } /* the warm style: a softened amber */
 
 /* ---------- header ---------- */
 #top {
@@ -342,7 +344,7 @@ kbd {
 .ccompose .ckind button[aria-pressed="true"] { color: var(--text); background: var(--raised); }
 .ccompose .ccap { font: 600 12.5px var(--font-ui); color: var(--text); }
 .ccompose textarea { width: 100%; min-height: 84px; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); font: 13px/1.5 var(--font-ui); resize: vertical; outline: 0; }
-.ccompose textarea:focus { border-color: color-mix(in srgb, var(--signal) 60%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--signal) 15%, transparent); }
+.ccompose textarea:focus { border-color: color-mix(in srgb, var(--focus, var(--signal)) 70%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus, var(--signal)) 15%, transparent); }
 .ccompose .cfoot { display: flex; align-items: center; gap: 8px; }
 .ccompose .chint { font: 11.5px var(--font-ui); color: var(--faint); }
 .ccompose .cfoot .btn { padding: 4px 12px; font-size: 12.5px; }

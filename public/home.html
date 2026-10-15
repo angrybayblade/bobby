@@ -18,7 +18,7 @@
     .home header .grow { flex: 1; }
     .home form.go { display: flex; gap: 8px; }
     .home form.go input { flex: 1; min-width: 0; padding: 11px 14px; font: 15px var(--font-ui); color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; }
-    .home form.go input:focus { outline: none; border-color: var(--signal); }
+    .home form.go input:focus { outline: none; border-color: var(--focus, var(--signal)); }
     .home .err { color: var(--risk); font-size: 13px; min-height: 20px; margin: 6px 2px 0; }
     .home .filters { display: flex; gap: 8px; margin: 18px 0 6px; flex-wrap: wrap; align-items: center; }
     .home .filters input { padding: 6px 10px; font: 13px var(--font-ui); color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 3px; width: 190px; }
