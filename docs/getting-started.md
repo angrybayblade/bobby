@@ -52,7 +52,12 @@ The binary is 62–86 MB, depending on the platform (27–41 MB to download), be
 bobby https://github.com/owner/repo/pull/123
 # or, inside a clone of the repo:
 bobby 123
+# just one commit of it, against its parent (GitHub's "changes" link for a commit), or a range of commits:
+bobby https://github.com/owner/repo/pull/123/changes/48c2f0b
+bobby https://github.com/owner/repo/pull/123/changes/45f9ced..48c2f0b
 ```
+
+**One commit (or a range).** The review covers what those commits changed, as GitHub's commit view does. It's a review of its own, with its own progress, beside the whole PR's. Comments show when they were written on that commit. Your review is posted against the commit; because GitHub places comments on the PR's whole diff, only lines the commit added go inline, and the rest go in the summary. A commit doesn't move on, so new pushes aren't offered for refresh, but its comments stay current.
 
 What happens:
 

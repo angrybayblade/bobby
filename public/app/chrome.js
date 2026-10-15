@@ -163,7 +163,9 @@ function renderTop() {
   $("#top").innerHTML = `
     <div class="brand"><img src="/bobby.svg" alt="" width="22" height="22">bobby</div>
     ${g.pr.provider === "local" ? `<span class="prtitle" title="Local review: ${esc(g.pr.branch)} compared with ${esc(g.pr.baseRef)}">⎇ ${esc(g.pr.branch)} → ${esc(g.pr.baseRef)} · ${esc(g.pr.title)}</span>`
-      : `<a class="prtitle" href="${esc(g.pr.url)}" target="_blank" rel="noopener">#${g.pr.number} ${esc(g.pr.title)}</a>`}
+      : g.pr.commit // one commit (or a range) of the PR: which, with a link to it on GitHub
+        ? `<a class="prtitle" href="${esc(`${g.pr.url}/changes/${g.pr.commit.from ? `${g.pr.commit.from}..` : ""}${g.pr.commit.sha}`)}" target="_blank" rel="noopener" title="${esc(`#${g.pr.number} ${g.pr.title}`)}">#${g.pr.number} · ${g.pr.commit.from ? `${esc(g.pr.commit.from.slice(0, 7))}..` : ""}${esc(g.pr.commit.sha.slice(0, 7))} ${esc(g.pr.commit.subject)}</a>`
+        : `<a class="prtitle" href="${esc(g.pr.url)}" target="_blank" rel="noopener">#${g.pr.number} ${esc(g.pr.title)}</a>`}
     ${updatePill()}${llm}${lsp}
     ${coreProgress()}
     <div class="prog" title="${done} of ${total} pages reviewed"><div class="bar"><i style="width:${pct}%"></i></div>${done}/${total}${mins && done < total ? ` · ~${mins}m` : ""}</div>
@@ -211,7 +213,7 @@ function watchCores() {
 function renderWhere() {
   const pid = app.focus;
   const loc = app.get(pid);
-  const crumbs = [`<button data-level="0" class="${app.level === 0 ? "here" : ""}">${esc(app.graph.pr.repo)} ${app.graph.pr.provider === "local" ? `⎇ ${esc(app.graph.pr.branch)}` : `#${app.graph.pr.number}`}</button>`];
+  const crumbs = [`<button data-level="0" class="${app.level === 0 ? "here" : ""}">${esc(app.graph.pr.repo)} ${app.graph.pr.provider === "local" ? `⎇ ${esc(app.graph.pr.branch)}` : `#${app.graph.pr.number}${app.graph.pr.commit ? ` @ ${esc(app.graph.pr.commit.sha.slice(0, 7))}` : ""}`}</button>`];
   if (loc) {
     crumbs.push(`<button data-level="1" class="${app.level === 1 ? "here" : ""}">${loc.ci + 1} · ${esc(loc.core.title)}</button>`);
     crumbs.push(`<button data-level="2" class="${app.level === 2 ? "here" : ""}"><i class="glyph ${loc.pl.band === "core" ? "core" : app.nodeOf(pid).kind}" style="margin-right:6px"></i>${esc(loc.pl.title)}</button>`);

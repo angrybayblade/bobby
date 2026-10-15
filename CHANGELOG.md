@@ -4,6 +4,8 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- Review one commit of a PR, or a range of commits: `bobby <pr-url>/changes/<sha>` (or `<from>..<to>`), as GitHub's commit view.
+
 ## 0.1.0-rc6 (2026-10-15)
 
 - Bobby says when a newer version is out (at start and every 6 hours), with the command to update. Off in Settings or with `BOBBY_NO_UPDATE_CHECK=1`.
