@@ -23,6 +23,7 @@ export function watchPr(s: Session, every = 60_000) {
       for (const g of [s.staticGraph, s.claudeGraph]) if (g) g.discussion = d;
       s.discussionAt = Date.now();
     }
+    if (pr.commit) return; // one commit doesn't move on: only its comments are kept current
     const out = await run(["gh", "pr", "view", String(pr.number), "-R", `${pr.owner}/${pr.repo}`, "--json", "headRefOid,baseRefName"]).catch(() => "");
     if (!out.trim()) return;
     const meta = JSON.parse(out) as { headRefOid: string; baseRefName: string };

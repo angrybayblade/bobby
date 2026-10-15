@@ -135,13 +135,16 @@ export async function fileLines(cwd: string, sha: string, path: string): Promise
   return lines;
 }
 
-/** Existing inline review comments still anchored to a line of the current diff (outdated ones are dropped).
+/** Existing inline review comments still anchored to a line of the current diff (outdated ones are dropped). For one
+ *  commit of the PR, the comments written on that commit, where they were written (GitHub's original_line).
  *  strict: a failed fetch throws instead of reading as no comments. */
-export async function reviewComments(pr: Pick<PrInfo, "owner" | "repo" | "number">, strict = false) {
-  type Raw = { id: number; path: string; line: number | null; side: "LEFT" | "RIGHT"; in_reply_to_id?: number; start_line?: number | null; start_side?: "LEFT" | "RIGHT" | null; user: { login: string; avatar_url?: string } | null; body: string; html_url: string; created_at: string };
+export async function reviewComments(pr: Pick<PrInfo, "owner" | "repo" | "number" | "commit">, strict = false) {
+  type Raw = { id: number; path: string; line: number | null; side: "LEFT" | "RIGHT"; in_reply_to_id?: number; start_line?: number | null; start_side?: "LEFT" | "RIGHT" | null; user: { login: string; avatar_url?: string } | null; body: string; html_url: string; created_at: string;
+    original_commit_id?: string; original_line?: number | null; original_start_line?: number | null };
   // --jq '.[]' prints one compact object per line, so paginated pages concatenate cleanly.
   const out = await run(["gh", "api", "--paginate", "--jq", ".[]", `repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/comments?per_page=100`], { allowFail: !strict });
-  const raw = out.split("\n").filter((l) => l.startsWith("{")).map((l) => JSON.parse(l) as Raw);
+  let raw = out.split("\n").filter((l) => l.startsWith("{")).map((l) => JSON.parse(l) as Raw);
+  if (pr.commit) raw = raw.filter((c) => c.original_commit_id === pr.commit!.sha && c.original_line != null).map((c) => ({ ...c, line: c.original_line!, start_line: c.original_start_line ?? null }));
   return raw.filter((c) => c.line != null).map((c) => ({
     id: String(c.id), path: c.path, line: c.line!, side: c.side, author: c.user?.login ?? "ghost",
     body: c.body, url: c.html_url, createdAt: c.created_at, ...(c.user?.avatar_url ? { avatar: c.user.avatar_url } : {}), ...(c.in_reply_to_id ? { replyTo: String(c.in_reply_to_id) } : {}), ...(c.start_line && c.start_line !== c.line ? { startLine: c.start_line, startSide: c.start_side ?? c.side } : {}),
