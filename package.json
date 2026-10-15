@@ -1,6 +1,6 @@
 {
   "name": "focus-bobby",
-  "version": "0.1.0-rc5",
+  "version": "0.1.0-rc6",
   "description": "Bobby: a PR reviewer that shows one focused page at a time, in dependency order",
   "license": "MIT",
   "keywords": [
