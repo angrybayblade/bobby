@@ -19,6 +19,7 @@ const s = home.settings ?? {}, root = document.documentElement;
 root.dataset.theme = (s.theme ?? "system") === "system" ? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark") : s.theme;
 root.dataset.palette = (s.palette ?? "github") === "github" ? "github" : "warm";
 root.style.setProperty("--size", `${s.size ?? 15}px`);
+try { localStorage.setItem("bobby.look", JSON.stringify({ theme: s.theme ?? "system", palette: s.palette ?? "github" })); } catch { /* private window */ }
 $(".ver").textContent = home.version ? `v${home.version}` : "";
 if (home.release) $(".release").innerHTML = `<a class="pill signal" href="${esc(home.release.url)}" target="_blank" rel="noopener" title="Update with: ${esc(home.release.how ?? "")}">Update · ${esc(home.release.version)}</a>`;
 if (home.error) $(".err").textContent = `Couldn't reach Bobby: ${home.error}`;

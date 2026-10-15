@@ -123,9 +123,11 @@ function guard(req: Request, port: number): Response | null {
 
 /** The app: every review open in it, by id (review.ts), and the ones still being built. One server holds them all, each
  *  at /r/<id> with its API under /r/<id>/api/. */
+/** A review being built: what it is, the steps so far (what it logs), and when it started; or why it failed. */
+export interface Loading { title: string; steps: string[]; startedAt: number; error?: string }
 export interface App {
   reviews: Map<string, Session>;
-  loading: Map<string, { title: string; error?: string }>;
+  loading: Map<string, Loading>;
   release?: Release; // a newer Bobby, if one is out (updates.ts)
   /** Opens a review (a PR's URL or number, or with repo and no arg, a local branch): its id at once, built meanwhile. */
   open?: (arg: string | undefined, o: { repo?: string; cwd?: string; base?: string; refresh?: boolean; noLlm?: boolean; noLsp?: boolean }) => Promise<string>;

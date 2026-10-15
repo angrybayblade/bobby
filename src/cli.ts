@@ -158,11 +158,13 @@ if (running) {
 const app: App = { reviews: new Map(), loading: new Map() };
 // Opening a review: named at once (resolve), built in the background, so its page can show the progress.
 app.open = async (a, o) => {
-  const ro: ReviewOptions = { ...opts, ...o };
+  // what the build logs is also its page's progress
+  const steps: string[] = [];
+  const ro: ReviewOptions = { ...opts, ...o, log: (m) => { opts.log(m); steps.push(m.trim()); } };
   const resolved = await resolve(a, ro);
   const id = resolved.id;
   if (app.reviews.has(id) || (app.loading.has(id) && !app.loading.get(id)!.error)) return id;
-  app.loading.set(id, { title: resolved.title });
+  app.loading.set(id, { title: resolved.title, steps, startedAt: Date.now() });
   resolved.build().then(
     (p) => {
       const s = start(p, ro);
@@ -170,7 +172,7 @@ app.open = async (a, o) => {
       app.reviews.set(id, s); app.loading.delete(id);
       void noteRecent(recentOf(id, p.staticGraph.pr, p.cwd));
     },
-    (e) => { app.loading.set(id, { title: resolved.title, error: String(e?.message ?? e) }); console.error(`  ✗ ${resolved.title}: ${e?.message ?? e}`); },
+    (e) => { app.loading.set(id, { title: resolved.title, steps, startedAt: Date.now(), error: String(e?.message ?? e) }); console.error(`  ✗ ${resolved.title}: ${e?.message ?? e}`); },
   );
   return id;
 };

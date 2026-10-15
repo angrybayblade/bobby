@@ -1,4 +1,4 @@
-import { DONE, api, createApp, esc } from "./core.js";
+import { DONE, api, createApp, esc, reviewBase } from "./core.js";
 import { escapeCode, inspectorKey, inspectorOpen, expandAll, keepDraft, moveLine, renderFile, renderNode, renderPage, startComment, startFileNote } from "./code.js";
 import * as chrome from "./chrome.js";
 import * as palette from "./palette.js";
@@ -6,21 +6,62 @@ import * as tour from "./tour.js";
 import { ACTIONS, actionFor, keyHtml, keyOfEvent, keysOf, keyText } from "./keys.js";
 import views from "./views/index.js";
 
-// Without these there's no review: say why, in place of "Fetching the change tree…", and stop. A review still being
-// built (just opened) answers "loading": wait for it, saying what it is.
-const loadingLine = (text) => { const empty = document.querySelector("#view > .empty"); if (empty) empty.textContent = text; };
+// Without these there's no review. A review still being built (just opened) answers "loading", with its steps so far:
+// show them, in your theme, until it's ready; one that failed, or a server gone, says why and stops.
 const [graph, session] = await (async () => {
   for (;;) {
-    const g = await api("/api/graph");
-    if (!g.loading) return [g, await api("/api/session")];
-    loadingLine(`Building the review of ${g.title}… Its progress is in the terminal Bobby runs in.`);
-    document.title = `${g.title} · bobby`;
-    await new Promise((r) => setTimeout(r, 1000));
+    const r = await fetch(`${reviewBase}/api/graph`).catch(() => null);
+    const g = r && (await r.json().catch(() => null));
+    if (!r || !g) throw new Error("Bobby isn't answering. Is it still running in your terminal?");
+    if (g.loading || g.error) {
+      if (g.settings) look(g.settings);
+      bootCard(g);
+      if (g.error) return new Promise(() => {});
+      await new Promise((res) => setTimeout(res, 1000));
+      continue;
+    }
+    if (!r.ok) throw new Error(g.error ?? `${r.status} ${r.statusText}`);
+    document.body.classList.remove("booting");
+    return [g, await api("/api/session")];
   }
 })().catch((e) => {
-  loadingLine(`Couldn't load the review: ${e.message} Reload once it's back.`);
+  bootCard({ title: "", steps: [], error: e.message });
   return new Promise(() => {});
 });
+
+/** The theme, the style and the text size, before the review's own chrome exists; remembered for the next page's first paint (index.html). */
+function look(s) {
+  const root = document.documentElement;
+  root.dataset.theme = (s.theme ?? "system") === "system" ? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark") : s.theme;
+  root.dataset.palette = (s.palette ?? "github") === "github" ? "github" : "warm";
+  if (s.size) root.style.setProperty("--size", `${s.size}px`);
+  try { localStorage.setItem("bobby.look", JSON.stringify({ theme: s.theme ?? "system", palette: s.palette ?? "github" })); } catch { /* private window */ }
+}
+/** While a review builds: the top bar with the way home and what it is, and a card of the steps so far; or why it failed. */
+function bootCard({ title, steps = [], elapsed, error }) {
+  document.body.classList.add("booting");
+  document.title = title ? `${title} · bobby` : "bobby";
+  document.querySelector("#top").innerHTML = `<a class="brand" href="/" title="Home: your PRs and recent reviews"><img src="/bobby.svg" alt="" width="22" height="22">bobby</a>${title ? `<span class="prtitle">${esc(title)}</span>` : ""}`;
+  // what the build logged: a "▸" line is a step, the lines after it its details; the last step is the one under way
+  const list = [];
+  for (const line of steps) {
+    if (line.startsWith("▸")) list.push({ step: line.replace(/^▸\s*/, "").replace(/…$/, ""), detail: [] });
+    else if (line && list.length && line !== title) list.at(-1).detail.push(line.replace(/^✓\s*/, "")); // the title is already above
+  }
+  const rows = list.map((x, i) => {
+    const now = i === list.length - 1 && !error;
+    return `<li class="${now ? "now" : "done"}"><i>${now ? "" : "✓"}</i><span><b>${esc(x.step[0].toUpperCase() + x.step.slice(1))}</b>${x.detail.map((d) => `<small>${esc(d)}</small>`).join("")}</span></li>`;
+  }).join("");
+  const secs = elapsed != null ? Math.round(elapsed / 1000) : null;
+  const view = document.querySelector("#view");
+  view.innerHTML = `<div class="boot"><div class="card${error ? " failed" : ""}">
+    <h2>${error ? (title ? "Couldn't build this review" : "Couldn't load the review") : "Building the review"}</h2>
+    ${title ? `<div class="what">${esc(title)}</div>` : ""}
+    ${rows ? `<ol>${rows}</ol>` : error ? "" : `<ol><li class="now"><i></i><span><b>Starting</b></span></li></ol>`}
+    ${error ? `<p class="why">${esc(error)}</p><div class="acts"><a class="btn" href="/">Back home</a><button class="btn" onclick="location.reload()">Try again</button></div>`
+      : `<div class="foot">${secs != null ? `${secs}s · ` : ""}It opens by itself when it's ready. The terminal Bobby runs in has the details.</div>`}
+  </div></div>`;
+}
 const fresh = !Object.keys(session.settings).length; // nothing saved yet: a first launch
 const app = createApp({ graph, session });
 app.claudeReady = graph.generator.tree === "claude";
@@ -42,6 +83,7 @@ const FONTS = {
 const media = (q) => window.matchMedia(q).matches;
 function applySettings() {
   const s = app.settings, root = document.documentElement;
+  try { localStorage.setItem("bobby.look", JSON.stringify({ theme: s.theme, palette: s.palette })); } catch { /* private window */ }
   root.dataset.theme = s.theme === "system" ? (media("(prefers-color-scheme: light)") ? "light" : "dark") : s.theme;
   root.dataset.files = s.fileTreeSide === "left" ? "left" : "right";
   root.dataset.palette = s.palette === "github" ? "github" : "warm";
@@ -66,7 +108,7 @@ const alive = new Map(); // view id → { inst, slot }
 let current = null, currentId = null;
 function mount(id) {
   const view = views.find((v) => v.id === id) ?? views[0];
-  el.querySelector(":scope > .empty")?.remove(); // the "Fetching the change tree…" placeholder from index.html
+  el.querySelector(":scope > .boot")?.remove(); // the loading card, while the review was being built
   if (current) {
     const a = alive.get(currentId);
     if (KEEP.has(currentId)) { current.hide?.(); a.slot.classList.add("parked"); }
