@@ -119,7 +119,7 @@ function guard(req: Request, port: number): Response | null {
 
 export function startServer(s: Session, port: number) {
   const pr = () => s.staticGraph.pr;
-  const persist = () => saveState({ owner: pr().owner, repo: pr().repo, number: pr().number, branch: pr().branch }, s.state);
+  const persist = () => saveState(pr(), s.state); // the PR, or its branch, or one commit of it: each its own file
 
   return Bun.serve({
     port,
