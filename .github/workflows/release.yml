@@ -62,14 +62,14 @@ jobs:
             case "$target" in
               windows-*)
                 cp "$bin" "$stage/bobby.exe"
-                cp README.md "$stage/"
-                (cd "$stage" && zip -q "$GITHUB_WORKSPACE/release/bobby-$GITHUB_REF_NAME-$target.zip" bobby.exe README.md)
+                cp README.md LICENSE THIRD_PARTY_NOTICES.md "$stage/"
+                (cd "$stage" && zip -q "$GITHUB_WORKSPACE/release/bobby-$GITHUB_REF_NAME-$target.zip" bobby.exe README.md LICENSE THIRD_PARTY_NOTICES.md)
                 ;;
               *)
                 cp "$bin" "$stage/bobby"
                 chmod +x "$stage/bobby"
-                cp README.md "$stage/"
-                tar -C "$stage" -czf "release/bobby-$GITHUB_REF_NAME-$target.tar.gz" bobby README.md
+                cp README.md LICENSE THIRD_PARTY_NOTICES.md "$stage/"
+                tar -C "$stage" -czf "release/bobby-$GITHUB_REF_NAME-$target.tar.gz" bobby README.md LICENSE THIRD_PARTY_NOTICES.md
                 ;;
             esac
           done

@@ -28,6 +28,10 @@ In the UI: `j`/`k` to step, arrow keys to move up and down in the tree, `enter`/
 - **Implementation**: [architecture](docs/architecture.md) · [extraction pipeline](docs/extraction.md) · [server and state](docs/server-and-state.md) · [browser runtime](docs/frontend.md) · [contributing](docs/contributing.md)
 - **Format**: [review graph v1](SPEC.md), the open format between extraction and views
 
+## License
+
+MIT: see [LICENSE](LICENSE). Bobby's binaries include the Bun runtime, tree-sitter and highlight.js, under their own licenses: see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The comic below is @that_doodleguy's, not covered by Bobby's license.
+
 ---
 
 <sub>Named after <a href="https://www.instagram.com/reels/DHvczp9ScvD/">this comic</a> by <a href="https://www.instagram.com/that_doodleguy/">@that_doodleguy</a> on Instagram.</sub>
