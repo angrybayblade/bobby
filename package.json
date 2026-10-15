@@ -32,7 +32,7 @@
     "check": "sh scripts/check.sh",
     "test": "bun test",
     "typecheck": "bunx tsc --noEmit",
-    "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true",
+    "prepare": "bun scripts/hooks.ts",
     "build": "bun scripts/build.ts",
     "prepublishOnly": "bun run check"
   },
