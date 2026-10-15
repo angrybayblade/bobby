@@ -13,6 +13,7 @@ export const DONE = "@done"; // pseudo-placement: end of walk
 
 export const DEFAULT_SETTINGS = {
   view: "diff", // the first view; after that, the one you used last
+  updates: "on", // on | off: check GitHub for a newer Bobby (updates.ts)
   theme: "system", // system | dark | light
   font: "sans", // sans | hyper | serif | mono
   size: 15,

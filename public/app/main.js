@@ -125,6 +125,16 @@ async function poll() {
 // ---- keeping the review current: new comments on a PR appear by themselves; new work is offered, never swapped in
 let seenDiscussion = null, announced = "";
 async function keepCurrent(s) {
+  // a newer Bobby: a quiet pill, and once per version, a toast
+  if ((s.release?.version ?? null) !== (app.release?.version ?? null)) {
+    app.release = s.release;
+    app.emit("view");
+    let seen = ""; try { seen = localStorage.getItem("bobby.release.told") ?? ""; } catch { /* private window */ }
+    if (s.release && seen !== s.release.version) {
+      try { localStorage.setItem("bobby.release.told", s.release.version); } catch { /* told this visit only */ }
+      chrome.toast(`<span class="intro"><b>Bobby ${esc(s.release.version)} is out</b><span style="font-size:13px;color:var(--muted)">Update with <code>${esc(s.release.how ?? "")}</code>, then start Bobby again. <a href="${esc(s.release.url)}" target="_blank" rel="noopener">What's new</a></span></span>`, 15000);
+    }
+  }
   if (seenDiscussion === null) seenDiscussion = s.discussionAt; // as of the graph this page loaded
   else if (s.discussionAt !== seenDiscussion) {
     seenDiscussion = s.discussionAt;

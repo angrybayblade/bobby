@@ -9,6 +9,7 @@ import { claudeTree } from "./llm.ts";
 import { buildGraph, GRAPH_SCHEMA, LEGACY_SCHEMAS, VERSION, type ReviewGraph } from "./graph.ts";
 import { clean, prune } from "./prune.ts";
 import { watchLocal, watchPr } from "./watch.ts";
+import { watchReleases } from "./updates.ts";
 import { hold, holder, home, loadCachedGraphs, loadCachedTree, loadSettings, loadState, saveCachedGraphs, saveCachedTree } from "./state.ts";
 import { allow, SERVERS, serverById, startServers, stopServers } from "./servers.ts";
 import type { FileDiff, PrInfo } from "./types.ts";
@@ -295,6 +296,7 @@ async function serve(session: Session, pr: Parameters<typeof hold>[0]) {
   }
   const url = `http://127.0.0.1:${server.port}`;
   hold(pr, server.port!);
+  watchReleases((r) => { session.release = r; console.log(`  ▸ Bobby ${r.version} is out (you have ${pkg.version}): ${r.url}`); });
   console.log(`\n  ▶ ${url}\n`);
   if (!values["no-open"]) await run(openCommand(url), { allowFail: true }).catch(() => console.log("  (open that link in your browser)"));
 }

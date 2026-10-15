@@ -10,6 +10,7 @@ Bobby runs on your machine: the review UI is served by Bobby itself on `127.0.0.
 | **Fonts** | Google Fonts, from your browser | Loading the UI | |
 | **Language servers** | The npm registry | Only after you say yes to installing one (or run `bobby lsp install`) | Say **Not now** or **Never** |
 | **The install script** | GitHub releases | Installing or updating Bobby | |
+| **New versions** | GitHub's releases API (no login, nothing about you or your code) | At start and every 6 hours, at most once in 6 hours across runs | Settings › Tell me about new versions, or `BOBBY_NO_UPDATE_CHECK=1` |
 
 ## What Claude is sent
 

@@ -142,6 +142,10 @@ function renderFiles() {
 
 /** New work on the PR or the branch (watch.ts), offered as GitHub does: a prompt to refresh, never a swap. */
 function updatePill() {
+  const rel = app.release ? `<a class="pill" href="${esc(app.release.url)}" target="_blank" rel="noopener" title="Bobby ${esc(app.release.version)} is out. Update with: ${esc(app.release.how ?? "")}">Update · ${esc(app.release.version)}</a>` : "";
+  return rel + reviewPill();
+}
+function reviewPill() {
   const u = app.update;
   if (!u) return "";
   if (!u.refresh) return `<span class="pill" title="${esc(u.detail)}">Branch switched</span>`;
@@ -337,6 +341,7 @@ const SETTINGS = [
   ["rabbit", "Rabbit-hole nudge", [[0, "Off"], [8, "8m"], [12, "12m"], [20, "20m"]]],
   ["drift", "Drift prompt", [["on", "On"], ["off", "Off"]]],
   ["comments", "Comments", [["open", "Open"], ["collapsed", "Collapsed"]]],
+  ["updates", "Tell me about new versions", [["on", "On"], ["off", "Off"]]],
   ["untouched", "Untouched code", [["hide", "Hidden"], ["show", "Shown"]]],
   ["fileTree", "File tree", [["show", "Shown"], ["hide", "Hidden"]]],
   ["fileTreeSide", "File tree side", [["right", "Right"], ["left", "Left"]]],

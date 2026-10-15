@@ -8,6 +8,7 @@ import { type Inspector, insideRepo, inspectSyntax, referencesSyntax, type Uses 
 import { declineServer, inspectorFor, installServer, recheckServer, type ServerInfo, serverInfoFor } from "./servers.ts";
 import { Repo } from "./resolve.ts";
 import type { Update } from "./watch.ts";
+import type { Release } from "./updates.ts";
 
 export interface Session {
   cwd: string | null; // local clone; null when viewing a graph file without one
@@ -32,6 +33,7 @@ export interface Session {
   rebuilding?: boolean;
   baseRef?: string; // a PR's base branch, to notice it being retargeted
   builtHead?: string; // a local review: HEAD when it was built
+  release?: Release; // a newer Bobby, if one is out (updates.ts)
 }
 
 const PUBLIC = join(import.meta.dir, "..", "public");
@@ -146,7 +148,7 @@ export function startServer(s: Session, port: number) {
         return json({ state: s.state, settings: loadSettings(), llm: s.llm, llmError: s.llmError, servers: Object.values(s.servers ?? {}), me: await whoAmI(join(home(), "cache", "me.json")), caps: { files: !!s.cwd, inspect: !!s.cwd } });
       // A GitHub avatar, fetched once and kept a week in ~/.bobby/cache/avatars. Only GitHub's own avatar hosts.
       if (p === "/api/avatar") return avatar(url.searchParams.get("u") ?? "");
-      if (p === "/api/status") return json({ llm: s.llm, llmError: s.llmError, claudeReady: !!s.claudeGraph, servers: Object.values(s.servers ?? {}), discussionAt: s.discussionAt ?? 0, update: s.rebuilding ? { ...s.update, rebuilding: true } : s.update ?? null });
+      if (p === "/api/status") return json({ llm: s.llm, llmError: s.llmError, claudeReady: !!s.claudeGraph, servers: Object.values(s.servers ?? {}), discussionAt: s.discussionAt ?? 0, release: s.release ?? null, update: s.rebuilding ? { ...s.update, rebuilding: true } : s.update ?? null });
       if (p === "/api/discussion") return json(s.staticGraph.discussion ?? []);
       // Move the review to the new work watch.ts noticed; the page then reads the new graph
       if (req.method === "POST" && p === "/api/refresh") {

@@ -40,6 +40,8 @@ The install script picks the build for your OS and CPU, checks it against the re
 
 Binaries are built for macOS, Linux and Windows. Windows gets the least use, so expect rough edges there. Bobby isn't on npm yet: install it from a release or from GitHub.
 
+**Staying up to date.** Bobby checks GitHub for a newer release when it starts and every 6 hours while it runs. When there is one, it says so in the terminal and in the top bar, with the command to update: the install script for a release binary, `git pull` for a clone. On a release candidate it also tells you about newer release candidates. Turn it off in Settings, or with `BOBBY_NO_UPDATE_CHECK=1`.
+
 Release binaries aren't code-signed. On macOS, if Gatekeeper blocks a downloaded one, run `xattr -d com.apple.quarantine "$(which bobby)"`. Each release has a `SHA256SUMS` file to check downloads against.
 
 The binary is 62–86 MB, depending on the platform (27–41 MB to download), because it carries the Bun runtime and the tree-sitter grammars. The UI's files are embedded in it, so it runs with nothing beside it.
