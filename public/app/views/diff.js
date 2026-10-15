@@ -29,6 +29,9 @@ const CSS = `
 /* In a file (you clicked it, or stepped into it): only it and the files it relates to show code. The rest keep their place
    and size, title bar included, but their code fades into the background: content-visibility skips drawing it, so nothing re-lays out or
    re-renders as you move. The faint lines between them go too, so what's left is what bears on the file you're reading. */
+/* Off screen, a viewer's code isn't drawn or laid out until it comes near (it keeps its size: the viewer's height is set).
+   ⌘F, focus and the edges' reads still reach it. */
+.dv .world .fv:not(.measuring) > .fvb { content-visibility: auto; contain-intrinsic-size: auto 300px; }
 .dv.engaged .world .fv:not(.w-focus):not(.active):not(.measuring) > .fvb { content-visibility: hidden; background: var(--bg); } /* hidden code has no height: measured shown */
 .dv.engaged .fv.w-semi { opacity: .85; }
 .dv.engaged .fv.w-none { opacity: .6; }
