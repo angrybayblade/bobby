@@ -36,6 +36,8 @@ export interface Session {
   baseRef?: string; // a PR's base branch, to notice it being retargeted
   builtHead?: string; // a local review: HEAD when it was built
   id?: string; // its address in the app (/r/<id>), and its key in recents
+  seenAt?: number; // its page's last request: a review no page has asked about for a while is unloaded
+  stopWatching?: () => void;
 }
 
 const PUBLIC = join(import.meta.dir, "..", "public");
@@ -184,6 +186,7 @@ export function startServer(app: App, port: number) {
 
 /** One review's API: p is the path from /api/. */
 async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string): Promise<Response> {
+  s.seenAt = Date.now();
   const pr = () => s.staticGraph.pr;
   const persist = () => saveState(pr(), s.state); // the PR, or its branch, or one commit of it: each its own file
   {

@@ -166,7 +166,7 @@ app.open = async (a, o) => {
   resolved.build().then(
     (p) => {
       const s = start(p, ro);
-      s.id = id;
+      s.id = id; s.seenAt = Date.now();
       app.reviews.set(id, s); app.loading.delete(id);
       void noteRecent(recentOf(id, p.staticGraph.pr, p.cwd));
     },
@@ -187,6 +187,7 @@ if (cmd === "open") {
   const session: Session = { cwd: values.repo ?? null, staticGraph: graph, state: loadState({ ...graph.pr }), llm: "off", refresh: values.refresh };
   void startServers(session, { ask: true, off: values["no-lsp"], log });
   const id = reviewId(graph.pr);
+  session.seenAt = Infinity; // a graph file can't be built again: it stays loaded
   app.reviews.set(id, session);
   path = `/r/${id}`;
 } else if (!toHome) {
@@ -197,6 +198,19 @@ if (cmd === "open") {
   path = `/r/${id}`;
 }
 await serve(app, path);
+
+// A review no page has asked about for 15 minutes (an open page polls every 10 s) is unloaded: its language servers and
+// watchers stop, and it's built again (from the cache) when opened. Its progress is saved as you go.
+const IDLE = 15 * 60_000;
+setInterval(() => {
+  for (const [id, s] of app.reviews) {
+    if (Date.now() - (s.seenAt ?? 0) < IDLE) continue;
+    app.reviews.delete(id);
+    s.stopWatching?.();
+    void stopServers(s);
+    log(`  ▸ closed ${id}: no page open on it for 15 minutes (reopen it from the home page)`);
+  }
+}, 60_000);
 
 /** The Bobby app already running, by its lock, if it answers. */
 async function runningApp(): Promise<string | null> {

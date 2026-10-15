@@ -13,7 +13,8 @@ export interface Update {
 
 const sig = (d: Array<{ id: string; body: string; line: number }>) => d.map((c) => `${c.id}:${c.line}:${c.body.length}`).sort().join("|");
 
-/** A PR: its comments, and whether its head or base moved on. Every minute; a failed check (offline) waits for the next. */
+/** A PR: its comments, and whether its head or base moved on. Every minute; a failed check (offline) waits for the next.
+ *  Returns what stops watching. */
 export function watchPr(s: Session, every = 60_000) {
   const tick = async () => {
     if (s.rebuilding) return;
@@ -32,7 +33,8 @@ export function watchPr(s: Session, every = 60_000) {
       ? { headSha: meta.headRefOid, detail: retargeted ? `now based on ${meta.baseRefName}` : "new commits", refresh: true }
       : undefined;
   };
-  setInterval(() => void tick().catch(() => {}), every);
+  const timer = setInterval(() => void tick().catch(() => {}), every);
+  return () => clearInterval(timer);
 }
 
 /** A local review: whether the branch has new commits or the working copy changed since the review was built. */
@@ -49,5 +51,6 @@ export function watchLocal(s: Session, every = 10_000) {
     if (live === pr.headSha) return void (s.update = undefined);
     s.update = { headSha: live, detail: head !== s.builtHead ? "new commits" : "changed files", refresh: true };
   };
-  setInterval(() => void tick().catch(() => {}), every);
+  const timer = setInterval(() => void tick().catch(() => {}), every);
+  return () => clearInterval(timer);
 }

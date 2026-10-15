@@ -191,6 +191,6 @@ export function start(p: Prepared, o: ReviewOptions): Session {
         .catch((e) => { if (session.staticGraph === g) { session.llm = "failed"; session.llmError = String(e.message ?? e); } });
     }
   };
-  if (arg) watchPr(session); else watchLocal(session);
+  session.stopWatching = arg ? watchPr(session) : watchLocal(session);
   return session;
 }
