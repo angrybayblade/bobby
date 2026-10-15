@@ -4,6 +4,9 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- A home page: paste a PR, or pick one from Recents (with your progress), Review requested, My PRs and All, filtered by repo, author and title. `bobby` outside a repo, or `bobby home`, opens it.
+- One Bobby holds every review you open, each at its own address; `bobby <PR>` while one is running opens it there. Reviews no page has looked at for 15 minutes are closed to free memory.
+
 - Review one commit of a PR, or a range of commits: `bobby <pr-url>/changes/<sha>` (or `<from>..<to>`), as GitHub's commit view.
 
 ## 0.1.0-rc6 (2026-10-15)

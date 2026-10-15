@@ -31,7 +31,9 @@ src/                     extraction, server and CLI (TypeScript, run directly by
   resolve.ts             imports → files, names → declarations, at the PR's head
   llm.ts                 Claude's change tree (headless `claude -p` with a JSON schema)
   graph.ts               packs everything into a ReviewGraph; wires edges; builds the walk
-  server.ts              Bun HTTP server: static files + /api/*
+  server.ts              Bun HTTP server: one app of many reviews (/r/<id>), static files, the APIs
+  review.ts              a review from a PR, a commit or a branch: resolve, build, start (Claude, servers, watchers)
+  recents.ts             the home page's data: recents, and the user's PRs from GitHub
   assets.ts              public/ embedded in a compiled binary (filled by scripts/build.ts)
   local.ts               no PR: the branch you're on vs a detected base
   state.ts               ~/.bobby: review state, caches, settings

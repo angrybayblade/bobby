@@ -16,7 +16,10 @@ curl -fsSL https://raw.githubusercontent.com/angrybayblade/bobby/main/install.sh
 bobby https://github.com/owner/repo/pull/123
 bobby 123        # inside a clone of the repo
 bobby            # no PR: review the branch you're on, uncommitted changes included
+bobby home       # or bobby outside a repo: pick a PR from your recents, review requests and your own
 ```
+
+One Bobby holds every review you open: running `bobby <PR>` again adds it to the one already running.
 
 You'll need `git` and `gh` (logged in); the release binary carries everything else. With the `claude` CLI installed, Claude organises the PR into a smarter tree in the background, using your Claude Code login.
 

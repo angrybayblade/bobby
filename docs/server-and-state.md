@@ -1,6 +1,12 @@
 # Server and state
 
-`src/server.ts` is a single `Bun.serve` on `127.0.0.1` (port 4173 by default). It serves `public/` as static files (from the copy embedded in a compiled binary, if there is one) and a small JSON API. If the port is taken, the CLI falls back to a free one. It holds one **session** in memory:
+`src/server.ts` is a single `Bun.serve` on `127.0.0.1` (port 4173 by default). It serves `public/` as static files (from the copy embedded in a compiled binary, if there is one) and a small JSON API. If the port is taken, the CLI falls back to a free one.
+
+It's one **app** holding every review you open, each a **session** in memory at `/r/<id>`, with its API under `/r/<id>/api/`. The id is `owner/repo/<n>` for a PR, `owner/repo/<n>@<sha>` (or `@<from>..<to>`) for commits of one, and `local/<repo>/<branch>` for a branch. `src/review.ts` builds them: `resolve()` names the review cheaply (it asks GitHub or git what it is), so its page can open at once, and `build()` does the slow part in the background; meanwhile its API answers `202 { loading, title }`. The running app leaves a lock in `~/.bobby/state/app.lock`, and a second `bobby` hands its review to it (`POST /api/open`) instead of starting another. A review no page has asked about for 15 minutes is unloaded: its language servers and watchers stop, and it's built again, from the cache, when opened.
+
+App-wide routes: `GET /` is the home page (`public/home.html`); `GET /api/home` gives recents (from `~/.bobby/recents.json`, with which are open), settings, who you are and any newer release; `GET /api/home/prs?repo=&author=&q=` the open PRs waiting on your review, yours and all that involve you (`gh` search, cached a minute); `POST /api/open { arg?, repo?, cwd?, base? }` opens a review and answers its id; `GET /api/avatar` serves GitHub avatars.
+
+A session:
 
 ```ts
 interface Session {
@@ -15,7 +21,9 @@ interface Session {
 
 The CLI fills `claudeGraph` and `llm` from the background Claude job while the server runs.
 
-## API
+## A review's API
+
+Paths are under `/r/<id>`.
 
 | Method & path | Body → response | Purpose |
 |---|---|---|
@@ -36,6 +44,7 @@ The CLI fills `claudeGraph` and `llm` from the background Claude job while the s
 | `POST /api/notes` | `{ body, path?, line?, side? }` → note with `id`, `createdAt` | Adds a private note: on a line, a file (no `line`) or the PR (no `path`). |
 | `DELETE /api/notes/:id` | | Removes a private note. |
 | `POST /api/submit` | `{ event, body }` → `{ ok, url }` or `{ ok: false, error }` | Posts the review to GitHub. |
+| `POST /api/progress` | `{ done, total }` | How far you've got, for recents on the home page. |
 
 Every state-changing call writes the state file straight away.
 
