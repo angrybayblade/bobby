@@ -93,6 +93,13 @@ function renderFiles() {
   if (!el.querySelector(".flist")) {
     el.innerHTML = `<div class="fhd"><input type="search" placeholder="Filter files…" aria-label="Filter files"><span class="fn"></span><button class="fside" data-fside="1" title="Move the file tree to the other side">⇄</button></div><div class="flist"></div>`;
     el.querySelector("input").addEventListener("input", (ev) => { fileFilter = ev.target.value; renderFiles(); });
+    // double-click a file: as close as it gets (Diff: the viewer zoomed in, at the top of the stage; elsewhere, its page)
+    el.addEventListener("dblclick", (ev) => {
+      const t = ev.target.closest("[data-ffile]");
+      if (!t) return;
+      // after the clicks' own focus move has settled the camera
+      setTimeout(() => { if (!app.zoomToFile?.(t.dataset.ffile)) app.setLevel(2); }, 60);
+    });
     el.addEventListener("click", (ev) => {
       if (ev.target.closest("[data-fside]")) { app.saveSettings({ fileTreeSide: app.settings.fileTreeSide === "left" ? "right" : "left" }); return window.dispatchEvent(new Event("resize")); }
       const fr = ev.target.closest("[data-fread]");

@@ -662,6 +662,18 @@ export default {
       filled = { path: act.path, s, prev };
       engage(true); pin(v); apply();
     }
+    // A file chosen in the file tree (double-click): the camera at its closest, the viewer as wide as the stage allows
+    // (as far as the wheel zooms), its top at the top of the stage, centred across it.
+    function zoomTo(path) {
+      const v = views.get(path);
+      if (!v) return false;
+      const s = fitScale(), sw = stage.clientWidth;
+      cam = { s, tx: sw / 2 - (v.x + W / 2) * s, ty: FRAME_PAD - v.y * s };
+      pan = { x: 0, y: 0 };
+      engage(true); apply();
+      return true;
+    }
+    app.zoomToFile = (path) => app.viewId === "diff" && app.level < 2 && zoomTo(path);
     // While filled, the viewer has the canvas's proportions, its contents are scaled to a reading size, and every scroll is its code's.
     function pin(v) {
       for (const o of views.values()) if (o !== v && o.el.classList.contains("pinned")) { o.el.classList.remove("pinned"); o.el.style.removeProperty("--fill"); o.el.style.height = `${o.h}px`; }
