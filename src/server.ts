@@ -285,7 +285,10 @@ export function startServer(s: Session, port: number) {
         const ready = s.state.comments.filter((c) => !c.wip && c.kind !== "note"); // unfinished drafts stay behind
         // A draft made on an earlier head may sit on a line the diff no longer has; GitHub would refuse the whole
         // review for it. Lines of the current diff, by side: those that aren't go into the summary instead.
-        const lines = new Set(s.staticGraph.hunks.flatMap((h) => h.lines.flatMap((l) => [
+        // Reviewing one commit, GitHub still anchors comments to the PR's diff at that commit (merge-base to it), not to
+        // the commit's own: only lines the commit added are sure to be in both, so only those go inline.
+        const one = !!pr().commit;
+        const lines = new Set(s.staticGraph.hunks.flatMap((h) => h.lines.flatMap((l) => one ? (l.t === "+" ? [`${h.file}:RIGHT:${l.n}`] : []) : [
           ...(l.n != null && l.t !== "-" ? [`${h.file}:RIGHT:${l.n}`] : []), ...(l.o != null && l.t !== "+" ? [`${h.file}:LEFT:${l.o}`] : []),
         ])));
         const inDiff = (c: Comment) => c.inDiff && lines.has(`${c.path}:${c.side}:${c.line}`) && (!c.startLine || lines.has(`${c.path}:${c.startSide ?? c.side}:${c.startLine}`));

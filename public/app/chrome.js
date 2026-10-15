@@ -362,7 +362,8 @@ export function submit(msg) {
     <div style="font-size:13px;color:var(--muted);margin-top:10px">${cs.map((c) => `· <code>${esc(c.path)}:${c.line}</code> ${esc(c.body.slice(0, 70))}`).join("<br>")}</div>
     <div class="row"><button class="btn" data-act="close" style="margin-left:auto">Close</button></div>`);
   // as the server decides: a draft whose line (or range start) the current diff no longer has goes in the summary
-  const lines = new Set(app.graph.hunks.flatMap((h) => h.lines.flatMap((l) => [...(l.n != null && l.t !== "-" ? [`${h.file}:RIGHT:${l.n}`] : []), ...(l.o != null && l.t !== "+" ? [`${h.file}:LEFT:${l.o}`] : [])])));
+  const one = !!app.graph.pr.commit; // one commit of the PR: only its added lines (see the server's submit)
+  const lines = new Set(app.graph.hunks.flatMap((h) => h.lines.flatMap((l) => one ? (l.t === "+" ? [`${h.file}:RIGHT:${l.n}`] : []) : [...(l.n != null && l.t !== "-" ? [`${h.file}:RIGHT:${l.n}`] : []), ...(l.o != null && l.t !== "+" ? [`${h.file}:LEFT:${l.o}`] : [])])));
   const inline = (c) => c.inDiff && lines.has(`${c.path}:${c.side}:${c.line}`) && (!c.startLine || lines.has(`${c.path}:${c.startSide ?? c.side}:${c.startLine}`));
   open(`<h2>Submit review</h2>
     <p>${cs.length ? `${cs.length} draft comment(s) will be posted together.` : "No draft comments."}${app.state.notes.length ? ` Your ${app.state.notes.length} private note(s) stay here and aren't posted.` : ""}${wip ? ` ${wip} unfinished draft${wip > 1 ? "s" : ""} stay${wip > 1 ? "" : "s"} behind: finish ${wip > 1 ? "them" : "it"} with <i>Continue</i> to include ${wip > 1 ? "them" : "it"}.` : ""}</p>
