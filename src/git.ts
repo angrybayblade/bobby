@@ -39,9 +39,11 @@ export const git = (cwd: string, args: string[], allowFail = false) =>
 
 const ONLY_GITHUB = "Bobby reviews PRs on github.com only for now; GitHub Enterprise isn't supported yet. You can still review the branch locally: check it out and run bobby with no PR.";
 
-export function parsePrArg(arg: string): { owner?: string; repo?: string; number: number } {
-  const m = arg.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/);
-  if (m) return { owner: m[1], repo: m[2], number: Number(m[3]) };
+/** A PR's URL or number. A URL to one of its commits (…/pull/12/changes/<sha>, or /commits/<sha>) or to a range
+ *  (…/changes/<from>..<to>) reviews just those. */
+export function parsePrArg(arg: string): { owner?: string; repo?: string; number: number; commit?: string; from?: string } {
+  const m = arg.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:\/(?:changes|commits|files)\/([0-9a-f]{7,40})(?:\.\.\.?([0-9a-f]{7,40}))?)?/i);
+  if (m) return { owner: m[1], repo: m[2], number: Number(m[3]), ...(m[5] ? { from: m[4], commit: m[5] } : m[4] ? { commit: m[4] } : {}) };
   if (/^\d+$/.test(arg)) return { number: Number(arg) };
   if (/^https?:\/\/[^/]+\/[^/]+\/[^/]+\/pull\/\d+/.test(arg)) throw new Error(ONLY_GITHUB);
   throw new Error(`Expected a PR URL or number, got "${arg}"`);
@@ -61,6 +63,7 @@ async function remoteFor(cwd: string, owner: string, repo: string): Promise<stri
 
 export interface ResolvedPr {
   cwd: string; remote: string; owner: string; repo: string;
+  commit?: string; from?: string; // one commit (or a range) of the PR, as given
   meta: { number: number; title: string; body: string; url: string; author?: { login: string }; baseRefName: string; baseRefOid: string; headRefOid: string };
 }
 
@@ -70,7 +73,7 @@ export async function resolvePr(arg: string, repoDir?: string): Promise<Resolved
   let cwd = repoDir ?? process.cwd();
 
   const fields = "number,title,body,url,author,baseRefName,baseRefOid,headRefOid";
-  const viewArgs = ["gh", "pr", "view", parsed.owner ? arg : String(parsed.number), "--json", fields];
+  const viewArgs = ["gh", "pr", "view", String(parsed.number), ...(parsed.owner ? ["-R", `${parsed.owner}/${parsed.repo}`] : []), "--json", fields];
   const meta = JSON.parse(await run(viewArgs, { cwd }));
   const m = meta.url.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/pull/);
   if (!m) throw new Error(ONLY_GITHUB);
@@ -87,11 +90,12 @@ export async function resolvePr(arg: string, repoDir?: string): Promise<Resolved
     remote = (await remoteFor(cwd, owner, repo)) ?? "origin";
   }
   if (!remote) throw new Error(`No remote in ${cwd} points at ${owner}/${repo}`);
-  return { cwd, remote, owner, repo, meta };
+  return { cwd, remote, owner, repo, meta, ...(parsed.commit ? { commit: parsed.commit } : {}), ...(parsed.from ? { from: parsed.from } : {}) };
 }
 
 /** Fetches base + head commits and pins the diff range. */
-export async function fetchPr({ cwd, remote, owner, repo, meta }: ResolvedPr): Promise<PrInfo> {
+export async function fetchPr(resolved: ResolvedPr): Promise<PrInfo> {
+  const { cwd, remote, owner, repo, meta } = resolved;
   const ns = `refs/bobby/${meta.number}`;
   await git(cwd, [
     "fetch", "--quiet", "--no-tags", remote,
@@ -100,13 +104,22 @@ export async function fetchPr({ cwd, remote, owner, repo, meta }: ResolvedPr): P
   ]);
   const hasBaseOid = (await Bun.spawn(["git", "cat-file", "-e", meta.baseRefOid], { cwd, stderr: "ignore" }).exited) === 0;
   const baseTip = hasBaseOid ? meta.baseRefOid : `${ns}/base`;
-  const headSha = (await git(cwd, ["rev-parse", `${ns}/head`])).trim();
-  const baseSha = (await git(cwd, ["merge-base", baseTip, headSha])).trim();
+  const prHead = (await git(cwd, ["rev-parse", `${ns}/head`])).trim();
+  const pr = { owner, repo, number: meta.number, title: meta.title, body: meta.body ?? "", baseRef: meta.baseRefName, url: meta.url, author: meta.author?.login ?? "" };
+  if (!resolved.commit) return { ...pr, baseSha: (await git(cwd, ["merge-base", baseTip, prHead])).trim(), headSha: prHead };
 
-  return {
-    owner, repo, number: meta.number, title: meta.title, body: meta.body ?? "", baseRef: meta.baseRefName,
-    url: meta.url, author: meta.author?.login ?? "", baseSha, headSha,
+  // One commit (against its first parent) or a range: both must be in the PR's history, as fetched.
+  const sha = async (s: string) => {
+    const full = (await git(cwd, ["rev-parse", "--verify", "--quiet", `${s}^{commit}`], true)).trim();
+    const inPr = full && (await Bun.spawn(["git", "merge-base", "--is-ancestor", full, prHead], { cwd, stderr: "ignore" }).exited) === 0;
+    if (!inPr) throw new Error(`${s} isn't a commit of PR #${meta.number}`);
+    return full;
   };
+  const headSha = await sha(resolved.commit);
+  const baseSha = resolved.from ? await sha(resolved.from) : (await git(cwd, ["rev-parse", "--verify", "--quiet", `${headSha}^`], true)).trim();
+  if (!baseSha) throw new Error(`${resolved.commit} has no parent to compare it with`);
+  const subject = (await git(cwd, ["log", "-1", "--format=%s", headSha])).trim();
+  return { ...pr, baseSha, headSha, commit: { sha: headSha, ...(resolved.from ? { from: baseSha } : {}), subject } };
 }
 
 // Files read at a commit, the most recently used kept: a long session of inspecting and expanding mustn't hold every

@@ -92,6 +92,9 @@ export interface PrInfo {
   author: string;
   baseSha: string; // merge-base
   headSha: string;
+  // One commit of the PR (or a range of them) rather than all of it: headSha is that commit, baseSha its parent (or the
+  // range's start), so the diff is what those commits changed.
+  commit?: { sha: string; from?: string; subject: string };
 }
 
 export interface Comment {

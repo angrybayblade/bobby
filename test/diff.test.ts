@@ -164,3 +164,14 @@ describe("parseGrep", () => {
     expect(parseGrep(`a.ts:1:${"x".repeat(500)}`, "s")[0].text).toHaveLength(300);
   });
 });
+
+import { parsePrArg } from "../src/git.ts";
+describe("parsePrArg", () => {
+  test("reads a PR, one of its commits, or a range", () => {
+    expect(parsePrArg("https://github.com/o/r/pull/12")).toEqual({ owner: "o", repo: "r", number: 12 });
+    expect(parsePrArg("https://github.com/o/r/pull/12/changes/48c2f0b8e2209ff7b9ca1ad005f2a1cd924f1bb9")).toEqual({ owner: "o", repo: "r", number: 12, commit: "48c2f0b8e2209ff7b9ca1ad005f2a1cd924f1bb9" });
+    expect(parsePrArg("https://github.com/o/r/pull/12/commits/48c2f0b")).toEqual({ owner: "o", repo: "r", number: 12, commit: "48c2f0b" });
+    expect(parsePrArg("https://github.com/o/r/pull/12/changes/45f9ced..48c2f0b")).toEqual({ owner: "o", repo: "r", number: 12, from: "45f9ced", commit: "48c2f0b" });
+    expect(parsePrArg("12")).toEqual({ number: 12 });
+  });
+});

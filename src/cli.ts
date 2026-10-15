@@ -48,6 +48,7 @@ const USAGE = `bobby: review a PR one focused page at a time
 
   bobby                              inside a repo: review this branch (and uncommitted changes)
   bobby <pr-url | number>            extract + open the review UI for a PR
+  bobby <pr-url>/changes/<sha>       just that commit of the PR (against its parent), or <from>..<to>
   bobby extract [pr] [-o file.json]  write the review graph (${GRAPH_SCHEMA}) and exit
   bobby open <graph.json>            open the UI on an existing graph file
   bobby lsp                          the language servers behind the inspector, by language
@@ -129,7 +130,7 @@ if (cmd === "open") {
   const t0 = Date.now();
   const secs = () => `${((Date.now() - t0) / 1000).toFixed(1)}s`;
   // Where the change comes from: a PR (fetched), or with no PR argument, the branch you're on.
-  let cwd: string, key: { owner: string; repo: string; number: number; branch?: string; headSha: string; baseSha?: string; baseRef?: string };
+  let cwd: string, key: { owner: string; repo: string; number: number; branch?: string; headSha: string; baseSha?: string; baseRef?: string; commit?: PrInfo["commit"] };
   let getPr: () => Promise<PrInfo>, discussion: Awaited<ReturnType<typeof reviewComments>> = [];
   if (arg) {
     log("▸ fetching PR…");
@@ -138,6 +139,12 @@ if (cmd === "open") {
     key = { owner: resolved.owner, repo: resolved.repo, number: resolved.meta.number, headSha: resolved.meta.headRefOid, baseRef: resolved.meta.baseRefName };
     log(`  #${key.number} ${resolved.meta.title}`);
     getPr = () => fetchPr(resolved);
+    if (resolved.commit) { // one commit (or a range): fetched now, as its full id keys the review and its cache
+      const one = await fetchPr(resolved);
+      key = { ...key, headSha: one.headSha, commit: one.commit };
+      getPr = async () => one;
+      log(`  ${one.commit!.from ? `commits ${one.commit!.from.slice(0, 7)}..${one.headSha.slice(0, 7)}` : `commit ${one.headSha.slice(0, 7)}`}: ${one.commit!.subject}`);
+    }
   } else {
     const local = await resolveLocal(values.repo ?? process.cwd(), values.base).catch((e) => { console.error(`✗ ${e.message}\n\n${USAGE}`); process.exit(1); });
     cwd = local.cwd;

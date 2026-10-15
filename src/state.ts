@@ -17,13 +17,13 @@ export function home() {
   migrated = true;
   return ROOT;
 }
-type PrKey = Pick<PrInfo, "owner" | "repo" | "number" | "branch">;
+type PrKey = Pick<PrInfo, "owner" | "repo" | "number" | "branch" | "commit">;
 // A local review is keyed by its branch, so each branch keeps its own progress. A branch name that isn't safe as a
 // file name as is gets a hash of itself too: a/b-c and a-b/c both clean to a-b-c.
 const clean = (b: string) => b.replace(/[^\w.-]+/g, "-");
 const slug = (pr: PrKey) => pr.branch
   ? `${pr.owner}_${pr.repo}_branch_${clean(pr.branch)}${clean(pr.branch) === pr.branch ? "" : `-${createHash("sha1").update(pr.branch).digest("hex").slice(0, 6)}`}`
-  : `${pr.owner}_${pr.repo}_${pr.number}`;
+  : `${pr.owner}_${pr.repo}_${pr.number}${pr.commit ? `_c${pr.commit.sha.slice(0, 12)}${pr.commit.from ? `-${pr.commit.from.slice(0, 7)}` : ""}` : ""}`; // one commit: a review of its own
 const legacySlug = (pr: PrKey) => (pr.branch ? `${pr.owner}_${pr.repo}_branch_${clean(pr.branch)}` : slug(pr)); // before the hash
 
 /** A JSON file, or null if there's none. One that won't parse is set aside as .corrupt-<time> (and said so), never

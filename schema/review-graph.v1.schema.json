@@ -33,7 +33,13 @@
         "body": { "type": "string" },
         "author": { "type": "string" },
         "baseSha": { "type": "string", "description": "Merge-base the diff was computed against." },
-        "headSha": { "type": "string" }
+        "headSha": { "type": "string" },
+        "commit": {
+          "type": "object",
+          "required": ["sha", "subject"],
+          "properties": { "sha": { "type": "string" }, "from": { "type": "string" }, "subject": { "type": "string" } },
+          "description": "Optional. The graph covers one commit of the PR (against its parent) or, with from, the commits after from up to sha; headSha is sha and baseSha its parent or from."
+        }
       }
     },
     "intent": { "type": "string", "description": "One sentence: what the PR does." },
