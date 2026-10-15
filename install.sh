@@ -4,11 +4,11 @@
 #   curl -fsSL https://raw.githubusercontent.com/angrybayblade/bobby/main/install.sh | bash
 #
 # Options, as environment variables:
-#   BOBBY_VERSION=0.1.0-rc4     a specific release tag (default: the latest, or the newest pre-release if
+#   BOBBY_VERSION=0.1.0-rc5     a specific release tag (default: the latest, or the newest pre-release if
 #                               there's no stable one yet)
 #   BOBBY_INSTALL_DIR=~/bin     where to put the binary (default: ~/.local/bin)
 #
-#   curl -fsSL …/install.sh | BOBBY_VERSION=0.1.0-rc4 bash
+#   curl -fsSL …/install.sh | BOBBY_VERSION=0.1.0-rc5 bash
 set -euo pipefail
 
 REPO="angrybayblade/bobby"

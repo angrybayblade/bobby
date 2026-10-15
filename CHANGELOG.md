@@ -4,6 +4,14 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+## 0.1.0-rc5 (2026-10-15)
+
+Bobby is now MIT-licensed. Comments show in place, as GitHub threads; an open review keeps up with the PR; and a long list of fixes from an audit before the stable release.
+
+**Keeping current**
+- New comments on the PR appear on their lines while you review.
+- New commits on the PR, or new work on a local branch, are offered with a **Refresh** prompt, never swapped in; refreshing keeps your place and your marks on what didn't change.
+
 **Comments in place**
 - Threads sit under their line, like GitHub's, with avatars, Markdown and **Show more**; in a split diff, on the side they were made on. Private notes float beside their line.
 - Collapse a thread, a file's comments or the whole PR's; markers say how many are above or below.
@@ -57,6 +65,7 @@ What changed in each release, newest first. Each release's full notes, with inst
 - The schema describes `definitions` and comment ranges (`startLine`, `startSide`); names with no text are no longer emitted.
 
 **Project**
+- MIT license, with notices for what the binaries carry (Bun, tree-sitter, highlight.js).
 - Tests (diff parsing, key bindings, an extracted graph validated against the schema) and CI on every push, with a binary smoke test on macOS, Linux and Windows.
 - [What leaves your machine](docs/privacy.md): what Bobby sends to Claude, GitHub and others.
 
