@@ -168,7 +168,7 @@ function renderTop() {
   const lsp = app.servers.map(serverChip).join("");
   const drafts = app.state.comments.filter((c) => !c.wip && c.kind !== "note").length; // unfinished drafts aren't ready to post
   $("#top").innerHTML = `
-    <div class="brand"><img src="/bobby.svg" alt="" width="22" height="22">bobby</div>
+    <a class="brand" href="/" title="Home: your PRs and recent reviews"><img src="/bobby.svg" alt="" width="22" height="22">bobby</a>
     ${g.pr.provider === "local" ? `<span class="prtitle" title="Local review: ${esc(g.pr.branch)} compared with ${esc(g.pr.baseRef)}">⎇ ${esc(g.pr.branch)} → ${esc(g.pr.baseRef)} · ${esc(g.pr.title)}</span>`
       : g.pr.commit // one commit (or a range) of the PR: which, with a link to it on GitHub
         ? `<a class="prtitle" href="${esc(`${g.pr.url}/changes/${g.pr.commit.from ? `${g.pr.commit.from}..` : ""}${g.pr.commit.sha}`)}" target="_blank" rel="noopener" title="${esc(`#${g.pr.number} ${g.pr.title}`)}">#${g.pr.number} · ${g.pr.commit.from ? `${esc(g.pr.commit.from.slice(0, 7))}..` : ""}${esc(g.pr.commit.sha.slice(0, 7))} ${esc(g.pr.commit.subject)}</a>`

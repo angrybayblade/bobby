@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>bobby</title>
+  <link rel="icon" href="/bobby.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" />
+  <link rel="stylesheet" href="/app/theme.css" />
+  <style>
+    /* The home page: one column, the box to paste a PR into, then the lists. Shares theme.css's tokens with reviews. */
+    body.home { display: block; overflow: auto; height: auto; min-height: 100%; }
+    .home .wrap { max-width: 980px; margin: 0 auto; padding: 22px 24px 80px; }
+    .home header { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+    .home header .ver { color: var(--faint); font-size: 12px; }
+    .home header .grow { flex: 1; }
+    .home form.go { display: flex; gap: 8px; }
+    .home form.go input { flex: 1; min-width: 0; padding: 11px 14px; font: 15px var(--font-ui); color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; }
+    .home form.go input:focus { outline: none; border-color: var(--signal); }
+    .home .err { color: var(--risk); font-size: 13px; min-height: 20px; margin: 6px 2px 0; }
+    .home .filters { display: flex; gap: 8px; margin: 18px 0 6px; flex-wrap: wrap; align-items: center; }
+    .home .filters input { padding: 6px 10px; font: 13px var(--font-ui); color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 3px; width: 190px; }
+    .home .filters input.q { flex: 1; min-width: 160px; }
+    .home .filters input:focus { outline: none; border-color: var(--muted); }
+    .home .filters button { color: var(--faint); font-size: 13px; padding: 4px 6px; }
+    .home .filters button:hover { color: var(--text); }
+    .home section { margin-top: 26px; }
+    .home h2 { font: 600 12px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); margin: 0 0 8px; display: flex; gap: 8px; }
+    .home h2 .n { color: var(--muted); font-weight: 500; }
+    .home .none { color: var(--faint); font-size: 13px; padding: 8px 2px; }
+    .home .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; padding: 9px 12px; border: 1px solid transparent; border-bottom-color: var(--line-soft, var(--line)); text-decoration: none; color: inherit; }
+    .home .row:hover, .home .row.sel { background: var(--raised); }
+    .home .row.sel { border-color: var(--line); border-radius: 3px; }
+    .home .row .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .home .row .t b { font-weight: 600; }
+    .home .row .where { color: var(--faint); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .home .row .side { display: flex; gap: 12px; align-items: center; justify-content: flex-end; color: var(--faint); font-size: 12px; white-space: nowrap; }
+    .home .row .meta { grid-column: 2; grid-row: 2; }
+    .home .tag { font: 500 11px var(--font-ui); padding: 1px 6px; border: 1px solid var(--line); border-radius: 99px; color: var(--muted); margin-left: 6px; }
+    .home .tag.live { border-color: var(--ok); color: var(--ok); }
+    .home .tag.draft { border-style: dashed; }
+    .home .sha { font: 12px var(--font-code); color: var(--muted); margin-right: 6px; }
+    .home .bar { width: 64px; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 6px; }
+    .home .bar i { display: block; height: 100%; background: var(--ok); }
+    .home .av { width: 16px; height: 16px; border-radius: 50%; vertical-align: -3px; margin-right: 4px; }
+    .home .keys { color: var(--faint); font-size: 12px; margin-top: 30px; }
+    .home .busy { opacity: .55; pointer-events: none; }
+  </style>
+  <script type="module" src="/app/home.js"></script>
+</head>
+<body class="home">
+  <div class="wrap">
+    <header>
+      <span class="brand"><img src="/bobby.svg" alt="" width="22" height="22">bobby</span>
+      <span class="ver"></span>
+      <span class="grow"></span>
+      <span class="release"></span>
+    </header>
+    <form class="go" autocomplete="off">
+      <input name="pr" placeholder="Paste a pull request link, a commit of one, or owner/repo#123" aria-label="Pull request to review" autofocus />
+      <button class="btn primary" type="submit">Review</button>
+    </form>
+    <div class="err" role="alert"></div>
+    <div class="filters" role="search">
+      <input name="repo" placeholder="Repo: owner/name" aria-label="Filter by repo" />
+      <input name="author" placeholder="Author" aria-label="Filter by author" />
+      <input name="q" class="q" placeholder="Search titles" aria-label="Search titles" />
+      <button type="button" class="reload" title="Ask GitHub again">↻ Refresh</button>
+    </div>
+    <div class="lists"></div>
+    <div class="keys"><kbd>/</kbd> paste a link · <kbd>↑</kbd> <kbd>↓</kbd> move · <kbd>enter</kbd> open</div>
+  </div>
+</body>
+</html>

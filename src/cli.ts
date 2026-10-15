@@ -43,7 +43,8 @@ const { values, positionals } = parseArgs({
 
 const USAGE = `bobby: review a PR one focused page at a time
 
-  bobby                              inside a repo: review this branch (and uncommitted changes)
+  bobby                              inside a repo: review this branch (and uncommitted changes);
+                                     elsewhere: the home page, to pick a PR (or bobby home)
   bobby <pr-url | number>            extract + open the review UI for a PR
   bobby <pr-url>/changes/<sha>       just that commit of the PR (against its parent), or <from>..<to>
   bobby extract [pr] [-o file.json]  write the review graph (${GRAPH_SCHEMA}) and exit
@@ -64,7 +65,7 @@ const USAGE = `bobby: review a PR one focused page at a time
   --no-open      don't open the browser
   -v, --version  print the version`;
 
-const [cmd, arg] = ["extract", "open", "lsp", "clean"].includes(positionals[0]) ? [positionals[0], positionals[1]] : ["review", positionals[0]];
+const [cmd, arg] = ["extract", "open", "lsp", "clean", "home"].includes(positionals[0]) ? [positionals[0], positionals[1]] : ["review", positionals[0]];
 if (values.version) {
   console.log(pkg.version);
   process.exit(0);
@@ -131,9 +132,17 @@ if (cmd === "extract") {
   process.exit(0);
 }
 
+// No PR and not in a repo (or `bobby home`): the home page, to pick one.
+const toHome = cmd === "home" || (cmd === "review" && !arg && !(await git(values.repo ?? process.cwd(), ["rev-parse", "--show-toplevel"], true)).trim());
+
 // A Bobby app already running: it opens the review (it's the one with your other reviews' progress in memory), and this
 // one only points the browser at it.
 const running = await runningApp();
+if (running && toHome) {
+  console.log(`  Bobby is already running\n\n  ▶ ${running}/\n`);
+  if (!values["no-open"]) await run(openCommand(`${running}/`), { allowFail: true }).catch(() => {});
+  process.exit(0);
+}
 if (running) {
   if (cmd === "open") fail(`Bobby is already running at ${running}: stop it to open a graph file`);
   const local = arg ? undefined : values.repo ?? process.cwd();
@@ -180,7 +189,7 @@ if (cmd === "open") {
   const id = reviewId(graph.pr);
   app.reviews.set(id, session);
   path = `/r/${id}`;
-} else {
+} else if (!toHome) {
   const id = await app.open(arg, { repo: values.repo, base: values.base }).catch((e) => {
     if (!arg) { console.error(`✗ ${e.message}\n\n${USAGE}`); process.exit(1); }
     throw e;
