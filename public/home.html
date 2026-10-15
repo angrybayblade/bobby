@@ -17,20 +17,28 @@
     /* The home page: one column, the box to paste a PR into, then the lists. Shares theme.css's tokens with reviews. */
     body.home { display: block; overflow: auto; height: auto; min-height: 100%; }
     .home .wrap { max-width: 980px; margin: 0 auto; padding: 22px 24px 80px; }
-    .home header { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+    .home header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
     .home header .ver { color: var(--faint); font-size: 12px; }
     .home header .grow { flex: 1; }
-    .home form.go { display: flex; gap: 8px; }
-    .home form.go input { flex: 1; min-width: 0; padding: 11px 14px; font: 15px var(--font-ui); color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; }
-    .home form.go input:focus { outline: none; border-color: var(--focus, var(--signal)); }
-    .home .err { color: var(--risk); font-size: 13px; min-height: 20px; margin: 6px 2px 0; }
-    .home .filters { display: flex; gap: 8px; margin: 18px 0 6px; flex-wrap: wrap; align-items: center; }
-    .home .filters input { padding: 6px 10px; font: 13px var(--font-ui); color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 3px; width: 190px; }
-    .home .filters input.q { flex: 1; min-width: 160px; }
-    .home .filters input:focus { outline: none; border-color: var(--muted); }
-    .home .filters button { color: var(--faint); font-size: 13px; padding: 4px 6px; }
-    .home .filters button:hover { color: var(--text); }
-    .home section { margin-top: 26px; }
+    /* One row: a box that opens a pasted PR or searches titles, then repo and author, then refresh. */
+    .home .tools { display: flex; gap: 6px; align-items: center; }
+    .home .box { flex: 1; min-width: 0; position: relative; display: flex; align-items: center; }
+    .home .box svg { position: absolute; left: 10px; color: var(--faint); pointer-events: none; }
+    .home .box input { flex: 1; min-width: 0; height: 32px; padding: 0 64px 0 32px; font: 13.5px var(--font-ui); color: var(--text); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; }
+    .home .box input:focus { outline: none; border-color: var(--focus, var(--signal)); }
+    .home .box .go { position: absolute; right: 5px; height: 22px; padding: 0 8px; border-radius: 3px; font: 500 12px var(--font-ui); color: var(--signal-ink); background: var(--signal); }
+    .home .box .go[hidden] { display: none; }
+    .home .tools select { height: 32px; max-width: 190px; padding: 0 26px 0 10px; font: 13px var(--font-ui); color: var(--muted); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; appearance: none; cursor: pointer;
+      background-image: linear-gradient(45deg, transparent 50%, var(--faint) 50%), linear-gradient(135deg, var(--faint) 50%, transparent 50%); background-position: calc(100% - 13px) 14px, calc(100% - 9px) 14px; background-size: 4px 4px; background-repeat: no-repeat; }
+    .home .tools select.on { color: var(--text); border-color: var(--muted); }
+    .home .tools select:focus { outline: none; border-color: var(--focus, var(--signal)); }
+    .home .tools .reload { width: 32px; height: 32px; border: 1px solid var(--line); border-radius: 4px; color: var(--faint); display: grid; place-items: center; }
+    .home .tools .reload:hover { color: var(--text); border-color: var(--muted); }
+    .home .tools .reload.spin svg { animation: spin .8s linear infinite; }
+    .home .err { color: var(--risk); font-size: 12.5px; margin: 6px 2px 0; }
+    .home .err:empty { display: none; }
+    @media (max-width: 640px) { .home .tools { flex-wrap: wrap; } .home .box { flex-basis: 100%; } .home .tools select { flex: 1; max-width: none; } }
+    .home section { margin-top: 22px; }
     .home h2 { font: 600 12px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); margin: 0 0 8px; display: flex; gap: 8px; }
     .home h2 .n { color: var(--muted); font-weight: 500; }
     .home .none { color: var(--faint); font-size: 13px; padding: 8px 2px; }
@@ -62,19 +70,19 @@
       <span class="grow"></span>
       <span class="release"></span>
     </header>
-    <form class="go" autocomplete="off">
-      <input name="pr" placeholder="Paste a pull request link, a commit of one, or owner/repo#123" aria-label="Pull request to review" autofocus />
-      <button class="btn primary" type="submit">Review</button>
+    <form class="tools" autocomplete="off" role="search">
+      <label class="box">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M10.68 11.74a6 6 0 1 1 1.06-1.06l3.04 3.04a.75.75 0 1 1-1.06 1.06ZM11.5 7a4.5 4.5 0 1 0-9 0 4.5 4.5 0 0 0 9 0Z"/></svg>
+        <input name="q" placeholder="Search titles, or paste a PR link to review it" aria-label="Search titles, or a pull request link to review" autofocus />
+        <button class="go" type="submit" hidden title="Review this PR">↵ open</button>
+      </label>
+      <select name="repo" aria-label="Repository"><option value="">All repos</option></select>
+      <select name="author" aria-label="Author"><option value="">Anyone</option></select>
+      <button type="button" class="reload" title="Ask GitHub again" aria-label="Refresh the lists"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M1.7 7.25a6.3 6.3 0 0 1 11.12-3.6V2.25a.75.75 0 0 1 1.5 0V5.5a.75.75 0 0 1-.75.75H10.3a.75.75 0 0 1 0-1.5h1.42A4.8 4.8 0 0 0 3.2 7.33a.75.75 0 1 1-1.5-.08Zm12.58 1.5a.75.75 0 0 1 .7.8 6.3 6.3 0 0 1-11.12 2.8v1.4a.75.75 0 0 1-1.5 0V10.5a.75.75 0 0 1 .75-.75H5.7a.75.75 0 0 1 0 1.5H4.28a4.8 4.8 0 0 0 8.52-2.58.75.75 0 0 1 .8-.7Z"/></svg></button>
     </form>
     <div class="err" role="alert"></div>
-    <div class="filters" role="search">
-      <input name="repo" placeholder="Repo: owner/name" aria-label="Filter by repo" />
-      <input name="author" placeholder="Author" aria-label="Filter by author" />
-      <input name="q" class="q" placeholder="Search titles" aria-label="Search titles" />
-      <button type="button" class="reload" title="Ask GitHub again">↻ Refresh</button>
-    </div>
     <div class="lists"></div>
-    <div class="keys"><kbd>/</kbd> paste a link · <kbd>↑</kbd> <kbd>↓</kbd> move · <kbd>enter</kbd> open</div>
+    <div class="keys"><kbd>/</kbd> search or paste a link · <kbd>↑</kbd> <kbd>↓</kbd> move · <kbd>enter</kbd> open</div>
   </div>
 </body>
 </html>

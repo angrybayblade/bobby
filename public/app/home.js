@@ -38,16 +38,33 @@ async function open(body, el) {
   try { location.href = `/r/${(await json("/api/open", body)).id}`; }
   catch (e) { $(".err").textContent = e.message; el?.classList.remove("busy"); }
 }
-$("form.go").addEventListener("submit", (ev) => {
+// Enter in the box: a pasted PR opens; a search opens the first match.
+$("form.tools").addEventListener("submit", (ev) => {
   ev.preventDefault();
-  const link = asLink(ev.target.pr.value);
-  if (!link) return void ($(".err").textContent = "That isn't a pull request link: paste one from GitHub (…/pull/123, or a commit of it), or type owner/repo#123.");
-  open({ arg: link }, ev.target);
+  const link = asLink(box().value);
+  if (link) return open({ arg: link }, ev.target);
+  if (rows()[0]) return openRow(rows()[sel >= 0 ? sel : 0]);
+  $(".err").textContent = box().value.trim() ? "Nothing matches. To review a PR, paste its link (…/pull/123, or a commit of it) or type owner/repo#123." : "";
 });
+const box = () => $("[name=q]");
 
 // ---- the lists
 let recents = home.recents ?? [], lists = { review: [], mine: [], all: [] }, loadingLists = true, listError = "";
-const filters = () => ({ repo: $("[name=repo]").value.trim(), author: $("[name=author]").value.trim().replace(/^@/, ""), q: $("[name=q]").value.trim() });
+// the box searches unless it holds a PR to open
+const filters = () => ({ repo: $("[name=repo]").value, author: $("[name=author]").value, q: asLink(box().value) ? "" : box().value.trim() });
+/** The repo and author pickers: what's in your lists, keeping what's chosen. */
+function fillPickers() {
+  const all = [...recents, ...lists.review, ...lists.mine, ...lists.all];
+  const fill = (name, first, values) => {
+    const el = $(`[name=${name}]`), was = el.value;
+    const opts = [...new Set([...values, ...(was ? [was] : [])])].filter(Boolean).sort((a, b) => a.localeCompare(b));
+    el.innerHTML = first + opts.map((v) => `<option value="${esc(v)}"${v === was ? " selected" : ""}>${esc(v)}</option>`).join("");
+    el.classList.toggle("on", !!el.value);
+  };
+  fill("repo", `<option value="">All repos</option>`, all.filter((x) => x.kind !== "local").map((x) => `${x.owner}/${x.repo}`));
+  const me = home.me?.login;
+  fill("author", `<option value="">Anyone</option>${me ? `<option value="${esc(me)}">Me</option>` : ""}`, all.map((x) => x.author).filter((a) => a && a !== me));
+}
 const matches = (r, f) => (!f.repo || `${r.owner}/${r.repo}`.toLowerCase().includes(f.repo.toLowerCase()))
   && (!f.author || (r.author ?? "").toLowerCase() === f.author.toLowerCase())
   && (!f.q || `${r.title} ${r.commit?.subject ?? ""} ${r.branch ?? ""}`.toLowerCase().includes(f.q.toLowerCase()));
@@ -83,14 +100,15 @@ function render() {
     gh("All", lists.all, "No open PRs involve you."),
   ].join("");
   select(Math.min(sel, rows().length - 1));
+  fillPickers();
 }
 async function loadLists(fresh = false) {
   const f = filters(), q = new URLSearchParams(Object.entries(f).filter(([, v]) => v));
   if (fresh) q.set("fresh", "1");
-  loadingLists = true; render();
+  loadingLists = true; $(".reload").classList.add("spin"); render();
   const got = await json(`/api/home/prs?${q}`).catch((e) => ({ error: e.message }));
   if (JSON.stringify(filters()) !== JSON.stringify(f)) return; // the filters changed meanwhile: a newer ask is on its way
-  loadingLists = false; listError = got.error ?? "";
+  loadingLists = false; listError = got.error ?? ""; $(".reload").classList.remove("spin");
   lists = { review: got.review ?? [], mine: got.mine ?? [], all: got.all ?? [] };
   render();
 }
@@ -121,19 +139,28 @@ $(".lists").addEventListener("click", (ev) => {
 });
 document.addEventListener("keydown", (ev) => {
   const typing = ev.target.matches("input");
-  if (ev.key === "/" && !typing) { ev.preventDefault(); return $("[name=pr]").focus(); }
+  if (ev.key === "/" && !typing) { ev.preventDefault(); return box().focus(); }
   if (ev.key === "Escape" && typing) return ev.target.blur();
-  if (typing && ev.target.name === "pr") return;
   if (ev.key === "ArrowDown" || (!typing && ev.key === "j")) { ev.preventDefault(); if (typing) ev.target.blur(); select(Math.min(sel + 1, rows().length - 1)); }
   else if (ev.key === "ArrowUp" || (!typing && ev.key === "k")) { ev.preventDefault(); select(Math.max(sel - 1, 0)); }
   else if (ev.key === "Enter" && !typing && rows()[sel]) { ev.preventDefault(); openRow(rows()[sel]); }
 });
-let filterTimer = 0;
-for (const name of ["repo", "author", "q"]) $(`[name=${name}]`).addEventListener("input", () => { render(); clearTimeout(filterTimer); filterTimer = setTimeout(loadLists, 400); });
+let filterTimer = 0, asked = "";
+const refilter = () => {
+  $(".err").textContent = "";
+  $(".tools .go").hidden = !asLink(box().value);
+  render();
+  const key = JSON.stringify(filters());
+  if (key === asked) return; // pasting a link changes nothing GitHub is asked
+  asked = key; clearTimeout(filterTimer); filterTimer = setTimeout(loadLists, 400);
+};
+box().addEventListener("input", refilter);
+for (const name of ["repo", "author"]) $(`[name=${name}]`).addEventListener("change", refilter);
 $(".reload").addEventListener("click", () => loadLists(true));
 // recents change as you review in other tabs; GitHub's lists every few minutes
 addEventListener("focus", async () => { const h = await json("/api/home").catch(() => null); if (h) { recents = h.recents; render(); } });
 setInterval(() => loadLists(), 180_000);
 
 render();
+asked = JSON.stringify(filters());
 loadLists();
