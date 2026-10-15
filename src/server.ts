@@ -158,9 +158,14 @@ export function startServer(app: App, port: number) {
         if (at < 0) return staticFile("/index.html");
         const id = decodeURIComponent(p.slice(3, at)), s = app.reviews.get(id);
         if (s) return reviewApi(s, app, req, url, p.slice(at));
+        // not open, but opened before (a reload after Bobby restarted, a bookmark): open it again, from what recents kept
+        if (!app.loading.has(id) && app.open) {
+          const r = (await loadRecents()).find((x) => x.id === id);
+          if (r) await app.open(r.kind === "local" ? undefined : r.arg, { repo: r.repoDir, ...(r.kind === "local" ? { base: r.baseRef } : {}) }).catch(() => {});
+        }
         const l = app.loading.get(id);
-        if (l?.error) return json({ error: l.error }, 500);
-        if (l) return json({ loading: true, title: l.title }, 202);
+        // still building (or failed): with the settings, so the page wears your theme while it waits
+        if (l) return json({ loading: !l.error, title: l.title, steps: l.steps, elapsed: Date.now() - l.startedAt, settings: loadSettings(), ...(l.error ? { error: l.error } : {}) }, l.error ? 500 : 202);
         return json({ error: `No review ${id} is open. Open it from the home page, or with bobby <PR URL>.` }, 404);
       }
       if (!p.startsWith("/api/")) return staticFile(p === "/" ? "/home.html" : p);
