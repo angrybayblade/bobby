@@ -33,7 +33,6 @@ export interface Session {
   rebuilding?: boolean;
   baseRef?: string; // a PR's base branch, to notice it being retargeted
   builtHead?: string; // a local review: HEAD when it was built
-  release?: Release; // a newer Bobby, if one is out (updates.ts)
 }
 
 const PUBLIC = join(import.meta.dir, "..", "public");
@@ -117,10 +116,26 @@ function guard(req: Request, port: number): Response | null {
   return null;
 }
 
-export function startServer(s: Session, port: number) {
-  const pr = () => s.staticGraph.pr;
-  const persist = () => saveState(pr(), s.state); // the PR, or its branch, or one commit of it: each its own file
+/** The app: every review open in it, by id (review.ts), and the ones still being built. One server holds them all, each
+ *  at /r/<id> with its API under /r/<id>/api/. */
+export interface App {
+  reviews: Map<string, Session>;
+  loading: Map<string, { title: string; error?: string }>;
+  release?: Release; // a newer Bobby, if one is out (updates.ts)
+  /** Opens a review (a PR's URL or number, or with repo and no arg, a local branch): its id at once, built meanwhile. */
+  open?: (arg: string | undefined, o: { repo?: string; cwd?: string; base?: string; refresh?: boolean; noLlm?: boolean; noLsp?: boolean }) => Promise<string>;
+}
 
+async function staticFile(p: string): Promise<Response> {
+  const rel = normalize(p.slice(1));
+  if (rel.startsWith("..")) return new Response("Not found", { status: 404 });
+  const asset = embeddedAsset(rel.split("\\").join("/"));
+  if (asset) return new Response(asset.body, { headers: { "content-type": asset.type } });
+  const file = Bun.file(join(PUBLIC, rel));
+  return (await file.exists()) ? new Response(file) : new Response("Not found", { status: 404 });
+}
+
+export function startServer(app: App, port: number) {
   return Bun.serve({
     port,
     hostname: "127.0.0.1",
@@ -130,14 +145,37 @@ export function startServer(s: Session, port: number) {
       const refused = guard(req, server.port);
       if (refused) return refused;
 
-      if (!p.startsWith("/api/")) {
-        const rel = normalize(p === "/" ? "index.html" : p.slice(1));
-        if (rel.startsWith("..")) return new Response("Not found", { status: 404 });
-        const asset = embeddedAsset(rel.split("\\").join("/"));
-        if (asset) return new Response(asset.body, { headers: { "content-type": asset.type } });
-        const file = Bun.file(join(PUBLIC, rel));
-        return (await file.exists()) ? new Response(file) : new Response("Not found", { status: 404 });
+      // A review: its page, or its API. Ids have slashes (owner/repo/number), so the API starts at "/api/".
+      if (p.startsWith("/r/")) {
+        const at = p.indexOf("/api/");
+        if (at < 0) return staticFile("/index.html");
+        const id = decodeURIComponent(p.slice(3, at)), s = app.reviews.get(id);
+        if (s) return reviewApi(s, app, req, url, p.slice(at));
+        const l = app.loading.get(id);
+        if (l?.error) return json({ error: l.error }, 500);
+        if (l) return json({ loading: true, title: l.title }, 202);
+        return json({ error: `No review ${id} is open. Open it from the home page, or with bobby <PR URL>.` }, 404);
       }
+      if (!p.startsWith("/api/")) return staticFile(p === "/" ? "/index.html" : p);
+      if (p === "/api/avatar") return avatar(url.searchParams.get("u") ?? "");
+      if (req.method === "POST" && p === "/api/open") {
+        const { arg, repo, cwd, base, refresh, noLlm, noLsp } = (await req.json().catch(() => ({}))) as { arg?: string; repo?: string; cwd?: string; base?: string; refresh?: boolean; noLlm?: boolean; noLsp?: boolean };
+        if (!app.open) return json({ error: "this Bobby can't open reviews" }, 400);
+        const flags = Object.fromEntries(Object.entries({ refresh, noLlm, noLsp }).filter(([, v]) => v !== undefined));
+        try { return json({ id: await app.open(arg?.trim() || undefined, { repo, base, ...(cwd ? { cwd } : {}), ...flags }) }); }
+        catch (e) { return json({ error: String((e as Error).message ?? e) }, 400); }
+      }
+      return json({ error: "not found" }, 404);
+    },
+  });
+}
+
+/** One review's API: p is the path from /api/. */
+async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string): Promise<Response> {
+  const pr = () => s.staticGraph.pr;
+  const persist = () => saveState(pr(), s.state); // the PR, or its branch, or one commit of it: each its own file
+  {
+    {
 
       if (p === "/api/graph") {
         const want = url.searchParams.get("tree");
@@ -148,7 +186,7 @@ export function startServer(s: Session, port: number) {
         return json({ state: s.state, settings: loadSettings(), llm: s.llm, llmError: s.llmError, servers: Object.values(s.servers ?? {}), me: await whoAmI(join(home(), "cache", "me.json")), caps: { files: !!s.cwd, inspect: !!s.cwd } });
       // A GitHub avatar, fetched once and kept a week in ~/.bobby/cache/avatars. Only GitHub's own avatar hosts.
       if (p === "/api/avatar") return avatar(url.searchParams.get("u") ?? "");
-      if (p === "/api/status") return json({ llm: s.llm, llmError: s.llmError, claudeReady: !!s.claudeGraph, servers: Object.values(s.servers ?? {}), discussionAt: s.discussionAt ?? 0, release: s.release ?? null, update: s.rebuilding ? { ...s.update, rebuilding: true } : s.update ?? null });
+      if (p === "/api/status") return json({ llm: s.llm, llmError: s.llmError, claudeReady: !!s.claudeGraph, servers: Object.values(s.servers ?? {}), discussionAt: s.discussionAt ?? 0, release: app.release ?? null, update: s.rebuilding ? { ...s.update, rebuilding: true } : s.update ?? null });
       if (p === "/api/discussion") return json(s.staticGraph.discussion ?? []);
       // Move the review to the new work watch.ts noticed; the page then reads the new graph
       if (req.method === "POST" && p === "/api/refresh") {
@@ -327,6 +365,6 @@ export function startServer(s: Session, port: number) {
       }
 
       return json({ error: "not found" }, 404);
-    },
-  });
+    }
+  }
 }

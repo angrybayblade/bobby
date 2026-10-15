@@ -1,19 +1,15 @@
 #!/usr/bin/env bun
 import { parseArgs } from "node:util";
 import { readFileSync, statSync, writeFileSync } from "node:fs";
-import { fetchPr, git, resolvePr, reviewComments, run } from "./git.ts";
-import { resolveLocal } from "./local.ts";
-import { parseDiff } from "./diff.ts";
-import { analyze, heuristicTree, type Analysis } from "./analyze.ts";
-import { claudeTree } from "./llm.ts";
-import { buildGraph, GRAPH_SCHEMA, LEGACY_SCHEMAS, VERSION, type ReviewGraph } from "./graph.ts";
+import { resolve as resolvePath } from "node:path";
+import { reviewComments, run } from "./git.ts";
+import { GRAPH_SCHEMA, LEGACY_SCHEMAS, type ReviewGraph } from "./graph.ts";
 import { clean, prune } from "./prune.ts";
-import { watchLocal, watchPr } from "./watch.ts";
 import { watchReleases } from "./updates.ts";
-import { hold, holder, home, loadCachedGraphs, loadCachedTree, loadSettings, loadState, saveCachedGraphs, saveCachedTree } from "./state.ts";
+import { hold, holder, home, loadSettings, loadState } from "./state.ts";
 import { allow, SERVERS, serverById, startServers, stopServers } from "./servers.ts";
-import type { FileDiff, PrInfo } from "./types.ts";
-import { startServer, type Session } from "./server.ts";
+import { resolve, reviewId, start, type ReviewOptions } from "./review.ts";
+import { type App, startServer, type Session } from "./server.ts";
 import pkg from "../package.json" with { type: "json" };
 
 // A failure is one line (no such file, a git or gh error), not a stack trace; BOBBY_DEBUG=1 shows the trace too.
@@ -113,7 +109,58 @@ async function lspCommand(sub?: string, id?: string): Promise<number> {
   return 0;
 }
 const log = (m: string) => (cmd === "extract" && !values.out ? console.error(m) : console.log(m));
+const opts: ReviewOptions & { refresh?: boolean } = { repo: values.repo, base: values.base, refresh: values.refresh, noLlm: values["no-llm"], noLsp: values["no-lsp"], log };
 
+if (cmd === "extract") {
+  const p = await (await resolve(arg, opts)).build();
+  let graph = p.claudeGraph ?? p.staticGraph;
+  if (p.wantLlm) {
+    log("▸ asking Claude to build the change tree…");
+    graph = await p.claude().catch((e) => (log(`  ✗ Claude failed, writing static graph: ${e.message}`), p.staticGraph));
+  }
+  if (values.lsp) { // the servers that are installed; none is installed without asking
+    const s: Session = { cwd: p.cwd, staticGraph: graph, state: { headSha: graph.pr.headSha, marks: {}, comments: [] }, llm: "off", refresh: values.refresh };
+    await startServers(s, { ask: false, log });
+    await stopServers(s);
+    if (s.definitions) graph = { ...graph, definitions: s.definitions };
+  }
+  const text = JSON.stringify(graph, null, 1);
+  if (values.out) { writeFileSync(values.out, text); log(`  ✓ wrote ${values.out}`); }
+  else console.log(text);
+  process.exit(0);
+}
+
+// A Bobby app already running: it opens the review (it's the one with your other reviews' progress in memory), and this
+// one only points the browser at it.
+const running = await runningApp();
+if (running) {
+  if (cmd === "open") fail(`Bobby is already running at ${running}: stop it to open a graph file`);
+  const local = arg ? undefined : values.repo ?? process.cwd();
+  const r = await fetch(`${running}/api/open`, { method: "POST", headers: { "content-type": "application/json", origin: running }, body: JSON.stringify({ arg, repo: arg ? values.repo && resolvePath(values.repo) : resolvePath(local!), cwd: process.cwd(), base: values.base, refresh: values.refresh, noLlm: values["no-llm"], noLsp: values["no-lsp"] }) });
+  const out = (await r.json()) as { id?: string; error?: string };
+  if (!out.id) fail(out.error ?? `Bobby at ${running} couldn't open it`);
+  const url = `${running}/r/${out.id}`;
+  console.log(`  opened in the Bobby already running (its terminal shows the progress)\n\n  ▶ ${url}\n`);
+  if (!values["no-open"]) await run(openCommand(url), { allowFail: true }).catch(() => {});
+  process.exit(0);
+}
+
+const app: App = { reviews: new Map(), loading: new Map() };
+// Opening a review: named at once (resolve), built in the background, so its page can show the progress.
+app.open = async (a, o) => {
+  const ro: ReviewOptions = { ...opts, ...o };
+  const resolved = await resolve(a, ro);
+  const id = resolved.id;
+  if (app.reviews.has(id) || (app.loading.has(id) && !app.loading.get(id)!.error)) return id;
+  app.loading.set(id, { title: resolved.title });
+  resolved.build().then(
+    (p) => { app.reviews.set(id, start(p, ro)); app.loading.delete(id); },
+    (e) => { app.loading.set(id, { title: resolved.title, error: String(e?.message ?? e) }); console.error(`  ✗ ${resolved.title}: ${e?.message ?? e}`); },
+  );
+  return id;
+};
+
+let path = "/";
 if (cmd === "open") {
   const graph = JSON.parse(readFileSync(arg, "utf8")) as ReviewGraph;
   if (graph.schema !== GRAPH_SCHEMA && !LEGACY_SCHEMAS.includes(graph.schema)) throw new Error(`Unsupported graph schema: ${graph.schema}`);
@@ -122,188 +169,40 @@ if (cmd === "open") {
     const discussion = await reviewComments(graph.pr, true).catch(() => null);
     if (discussion) graph.discussion = discussion;
   }
-  if (await alreadyOpen(graph.pr)) process.exit(0);
   const session: Session = { cwd: values.repo ?? null, staticGraph: graph, state: loadState({ ...graph.pr }), llm: "off", refresh: values.refresh };
   void startServers(session, { ask: true, off: values["no-lsp"], log });
-  await serve(session, graph.pr);
+  const id = reviewId(graph.pr);
+  app.reviews.set(id, session);
+  path = `/r/${id}`;
 } else {
-  const t0 = Date.now();
-  const secs = () => `${((Date.now() - t0) / 1000).toFixed(1)}s`;
-  // Where the change comes from: a PR (fetched), or with no PR argument, the branch you're on.
-  let cwd: string, key: { owner: string; repo: string; number: number; branch?: string; headSha: string; baseSha?: string; baseRef?: string; commit?: PrInfo["commit"] };
-  let getPr: () => Promise<PrInfo>, discussion: Awaited<ReturnType<typeof reviewComments>> = [];
-  if (arg) {
-    log("▸ fetching PR…");
-    const resolved = await resolvePr(arg, values.repo);
-    cwd = resolved.cwd;
-    key = { owner: resolved.owner, repo: resolved.repo, number: resolved.meta.number, headSha: resolved.meta.headRefOid, baseRef: resolved.meta.baseRefName };
-    log(`  #${key.number} ${resolved.meta.title}`);
-    getPr = () => fetchPr(resolved);
-    if (resolved.commit) { // one commit (or a range): fetched now, as its full id keys the review and its cache
-      const one = await fetchPr(resolved);
-      key = { ...key, headSha: one.headSha, commit: one.commit };
-      getPr = async () => one;
-      log(`  ${one.commit!.from ? `commits ${one.commit!.from.slice(0, 7)}..${one.headSha.slice(0, 7)}` : `commit ${one.headSha.slice(0, 7)}`}: ${one.commit!.subject}`);
-    }
-  } else {
-    const local = await resolveLocal(values.repo ?? process.cwd(), values.base).catch((e) => { console.error(`✗ ${e.message}\n\n${USAGE}`); process.exit(1); });
-    cwd = local.cwd;
-    const { pr } = local;
-    key = { ...pr };
-    log(`▸ ${pr.branch} vs ${pr.baseRef} (${local.why})${local.dirty ? ", with uncommitted changes" : ""}`);
-    if (local.untracked) log(`  ${local.untracked} untracked file(s) left out: \`git add -N <file>\` to include one`);
-    getPr = async () => pr;
-  }
-  if (cmd !== "extract" && await alreadyOpen(key)) process.exit(0);
-
-  // Same head commit as last time → reuse the built graphs. Comments still change, so they're always re-read.
-  const hit = values.refresh ? null : loadCachedGraphs(key);
-  const cached = hit?.static.generator.extraction === VERSION ? hit : null;
-  if (arg) discussion = await reviewComments(key);
-  if (discussion.length) log(`  ${discussion.length} existing review comment(s)`);
-
-  // Fetch + diff + analysis, only when something needs it (a new head, or Claude's tree still missing).
-  let built: Promise<{ pr: PrInfo; files: FileDiff[]; analysis: Analysis }> | null = null;
-  const extract = () => (built ??= (async () => {
-    const pr = await getPr();
-    log("▸ diffing & tracing references…");
-    const files = parseDiff(await git(cwd, ["diff", "--no-color", "--no-ext-diff", "-M", "-U3", pr.baseSha, pr.headSha]));
-    const analysis = await analyze(cwd, pr, files);
-    const hunks = files.reduce((n, f) => n + f.hunks.length, 0);
-    log(`  ${files.length} files · ${hunks} hunks · ${analysis.units.length} units · ${analysis.refs.length} untouched refs (${secs()})`);
-    return { pr, files, analysis };
-  })());
-
-  // The clone may lack the cached graph's commits (a fresh clone, a fork's PR, refs/bobby deleted and collected): the
-  // UI reads files at both, and the language server exports head. Fetch them as a miss would.
-  if (cached && arg) {
-    const has = async (sha: string) => (await Bun.spawn(["git", "cat-file", "-e", `${sha}^{commit}`], { cwd, stderr: "ignore" }).exited) === 0;
-    if (!(await has(cached.static.pr.headSha)) || !(await has(cached.static.pr.baseSha))) { log("▸ fetching PR…"); await getPr(); }
-  }
-
-  let staticGraph: ReviewGraph, claudeGraph: ReviewGraph | undefined;
-  if (cached) {
-    log(`  ✓ unchanged since last time (${key.headSha.slice(0, 7)}), using cached graphs (${secs()})`);
-    staticGraph = { ...cached.static, discussion };
-    claudeGraph = values["no-llm"] ? undefined : cached.claude && { ...cached.claude, discussion }; // --no-llm: not even a cached one
-  } else {
-    const { pr, files, analysis } = await extract();
-    staticGraph = await buildGraph(cwd, pr, files, analysis, heuristicTree(pr, analysis, files), discussion);
-    const tree = values.refresh || values["no-llm"] ? null : loadCachedTree(pr, VERSION);
-    claudeGraph = tree?.source === "claude" ? await buildGraph(cwd, pr, files, analysis, tree, discussion) : undefined;
-    saveCachedGraphs(key, { static: staticGraph, claude: claudeGraph });
-  }
-  const pr: PrInfo = { ...staticGraph.pr };
-  const wantLlm = !values["no-llm"] && !claudeGraph;
-
-  const claude = async () => {
-    const { pr, files, analysis } = await extract();
-    // Claude's tree may be cached when the graphs aren't (built with --no-llm): it isn't asked twice
-    const cachedTree = values.refresh ? null : loadCachedTree(pr, VERSION);
-    const tree = cachedTree?.source === "claude" ? cachedTree : await claudeTree(pr, analysis, files);
-    saveCachedTree(pr, VERSION, tree);
-    const g = await buildGraph(cwd, pr, files, analysis, tree, discussion);
-    saveCachedGraphs(key, { static: staticGraph, claude: g });
-    return g;
-  };
-
-  if (cmd === "extract") {
-    let graph = claudeGraph ?? staticGraph;
-    if (wantLlm) {
-      log("▸ asking Claude to build the change tree…");
-      graph = await claude().catch((e) => (log(`  ✗ Claude failed, writing static graph: ${e.message}`), staticGraph));
-    }
-    if (values.lsp) { // the servers that are installed; none is installed without asking
-      const s: Session = { cwd, staticGraph: graph, state: { headSha: graph.pr.headSha, marks: {}, comments: [] }, llm: "off", refresh: values.refresh };
-      await startServers(s, { ask: false, log });
-      await stopServers(s);
-      if (s.definitions) graph = { ...graph, definitions: s.definitions };
-    }
-    const text = JSON.stringify(graph, null, 1);
-    if (values.out) { writeFileSync(values.out, text); log(`  ✓ wrote ${values.out}`); }
-    else console.log(text);
-  } else {
-    const session: Session = {
-      cwd, staticGraph, claudeGraph, state: loadState(pr),
-      llm: claudeGraph ? "done" : wantLlm ? "pending" : "off", refresh: values.refresh,
-    };
-    void startServers(session, { ask: true, off: values["no-lsp"], log });
-    if (wantLlm) {
-      log("▸ asking Claude to build the change tree (UI is usable meanwhile)…");
-      claude()
-        .then((g) => { session.claudeGraph = g; session.llm = "done"; log(`  ✓ Claude tree ready: ${g.cores.length} cores`); })
-        .catch((e) => { session.llm = "failed"; session.llmError = String(e.message ?? e); console.error(`  ✗ Claude tree failed, keeping static tree: ${session.llmError}`); });
-    }
-
-    // Moving to new work when you ask (watch.ts notices it): the same pipeline as a fresh start, on the new head. Marks
-    // carry over by content, so what the push didn't touch stays reviewed; drafts stay as they are.
-    session.baseRef = key.baseRef;
-    session.rebuild = async () => {
-      let next: PrInfo, disc = session.staticGraph.discussion ?? [];
-      if (arg) {
-        const resolved = await resolvePr(arg, values.repo);
-        next = await fetchPr(resolved);
-        disc = await reviewComments(next, true).catch(() => disc);
-        session.baseRef = resolved.meta.baseRefName;
-      } else {
-        next = (await resolveLocal(cwd, session.staticGraph.pr.baseRef)).pr;
-        session.builtHead = (await git(cwd, ["rev-parse", "HEAD"])).trim();
-      }
-      log(`▸ refreshing to ${next.headSha.slice(0, 7)}…`);
-      const files = parseDiff(await git(cwd, ["diff", "--no-color", "--no-ext-diff", "-M", "-U3", next.baseSha, next.headSha]));
-      const analysis = await analyze(cwd, next, files);
-      const g = await buildGraph(cwd, next, files, analysis, heuristicTree(next, analysis, files), disc);
-      const nextKey = arg ? { ...key, headSha: next.headSha, baseRef: session.baseRef } : { ...next };
-      saveCachedGraphs(nextKey, { static: g });
-      await stopServers(session);
-      Object.assign(session, { staticGraph: g, claudeGraph: undefined, definitions: undefined, repo: undefined, root: undefined, llmError: undefined });
-      session.state.headSha = next.headSha;
-      void startServers(session, { ask: true, off: values["no-lsp"], log });
-      log(`  ✓ ${files.length} files · ${files.reduce((n, f) => n + f.hunks.length, 0)} hunks`);
-      session.llm = values["no-llm"] ? "off" : "pending";
-      if (session.llm === "pending") {
-        void claudeTree(next, analysis, files)
-          .then(async (tree) => {
-            saveCachedTree(next, VERSION, tree);
-            const cg = await buildGraph(cwd, next, files, analysis, tree, disc);
-            if (session.staticGraph !== g) return; // refreshed again meanwhile
-            session.claudeGraph = cg; session.llm = "done";
-            saveCachedGraphs(nextKey, { static: g, claude: cg });
-          })
-          .catch((e) => { if (session.staticGraph === g) { session.llm = "failed"; session.llmError = String(e.message ?? e); } });
-      }
-    };
-    if (arg) watchPr(session); else watchLocal(session);
-    await serve(session, pr);
-  }
+  const id = await app.open(arg, { repo: values.repo, base: values.base }).catch((e) => {
+    if (!arg) { console.error(`✗ ${e.message}\n\n${USAGE}`); process.exit(1); }
+    throw e;
+  });
+  path = `/r/${id}`;
 }
+await serve(app, path);
 
-/** Another Bobby already serving this review: point at it (and open it) rather than start a second one that would
- *  save over its progress. --refresh starts anew regardless, after saying so. */
-async function alreadyOpen(pr: Parameters<typeof holder>[0]) {
-  const other = holder(pr);
-  if (!other) return false;
+/** The Bobby app already running, by its lock, if it answers. */
+async function runningApp(): Promise<string | null> {
+  const other = holder();
+  if (!other) return null;
   const url = `http://127.0.0.1:${other.port}`;
-  const up = await fetch(`${url}/api/status`, { signal: AbortSignal.timeout(1500) }).then((r) => r.ok, () => false);
-  if (!up) return false;
-  if (values.refresh) { console.log(`  ! this review is also open at ${url} (pid ${other.pid}); whichever saves last keeps its progress`); return false; }
-  console.log(`  already open at ${url} (pid ${other.pid}); stop that one to start anew\n\n  ▶ ${url}\n`);
-  if (!values["no-open"]) await run(openCommand(url), { allowFail: true }).catch(() => {});
-  return true;
+  return (await fetch(`${url}/api/avatar?u=`, { signal: AbortSignal.timeout(1500) }).then((r) => r.status === 400, () => false)) ? url : null;
 }
 
-async function serve(session: Session, pr: Parameters<typeof hold>[0]) {
-  // The default port may be taken (another review, a dev server): fall back to any free one.
+async function serve(app: App, path: string) {
+  // The default port may be taken (a dev server): fall back to any free one.
   let server;
-  try { server = startServer(session, Number(values.port)); }
+  try { server = startServer(app, Number(values.port)); }
   catch (e) {
     if (!/EADDRINUSE|in use/i.test(String((e as Error).message ?? e))) throw e;
-    server = startServer(session, 0);
+    server = startServer(app, 0);
     console.log(`  port ${values.port} is in use, using ${server.port}`);
   }
-  const url = `http://127.0.0.1:${server.port}`;
-  hold(pr, server.port!);
-  watchReleases((r) => { session.release = r; console.log(`  ▸ Bobby ${r.version} is out (you have ${pkg.version}): ${r.url}`); });
+  const url = `http://127.0.0.1:${server.port}${path}`;
+  hold(server.port!);
+  watchReleases((r) => { app.release = r; console.log(`  ▸ Bobby ${r.version} is out (you have ${pkg.version}): ${r.url}`); });
   console.log(`\n  ▶ ${url}\n`);
   if (!values["no-open"]) await run(openCommand(url), { allowFail: true }).catch(() => console.log("  (open that link in your browser)"));
 }

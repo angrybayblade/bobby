@@ -55,19 +55,20 @@ export function loadState(pr: PrKey & { headSha: string }): ReviewState {
 }
 export const saveState = (pr: PrKey, s: ReviewState) => writeJson(join(ROOT, "state", `${slug(pr)}.json`), { ...s, version: STATE_VERSION });
 
-// One Bobby per PR (or branch): each keeps the review's state in memory and saves all of it, so a second one would
-// save over the first's marks and drafts. The one serving it leaves its pid and port here while it runs.
-const lockPath = (pr: PrKey) => join(ROOT, "state", `${slug(pr)}.lock`);
+// One Bobby app at a time: it keeps each review's state in memory and saves all of it, so a second app on the same review
+// would save over the first's marks and drafts. The running one leaves its pid and port here; a second `bobby` hands
+// its review to it instead.
+const lockPath = (name: string) => join(ROOT, "state", `${name}.lock`);
 const alive = (pid: number) => { try { process.kill(pid, 0); return true; } catch (e) { return (e as { code?: string }).code === "EPERM"; } };
-/** The other Bobby serving this review, if one is still running (a lock left by one that died is ignored). */
-export function holder(pr: PrKey): { pid: number; port: number } | null {
+/** The other Bobby app, if one is still running (a lock left by one that died is ignored). */
+export function holder(name = "app"): { pid: number; port: number } | null {
   let l: { pid: number; port: number } | null = null;
-  try { l = JSON.parse(readFileSync(lockPath(pr), "utf8")); } catch { return null; }
+  try { l = JSON.parse(readFileSync(lockPath(name), "utf8")); } catch { return null; }
   return l && l.pid !== process.pid && alive(l.pid) ? l : null;
 }
-/** Marks this review as served by this process, until it exits. */
-export function hold(pr: PrKey, port: number) {
-  const path = lockPath(pr);
+/** Marks this process as the running app, until it exits. */
+export function hold(port: number, name = "app") {
+  const path = lockPath(name);
   writeJson(path, { pid: process.pid, port });
   // ctrl-c, a closed terminal or a kill end the process without "exit" unless something listens (the language
   // servers' handler exits for SIGINT already)

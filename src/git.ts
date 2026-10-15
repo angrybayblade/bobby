@@ -68,9 +68,10 @@ export interface ResolvedPr {
 }
 
 /** Reads the PR's metadata and finds (or clones) a local checkout. Doesn't fetch, so it's cheap enough to run on every launch. */
-export async function resolvePr(arg: string, repoDir?: string): Promise<ResolvedPr> {
+/** from: the folder to look in for a clone when repoDir isn't given (where you ran bobby; default this process's). */
+export async function resolvePr(arg: string, repoDir?: string, from = process.cwd()): Promise<ResolvedPr> {
   const parsed = parsePrArg(arg);
-  let cwd = repoDir ?? process.cwd();
+  let cwd = repoDir ?? from;
 
   const fields = "number,title,body,url,author,baseRefName,baseRefOid,headRefOid";
   const viewArgs = ["gh", "pr", "view", String(parsed.number), ...(parsed.owner ? ["-R", `${parsed.owner}/${parsed.repo}`] : []), "--json", fields];
