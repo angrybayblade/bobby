@@ -44,7 +44,10 @@ export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&a
 export const inline = (s) => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
 /** A call to Bobby's server. Rejects when it fails: the server can't be reached (stopped, or the laptop slept), or it
  *  answers an error. An answer that carries its own ok: false (submit) is the caller's to read. */
+/** This page's review, as the app addresses it: /r/<id>; its API is under it. */
+export const reviewBase = location.pathname.startsWith("/r/") ? location.pathname.replace(/\/+$/, "") : "";
 export async function api(url, body, method = body ? "POST" : "GET") {
+  if (url.startsWith("/api/") && url !== "/api/avatar" && !url.startsWith("/api/avatar?")) url = reviewBase + url;
   let r;
   try { r = await fetch(url, { method, headers: body ? { "content-type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined }); }
   catch { throw new Error("Bobby isn't answering. Is it still running in your terminal?"); }

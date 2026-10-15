@@ -6,10 +6,19 @@ import * as tour from "./tour.js";
 import { ACTIONS, actionFor, keyHtml, keyOfEvent, keysOf, keyText } from "./keys.js";
 import views from "./views/index.js";
 
-// Without these there's no review: say why, in place of "Fetching the change tree…", and stop.
-const [graph, session] = await Promise.all([api("/api/graph"), api("/api/session")]).catch((e) => {
-  const empty = document.querySelector("#view > .empty");
-  if (empty) empty.textContent = `Couldn't load the review: ${e.message} Reload once it's back.`;
+// Without these there's no review: say why, in place of "Fetching the change tree…", and stop. A review still being
+// built (just opened) answers "loading": wait for it, saying what it is.
+const loadingLine = (text) => { const empty = document.querySelector("#view > .empty"); if (empty) empty.textContent = text; };
+const [graph, session] = await (async () => {
+  for (;;) {
+    const g = await api("/api/graph");
+    if (!g.loading) return [g, await api("/api/session")];
+    loadingLine(`Building the review of ${g.title}… Its progress is in the terminal Bobby runs in.`);
+    document.title = `${g.title} · bobby`;
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+})().catch((e) => {
+  loadingLine(`Couldn't load the review: ${e.message} Reload once it's back.`);
   return new Promise(() => {});
 });
 const fresh = !Object.keys(session.settings).length; // nothing saved yet: a first launch
