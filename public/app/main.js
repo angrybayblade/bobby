@@ -177,6 +177,11 @@ app.refreshReview = async () => {
   poll();
 };
 app.watchServers = poll; // after you say yes, check again or no in the UI
+// How far you've got, for the home page's recents: now, and a moment after each mark
+const reportProgress = () => api("/api/progress", app.progress()).catch(() => {});
+let progressTimer = 0;
+app.on((why) => { if (why === "marks" || why === "comments") { clearTimeout(progressTimer); progressTimer = setTimeout(reportProgress, 1500); } });
+setTimeout(reportProgress, 2000);
 // A call that failed with no one to catch it (a save, a delete): say so rather than nothing.
 app.fail = (e) => chrome.toast(`Not saved: ${esc(e?.message ?? e)}`, 8000);
 app.toastUndo = (what) => chrome.toast(`<span>${esc(what)}.</span> <button class="btn" data-act="undo">Undo</button>`, 8000);

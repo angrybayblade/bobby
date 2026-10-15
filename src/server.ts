@@ -8,6 +8,8 @@ import { type Inspector, insideRepo, inspectSyntax, referencesSyntax, type Uses 
 import { declineServer, inspectorFor, installServer, recheckServer, type ServerInfo, serverInfoFor } from "./servers.ts";
 import { Repo } from "./resolve.ts";
 import type { Update } from "./watch.ts";
+import { loadRecents, noteRecent, prLists } from "./recents.ts";
+import pkg from "../package.json" with { type: "json" };
 import type { Release } from "./updates.ts";
 
 export interface Session {
@@ -33,6 +35,7 @@ export interface Session {
   rebuilding?: boolean;
   baseRef?: string; // a PR's base branch, to notice it being retargeted
   builtHead?: string; // a local review: HEAD when it was built
+  id?: string; // its address in the app (/r/<id>), and its key in recents
 }
 
 const PUBLIC = join(import.meta.dir, "..", "public");
@@ -156,8 +159,17 @@ export function startServer(app: App, port: number) {
         if (l) return json({ loading: true, title: l.title }, 202);
         return json({ error: `No review ${id} is open. Open it from the home page, or with bobby <PR URL>.` }, 404);
       }
-      if (!p.startsWith("/api/")) return staticFile(p === "/" ? "/index.html" : p);
+      if (!p.startsWith("/api/")) return staticFile(p === "/" ? "/home.html" : p);
       if (p === "/api/avatar") return avatar(url.searchParams.get("u") ?? "");
+      // The home page: what you've opened (and which are open now), and the GitHub lists, filtered.
+      if (p === "/api/home") {
+        const recents = (await loadRecents()).map((r) => ({ ...r, open: app.reviews.has(r.id), loading: app.loading.has(r.id) && !app.loading.get(r.id)!.error }));
+        return json({ settings: loadSettings(), me: await whoAmI(join(home(), "cache", "me.json")), release: app.release ?? null, version: pkg.version, recents });
+      }
+      if (p === "/api/home/prs") {
+        const q = (k: string) => url.searchParams.get(k) ?? undefined;
+        return json(await prLists({ repo: q("repo"), author: q("author"), q: q("q") }, url.searchParams.has("fresh")));
+      }
       if (req.method === "POST" && p === "/api/open") {
         const { arg, repo, cwd, base, refresh, noLlm, noLsp } = (await req.json().catch(() => ({}))) as { arg?: string; repo?: string; cwd?: string; base?: string; refresh?: boolean; noLlm?: boolean; noLsp?: boolean };
         if (!app.open) return json({ error: "this Bobby can't open reviews" }, 400);
@@ -188,6 +200,12 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
       if (p === "/api/avatar") return avatar(url.searchParams.get("u") ?? "");
       if (p === "/api/status") return json({ llm: s.llm, llmError: s.llmError, claudeReady: !!s.claudeGraph, servers: Object.values(s.servers ?? {}), discussionAt: s.discussionAt ?? 0, release: app.release ?? null, update: s.rebuilding ? { ...s.update, rebuilding: true } : s.update ?? null });
       if (p === "/api/discussion") return json(s.staticGraph.discussion ?? []);
+      // How far you've got, for recents on the home page (the page counts pages; drafts are counted here)
+      if (req.method === "POST" && p === "/api/progress") {
+        const { done, total } = (await req.json()) as { done: number; total: number };
+        if (s.id && Number.isInteger(done) && Number.isInteger(total)) void noteRecent({ id: s.id, progress: { done, total }, drafts: s.state.comments.filter((c) => !c.wip && c.kind !== "note").length });
+        return json({ ok: true });
+      }
       // Move the review to the new work watch.ts noticed; the page then reads the new graph
       if (req.method === "POST" && p === "/api/refresh") {
         if (!s.rebuild || !s.update?.refresh) return json({ ok: false, error: "nothing new to refresh to" }, 400);

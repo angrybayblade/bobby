@@ -2,13 +2,14 @@
 import { parseArgs } from "node:util";
 import { readFileSync, statSync, writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
-import { reviewComments, run } from "./git.ts";
+import { git, reviewComments, run } from "./git.ts";
 import { GRAPH_SCHEMA, LEGACY_SCHEMAS, type ReviewGraph } from "./graph.ts";
 import { clean, prune } from "./prune.ts";
 import { watchReleases } from "./updates.ts";
 import { hold, holder, home, loadSettings, loadState } from "./state.ts";
 import { allow, SERVERS, serverById, startServers, stopServers } from "./servers.ts";
 import { resolve, reviewId, start, type ReviewOptions } from "./review.ts";
+import { noteRecent, recentOf } from "./recents.ts";
 import { type App, startServer, type Session } from "./server.ts";
 import pkg from "../package.json" with { type: "json" };
 
@@ -154,7 +155,12 @@ app.open = async (a, o) => {
   if (app.reviews.has(id) || (app.loading.has(id) && !app.loading.get(id)!.error)) return id;
   app.loading.set(id, { title: resolved.title });
   resolved.build().then(
-    (p) => { app.reviews.set(id, start(p, ro)); app.loading.delete(id); },
+    (p) => {
+      const s = start(p, ro);
+      s.id = id;
+      app.reviews.set(id, s); app.loading.delete(id);
+      void noteRecent(recentOf(id, p.staticGraph.pr, p.cwd));
+    },
     (e) => { app.loading.set(id, { title: resolved.title, error: String(e?.message ?? e) }); console.error(`  ✗ ${resolved.title}: ${e?.message ?? e}`); },
   );
   return id;
