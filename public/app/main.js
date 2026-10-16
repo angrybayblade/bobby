@@ -4,7 +4,7 @@ import * as chrome from "./chrome.js";
 import * as palette from "./palette.js";
 import * as tour from "./tour.js";
 import { ACTIONS, actionFor, keyHtml, keyOfEvent, keysOf, keyText } from "./keys.js";
-import views from "./views/index.js";
+import allViews from "./views/index.js";
 
 // Without these there's no review. A review still being built (just opened) answers "loading", with its steps so far:
 // show them, in your theme, until it's ready; one that failed, or a server gone, says why and stops.
@@ -99,6 +99,8 @@ app.on((why) => why === "settings" && applySettings());
 for (const q of ["(prefers-color-scheme: light)", "(prefers-reduced-motion: reduce)"]) window.matchMedia(q).addEventListener("change", applySettings);
 
 // ---- views
+// Only those that apply to this review: a local branch has no PR, so no Conversation.
+const views = allViews.filter((v) => v.available?.(graph) ?? true);
 // Each view mounts into its own slot. Diff is costly to build, so it's kept alive when you switch away: its slot is
 // parked (content-visibility: hidden keeps its layout, so showing it again is a repaint, not a rebuild) and it catches
 // up on return ("resume"). The others are cheap and are rebuilt each time.
@@ -125,6 +127,7 @@ function mount(id) {
 }
 app.switchView = (id) => {
   if (id === currentId) return;
+  app.prevView = currentId; // where a jump back into the code goes
   mount(id);
   // remembered without a "settings" event, which would render the view just mounted again; "view" redraws the chrome
   app.settings.view = id;

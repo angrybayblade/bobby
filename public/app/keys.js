@@ -25,7 +25,7 @@ export const ACTIONS = [
   { id: "focus", group: "Reading", title: "Focus mode: what you're on fills the screen; again to go back", keys: ["f"] },
   { id: "fullScreen", group: "Reading", title: "Full screen page; again to go back", keys: ["g"] },
   { id: "expand", group: "Reading", title: "Open collapsed code, then more context", keys: ["e"] },
-  { id: "nextView", group: "Reading", title: "Switch view: Flow, Outline, Lens, Diff", keys: ["v"] },
+  { id: "nextView", group: "Reading", title: "Switch view: Conversation, Flow, Outline, Lens, Diff", keys: ["v"] },
   { id: "layout", group: "Reading", title: "Diff layout: inline or split", keys: ["d"] },
   { id: "files", group: "Reading", title: "Show or hide the file tree", keys: ["t"] },
   // reviewing
