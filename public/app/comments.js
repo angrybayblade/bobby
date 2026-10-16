@@ -215,7 +215,7 @@ export function md(src) {
 }
 /** A comment's first words, for a collapsed thread. */
 const plain = (s) => String(s ?? "").replace(/```[\s\S]*?```/g, "[code]").replace(/<[^>]+>/g, "").replace(/[*_`#>]/g, "").replace(/\s+/g, " ").trim().slice(0, 140);
-function ago(when) {
+export function ago(when) {
   const t = Date.parse(when ?? "");
   if (!t) return "";
   const s = (Date.now() - t) / 1000;
