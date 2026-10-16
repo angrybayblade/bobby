@@ -29,6 +29,9 @@ Paths are under `/r/<id>`.
 |---|---|---|
 | `GET /api/graph` | → `ReviewGraph` | Claude's graph if ready, else the static one. `?tree=static` forces static. |
 | `GET /api/session` | → `{ state, settings, llm, llmError, servers, caps: { files, inspect } }` | Everything the UI needs at boot. `servers`: a language server per language in the review, `{ id, title, state, error?, hint?, command?, offer? }`, `state` one of `consent`, `missing`, `installing`, `pending`, `done`, `failed`, `off`. `caps.files` and `caps.inspect` are true when there's a local clone. |
+| `GET /api/conversation` | → `Conversation` (`src/conversation.ts`) | The PR's description, timeline, review threads, verdicts, requested reviewers and CI checks, from one GitHub GraphQL query; read at most every 15 s, `?fresh` to read now. 404 for a local review. |
+| `POST /api/conversation/comment` | `{ body }` → `{ ok, url }` | Posts a comment on the PR. |
+| `POST /api/conversation/reply` | `{ body, to }` → `{ ok, url }` | Replies in the review thread whose first comment is `to`, and re-reads the inline discussion. |
 | `GET /api/status` | → `{ llm, llmError, claudeReady, servers }` | Polled every 3 s while Claude works or a server installs or loads. |
 | `POST /api/servers/install`, `/check`, `/decline` | `{ id, never? }` → `{ servers }` | A language server: yes, install it (in the background); look again for what you installed yourself (gopls); not now, or never (saved). |
 | `GET /api/definitions` | → `{ [path]: Definition[] }` | The graph's, with each finished language server's answers for its files. |

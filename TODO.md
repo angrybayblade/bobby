@@ -20,7 +20,8 @@ The CLI is the public release: it needs `git`, `gh` (logged in) and SSH access t
 
 ## Review UI
 
-- [ ] PR description and comments: UI/UX pass (in progress).
+- [x] Conversation view: description, timeline, threads with replies, reviewers, CI, mergeability.
+- [ ] Conversation: resolve and unresolve threads; reactions; edit or delete your own comments.
 - [ ] Generated files: one detector, so the Generated switch also covers `dist/`, `build/`, `vendor/`, `.min.js` and
       `.map` (now only on the Low-signal page, from `src/diff.ts`).
 - [ ] Highlighting a slice that starts inside a multi-line string, template literal or Python docstring (block
