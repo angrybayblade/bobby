@@ -221,6 +221,28 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
         }
         try { return json(await s.conversation.value); } catch (e) { return json({ error: String((e as Error).message) }, 502); }
       }
+      // Writing in the conversation: a comment on the PR, or a reply in a review thread. Each posts at once, as GitHub's
+      // Comment and Reply buttons do (a review, with its drafts on lines, still goes through /api/submit).
+      if (req.method === "POST" && (p === "/api/conversation/comment" || p === "/api/conversation/reply")) {
+        const { body, to } = (await req.json().catch(() => ({}))) as { body?: unknown; to?: unknown };
+        if (typeof body !== "string" || !body.trim()) return json({ ok: false, error: "Nothing to post" }, 400);
+        if (p.endsWith("/reply") && (typeof to !== "string" || !/^\d+$/.test(to))) return json({ ok: false, error: "to must be the id of a review comment" }, 400);
+        if (pr().provider === "local") return json({ ok: false, error: "This is a local review with no PR, so there's nowhere to post." }, 400);
+        const { owner, repo, number } = pr();
+        const where = p.endsWith("/reply") ? `repos/${owner}/${repo}/pulls/${number}/comments/${to}/replies` : `repos/${owner}/${repo}/issues/${number}/comments`;
+        try {
+          // --input, not -f body=…: gh reads a value starting with @ as a file
+          const posted = JSON.parse(await run(["gh", "api", "--method", "POST", where, "--input", "-"], { input: JSON.stringify({ body }) }));
+          s.conversation = undefined;
+          if (p.endsWith("/reply")) { // a reply is a review comment too: it shows on its line in the other views
+            const discussion = await reviewComments(pr(), true).catch(() => null);
+            if (discussion) { for (const g of [s.staticGraph, s.claudeGraph]) if (g) g.discussion = discussion; s.discussionAt = Date.now(); }
+          }
+          return json({ ok: true, url: posted.html_url });
+        } catch (e) {
+          return json({ ok: false, error: String((e as Error).message) }, 400);
+        }
+      }
       // How far you've got, for recents on the home page (the page counts pages; drafts are counted here)
       if (req.method === "POST" && p === "/api/progress") {
         const { done, total } = (await req.json()) as { done: number; total: number };
