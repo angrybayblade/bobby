@@ -17,11 +17,22 @@ const langOf = (path) => {
   return base === "dockerfile" ? "dockerfile" : EXT[base.split(".").pop()];
 };
 
-// Highlight a whole block (so multi-line comments/strings colour correctly), then split per line.
+const BLOCK_COMMENTS = new Set(["typescript", "javascript", "go", "rust", "java", "kotlin", "php", "csharp", "c", "cpp", "swift", "scala", "css", "scss", "dart"]);
+/** A slice that starts inside a block comment: its leading " * …" lines run into a "*" + "/" with no opener before it. */
+function opensInComment(lines, lang) {
+  if (!BLOCK_COMMENTS.has(lang)) return false;
+  const k = lines.findIndex((s) => !/^\s*\*/.test(s) || s.includes("*/"));
+  return k >= 0 && lines[k].includes("*/") && !lines[k].slice(0, lines[k].indexOf("*/")).includes("/*");
+}
+
+// Highlight a whole block (so multi-line comments/strings colour correctly), then split per line. A slice cut from the
+// middle of a block comment gets the opener it's missing, so the comment doesn't read as code (and the code after it
+// as comment); that line is dropped again.
 function hlBlock(lines, lang) {
   if (!lang || !window.hljs?.getLanguage(lang)) return lines.map(esc);
+  const lead = opensInComment(lines, lang) ? ["/*"] : [];
   let html;
-  try { html = hljs.highlight(lines.join("\n"), { language: lang, ignoreIllegals: true }).value; } catch { return lines.map(esc); }
+  try { html = hljs.highlight([...lead, ...lines].join("\n"), { language: lang, ignoreIllegals: true }).value; } catch { return lines.map(esc); }
   const out = [], open = [];
   let cur = "";
   for (const m of html.matchAll(/(<span[^>]*>)|(<\/span>)|(\n)|([^<\n]+|<)/g)) {
@@ -31,7 +42,7 @@ function hlBlock(lines, lang) {
     else cur += m[4];
   }
   out.push(cur + "</span>".repeat(open.length));
-  return out;
+  return out.slice(lead.length);
 }
 
 // ---- word-level diff: pair removed/added runs line by line, LCS over tokens.
