@@ -4,14 +4,17 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
-- A third style, **Silverpoint**: graphite and silver neutrals on a toned ground, one muted steel accent, in dark and light (Settings › Style).
+## 0.1.0-rc7 (2026-10-16)
 
-- Upgrading from an rc: the home page's Recents starts with the PRs you'd already reviewed (from their saved progress), and a Bobby from an earlier rc still running on a review is detected rather than overwritten.
+A home page to pick PRs from, and one Bobby for all your reviews.
 
 - A home page: paste a PR, or pick one from Recents (with your progress), Review requested, My PRs and All, filtered by repo, author and title. `bobby` outside a repo, or `bobby home`, opens it.
 - One Bobby holds every review you open, each at its own address; `bobby <PR>` while one is running opens it there. Reviews no page has looked at for 15 minutes are closed to free memory.
-
 - Review one commit of a PR, or a range of commits: `bobby <pr-url>/changes/<sha>` (or `<from>..<to>`), as GitHub's commit view.
+- A third style, **Silverpoint**: graphite and silver neutrals on a toned ground, one muted steel accent, in dark and light (Settings › Style).
+- A new logo: Bobby, the curious puppy.
+- The loading screen matches the app; focus rings are a quieter steel blue; double-click a file in the tree to zoom right into it.
+- Upgrading from an rc: the home page's Recents starts with the PRs you'd already reviewed (from their saved progress), and a Bobby from an earlier rc still running on a review is detected rather than overwritten.
 
 ## 0.1.0-rc6 (2026-10-15)
 
