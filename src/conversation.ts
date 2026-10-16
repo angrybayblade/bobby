@@ -23,7 +23,7 @@ export interface Check {
   url?: string; description?: string; startedAt?: string; completedAt?: string;
 }
 export interface Conversation {
-  author: Person; body: string; createdAt: string; url: string;
+  author: Person; body: string; createdAt: string; url: string; base: string; head: string; // branch names
   state: "OPEN" | "CLOSED" | "MERGED"; draft: boolean;
   mergeable: "MERGEABLE" | "CONFLICTING" | "UNKNOWN";
   decision: "APPROVED" | "CHANGES_REQUESTED" | "REVIEW_REQUIRED" | null;
@@ -45,7 +45,7 @@ const PR = (fields: string) => `query($owner: String!, $repo: String!, $n: Int!,
 // The rest of the timeline, a page at a time, for a long-running PR.
 const MORE = PR(TIMELINE);
 const QUERY = PR(`
-  body createdAt url state isDraft mergeable reviewDecision ${WHO}
+  body createdAt url baseRefName headRefName state isDraft mergeable reviewDecision ${WHO}
   ${TIMELINE}
   reviewThreads(first: 100) { nodes { id isResolved isOutdated path line startLine diffSide
     comments(first: 100) { nodes { databaseId body createdAt url ${WHO} pullRequestReview { databaseId } } } } }
@@ -96,7 +96,7 @@ export async function conversation(pr: Pick<PrInfo, "owner" | "repo" | "number">
     comments: t.comments.nodes.map((c: Raw) => ({ id: String(c.databaseId), author: person(c.author), body: c.body, createdAt: c.createdAt, url: c.url })),
   }));
   return {
-    author: person(p.author), body: p.body ?? "", createdAt: p.createdAt, url: p.url,
+    author: person(p.author), body: p.body ?? "", createdAt: p.createdAt, url: p.url, base: p.baseRefName, head: p.headRefName,
     state: p.state, draft: p.isDraft, mergeable: p.mergeable, decision: p.reviewDecision ?? null,
     timeline, threads,
     verdicts: p.latestOpinionatedReviews.nodes.map((r: Raw) => ({ author: person(r.author), state: r.state })),
