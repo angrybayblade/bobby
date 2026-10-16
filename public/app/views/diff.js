@@ -272,7 +272,7 @@ export default {
     let resized = false;
     new ResizeObserver(() => { if (M && stage.clientWidth) update("resize"); }).observe(stage);
     let builtFrom = "", builtGraph = null, fileSigs = new Map();
-    const buildSig = () => JSON.stringify(["diffLayout", "size", "font", "spacing", "palette", "untouched", "tests"].map((k) => app.settings[k]));
+    const buildSig = () => JSON.stringify(["diffLayout", "size", "font", "spacing", "palette", "untouched", "tests", "generated"].map((k) => app.settings[k]));
     const fileSig = (path) => {
       const on = (x) => x.path === path;
       return JSON.stringify([app.layoutOf(path), app.state.comments.filter(on).map((c) => [c.id, c.line, c.body]),
@@ -938,7 +938,7 @@ export default {
     function trace(from, to) {
       while (from.length) {
         const e = from.pop(), v = views.get(e.path);
-        if (!v) continue; // a node hidden since (tests, untouched code): skip it
+        if (!v) continue; // a node hidden since (tests, generated files, untouched code): skip it
         const pid = M.fileOf.get(M.canon(e.pid) ?? "")?.path === e.path ? e.pid : v.f.sections[0].pid;
         if (trail.at) to.push(trail.at);
         tracing = e.path;

@@ -178,7 +178,8 @@ function renderTop() {
     <div class="prog" title="${done} of ${total} pages reviewed"><div class="bar"><i style="width:${pct}%"></i></div>${done}/${total}${mins && done < total ? ` · ~${mins}m` : ""}</div>
     <div class="seg" role="group" aria-label="View">${views.map((v) => `<button data-view="${v.id}" aria-pressed="${app.viewId === v.id}" title="${esc(v.hint)} (${esc(keysOf(app.settings, "nextView").map(keyText)[0] ?? "")})">${esc(v.name)}</button>`).join("")}</div>
     ${drafts ? `<button class="pill signal" data-act="submit">${drafts} draft${drafts > 1 ? "s" : ""} · ${esc(keyText(keysOf(app.settings, "submit")[0] ?? ""))}</button>` : ""}
-    <button class="pill tog" data-act="tests" aria-pressed="${app.settings.tests === "show"}" title="Test files and generated files, in every view: ${app.settings.tests === "show" ? "shown. Click to hide" : "hidden. Click to show"}">⚗ Tests</button>
+    <button class="pill tog" data-act="tests" aria-pressed="${app.settings.tests === "show"}" title="Test files, in every view: ${app.settings.tests === "show" ? "shown. Click to hide" : "hidden. Click to show"}">⚗ Tests</button>
+    <button class="pill tog" data-act="generated" aria-pressed="${app.settings.generated === "show"}" title="Generated files (openapi specs, __generated__/, @generated, DO NOT EDIT…), in every view: ${app.settings.generated === "show" ? "shown. Click to hide" : "hidden. Click to show"}">⚙ Generated</button>
     <button class="pill tog" data-act="untouched" aria-pressed="${app.settings.untouched !== "hide"}" title="Untouched code the changes rely on or affect, in every view: ${app.settings.untouched === "hide" ? "hidden. Click to show" : "shown. Click to hide"}">○ Untouched</button>
     <button class="pill" data-act="notes" title="Your private notes (${esc(keyName(app.settings, "notes"))}). Never posted to GitHub.">✎ Notes${app.state.notes.length ? ` · ${app.state.notes.length}` : ""}</button>
     ${commentsButton()}
@@ -354,7 +355,8 @@ const SETTINGS = [
   ["untouched", "Untouched code", [["hide", "Hidden"], ["show", "Shown"]]],
   ["fileTree", "File tree", [["show", "Shown"], ["hide", "Hidden"]]],
   ["fileTreeSide", "File tree side", [["right", "Right"], ["left", "Left"]]],
-  ["tests", "Tests & generated files", [["hide", "Hidden"], ["show", "Shown"]]],
+  ["tests", "Test files", [["hide", "Hidden"], ["show", "Shown"]]],
+  ["generated", "Generated files", [["hide", "Hidden"], ["show", "Shown"]]],
 ];
 export function settings() {
   open(`<h2>Settings</h2><p>Changes apply immediately and are remembered.</p>
@@ -611,6 +613,7 @@ function onClick(ev) {
     layout: () => app.saveSettings({ diffLayout: ds.val }),
     untouched: () => app.saveSettings({ untouched: app.settings.untouched === "hide" ? "show" : "hide" }),
     tests: () => app.saveSettings({ tests: app.settings.tests === "show" ? "hide" : "show" }),
+    generated: () => app.saveSettings({ generated: app.settings.generated === "show" ? "hide" : "show" }),
     files: () => toggleFiles(),
     keys: () => keysEditor(),
     "pr-comments": () => togglePR(app),

@@ -308,7 +308,8 @@ function commands() {
     { id: "keys", title: "Customize keyboard shortcuts", sub: "bind any action to the keys you like", run: () => chrome.keysEditor() },
     { id: "tour", title: "Take the tour", sub: "how the walk, the views and the keys fit together", run: () => tour.start() },
     ...views.filter((v) => v.id !== currentId).map((v) => ({ id: `view:${v.id}`, title: `${v.name} view`, sub: v.hint, run: () => app.switchView(v.id) })),
-    { id: "set:tests", title: `${s.tests === "show" ? "Hide" : "Show"} tests and generated files`, run: () => flip("tests", "show", "hide") },
+    { id: "set:tests", title: `${s.tests === "show" ? "Hide" : "Show"} tests`, run: () => flip("tests", "show", "hide") },
+    { id: "set:generated", title: `${s.generated === "show" ? "Hide" : "Show"} generated files`, run: () => flip("generated", "show", "hide") },
     { id: "set:untouched", title: `${s.untouched === "hide" ? "Show" : "Hide"} untouched code`, run: () => flip("untouched", "hide", "show") },
     ...[["system", "System"], ["dark", "Dark"], ["light", "Light"]].filter(([v]) => v !== s.theme).map(([v, t]) => ({ id: `theme:${v}`, title: `Theme: ${t}`, run: () => app.saveSettings({ theme: v }) })),
   ];
