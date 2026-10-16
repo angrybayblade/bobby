@@ -9,6 +9,7 @@ import { declineServer, inspectorFor, installServer, recheckServer, type ServerI
 import { Repo } from "./resolve.ts";
 import type { Update } from "./watch.ts";
 import { loadRecents, noteRecent, prLists } from "./recents.ts";
+import { type Conversation, conversation } from "./conversation.ts";
 import pkg from "../package.json" with { type: "json" };
 import type { Release } from "./updates.ts";
 
@@ -30,6 +31,7 @@ export interface Session {
   refresh?: boolean; // --refresh: language servers answer afresh rather than from their cache
   // Keeping it current (watch.ts): when the PR's comments last changed; new work to move to, if any; moving to it.
   discussionAt?: number;
+  conversation?: { at: number; value: Promise<Conversation> }; // the Conversation view's, read at most every 15 s
   update?: Update;
   rebuild?: () => Promise<void>;
   rebuilding?: boolean;
@@ -210,6 +212,15 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
       if (p === "/api/avatar") return avatar(url.searchParams.get("u") ?? "");
       if (p === "/api/status") return json({ llm: s.llm, llmError: s.llmError, claudeReady: !!s.claudeGraph, servers: Object.values(s.servers ?? {}), discussionAt: s.discussionAt ?? 0, release: app.release ?? null, update: s.rebuilding ? { ...s.update, rebuilding: true } : s.update ?? null });
       if (p === "/api/discussion") return json(s.staticGraph.discussion ?? []);
+      if (p === "/api/conversation") {
+        if (pr().provider === "local") return json({ error: "A local review has no PR, so no conversation." }, 404);
+        if (!s.conversation || url.searchParams.has("fresh") || Date.now() - s.conversation.at > 15_000) {
+          const value = conversation(pr());
+          s.conversation = { at: Date.now(), value };
+          value.catch(() => { if (s.conversation?.value === value) s.conversation = undefined; }); // a failure isn't kept
+        }
+        try { return json(await s.conversation.value); } catch (e) { return json({ error: String((e as Error).message) }, 502); }
+      }
       // How far you've got, for recents on the home page (the page counts pages; drafts are counted here)
       if (req.method === "POST" && p === "/api/progress") {
         const { done, total } = (await req.json()) as { done: number; total: number };
