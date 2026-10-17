@@ -12,7 +12,7 @@ const keyOf = (c) => `${c.path}|${c.side}|${c.line}`;
 let memo = null;
 export function commentIndex(app) {
   const disc = app.graph.discussion ?? [], mine = app.state.comments, notes = app.state.notes;
-  const sig = `${disc.length}:${disc.at(-1)?.id}|${mine.map((c) => `${c.id}${c.wip ? "w" : ""}${c.kind ?? ""}${c.body.length}`).join()}|${notes.map((n) => `${n.id}${n.body.length}`).join()}`;
+  const sig = `${disc.length}:${disc.at(-1)?.id}:${disc.filter((c) => c.resolved).length}|${mine.map((c) => `${c.id}${c.wip ? "w" : ""}${c.kind ?? ""}${c.body.length}`).join()}|${notes.map((n) => `${n.id}${n.body.length}`).join()}`;
   if (memo?.graph === app.graph && memo.sig === sig) return memo.idx;
   const me = app.me ?? {}, threads = new Map(), byKey = new Map(), byPath = new Map();
   const add = (map, k, v) => (map.get(k) ?? map.set(k, []).get(k)).push(v);
@@ -23,6 +23,7 @@ export function commentIndex(app) {
     let t = threads.get(root);
     if (!t) threads.set(root, (t = { id: root, kind: "gh", path: c.path, side: c.side, line: c.line, startLine: c.startLine, startSide: c.startSide, items: [] }));
     t.items.push({ author: c.author, avatar: c.avatar, body: c.body, html: c.html, url: c.url, createdAt: c.createdAt });
+    if (c.resolved) t.resolved = true;
   }
   // your drafts: comments to be, so threads of their own
   for (const c of mine.filter((x) => x.kind !== "note")) {
@@ -41,11 +42,12 @@ export function commentIndex(app) {
   return memo.idx;
 }
 
-// ---- collapsed or open: a thread's own choice, else its file's, else the PR's (the setting)
+// ---- collapsed or open: a thread's own choice, else its file's, else the PR's (the setting). A resolved thread starts
+// collapsed whatever the file and PR say, as on GitHub: done with, until you open it.
 const pageState = (app) => (app.commentState ??= { files: new Map(), items: new Map() }); // while the page is open, across focus changes
 const prState = (app) => app.settings.comments ?? "open";
 export const fileState = (app, path) => pageState(app).files.get(path) ?? prState(app);
-const itemOpen = (app, id, path) => (pageState(app).items.get(id) ?? fileState(app, path)) === "open";
+const itemOpen = (app, id, path) => (pageState(app).items.get(id) ?? (commentIndex(app).threads.get(id)?.resolved ? "collapsed" : fileState(app, path))) === "open";
 /** Re-renders after a comment change without moving what you're reading: each visible code scroller keeps the thread
  *  you clicked (if it's in it), else its first line on screen, where it was. */
 function keepPlace(app, clicked) {
@@ -107,17 +109,17 @@ function threadHtml(app, t) {
   const open = itemOpen(app, t.id, t.path), first = t.items[0], n = t.items.length;
   if (!open) { // in place, one line: who, how many, and how it starts
     const faces = [...new Map(t.items.map((i) => [i.author, i])).values()].slice(0, 3).map(avatar).join("");
-    return `<div class="cthread slim${t.kind === "draft" ? " draft" : ""}" data-thread="${esc(t.id)}" data-tid="${esc(t.id)}" data-tpath="${esc(t.path)}" title="Show ${n > 1 ? "this thread" : "this comment"}">
-      <span class="cfaces">${faces}</span><b>${esc(first.author)}</b>${t.kind === "draft" ? `<span class="ctag">${first.wip ? "unfinished" : "draft"}</span>` : ""}
+    return `<div class="cthread slim${t.kind === "draft" ? " draft" : ""}${t.resolved ? " resolved" : ""}" data-thread="${esc(t.id)}" data-tid="${esc(t.id)}" data-tpath="${esc(t.path)}" title="Show ${n > 1 ? "this thread" : "this comment"}">
+      <span class="cfaces">${faces}</span><b>${esc(first.author)}</b>${t.kind === "draft" ? `<span class="ctag">${first.wip ? "unfinished" : "draft"}</span>` : ""}${t.resolved ? `<span class="ctag">resolved</span>` : ""}
       <span class="cprev">${esc(plain(first.body))}</span>${n > 1 ? `<span class="cn">${n} comments</span>` : ""}${bubble(false)}</div>`;
   }
   const items = t.items.map((i, k) => `<div class="citem">${avatar(i)}<div class="cmain">
       <div class="cwho"><b>${esc(i.author)}</b>${i.draft ? `<span class="ctag">${i.wip ? "unfinished draft" : "draft"}</span>` : ""}<span class="cwhen" title="${esc(i.createdAt ?? "")}">${ago(i.createdAt)}</span>
-        ${k === 0 ? range(t) : ""}${i.url ? `<a class="clink" href="${esc(i.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a>` : ""}<span class="cgrow"></span>
+        ${k === 0 ? range(t) : ""}${k === 0 && t.resolved ? `<span class="ctag">resolved</span>` : ""}${i.url ? `<a class="clink" href="${esc(i.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a>` : ""}<span class="cgrow"></span>
         ${i.wip ? `<button class="cact" data-wip="${esc(i.cid)}" title="Open it again to finish">Continue</button>` : ""}${i.cid ? `<button class="cact" data-del="${esc(i.cid)}" title="Discard this draft">Delete</button>` : ""}
         ${k === 0 ? `<button class="cfold" data-tid="${esc(t.id)}" data-tpath="${esc(t.path)}" title="Collapse${n > 1 ? " this thread" : ""}">${bubble(true)}</button>` : ""}</div>
       <div class="cbody${i.html ? " gh" : ""}" data-ck="${esc(t.id)}:${k}">${i.html ? ghHtml(i.html) : md(i.body)}</div></div></div>`).join("");
-  return `<div class="cthread${t.kind === "draft" ? " draft" : ""}" data-thread="${esc(t.id)}">${items}</div>`;
+  return `<div class="cthread${t.kind === "draft" ? " draft" : ""}${t.resolved ? " resolved" : ""}" data-thread="${esc(t.id)}">${items}</div>`;
 }
 
 // ---- notes: floating beside their line, over the code's right edge; collapsed to an icon

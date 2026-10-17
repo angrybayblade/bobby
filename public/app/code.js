@@ -302,9 +302,20 @@ function privateNote(n, where, key) {
   return `<div class="note mine"${key ? ` data-jump="${key}"` : ""}><div class="who">You · private note${where ? ` · ${where}` : ""}<button class="x" data-delnote="${n.id}" title="Delete note">✕</button></div><div class="body">${esc(n.body)}</div></div>`;
 }
 
-// Notes on a whole file, plus the composer while you're writing one.
+// Notes on a whole file, plus the composer while you're writing one; above them, the file's outdated review threads
+// (their line is gone from the diff, so they can't sit in the code): a line that opens them in the Conversation view.
 const pathOf = (node) => (node.kind === "change" ? node.file : node.location.path);
+function outdatedHtml(app, path) {
+  const list = (app.graph.outdated ?? []).filter((t) => t.path === path);
+  if (!list.length) return "";
+  const open = list.filter((t) => !t.resolved).length, n = list.length;
+  const what = `${n} outdated thread${n > 1 ? "s" : ""}${open < n ? ` (${open ? `${open} unresolved` : n > 1 ? "all resolved" : "resolved"})` : ""}`;
+  return `<button class="foutdated" data-outdated="${esc(list.find((t) => !t.resolved)?.id ?? list[0].id)}" title="Comments on lines this diff no longer has: read them in the Conversation view">◌ ${what} on this file <span>Open in Conversation →</span></button>`;
+}
 function fileNotesHtml(app, path) {
+  return outdatedHtml(app, path) + ownNotesHtml(app, path);
+}
+function ownNotesHtml(app, path) {
   const list = app.state.notes.filter((n) => n.path === path && !n.line);
   const c = app.page.composing, writing = c?.key === `file:${path}`;
   if (!list.length && !writing) return "";
@@ -854,6 +865,8 @@ function bind(app, el, rerender) {
   el.dataset.bound = "1";
   el.addEventListener("click", (ev) => {
     if (ev.target.closest("a")) return;
+    const od = ev.target.closest("[data-outdated]");
+    if (od) { app.convTarget = od.dataset.outdated; return app.switchView("conversation"); } // it opens on that thread
     const full = ev.target.closest("[data-cfull]");
     if (full) return showFull(app, full.dataset.cfull, full.closest(".cthread"));
     const fold = ev.target.closest("[data-tid]");

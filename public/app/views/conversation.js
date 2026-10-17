@@ -256,6 +256,14 @@ export default {
       try { data = await api(`/api/conversation${fresh ? "?fresh" : ""}`); error = ""; }
       catch (e) { if (!data) error = e.message; }
       render();
+      // sent here from a file's outdated threads: open that one and bring it into view
+      const target = data && app.convTarget && data.threads.find((t) => t.comments[0]?.id === app.convTarget);
+      if (target) {
+        app.convTarget = null;
+        shut.set(target.id, false);
+        render();
+        root.querySelector(`[data-thread="${CSS.escape(target.id)}"]`)?.scrollIntoView({ block: "center" });
+      }
     }
 
     async function post(key) {

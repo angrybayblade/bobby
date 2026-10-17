@@ -352,6 +352,11 @@ kbd {
 .cmline > .cthread + .cthread, .cmcell > .cthread + .cthread { margin-top: 6px; }
 .cthread { border: 1px solid var(--line); border-radius: 6px; background: var(--surface); font: 13px/1.5 var(--font-ui); overflow: hidden; white-space: normal; }
 .cthread.draft { border-color: color-mix(in srgb, var(--signal) 30%, var(--line)); }
+.cthread.resolved { opacity: .8; } .cthread.resolved.slim b { color: var(--muted); }
+/* a file's outdated review threads, above its code */
+.foutdated { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; margin: 0 0 8px; padding: 6px 10px; border: 1px dashed var(--line); border-radius: var(--radius); background: none; color: var(--muted); font: 12.5px var(--font-ui); cursor: pointer; }
+.foutdated span { margin-left: auto; color: var(--signal); }
+.foutdated:hover { border-color: var(--muted); color: var(--text); }
 .citem { display: flex; gap: 10px; padding: 10px 12px; }
 .citem + .citem { border-top: 1px solid var(--line-soft); }
 .cav { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--raised); object-fit: cover; }
