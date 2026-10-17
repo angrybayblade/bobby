@@ -1,4 +1,4 @@
-import { DONE, api, createApp, esc, reviewBase } from "./core.js";
+import { DONE, LOW, api, createApp, esc, reviewBase } from "./core.js";
 import { escapeCode, inspectorKey, inspectorOpen, expandAll, keepDraft, moveLine, renderFile, renderNode, renderPage, startComment, startFileNote } from "./code.js";
 import * as chrome from "./chrome.js";
 import * as palette from "./palette.js";
@@ -125,14 +125,61 @@ function mount(id) {
   current = view.mount(slot, app);
   alive.set(view.id, { inst: current, slot });
 }
-app.switchView = (id) => {
+app.switchView = (id, { push = true } = {}) => {
   if (id === currentId) return;
   mount(id);
   // remembered without a "settings" event, which would render the view just mounted again; "view" redraws the chrome
   app.settings.view = id;
   api("/api/settings", { view: id }).catch(() => {});
   app.emit("view");
+  if (push) writeRoute(true); // a new view is a step back can undo
 };
+
+// ---- the address: where you are, as a path under the review, so a reload, a bookmark, a shared link, back and forward
+// land there: /r/<id>/<view>, then what it's on as <file path>#L<line> (?zoom= when the level isn't the view's usual
+// one). A step is named by its file and line, not its placement id: ids change when Claude's tree replaces the static
+// one, a file and line don't. Moving within a view replaces the address; switching views adds to the history.
+const PSEUDO = { [LOW]: "~low-signal", [DONE]: "~done" };
+const usualLevel = (view) => (view === "diff" ? 1 : 2); // Diff: the file's viewer; elsewhere, the step's page
+function placeOf(pid) {
+  if (PSEUDO[pid]) return { path: PSEUDO[pid] };
+  const n = app.nodeOf(pid);
+  if (!n) return null;
+  if (n.kind === "context") return { path: n.location.path, line: n.location.line };
+  const h = app.hunksOf(pid)[0];
+  return { path: n.file, line: h ? h.newStart || h.oldStart : 0 };
+}
+function routeUrl() {
+  const at = app.level > 0 && currentId !== "conversation" ? placeOf(app.focus) : null;
+  const path = at ? `/${at.path.split("/").map(encodeURIComponent).join("/")}` : "";
+  const zoom = at && app.level !== usualLevel(currentId) ? `?zoom=${app.level === 1 ? "core" : "page"}` : "";
+  return `${reviewBase}/${currentId}${path}${zoom}${at?.line ? `#L${at.line}` : ""}`;
+}
+/** Where the address says to be: a view, and (with a file path) the step it names; null when it names no view. */
+function readRoute() {
+  const rest = location.pathname.slice(reviewBase.length).split("/").filter(Boolean).map((x) => { try { return decodeURIComponent(x); } catch { return x; } });
+  const view = views.find((v) => v.id === rest[0])?.id;
+  if (!view) return null;
+  const path = rest.slice(1).join("/");
+  if (!path) return { view };
+  const line = Number(/^#L(\d+)$/.exec(location.hash)?.[1] ?? 0), zoom = new URLSearchParams(location.search).get("zoom");
+  const pid = Object.keys(PSEUDO).find((k) => PSEUDO[k] === path) ?? app.pidAt(path, line);
+  return pid ? { view, pid, level: zoom === "core" ? 1 : zoom === "page" ? 2 : usualLevel(view) } : { view, missing: path };
+}
+function writeRoute(push = false) {
+  if (!reviewBase || !currentId) return;
+  const url = routeUrl();
+  if (url !== location.pathname + location.search + location.hash) history[push ? "pushState" : "replaceState"](null, "", url);
+}
+let routeTimer;
+app.on((why) => { if (why === "focus" || why === "level") { clearTimeout(routeTimer); routeTimer = setTimeout(writeRoute, 150); } });
+addEventListener("popstate", () => {
+  const r = readRoute();
+  if (!r) return;
+  if (r.pid) app.setFocus(r.pid, { level: r.level });
+  else if (r.view !== "conversation") app.setLevel(0);
+  app.switchView(r.view, { push: false });
+});
 app.on((why) => why !== "settings" && why !== "view" && current?.update?.(why));
 app.on((why) => why === "settings" && current?.update?.("settings"));
 // once a frame at most: a window drag fires many
@@ -246,12 +293,19 @@ app.level = entry ? 1 : resume ? (session.state.lastLevel ?? 2) : 0;
 const hash = new URLSearchParams(location.hash.slice(1)); // deep links for testing: #view=lens&level=1&p=5
 if (hash.has("level")) app.level = Number(hash.get("level"));
 if (hash.has("p")) app.focus = app.index.walk[Number(hash.get("p")) - 1] ?? app.focus;
-mount(hash.get("view") ?? app.settings.view);
+// the address (/r/<id>/<view>/<file path>#L<line>): that view, at that step; just a view, its overview
+const route = hash.has("view") || hash.has("p") ? null : readRoute();
+if (route?.pid) { app.focus = app.canonical(route.pid); app.level = route.level; }
+else if (route && route.view !== "conversation") app.level = 0;
+const linked = hash.has("p") || !!route?.pid || !!route?.missing; // sent somewhere: no welcome-back or start-here card over it
+mount(route?.view ?? hash.get("view") ?? app.settings.view);
+writeRoute(); // the address says where you are from the start (and drops a step the review no longer has)
 tour.init(app, { fresh });
 chrome.init(app, views);
 tour.welcome(() => {
-  if (resume && resume !== app.focus && !hash.has("p") && (app.progress().done > 0 || session.state.note)) chrome.reentry(resume, session.state.lastLevel ?? 2);
-  else if (entry && !hash.has("p")) {
+  if (route?.missing) chrome.toast(`<span>This review has no step in <code>${esc(route.missing)}</code> any more, so it opened at the overview.</span>`, 6000);
+  if (resume && resume !== app.focus && !linked && (app.progress().done > 0 || session.state.note)) chrome.reentry(resume, session.state.lastLevel ?? 2);
+  else if (entry && !linked) {
     const deps = entry.deps === 1 ? "1 thing" : `${entry.deps} things`;
     chrome.coreIntro(app.get(entry.pid), `<span style="color:var(--muted);font-size:13px">Start here: the core with the least around it (${deps} it relies on or affects). ${keyHtml(app.settings, "zoomOut")} for the overview.</span>`);
   }
