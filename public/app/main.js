@@ -191,10 +191,11 @@ async function keepCurrent(s) {
   if (seenDiscussion === null) seenDiscussion = s.discussionAt; // as of the graph this page loaded
   else if (s.discussionAt !== seenDiscussion) {
     seenDiscussion = s.discussionAt;
-    const d = await api("/api/discussion").catch(() => null);
+    const r = await api("/api/discussion").catch(() => null), d = r?.comments;
     if (d) {
       const had = new Set((app.graph.discussion ?? []).map((c) => c.id)), fresh = d.filter((c) => !had.has(c.id) && c.author !== app.me?.login);
       app.graph.discussion = d;
+      app.graph.outdated = r.outdated ?? [];
       app.emit("comments");
       if (fresh.length) chrome.toast(`<span>${fresh.length} new comment${fresh.length > 1 ? "s" : ""} from ${esc([...new Set(fresh.map((c) => c.author))].join(", "))}.</span>`, 6000);
     }

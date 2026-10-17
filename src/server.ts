@@ -1,7 +1,7 @@
 import { join, normalize } from "node:path";
 import { embeddedAsset } from "./assets.ts";
 import { fileLines, reviewComments, run, whoAmI } from "./git.ts";
-import type { ReviewGraph } from "./graph.ts";
+import { type ReviewGraph, setDiscussion } from "./graph.ts";
 import { home, loadSettings, saveSettings, saveState } from "./state.ts";
 import type { Comment, Definition, PrivateNote, ReviewState } from "./types.ts";
 import { type Inspector, insideRepo, inspectSyntax, referencesSyntax, type Uses } from "./inspect.ts";
@@ -211,7 +211,7 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
       // A GitHub avatar, fetched once and kept a week in ~/.bobby/cache/avatars. Only GitHub's own avatar hosts.
       if (p === "/api/avatar") return avatar(url.searchParams.get("u") ?? "");
       if (p === "/api/status") return json({ llm: s.llm, llmError: s.llmError, claudeReady: !!s.claudeGraph, servers: Object.values(s.servers ?? {}), discussionAt: s.discussionAt ?? 0, release: app.release ?? null, update: s.rebuilding ? { ...s.update, rebuilding: true } : s.update ?? null });
-      if (p === "/api/discussion") return json(s.staticGraph.discussion ?? []);
+      if (p === "/api/discussion") return json({ comments: s.staticGraph.discussion ?? [], outdated: s.staticGraph.outdated ?? [] });
       if (p === "/api/conversation") {
         if (pr().provider === "local") return json({ error: "A local review has no PR, so no conversation." }, 404);
         if (!s.conversation || url.searchParams.has("fresh") || Date.now() - s.conversation.at > 15_000) {
@@ -236,7 +236,7 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
           s.conversation = undefined;
           if (p.endsWith("/reply")) { // a reply is a review comment too: it shows on its line in the other views
             const discussion = await reviewComments(pr(), true).catch(() => null);
-            if (discussion) { for (const g of [s.staticGraph, s.claudeGraph]) if (g) g.discussion = discussion; s.discussionAt = Date.now(); }
+            if (discussion) { for (const g of [s.staticGraph, s.claudeGraph]) if (g) setDiscussion(g, discussion); s.discussionAt = Date.now(); }
           }
           return json({ ok: true, url: posted.html_url });
         } catch (e) {
@@ -418,8 +418,8 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
           persist();
           // Re-read the PR's comments so what was just posted shows on its lines; if that fails they show next start.
           const discussion = await reviewComments(pr(), true).catch(() => null);
-          if (discussion) for (const g of [s.staticGraph, s.claudeGraph]) if (g) g.discussion = discussion;
-          return json({ ok: true, url: JSON.parse(out).html_url, ...(discussion ? { discussion } : {}) });
+          if (discussion) for (const g of [s.staticGraph, s.claudeGraph]) if (g) setDiscussion(g, discussion);
+          return json({ ok: true, url: JSON.parse(out).html_url, ...(discussion ? { discussion: discussion.comments, outdated: discussion.outdated } : {}) });
         } catch (e) {
           return json({ ok: false, error: String((e as Error).message) }, 400);
         }

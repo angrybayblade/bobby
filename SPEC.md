@@ -28,6 +28,7 @@ PR ─┬─ files ── hunks                        (the raw diff)
     ├─ walk                                  (placement ids in review order)
     ├─ lowSignal                             (hunk ids to collapse)
     ├─ discussion?                           (existing review comments, by path + line + side)
+    ├─ outdated?                             (review threads whose line the diff no longer has, by path)
     └─ definitions?                          (path → names on its new-side diff lines, and where each is declared)
 ```
 
@@ -73,7 +74,9 @@ A core may carry `hook`: one short question to lead with, usually about what cou
 
 ### Discussion
 
-`discussion` is optional. It holds inline review comments already on the PR, so a reviewer sees what others said before writing. Each one is anchored like a GitHub review comment: `path`, `line` and `side` (`RIGHT` for the new file, `LEFT` for the old one). Comments whose line no longer exists in the diff are left out. Each may carry `avatar`, its author's GitHub avatar URL; `html`, GitHub's rendering of its body (sanitized by GitHub, and to be cleaned again before it's shown); `replyTo`, the id of the first comment of its thread; and, for a comment on a range of lines, `startLine` and `startSide`, its first line (`line` is its last). Adding it didn't change the version: v1 consumers that don't know the field ignore it.
+`discussion` is optional. It holds inline review comments already on the PR, so a reviewer sees what others said before writing. Each one is anchored like a GitHub review comment: `path`, `line` and `side` (`RIGHT` for the new file, `LEFT` for the old one). Comments whose line no longer exists in the diff are left out. Each may carry `avatar`, its author's GitHub avatar URL; `html`, GitHub's rendering of its body (sanitized by GitHub, and to be cleaned again before it's shown); `resolved`, true when its thread was resolved on GitHub; `replyTo`, the id of the first comment of its thread; and, for a comment on a range of lines, `startLine` and `startSide`, its first line (`line` is its last). Adding it didn't change the version: v1 consumers that don't know the field ignore it.
+
+`outdated` is optional too: the review threads whose line is no longer in the diff (GitHub's "outdated"), which `discussion` leaves out. Each is its first comment's `id`, `path`, `author`, `url` and `createdAt`, with `comments`, how many the thread holds, and `resolved` when it was resolved. They have no line, so a view shows them by file, not in the code. Adding it didn't change the version either.
 
 ### Definitions
 

@@ -8,7 +8,7 @@ import { resolveLocal } from "./local.ts";
 import { parseDiff } from "./diff.ts";
 import { analyze, heuristicTree, type Analysis } from "./analyze.ts";
 import { claudeTree } from "./llm.ts";
-import { buildGraph, VERSION, type ReviewGraph } from "./graph.ts";
+import { buildGraph, type Discussion, VERSION, type ReviewGraph } from "./graph.ts";
 import { loadCachedGraphs, loadCachedTree, loadState, saveCachedGraphs, saveCachedTree } from "./state.ts";
 import { startServers, stopServers } from "./servers.ts";
 import { watchLocal, watchPr } from "./watch.ts";
@@ -89,8 +89,8 @@ async function build(arg: string | undefined, cwd: string, key: Key, getPr: () =
   // Same head commit as last time → reuse the built graphs. Comments still change, so they're always re-read.
   const hit = o.refresh ? null : loadCachedGraphs(key);
   const cached = hit?.static.generator.extraction === VERSION ? hit : null;
-  const discussion = arg ? await reviewComments(key) : [];
-  if (discussion.length) log(`  ${discussion.length} existing review comment(s)`);
+  const discussion: Discussion = arg ? await reviewComments(key) : { comments: [], outdated: [] };
+  if (discussion.comments.length) log(`  ${discussion.comments.length} existing review comment(s)`);
 
   // Fetch + diff + analysis, only when something needs it (a new head, or Claude's tree still missing).
   let built: Promise<{ pr: PrInfo; files: FileDiff[]; analysis: Analysis }> | null = null;
@@ -114,8 +114,9 @@ async function build(arg: string | undefined, cwd: string, key: Key, getPr: () =
   let staticGraph: ReviewGraph, claudeGraph: ReviewGraph | undefined;
   if (cached) {
     log(`  ✓ unchanged since last time (${key.headSha.slice(0, 7)}), using cached graphs (${secs()})`);
-    staticGraph = { ...cached.static, discussion };
-    claudeGraph = o.noLlm ? undefined : cached.claude && { ...cached.claude, discussion }; // --no-llm: not even a cached one
+    const fresh = { discussion: discussion.comments, outdated: discussion.outdated };
+    staticGraph = { ...cached.static, ...fresh };
+    claudeGraph = o.noLlm ? undefined : cached.claude && { ...cached.claude, ...fresh }; // --no-llm: not even a cached one
   } else {
     const { pr, files, analysis } = await extract();
     staticGraph = await buildGraph(cwd, pr, files, analysis, heuristicTree(pr, analysis, files), discussion);
@@ -158,7 +159,7 @@ export function start(p: Prepared, o: ReviewOptions): Session {
   // carry over by content, so what the push didn't touch stays reviewed; drafts stay as they are.
   session.baseRef = key.baseRef;
   session.rebuild = async () => {
-    let next: PrInfo, disc = session.staticGraph.discussion ?? [];
+    let next: PrInfo, disc: Discussion = { comments: session.staticGraph.discussion ?? [], outdated: session.staticGraph.outdated ?? [] };
     if (arg) {
       const resolved = await resolvePr(arg, o.repo, o.cwd);
       next = await fetchPr(resolved);

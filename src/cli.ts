@@ -3,7 +3,7 @@ import { parseArgs } from "node:util";
 import { readFileSync, statSync, writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import { git, reviewComments, run } from "./git.ts";
-import { GRAPH_SCHEMA, LEGACY_SCHEMAS, type ReviewGraph } from "./graph.ts";
+import { GRAPH_SCHEMA, LEGACY_SCHEMAS, type ReviewGraph, setDiscussion } from "./graph.ts";
 import { clean, prune } from "./prune.ts";
 import { watchReleases } from "./updates.ts";
 import { hold, holder, home, legacyHolder, loadSettings, loadState } from "./state.ts";
@@ -187,7 +187,7 @@ if (cmd === "open") {
   // The file's comments are as of its extraction: read the PR's current ones, keeping the file's if GitHub can't be reached.
   if (graph.pr.provider !== "local" && graph.pr.number) {
     const discussion = await reviewComments(graph.pr, true).catch(() => null);
-    if (discussion) graph.discussion = discussion;
+    if (discussion) setDiscussion(graph, discussion);
   }
   const session: Session = { cwd: values.repo ?? null, staticGraph: graph, state: loadState({ ...graph.pr }), llm: "off", refresh: values.refresh };
   void startServers(session, { ask: true, off: values["no-lsp"], log });
