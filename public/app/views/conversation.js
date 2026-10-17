@@ -3,7 +3,7 @@
 // and whether it can merge. Read live from GitHub (/api/conversation), so it keeps up while you review; a PR only, never
 // a local branch. A thread's file:line goes to that code in the walk.
 import { api, esc } from "../core.js";
-import { ago, md } from "../comments.js";
+import { ago, ghHtml, md } from "../comments.js";
 import { MOD } from "../palette.js";
 import { injectCss } from "./flow.js";
 
@@ -32,6 +32,28 @@ const STYLE = `
 .conv .box > .bd { padding: 12px 14px; font: var(--size)/1.6 var(--font-prose); }
 .conv .box > .bd.empty { color: var(--faint); font-style: italic; }
 .conv .cbody { max-height: none; margin: 0; }
+/* GitHub's rendering of a comment (bodyHTML), in Bobby's colours */
+.conv .gh > :first-child { margin-top: 0; } .conv .gh > :last-child { margin-bottom: 0; }
+.conv .gh p, .conv .gh ul, .conv .gh ol, .conv .gh blockquote, .conv .gh table, .conv .gh pre, .conv .gh details { margin: 0 0 10px; }
+.conv .gh h1, .conv .gh h2, .conv .gh h3, .conv .gh h4, .conv .gh h5, .conv .gh h6 { font: 600 1em/1.4 var(--font-ui); margin: 16px 0 8px; letter-spacing: 0; text-transform: none; color: var(--text); }
+.conv .gh h1 { font-size: 1.4em; } .conv .gh h2 { font-size: 1.2em; padding-bottom: 4px; border-bottom: 1px solid var(--line-soft); } .conv .gh h3 { font-size: 1.08em; }
+.conv .gh ul, .conv .gh ol { padding-left: 22px; } .conv .gh li + li { margin-top: 2px; }
+.conv .gh .contains-task-list { list-style: none; padding-left: 4px; } .conv .gh .task-list-item input { margin: 0 6px 0 0; vertical-align: middle; }
+.conv .gh blockquote { padding: 0 12px; border-left: 3px solid var(--line); color: var(--muted); }
+.conv .gh code { font: .88em var(--font-code); background: var(--raised); padding: 1px 5px; border-radius: 4px; }
+.conv .gh pre { padding: 10px 12px; background: var(--bg); border: 1px solid var(--line-soft); border-radius: 6px; overflow: auto; font: 12.5px/1.5 var(--font-code); }
+.conv .gh pre code { background: none; padding: 0; font: inherit; }
+.conv .gh table { border-collapse: collapse; display: block; max-width: 100%; overflow: auto; font: 13px/1.45 var(--font-ui); }
+.conv .gh th, .conv .gh td { border: 1px solid var(--line); padding: 5px 10px; vertical-align: top; }
+.conv .gh th { background: var(--raised); font-weight: 600; text-align: left; }
+.conv .gh img { max-width: 100%; height: auto; vertical-align: middle; }
+.conv .gh a { color: var(--signal); }
+.conv .gh hr { border: 0; border-top: 1px solid var(--line-soft); margin: 14px 0; }
+.conv .gh details { border: 1px solid var(--line-soft); border-radius: 6px; padding: 6px 10px; }
+.conv .gh details[open] > summary { margin-bottom: 6px; }
+.conv .gh summary { cursor: pointer; color: var(--muted); }
+.conv .gh sub, .conv .gh sup { font-size: .8em; }
+.conv .gh kbd { font: 11px var(--font-code); padding: 1px 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; }
 .conv .event { display: flex; align-items: center; gap: 10px; padding-left: 4px; font-size: 13px; color: var(--muted); min-height: 28px; }
 .conv .event b { color: var(--text); }
 .conv .event .ico { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--raised); border: 1px solid var(--line); flex: none; font-size: 12px; z-index: 1; color: var(--muted); }
@@ -104,6 +126,8 @@ const dur = (c) => {
   const s = c.startedAt && c.completedAt ? (Date.parse(c.completedAt) - Date.parse(c.startedAt)) / 1000 : NaN;
   return Number.isFinite(s) && s >= 0 ? (s < 60 ? `${Math.round(s)}s` : `${Math.floor(s / 60)}m ${Math.round(s % 60)}s`) : "";
 };
+/** A comment's text as GitHub renders it; Bobby's own Markdown until that's known. */
+const text = (x) => `<div class="cbody full gh">${x.html ? ghHtml(x.html) : md(x.body)}</div>`;
 const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
 
 export default {
@@ -133,7 +157,7 @@ export default {
         ${isShut(t) ? `<span class="tag">${plural(t.comments.length, "comment")}</span>` : ""}
         ${canGo ? `<button class="go" data-go="${esc(t.id)}" title="Open this code in the walk">View code →</button>` : ""}</div>`;
       const items = t.comments.map((c) => `<div class="tc">${avatar(c.author)}<div><div class="who"><b>${esc(c.author.login)}</b> ${when(c.createdAt)}<a href="${esc(c.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a></div>
-        <div class="cbody full">${md(c.body)}</div></div></div>`).join("");
+        ${text(c)}</div></div>`).join("");
       const key = `r:${t.comments[0]?.id}`;
       const reply = !t.comments[0] ? "" : replying.has(t.id) ? composer(key, "Reply", "Reply…") : `<button class="replyb" data-reply="${esc(t.id)}">Reply…</button>`;
       return `<div class="thread${isShut(t) ? " shut" : ""}" data-thread="${esc(t.id)}">${head}${items}${reply}</div>`;
@@ -154,7 +178,7 @@ export default {
             <div class="commits">${run.map((c) => `<a href="${esc(c.url)}" target="_blank" rel="noopener" title="${esc(c.subject)}"><span class="s">${esc(c.subject)}</span><code>${esc(c.sha.slice(0, 7))}</code></a>`).join("")}</div></div>`);
         } else if (it.kind === "comment") {
           out.push(`<div class="item card" data-item>${avatar(it.author)}<div class="box"><div class="hd"><b>${esc(it.author.login)}</b> commented ${when(it.createdAt)}<span class="grow"></span><a href="${esc(it.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a></div>
-            <div class="bd"><div class="cbody full">${md(it.body)}</div></div></div></div>`);
+            <div class="bd">${text(it)}</div></div></div>`);
         } else {
           const threads = byReview.get(it.id) ?? [];
           threads.forEach((t) => shown.add(t.id));
@@ -162,7 +186,7 @@ export default {
           if (it.state === "COMMENTED" && !it.body.trim() && !threads.length) continue;
           const [cls, ico] = ICON[it.state] ?? ["", "◉"];
           out.push(`<div class="item review" data-item><div class="event"><span class="ico ${cls}">${ico}</span>${avatar(it.author)}<span><b>${esc(it.author.login)}</b> ${VERB[it.state] ?? "reviewed"}</span>${when(it.createdAt)}<a href="${esc(it.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a></div>
-            ${it.body.trim() || threads.length ? `<div class="body">${it.body.trim() ? `<div class="box"><div class="bd"><div class="cbody full">${md(it.body)}</div></div></div>` : ""}${threads.map(threadHtml).join("")}</div>` : ""}</div>`);
+            ${it.body.trim() || threads.length ? `<div class="body">${it.body.trim() ? `<div class="box"><div class="bd">${text(it)}</div></div>` : ""}${threads.map(threadHtml).join("")}</div>` : ""}</div>`);
         }
       }
       const rest = data.threads.filter((t) => !shown.has(t.id)); // in a review not in the timeline: your pending one
@@ -209,7 +233,7 @@ export default {
         <div class="meta">${state}${avatar(author)}<b>${esc(author.login)}</b>${data ? ` wants to merge <code>${esc(data.head)}</code> into <code>${esc(data.base)}</code> · opened ${when(data.createdAt)}` : ""}<span style="flex:1"></span><a href="${esc(pr.url)}" target="_blank" rel="noopener">Open on GitHub ↗</a></div>`;
       const body = data?.body ?? pr.body ?? "";
       const desc = `<div class="item card" data-item>${avatar(author)}<div class="box"><div class="hd"><b>${esc(author.login)}</b> ${data ? `opened this ${when(data.createdAt)}` : "opened this"}</div>
-        <div class="bd${body.trim() ? "" : " empty"}">${body.trim() ? `<div class="cbody full">${md(body)}</div>` : "No description provided."}</div></div></div>`;
+        <div class="bd${body.trim() ? "" : " empty"}">${body.trim() ? text(data?.html ? data : { body }) : "No description provided."}</div></div></div>`;
       const rest = data ? `${timelineHtml()}
           <div class="item card newc" data-item>${avatar(app.me ?? {})}<div class="box"><div class="hd"><b>Add a comment</b><span class="grow"></span><button class="btn" data-act="submit" title="Your drafts on lines, with approve or request changes">Review changes…</button></div>${composer("new", "Comment", "Leave a comment on this PR")}</div></div>
         </div>${statusHtml()}`

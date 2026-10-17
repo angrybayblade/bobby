@@ -213,6 +213,33 @@ export function md(src) {
   flushTable();
   return out.join("").replace(/(<br>)+$/, "").replace(/(<br>){3,}/g, "<br><br>").replace(/\u0000(\d+)\u0000(<br>)?/g, (_, i) => blocks[Number(i)]);
 }
+// ---- a comment as GitHub rendered it (bodyHTML): already sanitized by GitHub, and cleaned again here, since it lands in
+// a page that can post as you. Nothing that runs (scripts, frames, forms, on* handlers, javascript: links) and no inline
+// styles; links open on GitHub's side, in a new tab; relative ones point at github.com.
+const DROP = "script,style,iframe,frame,object,embed,form,link,meta,base,foreignObject,template,noscript,button,textarea,select";
+const URL_ATTRS = ["href", "src", "srcset", "data-canonical-src", "action", "formaction", "xlink:href"];
+export function ghHtml(html) {
+  const doc = new DOMParser().parseFromString(String(html ?? ""), "text/html");
+  doc.body.querySelectorAll(DROP).forEach((e) => e.remove());
+  doc.body.querySelectorAll("a.anchor, .octicon-link").forEach((e) => e.remove()); // headings' hover links
+  for (const e of doc.body.querySelectorAll("*")) {
+    for (const a of [...e.attributes]) {
+      const n = a.name.toLowerCase();
+      if (n.startsWith("on") || n === "style" || n === "id" || n === "name" || n === "class" && !/^(?:highlight|pl-|task-list|contains-task-list)/.test(a.value)) e.removeAttribute(a.name);
+      else if (URL_ATTRS.includes(n)) {
+        const v = a.value.trim().split(/\s+/)[0];
+        if (/^(https?:|mailto:|#)/i.test(v)) continue;
+        if (v.startsWith("/")) e.setAttribute(a.name, `https://github.com${a.value.trim()}`);
+        else e.removeAttribute(a.name);
+      }
+    }
+    if (e.tagName === "A") { e.setAttribute("target", "_blank"); e.setAttribute("rel", "noopener noreferrer"); }
+    if (e.tagName === "INPUT") e.setAttribute("disabled", ""); // a task list's checkbox: shown, not ticked from here
+    if (e.tagName === "IMG") e.setAttribute("loading", "lazy");
+  }
+  return doc.body.innerHTML;
+}
+
 /** A comment's first words, for a collapsed thread. */
 const plain = (s) => String(s ?? "").replace(/```[\s\S]*?```/g, "[code]").replace(/<[^>]+>/g, "").replace(/[*_`#>]/g, "").replace(/\s+/g, " ").trim().slice(0, 140);
 export function ago(when) {
