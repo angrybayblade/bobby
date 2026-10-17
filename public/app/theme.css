@@ -381,6 +381,28 @@ kbd {
 .cbody details { margin: 4px 0; } .cbody summary { cursor: pointer; color: var(--muted); }
 .cbody .ch { font-weight: 600; margin: 4px 0 2px; }
 .cbody a { color: var(--signal); }
+/* A comment as GitHub rendered it (bodyHTML / body_html), in Bobby's colours: the Conversation view and threads by the code */
+.gh > :first-child { margin-top: 0; } .gh > :last-child { margin-bottom: 0; }
+.gh p, .gh ul, .gh ol, .gh blockquote, .gh table, .gh pre, .gh details { margin: 0 0 10px; }
+.gh h1, .gh h2, .gh h3, .gh h4, .gh h5, .gh h6 { font: 600 1em/1.4 var(--font-ui); margin: 16px 0 8px; letter-spacing: 0; text-transform: none; color: var(--text); }
+.gh h1 { font-size: 1.4em; } .gh h2 { font-size: 1.2em; padding-bottom: 4px; border-bottom: 1px solid var(--line-soft); } .gh h3 { font-size: 1.08em; }
+.gh ul, .gh ol { padding-left: 22px; } .gh li + li { margin-top: 2px; }
+.gh .contains-task-list { list-style: none; padding-left: 4px; } .gh .task-list-item input { margin: 0 6px 0 0; vertical-align: middle; }
+.gh blockquote { padding: 0 12px; border-left: 3px solid var(--line); color: var(--muted); }
+.gh code { font: .88em var(--font-code); background: var(--raised); padding: 1px 5px; border-radius: 4px; }
+.gh pre { padding: 10px 12px; background: var(--bg); border: 1px solid var(--line-soft); border-radius: 6px; overflow: auto; font: 12.5px/1.5 var(--font-code); }
+.gh pre code { background: none; padding: 0; font: inherit; }
+.gh table { border-collapse: collapse; display: block; max-width: 100%; overflow: auto; font: 13px/1.45 var(--font-ui); }
+.gh th, .gh td { border: 1px solid var(--line); padding: 5px 10px; vertical-align: top; }
+.gh th { background: var(--raised); font-weight: 600; text-align: left; }
+.gh img { max-width: 100%; height: auto; vertical-align: middle; }
+.gh a { color: var(--signal); }
+.gh hr { border: 0; border-top: 1px solid var(--line-soft); margin: 14px 0; }
+.gh details { border: 1px solid var(--line-soft); border-radius: 6px; padding: 6px 10px; }
+.gh details[open] > summary { margin-bottom: 6px; }
+.gh summary { cursor: pointer; color: var(--muted); }
+.gh sub, .gh sup { font-size: .8em; }
+.gh kbd { font: 11px var(--font-code); padding: 1px 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; }
 .csug { margin-top: 6px; font: 12px var(--font-ui); color: var(--muted); }
 .cthread.slim { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-radius: 14px; cursor: pointer; font: 12.5px var(--font-ui); color: var(--muted); }
 .cthread.slim:hover { border-color: var(--muted); }

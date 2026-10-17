@@ -22,7 +22,7 @@ export function commentIndex(app) {
     const root = c.replyTo && ids.has(c.replyTo) ? c.replyTo : c.id;
     let t = threads.get(root);
     if (!t) threads.set(root, (t = { id: root, kind: "gh", path: c.path, side: c.side, line: c.line, startLine: c.startLine, startSide: c.startSide, items: [] }));
-    t.items.push({ author: c.author, avatar: c.avatar, body: c.body, url: c.url, createdAt: c.createdAt });
+    t.items.push({ author: c.author, avatar: c.avatar, body: c.body, html: c.html, url: c.url, createdAt: c.createdAt });
   }
   // your drafts: comments to be, so threads of their own
   for (const c of mine.filter((x) => x.kind !== "note")) {
@@ -116,7 +116,7 @@ function threadHtml(app, t) {
         ${k === 0 ? range(t) : ""}${i.url ? `<a class="clink" href="${esc(i.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a>` : ""}<span class="cgrow"></span>
         ${i.wip ? `<button class="cact" data-wip="${esc(i.cid)}" title="Open it again to finish">Continue</button>` : ""}${i.cid ? `<button class="cact" data-del="${esc(i.cid)}" title="Discard this draft">Delete</button>` : ""}
         ${k === 0 ? `<button class="cfold" data-tid="${esc(t.id)}" data-tpath="${esc(t.path)}" title="Collapse${n > 1 ? " this thread" : ""}">${bubble(true)}</button>` : ""}</div>
-      <div class="cbody" data-ck="${esc(t.id)}:${k}">${md(i.body)}</div></div></div>`).join("");
+      <div class="cbody${i.html ? " gh" : ""}" data-ck="${esc(t.id)}:${k}">${i.html ? ghHtml(i.html) : md(i.body)}</div></div></div>`).join("");
   return `<div class="cthread${t.kind === "draft" ? " draft" : ""}" data-thread="${esc(t.id)}">${items}</div>`;
 }
 

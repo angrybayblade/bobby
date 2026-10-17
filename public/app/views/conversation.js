@@ -32,28 +32,6 @@ const STYLE = `
 .conv .box > .bd { padding: 12px 14px; font: var(--size)/1.6 var(--font-prose); }
 .conv .box > .bd.empty { color: var(--faint); font-style: italic; }
 .conv .cbody { max-height: none; margin: 0; }
-/* GitHub's rendering of a comment (bodyHTML), in Bobby's colours */
-.conv .gh > :first-child { margin-top: 0; } .conv .gh > :last-child { margin-bottom: 0; }
-.conv .gh p, .conv .gh ul, .conv .gh ol, .conv .gh blockquote, .conv .gh table, .conv .gh pre, .conv .gh details { margin: 0 0 10px; }
-.conv .gh h1, .conv .gh h2, .conv .gh h3, .conv .gh h4, .conv .gh h5, .conv .gh h6 { font: 600 1em/1.4 var(--font-ui); margin: 16px 0 8px; letter-spacing: 0; text-transform: none; color: var(--text); }
-.conv .gh h1 { font-size: 1.4em; } .conv .gh h2 { font-size: 1.2em; padding-bottom: 4px; border-bottom: 1px solid var(--line-soft); } .conv .gh h3 { font-size: 1.08em; }
-.conv .gh ul, .conv .gh ol { padding-left: 22px; } .conv .gh li + li { margin-top: 2px; }
-.conv .gh .contains-task-list { list-style: none; padding-left: 4px; } .conv .gh .task-list-item input { margin: 0 6px 0 0; vertical-align: middle; }
-.conv .gh blockquote { padding: 0 12px; border-left: 3px solid var(--line); color: var(--muted); }
-.conv .gh code { font: .88em var(--font-code); background: var(--raised); padding: 1px 5px; border-radius: 4px; }
-.conv .gh pre { padding: 10px 12px; background: var(--bg); border: 1px solid var(--line-soft); border-radius: 6px; overflow: auto; font: 12.5px/1.5 var(--font-code); }
-.conv .gh pre code { background: none; padding: 0; font: inherit; }
-.conv .gh table { border-collapse: collapse; display: block; max-width: 100%; overflow: auto; font: 13px/1.45 var(--font-ui); }
-.conv .gh th, .conv .gh td { border: 1px solid var(--line); padding: 5px 10px; vertical-align: top; }
-.conv .gh th { background: var(--raised); font-weight: 600; text-align: left; }
-.conv .gh img { max-width: 100%; height: auto; vertical-align: middle; }
-.conv .gh a { color: var(--signal); }
-.conv .gh hr { border: 0; border-top: 1px solid var(--line-soft); margin: 14px 0; }
-.conv .gh details { border: 1px solid var(--line-soft); border-radius: 6px; padding: 6px 10px; }
-.conv .gh details[open] > summary { margin-bottom: 6px; }
-.conv .gh summary { cursor: pointer; color: var(--muted); }
-.conv .gh sub, .conv .gh sup { font-size: .8em; }
-.conv .gh kbd { font: 11px var(--font-code); padding: 1px 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; }
 .conv .event { display: flex; align-items: center; gap: 10px; padding-left: 4px; font-size: 13px; color: var(--muted); min-height: 28px; }
 .conv .event b { color: var(--text); }
 .conv .event .ico { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--raised); border: 1px solid var(--line); flex: none; font-size: 12px; z-index: 1; color: var(--muted); }
