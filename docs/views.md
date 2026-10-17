@@ -1,6 +1,6 @@
 # Views
 
-There are four views of the same review, plus the PR's conversation. Switch with `v` or the toggle in the header. Your focus, progress and comments are shared between them. A review opens in Diff the first time; after that, in the last view you used.
+There are four views of the same review, plus the PR's conversation. Switch with `v` or the toggle in the header. Your focus, progress and comments are shared between them. A review opens in Diff the first time; after that, in the last view you used. The address bar follows you: `…/diff/src/app.ts#L42` is that file's viewer in Diff, `…/flow/src/app.ts#L42` that step in Flow, `…/conversation` the conversation. Reload, bookmark or share it to come back to the same place, and use back and forward to move between views.
 
 | View | Shape | Good for |
 |---|---|---|
