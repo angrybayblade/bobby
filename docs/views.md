@@ -16,7 +16,7 @@ A **file tree** on the right lists the PR's files as folders, like GitHub's: +/�
 
 The PR as it reads on GitHub, top to bottom: its description, then comments, reviews and pushes in the order they happened, a box to comment, and where it stands. A PR only: a local branch review has no Conversation view.
 
-- **Reviews** show their verdict (approved, changes requested, reviewed) and text, with the threads they started on code beneath. Resolved and outdated threads start collapsed; click a thread's header to open or close it. **View code →** goes to that code in the walk, in the view you came from.
+- **Reviews** show their verdict (approved, changes requested, reviewed) and text, with the threads they started on code beneath, each showing the lines it's on (as they were when it was written, the commented ones marked) above its comments. Resolved and outdated threads start collapsed; click a thread's header to open or close it. **View code →** goes to that code in the walk, in the view you came from.
 - **Replying.** *Reply…* under a thread and *Comment* at the end post at once, as GitHub's buttons do (`⌘`/`ctrl`+`enter` too). *Review changes…* opens the usual submit, for your drafts on lines and approving or requesting changes.
 - **Status**, at the end: each reviewer's latest verdict and who's still asked; the head commit's CI checks, failing and running first, the rest folded, each with its time and a link to its run; and whether it can merge.
 - It's read from GitHub when you open it and every 30 seconds after, and never redrawn under a box you're typing in. `j`/`k` step from item to item.

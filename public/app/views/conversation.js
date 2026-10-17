@@ -4,6 +4,7 @@
 // a local branch. A thread's file:line goes to that code in the walk.
 import { api, esc } from "../core.js";
 import { ago, ghHtml, md } from "../comments.js";
+import { hlBlock, langOf } from "../code.js";
 import { MOD } from "../palette.js";
 import { injectCss } from "./flow.js";
 
@@ -53,6 +54,17 @@ const STYLE = `
 .conv .thread > .th .go { font: 12px var(--font-ui); color: var(--signal); background: none; border: 0; padding: 0; cursor: pointer; white-space: nowrap; }
 .conv .thread > .th .go:hover { text-decoration: underline; }
 .conv .thread.shut > :not(.th) { display: none; }
+/* the code a thread is on, as GitHub shows it above the comments: the diff's last lines, the commented ones marked */
+.conv .tcode { border-top: 1px solid var(--line-soft); overflow-x: auto; font: 12.5px/20px var(--font-code); background: var(--bg); }
+.conv .tcode table { border-collapse: collapse; min-width: 100%; }
+.conv .tcode td { padding: 0 10px 0 0; white-space: pre; vertical-align: top; }
+.conv .tcode td.ln { width: 1%; min-width: 34px; padding: 0 8px; text-align: right; color: var(--faint); user-select: none; }
+.conv .tcode td.sg { width: 1%; padding: 0 6px 0 2px; color: var(--faint); user-select: none; }
+.conv .tcode tr.add { background: var(--add-tint); } .conv .tcode tr.add td.sg { color: var(--ok); }
+.conv .tcode tr.del { background: var(--del-tint); } .conv .tcode tr.del td.sg { color: var(--risk); }
+.conv .tcode tr.on td.ln:first-child { box-shadow: inset 3px 0 0 var(--signal); }
+.conv .tcode tr.on { background-image: linear-gradient(var(--signal-soft), var(--signal-soft)); }
+.conv .tcode .more { color: var(--faint); font: 11.5px var(--font-ui); padding: 3px 12px; }
 .conv .tc { display: grid; grid-template-columns: 24px 1fr; gap: 10px; padding: 10px 12px; border-top: 1px solid var(--line-soft); }
 .conv .tc .cav { width: 24px; height: 24px; }
 .conv .tc .who { font-size: 12.5px; color: var(--muted); }
@@ -127,8 +139,28 @@ export default {
       <div class="row">${errors.get(key) ? `<span class="err">${esc(errors.get(key))}</span>` : `<span class="hint">Markdown · ${MOD === "⌘" ? "⌘" : "ctrl"}+enter posts</span>`}<span class="grow"></span>
         ${key.startsWith("r:") ? `<button class="btn" data-cancel="${esc(key)}">Cancel</button>` : ""}<button class="btn primary" data-post="${esc(key)}">${label}</button></div></div>`;
 
+    /** The diff a thread is on, from GitHub's hunk: its last lines, up to and including the commented ones, and those
+     *  lines' numbers as they were when it was written (what the code shows; t.line is where they are now). */
+    function codeOf(t) {
+      const lines = t.hunk.split("\n"), m = /^@@ -(\d+)(?:,\d+)? \+(\d+)/.exec(lines.shift() ?? "");
+      if (!m) return { html: "", range: "" };
+      let o = Number(m[1]), n = Number(m[2]);
+      const rows = lines.filter((l) => l && !l.startsWith("\\")).map((l) => {
+        const k = l[0] === "+" ? "add" : l[0] === "-" ? "del" : "";
+        return { k, s: l.slice(1), o: k === "add" ? "" : o++, n: k === "del" ? "" : n++ };
+      });
+      const marked = t.startLine && t.line && t.line > t.startLine ? t.line - t.startLine + 1 : 1;
+      const show = rows.slice(-Math.min(rows.length, Math.max(4, Math.min(marked, 20))));
+      const hl = hlBlock(show.map((r) => r.s), langOf(t.path));
+      const hidden = rows.length - show.length, on = show.slice(-Math.min(marked, show.length)).map((r) => (t.side === "LEFT" ? r.o : r.n) || r.n || r.o);
+      const range = on.length ? (on.length > 1 ? `${on[0]}–${on.at(-1)}` : `${on[0]}`) : "";
+      const html = `<div class="tcode">${hidden && marked > 20 ? `<div class="more">${hidden} more lines above</div>` : ""}<table>${show.map((r, i) => `<tr class="${r.k}${i >= show.length - Math.min(marked, show.length) ? " on" : ""}"><td class="ln">${r.o}</td><td class="ln">${r.n}</td><td class="sg">${r.k === "add" ? "+" : r.k === "del" ? "−" : " "}</td><td>${hl[i] || " "}</td></tr>`).join("")}</table></div>`;
+      return { html, range };
+    }
+
     function threadHtml(t) {
-      const where = `${t.path}${t.line ? `:${t.startLine && t.startLine !== t.line ? `${t.startLine}–` : ""}${t.line}` : ""}`;
+      const code = codeOf(t), lines = code.range || (t.line ? `${t.startLine && t.startLine !== t.line ? `${t.startLine}–` : ""}${t.line}` : "");
+      const where = `${t.path}${lines ? `:${lines}` : ""}`;
       const canGo = !!app.pidAt(t.path, t.line ?? 0);
       const head = `<div class="th" data-tog="${esc(t.id)}" title="${isShut(t) ? "Show" : "Hide"} this thread"><span class="p">${esc(where)}</span>
         ${t.resolved ? `<span class="tag">Resolved</span>` : ""}${t.outdated ? `<span class="tag">Outdated</span>` : ""}<span class="grow"></span>
@@ -138,7 +170,7 @@ export default {
         ${text(c)}</div></div>`).join("");
       const key = `r:${t.comments[0]?.id}`;
       const reply = !t.comments[0] ? "" : replying.has(t.id) ? composer(key, "Reply", "Reply…") : `<button class="replyb" data-reply="${esc(t.id)}">Reply…</button>`;
-      return `<div class="thread${isShut(t) ? " shut" : ""}" data-thread="${esc(t.id)}">${head}${items}${reply}</div>`;
+      return `<div class="thread${isShut(t) ? " shut" : ""}" data-thread="${esc(t.id)}">${head}${code.html}${items}${reply}</div>`;
     }
 
     function timelineHtml() {

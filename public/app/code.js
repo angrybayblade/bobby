@@ -12,7 +12,7 @@ const EXT = {
   yaml: "yaml", json: "json", md: "markdown", css: "css", scss: "scss", html: "xml", xml: "xml", vue: "xml", sql: "sql",
   toml: "ini", lua: "lua", ex: "elixir", exs: "elixir", dart: "dart",
 };
-const langOf = (path) => {
+export const langOf = (path) => {
   const base = path.split("/").pop().toLowerCase();
   return base === "dockerfile" ? "dockerfile" : EXT[base.split(".").pop()];
 };
@@ -28,7 +28,7 @@ function opensInComment(lines, lang) {
 // Highlight a whole block (so multi-line comments/strings colour correctly), then split per line. A slice cut from the
 // middle of a block comment gets the opener it's missing, so the comment doesn't read as code (and the code after it
 // as comment); that line is dropped again.
-function hlBlock(lines, lang) {
+export function hlBlock(lines, lang) {
   if (!lang || !window.hljs?.getLanguage(lang)) return lines.map(esc);
   const lead = opensInComment(lines, lang) ? ["/*"] : [];
   let html;
