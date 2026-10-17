@@ -46,6 +46,7 @@ export interface GDiscussion {
   replyTo?: string;
   startLine?: number; startSide?: "LEFT" | "RIGHT"; // a comment on a range: its first line (line is its last)
   avatar?: string; // the author's GitHub avatar
+  html?: string; // GitHub's rendering of body, for bots' HTML and the Markdown Bobby doesn't render itself
 }
 
 export interface GFile {

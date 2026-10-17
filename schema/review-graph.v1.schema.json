@@ -192,7 +192,8 @@
         "replyTo": { "type": "string", "description": "Id of the comment this replies to." },
         "startLine": { "type": "integer", "description": "A comment on a range of lines: its first line; line is its last." },
         "startSide": { "enum": ["LEFT", "RIGHT"], "description": "The side of startLine." },
-        "avatar": { "type": "string", "description": "The author's GitHub avatar URL." }
+        "avatar": { "type": "string", "description": "The author's GitHub avatar URL." },
+        "html": { "type": "string", "description": "GitHub's rendering of body, as HTML. Sanitized by GitHub; a consumer still cleans it before showing it." }
       }
     },
     "definition": {

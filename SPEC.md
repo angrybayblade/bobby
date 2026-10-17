@@ -73,7 +73,7 @@ A core may carry `hook`: one short question to lead with, usually about what cou
 
 ### Discussion
 
-`discussion` is optional. It holds inline review comments already on the PR, so a reviewer sees what others said before writing. Each one is anchored like a GitHub review comment: `path`, `line` and `side` (`RIGHT` for the new file, `LEFT` for the old one). Comments whose line no longer exists in the diff are left out. Each may carry `avatar`, its author's GitHub avatar URL; `replyTo`, the id of the first comment of its thread; and, for a comment on a range of lines, `startLine` and `startSide`, its first line (`line` is its last). Adding it didn't change the version: v1 consumers that don't know the field ignore it.
+`discussion` is optional. It holds inline review comments already on the PR, so a reviewer sees what others said before writing. Each one is anchored like a GitHub review comment: `path`, `line` and `side` (`RIGHT` for the new file, `LEFT` for the old one). Comments whose line no longer exists in the diff are left out. Each may carry `avatar`, its author's GitHub avatar URL; `html`, GitHub's rendering of its body (sanitized by GitHub, and to be cleaned again before it's shown); `replyTo`, the id of the first comment of its thread; and, for a comment on a range of lines, `startLine` and `startSide`, its first line (`line` is its last). Adding it didn't change the version: v1 consumers that don't know the field ignore it.
 
 ### Definitions
 
