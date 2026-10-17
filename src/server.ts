@@ -154,12 +154,13 @@ export function startServer(app: App, port: number) {
       const refused = guard(req, server.port);
       if (refused) return refused;
 
-      // A review: its page, or its API. Ids have slashes (owner/repo/number), so the API starts at "/api/".
+      // A review: its page, or its API. An id is three segments (owner/repo/number, or local/repo/branch); after it,
+      // /api/… is its API, and anything else is the page, at a view and what it's on (/diff/src/api/x.ts is a page).
       if (p.startsWith("/r/")) {
-        const at = p.indexOf("/api/");
-        if (at < 0) return staticFile("/index.html");
-        const id = decodeURIComponent(p.slice(3, at)), s = app.reviews.get(id);
-        if (s) return reviewApi(s, app, req, url, p.slice(at));
+        const seg = p.slice(3).split("/"), rest = `/${seg.slice(3).join("/")}`;
+        if (!rest.startsWith("/api/")) return staticFile("/index.html");
+        const id = decodeURIComponent(seg.slice(0, 3).join("/")), s = app.reviews.get(id);
+        if (s) return reviewApi(s, app, req, url, rest);
         // not open, but opened before (a reload after Bobby restarted, a bookmark): open it again, from what recents kept
         if (!app.loading.has(id) && app.open) {
           const r = (await loadRecents()).find((x) => x.id === id);
