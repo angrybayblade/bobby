@@ -1,7 +1,7 @@
 // Conversation: the PR as GitHub's Conversation tab tells it. The description, then comments, reviews (with the threads
 // they started on code) and pushes in time order, a box to comment, and at the end where it stands: reviews, CI checks
 // and whether it can merge. Read live from GitHub (/api/conversation), so it keeps up while you review; a PR only, never
-// a local branch. A thread's file:line goes to that code in the walk.
+// a local branch. A thread's "View code" opens that code in the Diff view.
 import { api, esc } from "../core.js";
 import { ago, ghHtml, md } from "../comments.js";
 import { hlBlock, langOf } from "../code.js";
@@ -165,7 +165,7 @@ export default {
       const head = `<div class="th" data-tog="${esc(t.id)}" title="${isShut(t) ? "Show" : "Hide"} this thread"><span class="p">${esc(where)}</span>
         ${t.resolved ? `<span class="tag">Resolved</span>` : ""}${t.outdated ? `<span class="tag">Outdated</span>` : ""}<span class="grow"></span>
         ${isShut(t) ? `<span class="tag">${plural(t.comments.length, "comment")}</span>` : ""}
-        ${canGo ? `<button class="go" data-go="${esc(t.id)}" title="Open this code in the walk">View code →</button>` : ""}</div>`;
+        ${canGo ? `<button class="go" data-go="${esc(t.id)}" title="Open this code in the Diff view">View code →</button>` : ""}</div>`;
       const items = t.comments.map((c) => `<div class="tc">${avatar(c.author)}<div><div class="who"><b>${esc(c.author.login)}</b> ${when(c.createdAt)}<a href="${esc(c.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a></div>
         ${text(c)}</div></div>`).join("");
       const key = `r:${t.comments[0]?.id}`;
@@ -287,8 +287,8 @@ export default {
         ev.stopPropagation();
         const th = thread(ds.go), pid = th && app.pidAt(th.path, th.line ?? 0);
         if (!pid) return;
-        app.switchView(app.prevView && app.prevView !== "conversation" ? app.prevView : "flow");
-        app.setFocus(pid, { level: 2 });
+        app.setFocus(pid, { level: 1 }); // first, so Diff opens on it: its file's viewer, at that code
+        app.switchView("diff");
       } else if (ds.tog) { const th = thread(ds.tog); shut.set(ds.tog, !isShut(th)); render(); }
       else if (ds.reply) { replying.add(ds.reply); render(); root.querySelector(`[data-thread="${CSS.escape(ds.reply)}"] textarea`)?.focus(); }
       else if (ds.post) post(ds.post);

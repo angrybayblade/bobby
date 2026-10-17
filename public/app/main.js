@@ -127,7 +127,6 @@ function mount(id) {
 }
 app.switchView = (id) => {
   if (id === currentId) return;
-  app.prevView = currentId; // where a jump back into the code goes
   mount(id);
   // remembered without a "settings" event, which would render the view just mounted again; "view" redraws the chrome
   app.settings.view = id;
