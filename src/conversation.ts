@@ -12,6 +12,7 @@ export interface Thread {
   path: string; line: number | null; startLine: number | null; side: "LEFT" | "RIGHT";
   resolved: boolean; outdated: boolean;
   reviewId: string | null; // the review it was started in
+  hunk: string; // the diff up to the line it's on, as GitHub shows above a thread ("@@ … @@" first)
   comments: ThreadComment[];
 }
 export type TimelineItem =
@@ -49,7 +50,7 @@ const QUERY = PR(`
   body bodyHTML createdAt url baseRefName headRefName state isDraft mergeable reviewDecision ${WHO}
   ${TIMELINE}
   reviewThreads(first: 100) { nodes { id isResolved isOutdated path line startLine diffSide
-    comments(first: 100) { nodes { databaseId body bodyHTML createdAt url ${WHO} pullRequestReview { databaseId } } } } }
+    comments(first: 100) { nodes { databaseId body bodyHTML diffHunk createdAt url ${WHO} pullRequestReview { databaseId } } } } }
   latestOpinionatedReviews(first: 50) { nodes { state ${WHO} } }
   reviewRequests(first: 50) { nodes { requestedReviewer { ... on User { login avatarUrl } ... on Team { slug } } } }
   commits(last: 1) { nodes { commit { statusCheckRollup { contexts(first: 100) { nodes { __typename
@@ -94,6 +95,7 @@ export async function conversation(pr: Pick<PrInfo, "owner" | "repo" | "number">
     id: t.id, path: t.path, line: t.line ?? null, startLine: t.startLine ?? null, side: t.diffSide === "LEFT" ? "LEFT" : "RIGHT",
     resolved: t.isResolved, outdated: t.isOutdated,
     reviewId: t.comments.nodes[0]?.pullRequestReview?.databaseId != null ? String(t.comments.nodes[0].pullRequestReview.databaseId) : null,
+    hunk: t.comments.nodes[0]?.diffHunk ?? "",
     comments: t.comments.nodes.map((c: Raw) => ({ id: String(c.databaseId), author: person(c.author), body: c.body, html: c.bodyHTML ?? "", createdAt: c.createdAt, url: c.url })),
   }));
   return {
