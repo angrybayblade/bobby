@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Bobby — curious puppy">
+  <g transform="rotate(9 32 32)">
+    <path fill="#f6f2ea" d="M32 12C20 12 13 21 13 33c0 13 8 21 19 21s19-8 19-21c0-12-7-21-19-21Z"/>
+    <path fill="#c58a42" d="M31 12C23 9 17 12 11 18L4 27c-4 6-2 12 3 13 5 2 8-2 11-8l8-14c2-3 3-4 5-6Zm5 1c7-2 14 2 19 9l6 10c3 6 1 12-4 13-6 1-9-4-10-10l-3-13c-1-4-4-7-8-9Z"/>
+    <ellipse cx="24" cy="31" rx="2.6" ry="3.4" fill="#2b261e"/>
+    <ellipse cx="41" cy="31" rx="2.6" ry="3.4" fill="#2b261e"/>
+    <path fill="#2b261e" d="M26 39c0-3 13-3 13 0 0 3-4 6-6.5 6S26 42 26 39Z"/>
+    <path d="M32.5 44v2c0 5-7 6-10 2m10-2c0 5 7 6 10 2" fill="none" stroke="#2b261e" stroke-width="2.8" stroke-linecap="round"/>
+  </g>
+</svg>

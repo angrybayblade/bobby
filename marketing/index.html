@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Watch a cluttered pull request become a focused Bobby review." />
+  <meta name="theme-color" content="#ece9e2" />
+  <title>Bobby — From PR clutter to focus</title>
+  <link rel="icon" href="./assets/bobby.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/lenis@1.3.26/dist/lenis.css" />
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="https://unpkg.com/lenis@1.3.26/dist/lenis.min.js" defer></script>
+  <script src="./site.js" defer></script>
+</head>
+<body class="preload">
+  <main class="experience" data-experience data-phase="land">
+    <div class="stage">
+      <a class="brand-chip piece from-top" href="https://github.com/angrybayblade/bobby" aria-label="Bobby on GitHub">
+        <img src="./assets/bobby.svg" alt="" /><span>bobby</span><i>↗</i>
+      </a>
+
+      <div class="chapter-dots" aria-hidden="true">
+        <i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      </div>
+
+      <div class="captions">
+        <p data-caption="0"><small>01 · A pull request lands</small><b>Everything arrives at once.</b><span>Files, threads, checks, counts, and a lot of places to begin.</span></p>
+        <p data-caption="1"><small>02 · The usual review</small><b>Everything asks for attention.</b><span>Forty-one files are visible. The relationship between them is not.</span></p>
+        <p data-caption="2"><small>03 · Bobby starts here</small><b>Find the change that matters.</b><span>The rest does not disappear. It simply stops shouting.</span></p>
+        <p data-caption="3"><small>04 · Build the path</small><b>Context, in reading order.</b><span>What it relies on comes first. What it can affect comes after.</span></p>
+        <p data-caption="4"><small>05 · Hold one thought</small><b>One question. One piece of code.</b><span>Understand it, comment, mark it, then take the next step.</span></p>
+        <p data-caption="5"><small>06 · Attention moved?</small><b>Your place is still here.</b><span>Come back to your progress, parked thought, flags, and drafts.</span></p>
+        <p data-caption="6"><small>07 · Your next PR</small><b>It can feel this quiet.</b><span>Install Bobby and take the short way through.</span></p>
+      </div>
+
+      <div class="interface piece from-bottom" data-interface>
+        <div class="github-layer">
+          <header class="gh-global piece from-top">
+            <span class="gh-mark">⌘</span><button type="button" tabindex="-1">☰</button><div class="gh-search">Type <kbd>/</kbd> to search</div><span class="gh-spacer"></span><button type="button" tabindex="-1">＋</button><button type="button" tabindex="-1">◉</button><span class="avatar">AB</span>
+          </header>
+
+          <div class="gh-repo-head piece from-left">
+            <div><span class="repo-icon">⌑</span><b>acme</b><i>/</i><b>payments</b><small>Private</small></div>
+            <div class="repo-actions"><span>◉ Watch <b>12</b></span><span>☆ Star <b>86</b></span><span>⑂ Fork <b>7</b></span></div>
+          </div>
+
+          <div class="gh-repo-nav piece from-right"><span>Code</span><span>Issues <b>14</b></span><span class="active">Pull requests <b>9</b></span><span>Actions</span><span>Projects</span><span>Security</span><span>Insights</span></div>
+
+          <section class="gh-pr-title piece from-top-right">
+            <div><h1>Retry failed charges safely <span>#482</span></h1><p><b class="open-pill">Open</b> maya wants to merge 8 commits into <code>main</code> from <code>retry-idempotency</code></p></div>
+            <button type="button" tabindex="-1">Edit</button>
+          </section>
+
+          <div class="gh-pr-tabs piece from-left"><span>Conversation <b>17</b></span><span>Commits <b>8</b></span><span>Checks <b>3</b></span><span class="active">Files changed <b>41</b></span></div>
+
+          <div class="gh-workspace">
+            <aside class="file-tree piece from-left">
+              <div class="file-filter">Filter changed files</div>
+              <p><span>▾</span><b>src</b></p><p class="nest"><span>▾</span><b>payments</b></p>
+              <button class="active" type="button" tabindex="-1"><span>●</span>retry.ts <i>+42 −8</i></button>
+              <button type="button" tabindex="-1"><span>●</span>worker.ts <i>+18 −4</i></button>
+              <button type="button" tabindex="-1"><span>●</span>policy.ts <i>+8 −2</i></button>
+              <p class="nest"><span>▾</span><b>webhooks</b></p>
+              <button type="button" tabindex="-1"><span>●</span>charge.ts <i>+11 −2</i></button>
+              <p><span>▾</span><b>test</b></p>
+              <button type="button" tabindex="-1"><span>●</span>retry.test.ts <i>+76</i></button>
+              <button type="button" tabindex="-1"><span>●</span>worker.test.ts <i>+43</i></button>
+              <button type="button" tabindex="-1"><span>●</span>package-lock.json <i>+532</i></button>
+              <button type="button" tabindex="-1"><span>…</span>34 more files</button>
+            </aside>
+
+            <div class="diff-column">
+              <div class="diff-toolbar piece from-right"><span>Changes from all commits</span><div><button type="button" tabindex="-1">Viewed ▾</button><button type="button" tabindex="-1">⌨</button><button type="button" tabindex="-1">⚙</button></div></div>
+
+              <article class="gh-diff primary-diff piece from-top-right">
+                <header><span>▾</span><b>src/payments/retry.ts</b><i>+42 −8</i><button type="button" tabindex="-1">⋯</button></header>
+                <div class="hunk">@@ -38,10 +38,17 @@ export async function retryCharge</div>
+                <p><i>38</i><i>38</i><code>export async function retryCharge(</code></p>
+                <p><i>39</i><i>39</i><code>&nbsp; payment: Payment,</code></p>
+                <p class="add"><i></i><i>40</i><code>+ idempotencyKey: string,</code></p>
+                <p><i>40</i><i>41</i><code>) {</code></p>
+                <p class="del"><i>41</i><i></i><code>- return gateway.charge(payment);</code></p>
+                <p class="add"><i></i><i>42</i><code>+ return withRetry(() =&gt;</code></p>
+                <p class="add"><i></i><i>43</i><code>+ &nbsp; gateway.charge(payment, { idempotencyKey })</code></p>
+                <p class="add"><i></i><i>44</i><code>+ );</code></p>
+                <div class="review-thread piece from-right"><span class="avatar small">JR</span><div><b>jon reviewed 18 minutes ago</b><p>Could this generate a new key on every retry?</p><button type="button" tabindex="-1">Reply…</button></div></div>
+              </article>
+
+              <article class="gh-diff secondary-diff piece from-bottom-left">
+                <header><span>▾</span><b>src/payments/worker.ts</b><i>+18 −4</i><button type="button" tabindex="-1">⋯</button></header>
+                <div class="hunk">@@ -72,6 +75,9 @@ async function processPayment</div>
+                <p><i>72</i><i>75</i><code>const payment = await loadPayment(job.id);</code></p>
+                <p class="add"><i></i><i>76</i><code>+ const key = payment.retryKey ?? randomUUID();</code></p>
+                <p class="add"><i></i><i>77</i><code>+ await retryCharge(payment, key);</code></p>
+              </article>
+            </div>
+
+            <aside class="review-sidebar piece from-right">
+              <div><small>Reviewers</small><p><span class="avatar small">JR</span> jon <b>●</b></p><p><span class="avatar small purple">LI</span> lina <b>✓</b></p></div>
+              <div><small>Assignees</small><p><span class="avatar small">MA</span> maya</p></div>
+              <div><small>Labels</small><p><i class="label-dot"></i> payments</p><p><i class="label-dot red"></i> needs-review</p></div>
+              <div><small>Development</small><p>Closes #476</p></div>
+            </aside>
+          </div>
+
+          <div class="noise-chip chip-a piece from-top-left">17 conversations</div><div class="noise-chip chip-b piece from-right">6 unresolved</div><div class="noise-chip chip-c piece from-bottom">41 files</div>
+        </div>
+
+        <div class="spotlight" aria-hidden="true"><img src="./assets/bobby.svg" alt="" /><span>Start with the core change</span></div>
+
+        <div class="map-layer" aria-hidden="true">
+          <svg viewBox="0 0 1000 560" preserveAspectRatio="none"><path d="M165 280 C255 280 265 280 355 280"/><path d="M645 280 C735 280 745 145 835 145"/><path d="M645 280 C735 280 745 415 835 415"/></svg>
+          <div class="map-node relies"><small>RELIES ON</small><b>Retry policy</b><p>Sets the allowed backoff.</p></div>
+          <div class="map-node core"><small>CORE CHANGE</small><b>Stable retry key</b><p>Keep one key across every attempt.</p></div>
+          <div class="map-node affects top"><small>AFFECTS</small><b>Payment worker</b><p>Passes the key forward.</p></div>
+          <div class="map-node affects bottom"><small>AFFECTS · UNTOUCHED</small><b>Webhook handler</b><p>May retry the same charge.</p></div>
+        </div>
+
+        <div class="bobby-layer">
+          <header class="bobby-top"><div><img src="./assets/bobby.svg" alt="" /><b>bobby</b></div><span>acme/payments #482 · Retry failed charges safely</span><i>12 / 18</i><em><b></b></em><button type="button" tabindex="-1">Submit review</button></header>
+          <nav class="bobby-crumb"><span>Payment retries</span><i>›</i><span>Retry failed charges</span><i>›</i><b>Stable retry key</b><small>CORE · 3 / 7</small></nav>
+          <div class="bobby-stage">
+            <div class="context-card previous"><small>JUST BEFORE</small><b>Retry policy</b><span>✓ understood</span></div>
+            <article class="focus-card"><header><span>RIGHT NOW</span><b>CORE CHANGE</b></header><div class="focus-question"><h2>Use one stable key for every retry</h2><p>Does every path that retries a payment keep the same idempotency key?</p></div><div class="focus-code"><div><code>src/payments/retry.ts</code><span>+9 −2</span></div><p><i>38</i><code>export async function retryCharge(</code></p><p><i>39</i><code>&nbsp; payment: Payment,</code></p><p class="add"><i>40</i><code>+ idempotencyKey: string,</code></p><p><i>41</i><code>) {</code></p><p class="add"><i>42</i><code>+ return withRetry(() =&gt;</code></p><p class="add"><i>43</i><code>+ &nbsp; gateway.charge(payment, { idempotencyKey })</code></p></div><footer><span><kbd>C</kbd> comment</span><span><kbd>X</kbd> flag</span><button type="button" tabindex="-1">Looks good <kbd>A</kbd></button></footer></article>
+            <div class="context-card next"><small>UP NEXT</small><b>Payment worker</b><span>passes the key forward</span></div>
+          </div>
+          <footer class="bobby-keys"><span><kbd>J</kbd> next</span><span><kbd>K</kbd> previous</span><span><kbd>Enter</kbd> zoom in</span><span><kbd>Esc</kbd> zoom out</span><span><kbd>?</kbd> all keys</span></footer>
+        </div>
+
+        <div class="return-layer">
+          <div class="welcome"><header><img src="./assets/bobby.svg" alt="" /><b>Welcome back</b><small>away for 26 min</small></header><main><span>YOU WERE HERE</span><h2>Use one stable key for every retry</h2><p class="parked"><i>📌</i><b>Your parked thought</b>“Check whether the webhook path creates a new key.”</p><div class="return-progress"><span>12 of 18 reviewed</span><i><b></b></i></div><button type="button" tabindex="-1">Back to where I was</button></main></div>
+        </div>
+
+        <div class="install-layer">
+          <img src="./assets/bobby.svg" alt="" />
+          <small>ONE PAGE · ONE QUESTION · ONE NEXT STEP</small>
+          <h2>Your next PR can feel quieter.</h2>
+          <div class="install-command"><span>$</span><code>curl -fsSL https://raw.githubusercontent.com/angrybayblade/bobby/main/install.sh | bash</code><button type="button" data-copy="curl -fsSL https://raw.githubusercontent.com/angrybayblade/bobby/main/install.sh | bash">Copy</button></div>
+          <a href="https://github.com/angrybayblade/bobby">View Bobby on GitHub ↗</a>
+        </div>
+      </div>
+
+      <div class="scroll-cue"><span>scroll to focus</span><i></i></div>
+    </div>
+  </main>
+  <div class="copy-toast" role="status" aria-live="polite">Install command copied</div>
+</body>
+</html>
