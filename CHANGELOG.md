@@ -9,6 +9,7 @@ What changed in each release, newest first. Each release's full notes, with inst
 - The address bar follows you: `…/diff/<file>#L42`, `…/flow/<file>#L42`, `…/conversation`. Reload, bookmark or share a link to land on the same view and step; back and forward move between views.
 - **⚙ Generated** gets its own switch, apart from **⚗ Tests**.
 - Code cut from the middle of a block comment is highlighted as comment, not as code.
+- Home page rows link to their review, so ⌘-click opens it in a new tab, even a PR you haven't opened yet. Right-click a row (or ⇧F10) to open it, open it in a new tab, open it on GitHub (`o`), or copy its link.
 - `bobby` in a repo with nothing to review (on main, say) opens the home page instead of exiting.
 
 ## 0.1.0-rc7 (2026-10-16)
