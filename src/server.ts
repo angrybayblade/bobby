@@ -161,15 +161,19 @@ export function startServer(app: App, port: number) {
         if (!rest.startsWith("/api/")) return staticFile("/index.html");
         const id = decodeURIComponent(seg.slice(0, 3).join("/")), s = app.reviews.get(id);
         if (s) return reviewApi(s, app, req, url, rest);
-        // not open, but opened before (a reload after Bobby restarted, a bookmark): open it again, from what recents kept
+        // not open, but opened before (a reload after Bobby restarted, a bookmark): open it again, from what recents kept;
+        // never opened, a PR's address (owner/repo/123, or @sha, @from..to): open that PR, as a new tab from home does
+        let failed = "";
         if (!app.loading.has(id) && app.open) {
           const r = (await loadRecents()).find((x) => x.id === id);
-          if (r) await app.open(r.kind === "local" ? undefined : r.arg, { repo: r.repoDir, ...(r.kind === "local" ? { base: r.baseRef } : {}) }).catch(() => {});
+          const pr = /^([\w.-]+)\/([\w.-]+)\/(\d+)(?:@((?:[0-9a-f]{7,40}\.\.)?[0-9a-f]{7,40}))?$/.exec(id);
+          const arg = r ? (r.kind === "local" ? undefined : r.arg) : pr && pr[1] !== "local" ? `https://github.com/${pr[1]}/${pr[2]}/pull/${pr[3]}${pr[4] ? `/changes/${pr[4]}` : ""}` : null;
+          if (r || arg) await app.open(arg ?? undefined, r ? { repo: r.repoDir, ...(r.kind === "local" ? { base: r.baseRef } : {}) } : {}).catch((e) => { failed = String(e?.message ?? e); });
         }
         const l = app.loading.get(id);
         // still building (or failed): with the settings, so the page wears your theme while it waits
         if (l) return json({ loading: !l.error, title: l.title, steps: l.steps, elapsed: Date.now() - l.startedAt, settings: loadSettings(), ...(l.error ? { error: l.error } : {}) }, l.error ? 500 : 202);
-        return json({ error: `No review ${id} is open. Open it from the home page, or with bobby <PR URL>.` }, 404);
+        return json({ error: failed || `No review ${id} is open. Open it from the home page, or with bobby <PR URL>.` }, 404);
       }
       if (!p.startsWith("/api/")) return staticFile(p === "/" ? "/home.html" : p);
       if (p === "/api/avatar") return avatar(url.searchParams.get("u") ?? "");
