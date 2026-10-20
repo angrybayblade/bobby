@@ -138,8 +138,86 @@ $(".lists").addEventListener("click", (ev) => {
   ev.preventDefault();
   openRow(row);
 });
+
+// ---- a row's menu: open it here or in a new tab, see it on GitHub, copy its link
+/** The review's address in Bobby, and the PR's on GitHub (none for a local branch). */
+function linksOf(row) {
+  if (row.dataset.recent == null) return { here: row.getAttribute("href"), github: row.dataset.pr };
+  const r = recents[Number(row.dataset.recent)];
+  return { here: `/r/${r.id}`, github: r.kind === "local" ? null : r.url ?? null };
+}
+const menu = $(".menu");
+function showMenu(row, x, y) {
+  const { here, github } = linksOf(row);
+  const item = (act, label, key = "") => `<button type="button" role="menuitem" data-act="${act}">${label}${key ? `<kbd>${key}</kbd>` : ""}</button>`;
+  menu.innerHTML = item("open", "Open review", "enter") + item("tab", "Open in new tab", `${/Mac/.test(navigator.platform) ? "⌘" : "ctrl"} click`)
+    + (github ? `<hr>${item("github", "Open on GitHub", "o")}${item("copy", "Copy GitHub link")}` : "") + item("copy-here", "Copy review link");
+  menu.hidden = false;
+  menu.row = row; menu.links = { here: new URL(here, location.href).href, github };
+  // at the pointer (or under the row, from the keyboard), kept on screen
+  const m = menu.getBoundingClientRect();
+  menu.style.left = `${Math.max(4, Math.min(x, innerWidth - m.width - 4))}px`;
+  menu.style.top = `${y + m.height > innerHeight - 4 ? Math.max(4, y - m.height) : y}px`;
+  menu.querySelector("button").focus();
+}
+function hideMenu() {
+  if (menu.hidden) return;
+  if (menu.contains(document.activeElement)) menu.row?.focus({ preventScroll: true }); // keys go back to the list
+  menu.hidden = true;
+}
+async function copy(text) {
+  try { return await navigator.clipboard.writeText(text); }
+  catch { /* no clipboard API here (or no permission): the old way */ }
+  const t = Object.assign(document.createElement("textarea"), { value: text });
+  document.body.append(t); t.select();
+  const ok = document.execCommand("copy");
+  t.remove();
+  if (!ok) $(".err").textContent = `Couldn't copy: ${text}`;
+}
+menu.addEventListener("click", (ev) => {
+  const act = ev.target.closest("button")?.dataset.act;
+  if (!act) return;
+  const { row, links } = menu;
+  hideMenu();
+  if (act === "open") openRow(row);
+  else if (act === "tab") window.open(links.here, "_blank", "noopener");
+  else if (act === "github") window.open(links.github, "_blank", "noopener");
+  else if (act === "copy") copy(links.github);
+  else if (act === "copy-here") copy(links.here);
+});
+menu.addEventListener("keydown", (ev) => {
+  const items = [...menu.querySelectorAll("button")], i = items.indexOf(document.activeElement);
+  if (ev.key === "Escape" || ev.key === "Tab") { ev.preventDefault(); hideMenu(); }
+  else if (ev.key === "ArrowDown" || ev.key === "ArrowUp") { ev.preventDefault(); items[(i + (ev.key === "ArrowDown" ? 1 : -1) + items.length) % items.length].focus(); }
+  else return;
+  ev.stopPropagation();
+});
+$(".lists").addEventListener("contextmenu", (ev) => {
+  const row = ev.target.closest(".row");
+  if (!row) return;
+  ev.preventDefault();
+  select(rows().indexOf(row));
+  showMenu(row, ev.clientX, ev.clientY);
+});
+addEventListener("pointerdown", (ev) => { if (!menu.contains(ev.target)) hideMenu(); });
+addEventListener("scroll", () => hideMenu(), true);
+addEventListener("resize", () => hideMenu());
+addEventListener("blur", () => hideMenu());
+
 document.addEventListener("keydown", (ev) => {
+  if (menu.contains(ev.target)) return; // the menu's own keys
   const typing = ev.target.matches("input");
+  const row = rows()[sel];
+  if (row && !typing && (ev.key === "ContextMenu" || (ev.key === "F10" && ev.shiftKey))) {
+    ev.preventDefault();
+    const r = row.getBoundingClientRect();
+    return showMenu(row, r.left + 24, r.bottom);
+  }
+  if (row && !typing && ev.key === "o" && !ev.metaKey && !ev.ctrlKey && !ev.altKey) {
+    const { github } = linksOf(row);
+    if (github) { ev.preventDefault(); window.open(github, "_blank", "noopener"); }
+    return;
+  }
   if (ev.key === "/" && !typing) { ev.preventDefault(); return box().focus(); }
   if (ev.key === "Escape" && typing) return ev.target.blur();
   if (ev.key === "ArrowDown" || (!typing && ev.key === "j")) { ev.preventDefault(); if (typing) ev.target.blur(); select(Math.min(sel + 1, rows().length - 1)); }
