@@ -82,7 +82,8 @@ function recentRow(r, i) {
 }
 function prRow(x, mine) {
   const seen = mine.get(`${x.owner}/${x.repo}/${x.number}`), p = seen?.progress;
-  return `<a class="row" href="${esc(x.url)}" data-pr="${esc(x.url)}" data-id="${esc(`${x.owner}/${x.repo}/${x.number}`)}">
+  const id = `${x.owner}/${x.repo}/${x.number}`;
+  return `<a class="row" href="/r/${esc(id)}" data-pr="${esc(x.url)}" data-id="${esc(id)}">
     <span class="t"><b>#${x.number}</b> ${esc(x.title)}${x.draft ? `<span class="tag draft">draft</span>` : ""}${seen?.open ? `<span class="tag live">open</span>` : ""}</span>
     <span class="side">${p ? `<span title="Your progress: ${p.done} of ${p.total} pages reviewed">${p.done}/${p.total}</span>` : ""}${x.comments ? `<span title="Comments">◂ ${x.comments}</span>` : ""}<span title="Updated">${ago(x.updatedAt)}</span></span>
     <span class="where">${esc(`${x.owner}/${x.repo}`)} · <img class="av" src="/api/avatar?u=${encodeURIComponent(x.author)}" alt="" loading="lazy" onerror="this.remove()">${esc(x.author)}</span>
@@ -133,7 +134,7 @@ function openRow(row) {
 }
 $(".lists").addEventListener("click", (ev) => {
   const row = ev.target.closest(".row");
-  if (!row || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.button) return; // a new tab: as the link says
+  if (!row || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.button) return; // a new tab: the link is the review's address
   ev.preventDefault();
   openRow(row);
 });
