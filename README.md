@@ -15,7 +15,7 @@ curl -fsSL https://raw.githubusercontent.com/angrybayblade/bobby/main/install.sh
 ```sh
 bobby https://github.com/owner/repo/pull/123
 bobby 123        # inside a clone of the repo
-bobby            # no PR: review the branch you're on, uncommitted changes included
+bobby            # no PR: review the branch you're on, uncommitted changes included (nothing to review: the home page)
 bobby home       # or bobby outside a repo: pick a PR from your recents, review requests and your own
 ```
 

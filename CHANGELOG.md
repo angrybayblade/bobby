@@ -9,6 +9,7 @@ What changed in each release, newest first. Each release's full notes, with inst
 - The address bar follows you: `…/diff/<file>#L42`, `…/flow/<file>#L42`, `…/conversation`. Reload, bookmark or share a link to land on the same view and step; back and forward move between views.
 - **⚙ Generated** gets its own switch, apart from **⚗ Tests**.
 - Code cut from the middle of a block comment is highlighted as comment, not as code.
+- `bobby` in a repo with nothing to review (on main, say) opens the home page instead of exiting.
 
 ## 0.1.0-rc7 (2026-10-16)
 
