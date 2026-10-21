@@ -255,7 +255,7 @@
                 <p class="del"><i>41</i><code>  <s class="kw">return</s> gateway.<s class="fn">charge</s>(payment);</code></p>
                 <p class="add"><i>42</i><code>  <s class="kw">return</s> <s class="fn">withRetry</s>(() =&gt;</code></p>
                 <p class="add"><i>43</i><code>    gateway.<s class="fn">charge</s>(payment, { idempotencyKey }),</code></p>
-                <div class="cm draft" data-in="5"><span class="av sm" style="--c:#a8691a">AB</span><div><b>you</b> <em>draft</em> webhooks/charge.ts still calls retryCharge without a key.</div></div>
+                <div class="cm draft" data-in="5"><span class="av sm" style="--c:#8250df">AB</span><div><b>you</b> <em>draft</em> webhooks/charge.ts still calls retryCharge without a key.</div></div>
                 <p class="add"><i>44</i><code>  );</code></p>
                 <p><i>45</i><code>}</code></p>
                 <div class="note" data-in="5">✎ key TTL?<small>private note</small></div>
