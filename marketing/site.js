@@ -23,8 +23,8 @@ const shadows = [];
     .root { display: block !important; position: absolute !important; inset: 0; width: ${W}px; height: ${H}px; overflow: hidden !important; background: transparent !important; }
     .bl { position: absolute; background: var(--bg); transition: opacity .6s cubic-bezier(.2, .7, .2, 1), transform .6s cubic-bezier(.2, .7, .2, 1), filter .6s cubic-bezier(.2, .7, .2, 1); }
     .bl > * { position: relative !important; inset: auto !important; width: 100% !important; height: 100% !important; margin: 0 !important; }
-    .bl.overlay, .bl.toast { background: none; }
-    .bl.overlay > *, .bl.toast > * { position: absolute !important; inset: 0 !important; }
+    .bl.is-overlay, .bl.is-toast { background: none; }
+    .bl.is-overlay > *, .bl.is-toast > * { position: absolute !important; inset: 0 !important; }
     .bl[data-in]:not(.shown), .bl[data-at]:not(.shown) { opacity: 0; pointer-events: none; }
     .bl.gone { opacity: 0 !important; transform: translateY(-8px) scale(.985); filter: blur(3px); }
     .bl .later { transition: opacity .6s; }
@@ -41,9 +41,10 @@ const shadows = [];
     root.setAttribute("style", r.style);
     for (const bl of [...host.children]) {
       const part = states[bl.dataset.state]?.[bl.dataset.region];
+    root.dataset.motion = "on"; // captured still (motion off), but the app's CSS would then stop every transition here
       if (!part) { console.warn("no capture for", bl.dataset.state, bl.dataset.region); bl.remove(); continue; }
       const [x, y, w, h] = part.box;
-      bl.classList.add(bl.dataset.region);
+      bl.classList.add(`is-${bl.dataset.region}`); // not the bare name: the app has classes like .view
       Object.assign(bl.style, { left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px` });
       bl.innerHTML = part.html;
       if (bl.dataset.later) for (const el of bl.querySelectorAll(bl.dataset.later)) el.classList.add("later");
