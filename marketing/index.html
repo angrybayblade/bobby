@@ -10,8 +10,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css?v=5" />
-  <script src="./site.js?v=5" defer></script>
+  <link rel="stylesheet" href="./styles.css?v=8" />
+  <script src="./bobby.js?v=8" defer></script>
+  <script src="./site.js?v=8" defer></script>
 </head>
 <body>
   <header class="site">
@@ -30,50 +31,50 @@
         <div class="cap" data-cap="0">
           <small>Bobby · a focus-first PR reviewer</small>
           <h1>This is a pull request on GitHub.</h1>
-          <p class="lede">41 files, A to Z. 17 conversations. Where would you start?</p>
-          <p class="lede">Scroll, and Bobby takes it over, one piece at a time. Same PR, same comments, same review at the end.</p>
+          <p class="lede">Ten files, A to Z, and five threads. Where would you start?</p>
+          <p class="lede">Scroll, and Bobby takes it over, one piece at a time. Same PR, same threads, same review at the end.</p>
         </div>
         <div class="cap" data-cap="1">
           <small>01 · Navigation</small>
           <h2>Know where you are.</h2>
           <p class="out"><i>Out</i><span>Four rows of repo and PR navigation.</span></p>
-          <p class="in"><i>In</i><span>One bar: the PR, where you are in it, and the view you're reading in.</span></p>
+          <p class="in"><i>In</i><span>One bar: where you are in the PR, how far you've got, and the view you're reading in.</span></p>
         </div>
         <div class="cap" data-cap="2">
-          <small>02 · Diff view</small>
-          <h2>The diff you know, laid out.</h2>
-          <p class="out"><i>Out</i><span>Every diff, stacked top to bottom.</span></p>
-          <p class="in"><i>In</i><span>Bobby's <b>Diff</b> view: GitHub's diffs and threads, untouched, with each file placed right of the files it relies on.</span></p>
+          <small>02 · Files</small>
+          <h2>The files that matter, placed.</h2>
+          <p class="out"><i>Out</i><span>The file tree, A to Z.</span></p>
+          <p class="in"><i>In</i><span>Each file tagged by where it sits: <code>L-1</code> what the change relies on, <code>L0</code> the change, <code>L1</code> what it affects. Tests and generated files stay hidden until you ask.</span></p>
         </div>
         <div class="cap" data-cap="3">
-          <small>03 · Files</small>
-          <h2>The files that matter, placed.</h2>
-          <p class="out"><i>Out</i><span>41 files in alphabetical order, lockfile included.</span></p>
-          <p class="in"><i>In</i><span>Each file tagged by where it sits: <code>L-1</code> what the change relies on, <code>L0</code> the change, <code>L1</code> what it affects. Tests and generated files stay hidden until you ask.</span></p>
+          <small>03 · Diff view</small>
+          <h2>The diff you know, in order.</h2>
+          <p class="out"><i>Out</i><span>Every diff, stacked top to bottom.</span></p>
+          <p class="in"><i>In</i><span>Bobby's <b>Diff</b> view: the same diffs and threads, one file at a time, each placed right of the files it relies on.</span></p>
         </div>
         <div class="cap" data-cap="4">
           <small>04 · Lens view</small>
           <h2>One change. One question.</h2>
           <p class="out"><i>Out</i><span>The whole diff at once.</span></p>
-          <p class="in"><i>In</i><span>The <b>Lens</b> view splits the PR into <b>cores</b>, one idea each, easiest first. Each has a <b>hook</b>: the question to keep in mind while you read. With Claude Code installed, Claude names the cores and writes the hooks.</span></p>
+          <p class="in"><i>In</i><span>The <b>Lens</b> view splits the PR into <b>cores</b>, one idea each, and opens each with a question to keep in mind. With Claude Code installed, Claude names the cores and writes the questions.</span></p>
         </div>
         <div class="cap" data-cap="5">
           <small>05 · Context</small>
           <h2>What it relies on. What it affects.</h2>
-          <p class="out"><i>Out</i><span>A sidebar of labels and assignees.</span></p>
-          <p class="in"><i>In</i><span>The code around the change, left to right: what it builds on, then what it can break, including code the PR never touched. That's where bugs hide.</span></p>
+          <p class="out"><i>Out</i><span>Searching the repo for who calls it.</span></p>
+          <p class="in"><i>In</i><span>The code around the change, and how each piece connects, including code the PR never touched. That's where bugs hide.</span></p>
         </div>
         <div class="cap" data-cap="6">
           <small>06 · Comments</small>
           <h2>Comments where they belong.</h2>
-          <p class="out"><i>Out</i><span>Threads scattered down one long page.</span></p>
-          <p class="in"><i>In</i><span>Every GitHub thread under its line, resolved ones folded. Your drafts wait to go out as one review; private notes never leave your machine.</span></p>
+          <p class="out"><i>Out</i><span>A count of conversations, somewhere below.</span></p>
+          <p class="in"><i>In</i><span>Every GitHub thread under its line. Your comments wait as drafts; private notes never leave your machine.</span></p>
         </div>
         <div class="cap" data-cap="7">
           <small>07 · Progress</small>
           <h2>Walk it, mark it, move on.</h2>
           <p class="out"><i>Out</i><span>"Viewed" checkboxes, file by file.</span></p>
-          <p class="in"><i>In</i><span><kbd>j</kbd> <kbd>k</kbd> walk the pages in order; <kbd>a</kbd> marks one good and jumps to the next unreviewed. Marks follow the code, so after a force-push only what changed comes back.</span></p>
+          <p class="in"><i>In</i><span><kbd>j</kbd> <kbd>k</kbd> walk the PR in order; <kbd>a</kbd> marks a page looked at and moves on. Marks follow the code, so after a force-push only what changed comes back.</span></p>
         </div>
         <div class="cap" data-cap="8">
           <small>08 · Interruptions</small>
@@ -85,19 +86,19 @@
           <small>09 · Coming back</small>
           <h2>Pick up where you left off.</h2>
           <p class="out"><i>Out</i><span>Scrolling around for where you were.</span></p>
-          <p class="in"><i>In</i><span>A welcome-back card: where you were, your parked thought, how far you got. Progress survives restarts and force-pushes.</span></p>
+          <p class="in"><i>In</i><span>Where you were, how far you got, and the thought you parked. Progress survives restarts and force-pushes.</span></p>
         </div>
         <div class="cap" data-cap="10">
           <small>10 · Submit</small>
           <h2>One review, one key.</h2>
           <p class="out"><i>Out</i><span>"Review changes", at the end of a long page.</span></p>
-          <p class="in"><i>In</i><span><kbd>s</kbd> posts every draft as one GitHub review: comment, approve or request changes. Notes and marks stay on your machine.</span></p>
+          <p class="in"><i>In</i><span><kbd>s</kbd> posts every draft as one GitHub review: comment, approve or request changes. Private notes stay on your machine.</span></p>
         </div>
         <div class="cap" data-cap="11">
           <small>11 · Conversation view</small>
           <h2>And it's on GitHub.</h2>
           <p class="out"><i>Out</i><span>Switching to the browser to check it landed.</span></p>
-          <p class="in"><i>In</i><span>The <b>Conversation</b> view is GitHub's Conversation tab, live: your review is already in the timeline, next to everyone else's, and its threads open the code.</span></p>
+          <p class="in"><i>In</i><span>The <b>Conversation</b> view is GitHub's own timeline, read live: your review is already in it, next to everyone else's.</span></p>
         </div>
         <div class="cap final" data-cap="12" id="install">
           <small>Your next PR</small>
@@ -112,284 +113,117 @@
         </nav>
       </section>
 
-      <!-- The app window: GitHub's pieces leave, Bobby's arrive. Fixed design size, scaled to fit. -->
+      <!-- The app window: GitHub's pieces leave, Bobby's arrive. Drawn at 1440 × 900, scaled to fit. -->
       <div class="viewport" aria-hidden="true">
         <div class="frame">
           <div class="app" data-app>
 
-            <!-- ── GitHub ─────────────────────────────────────────────── -->
-            <header class="gh gh-top" data-out="1">
-              <svg viewBox="0 0 16 16" width="26" height="26"><path fill="#fff" d="M8 0c4.42 0 8 3.58 8 8a8.01 8.01 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
-              <span class="gh-btn">☰</span>
-              <span class="crumb"><b>acme</b> / <b>payments</b></span>
-              <span class="search">Type <kbd>/</kbd> to search</span>
-              <span class="gh-btn">＋ ▾</span><span class="gh-btn">◎</span><span class="gh-btn">⑃</span><span class="gh-btn">✉ <i class="dot"></i></span>
+            <!-- ── GitHub: the PR's Files changed tab ─────────────────── -->
+            <header class="gh gh-head" data-out="1">
+              <span class="ibtn">☰</span>
+              <svg class="mark" viewBox="0 0 16 16" width="32" height="32"><path fill="#1f2328" d="M8 0c4.42 0 8 3.58 8 8a8.01 8.01 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/></svg>
+              <span class="crumb">acme <i>/</i> <b>payments</b></span>
+              <span class="search">⌕ Type <kbd>/</kbd> to search</span>
+              <span class="ibtn">＋ ▾</span><span class="ibtn">◎</span><span class="ibtn">⇅</span><span class="ibtn">✉</span>
               <span class="av" style="--c:#8250df">AB</span>
             </header>
-
-            <div class="gh gh-chrome" data-out="1">
-              <div class="repo-nav">
-                <span>‹› Code</span><span>◎ Issues <b>14</b></span><span class="on">⇅ Pull requests <b>9</b></span><span>▷ Actions</span><span>▦ Projects</span><span>⛉ Security <b>2</b></span><span>⌇ Insights</span><span>⚙ Settings</span>
-              </div>
-              <div class="pr-head">
-                <h1>Retry failed charges safely <span>#482</span></h1>
-                <p><b class="pill-open">⇅ Open</b> <b>maya</b> wants to merge 8 commits into <code>main</code> from <code>retry-idempotency</code></p>
-                <span class="gh-btn edit">Edit</span><span class="gh-btn code">‹› Code ▾</span>
-              </div>
-              <div class="pr-tabs">
-                <span>Conversation <b>17</b></span><span>Commits <b>8</b></span><span>Checks <b>3</b></span><span class="on">Files changed <b>41</b></span>
-                <em class="plusminus"><i class="add">+1,204</i> <i class="del">−318</i> ▮▮▮▮▯</em>
-              </div>
-            </div>
-
-            <!-- the last GitHub pieces: they move into Bobby's bar, then leave one by one -->
-            <div class="gh gh-leftover">
-              <span class="viewed" data-out="7">0 / 41 files viewed <i>☐</i></span>
-              <span class="review-btn" data-out="10">Review changes ▾</span>
-            </div>
-
-            <aside class="gh gh-tree" data-out="3">
-              <div class="filter">⌕ Filter changed files</div>
-              <div class="t dir">▾ src</div>
-              <div class="t dir l2">▾ api</div>
-              <div class="t l3">routes.ts <i>+4 −1</i></div>
-              <div class="t dir l2">▾ billing</div>
-              <div class="t l3">invoice.ts <i>+21 −9</i></div>
-              <div class="t l3">ledger.ts <i>+6 −6</i></div>
-              <div class="t dir l2">▾ payments</div>
-              <div class="t l3">policy.ts <i>+31</i></div>
-              <div class="t l3 on">retry.ts <i>+9 −2</i></div>
-              <div class="t l3">worker.ts <i>+18 −4</i></div>
-              <div class="t dir l2">▸ generated</div>
-              <div class="t dir">▾ test</div>
-              <div class="t l2">ledger.test.ts <i>+40</i></div>
-              <div class="t l2">retry.test.ts <i>+76</i></div>
-              <div class="t l2">worker.test.ts <i>+43</i></div>
-              <div class="t">package-lock.json <i>+532 −210</i></div>
-              <div class="t more">… 26 more files</div>
-            </aside>
-
-            <section class="gh gh-diffs" data-out="2">
-              <div class="file">
-                <header><span>▾</span><b>src/api/routes.ts</b><i class="add">+4</i><i class="del">−1</i><em>☐ Viewed</em></header>
-                <div class="hunk">@@ -12,7 +12,10 @@ router.post("/charges/:id/retry"</div>
-                <p><i>12</i><code>router.post("/charges/:id/retry", auth,</code></p>
-                <p class="del"><i>13</i><code>-  (req, res) =&gt; retryCharge(req.payment))</code></p>
-                <p class="add"><i>13</i><code>+  (req, res) =&gt; queue.add("retry", {</code></p>
-                <p class="add"><i>14</i><code>+    id: req.params.id })</code></p>
-              </div>
-              <div class="file">
-                <header><span>▾</span><b>src/billing/invoice.ts</b><i class="add">+21</i><i class="del">−9</i><em>☐ Viewed</em></header>
-                <div class="hunk">@@ -88,9 +88,21 @@ export function buildInvoice</div>
-                <p><i>88</i><code>  const lines = items.map(toLine);</code></p>
-                <p class="add"><i>89</i><code>+ const fees = feesFor(account, lines);</code></p>
-                <div class="thread">
-                  <span class="av" style="--c:#bf8700">LI</span>
-                  <div><b>lina</b> commented 2 hours ago<p>Do fees belong in this PR?</p></div>
-                </div>
-              </div>
-              <div class="file">
-                <header><span>▾</span><b>src/billing/ledger.ts</b><i class="add">+6</i><i class="del">−6</i><em>☐ Viewed</em></header>
-                <div class="hunk">@@ -3,6 +3,6 @@</div>
-                <p class="del"><i>3</i><code>-import { Ledger } from "./types"</code></p>
-                <p class="add"><i>3</i><code>+import { Ledger } from "./types";</code></p>
-              </div>
-              <div class="file">
-                <header><span>▾</span><b>package-lock.json</b><i class="add">+532</i><i class="del">−210</i><em>☐ Viewed</em></header>
-                <div class="big">Large diffs are not rendered by default. <u>Load diff</u></div>
-              </div>
-              <div class="file">
-                <header><span>▾</span><b>src/payments/policy.ts</b><i class="add">+31</i><em>☐ Viewed</em></header>
-                <div class="hunk">@@ -0,0 +1,31 @@</div>
-                <p class="add"><i>1</i><code>+export async function withRetry&lt;T&gt;(</code></p>
-              </div>
-            </section>
-
-            <aside class="gh gh-side" data-out="5">
-              <div><small>Reviewers <i>⚙</i></small><p><span class="av sm" style="--c:#bf3989">JR</span>jon <b class="dot-y">●</b></p><p><span class="av sm" style="--c:#bf8700">LI</span>lina <b class="ok">✓</b></p></div>
-              <div><small>Assignees <i>⚙</i></small><p><span class="av sm" style="--c:#1a7f37">MA</span>maya</p></div>
-              <div><small>Labels <i>⚙</i></small><p><span class="lbl" style="--c:#0969da">payments</span><span class="lbl" style="--c:#cf222e">needs-review</span><span class="lbl" style="--c:#8250df">p1</span></p></div>
-              <div><small>Projects <i>⚙</i></small><p class="faint">None yet</p></div>
-              <div><small>Milestone <i>⚙</i></small><p class="faint">No milestone</p></div>
-              <div><small>Development</small><p>Closes #476</p></div>
-              <div><small>Notifications</small><p class="faint">You're receiving notifications because you were mentioned.</p></div>
-            </aside>
-
-            <span class="gh noise n1" data-out="6">💬 17 conversations</span>
-            <span class="gh noise n2" data-out="6">6 unresolved</span>
-            <span class="gh noise n3" data-out="6">jon requested changes</span>
-
-            <!-- ── Bobby ──────────────────────────────────────────────── -->
-            <header class="bb bb-top" data-in="1">
-              <span class="brand"><img src="./assets/bobby.svg" alt="" width="20" height="20" />bobby</span>
-              <span class="title">Retry failed charges safely</span>
-              <span class="views"><i class="v-conv">Conversation</i><i>Flow</i><i>Outline</i><i class="v-lens">Lens</i><i class="v-diff">Diff</i></span>
-              <span class="right">
-                <span class="progress" data-in="7"><span class="core-p">core <em><b style="width:40%"></b></em> 2/5</span><span>12/18</span></span>
-                <span class="drafts" data-in="6" data-out="11">2 drafts · <kbd>S</kbd></span>
-                <span class="submit" data-in="10">Submit review</span>
-              </span>
-            </header>
-
-            <nav class="bb bb-crumbs" data-in="1">
-              <span>acme/payments #482</span><i>›</i><span class="c-diff"><b>All changes</b> · 5 files</span><span class="c-lens">Stable retry key<i>›</i><b>Core</b></span><span class="c-conv"><b>Conversation</b> · live from GitHub</span>
-              <span class="pin" data-in="8">📌 does the webhook path keep the key?</span>
+            <nav class="gh gh-repo" data-out="1">
+              <span>‹› Code</span><span>◎ Issues <b>14</b></span><span class="on">⇅ Pull requests <b>9</b></span><span>▷ Actions</span><span>▦ Projects</span><span>⛉ Security</span><span>⌇ Insights</span><span>⚙ Settings</span>
             </nav>
-
-            <aside class="bb bb-tree" data-in="3">
-              <header>Files <b>5</b><span title="Tests and generated files hidden">⚗ ⚙</span></header>
-              <div class="t dir">▾ src</div>
-              <div class="t dir l2">▾ api</div>
-              <div class="t l3"><em class="lv">L2</em>routes.ts</div>
-              <div class="t dir l2">▾ payments</div>
-              <div class="t l3"><em class="lv">L-1</em>policy.ts</div>
-              <div class="t l3 on"><em class="lv">L0</em>retry.ts</div>
-              <div class="t l3"><em class="lv">L1</em>worker.ts</div>
-              <div class="t dir l2">▾ billing</div>
-              <div class="t l3 faint"><em class="lv">L0</em>invoice.ts</div>
-              <div class="hidden">⚗ 3 test files · ⚙ 1 generated<br />hidden, one click away</div>
-              <div class="low">Low-signal changes<br /><span>package-lock.json, ledger.ts (format only)</span></div>
+            <div class="gh gh-pr" data-out="1">
+              <h1>Retry failed charges safely <span>#482</span></h1>
+              <span class="btn edit">Edit</span><span class="btn code">‹› Code ▾</span>
+              <p><b class="state">⇅ Open</b><b>maya</b> wants to merge 2 commits into <code>main</code> from <code>retry-idempotency</code></p>
+              <nav class="tabs">
+                <span>💬 Conversation <b>5</b></span><span>◉ Commits <b>2</b></span><span>☑ Checks <b>3</b></span><span class="on">± Files changed <b>10</b></span>
+                <em><i class="add">+61</i> <i class="del">−12</i> <i class="blocks"><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="d"></i></i></em>
+              </nav>
+            </div>
+            <div class="gh gh-bar" data-out="1">
+              <span class="btn">◧</span><span class="btn">All commits ▾</span><span class="btn">⚙ ▾</span>
+            </div>
+            <!-- the last GitHub pieces: they dock into Bobby's bar, then leave one by one -->
+            <div class="gh gh-dock">
+              <span class="chip risk" data-out="6">jon requested changes</span>
+              <span class="chip" data-out="6">💬 5 conversations</span>
+              <span class="viewed" data-out="7">0 / 10 files viewed <i>⌄</i></span>
+              <span class="review" data-out="10">Review changes ▾</span>
+            </div>
+            <aside class="gh gh-tree" data-out="2">
+              <div class="filter">⌕ Filter changed files</div>
+              <div class="t dir">⌄ 📁 src</div>
+              <div class="t dir l2">⌄ 📁 api</div>
+              <div class="t l3">routes.ts <i class="m">±</i></div>
+              <div class="t dir l2">⌄ 📁 billing</div>
+              <div class="t l3">fees.ts <i class="a">+</i></div>
+              <div class="t l3">invoice.ts <i class="m">±</i></div>
+              <div class="t l3">ledger.ts <i class="m">±</i></div>
+              <div class="t dir l2">⌄ 📁 payments</div>
+              <div class="t l3">policy.ts <i class="a">+</i></div>
+              <div class="t l3">queue.ts <i class="a">+</i></div>
+              <div class="t l3 on">retry.ts <i class="m">±</i></div>
+              <div class="t l3">types.ts <i class="m">±</i></div>
+              <div class="t l3">worker.ts <i class="m">±</i></div>
+              <div class="t dir">⌄ 📁 test</div>
+              <div class="t l2">retry.test.ts <i class="a">+</i></div>
             </aside>
-
-            <section class="bb bb-core" data-in="4">
-              <header><span class="band">◆ CORE CHANGE</span><span class="count">core 1 of 3 · easiest first</span></header>
-              <h3>Stable retry key</h3>
-              <p class="why">retryCharge now takes one idempotency key and reuses it on every attempt.</p>
-              <div class="hook"><b>?</b>Does every path that retries a payment keep the same key?</div>
-              <div class="code">
-                <div class="fh"><b>src/payments/retry.ts</b><i class="add">+9</i><i class="del">−2</i><em>☐ Viewed</em></div>
-                <p><i>38</i><code><s class="kw">export async function</s> <s class="fn">retryCharge</s>(</code></p>
-                <p><i>39</i><code>  payment: <s class="ty">Payment</s>,</code></p>
-                <p class="add"><i>40</i><code>  idempotencyKey: <s class="ty">string</s>,</code></p>
-                <div class="cm" data-in="6"><span class="av sm" style="--c:#bf3989">JR</span><div><b>jon</b> <time>18m</time> Could this make a new key on every retry?<p><b>maya</b> The worker keeps <code>payment.retryKey</code>.</p></div></div>
-                <div class="cm slim" data-in="6">▸ <b>lina</b> · resolved · "Name it idempotencyKey" · 2 replies</div>
-                <p><i>41</i><code>) {</code></p>
-                <p class="del"><i>41</i><code>  <s class="kw">return</s> gateway.<s class="fn">charge</s>(payment);</code></p>
-                <p class="add"><i>42</i><code>  <s class="kw">return</s> <s class="fn">withRetry</s>(() =&gt;</code></p>
-                <p class="add"><i>43</i><code>    gateway.<s class="fn">charge</s>(payment, { idempotencyKey }),</code></p>
-                <div class="cm draft" data-in="6"><span class="av sm" style="--c:#8250df">AB</span><div><b>you</b> <em>draft</em> webhooks/charge.ts still calls retryCharge without a key.</div></div>
-                <p class="add"><i>44</i><code>  );</code></p>
-                <p><i>45</i><code>}</code></p>
-                <div class="note" data-in="6">✎ key TTL?<small>private note</small></div>
-              </div>
+            <section class="gh gh-diffs" data-out="3">
+              <!-- gh-diff -->
+              <div class="file"><header><span class="chev">⌄</span><span class="ct">5</span><span class="blocks"><i class="a"></i><i class="a"></i><i class="a"></i><i class="d"></i><i class="d"></i></span><b>src/api/routes.ts</b><span class="cp">⧉</span><em><i>☐</i> Viewed</em><span class="kb">···</span></header><table><tr class="hk"><td class="no"></td><td class="no"></td><td><code>@@ -1,5 +1,6 @@</code></td></tr><tr class=""><td class="no">1</td><td class="no">1</td><td><code><b> </b><span class="k">import</span> { router, auth } <span class="k">from</span> <span class="s">&quot;./http&quot;</span>;</code></td></tr><tr class="d"><td class="no">2</td><td class="no"></td><td><code><b>-</b><span class="k">import</span> { retryCharge } <span class="k">from</span> <span class="s">&quot;../payments/retry&quot;</span>;</code></td></tr><tr class="a"><td class="no"></td><td class="no">2</td><td><code><b>+</b><span class="k">import</span> { queue } <span class="k">from</span> <span class="s">&quot;../payments/queue&quot;</span>;</code></td></tr><tr class=""><td class="no">3</td><td class="no">3</td><td><code><b> </b></code></td></tr><tr class=""><td class="no">4</td><td class="no">4</td><td><code><b> </b>router.<span class="f">post</span>(<span class="s">&quot;/charges/:id/retry&quot;</span>, auth,</code></td></tr><tr class="d"><td class="no">5</td><td class="no"></td><td><code><b>-</b>  (req, res) =&gt; <span class="f">retryCharge</span>(req.payment).<span class="f">then</span>((r) =&gt; res.<span class="f">json</span>(r)));</code></td></tr><tr class="a"><td class="no"></td><td class="no">5</td><td><code><b>+</b>  (req, res) =&gt; queue.<span class="f">add</span>(<span class="s">&quot;retry&quot;</span>, {</code></td></tr><tr class="a"><td class="no"></td><td class="no">6</td><td><code><b>+</b>    id: req.params.id }).<span class="f">then</span>(() =&gt; res.<span class="f">status</span>(<span class="n">202</span>).<span class="f">end</span>()));</code></td></tr></table></div>
+              <div class="file"><header><span class="chev">⌄</span><span class="ct">5</span><span class="blocks"><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i></span><b>src/billing/fees.ts</b><span class="cp">⧉</span><em><i>☐</i> Viewed</em><span class="kb">···</span></header><table><tr class="hk"><td class="no"></td><td class="no"></td><td><code>@@ -0,0 +1,5 @@</code></td></tr><tr class="a"><td class="no"></td><td class="no">1</td><td><code><b>+</b><span class="k">import</span> <span class="k">type</span> { Line } <span class="k">from</span> <span class="s">&quot;./ledger&quot;</span>;</code></td></tr><tr class="a"><td class="no"></td><td class="no">2</td><td><code><b>+</b><span class="k">export</span> <span class="k">function</span> <span class="f">feesFor</span>(account: { plan: string }, lines: Line[]): Line[] {</code></td></tr><tr class="a"><td class="no"></td><td class="no">3</td><td><code><b>+</b>  <span class="k">if</span> (account.plan !== <span class="s">&quot;metered&quot;</span>) <span class="k">return</span> [];</code></td></tr><tr class="a"><td class="no"></td><td class="no">4</td><td><code><b>+</b>  <span class="k">return</span> [{ sku: <span class="s">&quot;fee:processing&quot;</span>, amount: Math.<span class="f">round</span>(lines.<span class="f">reduce</span>((s, l) =&gt; s + l.amount, <span class="n">0</span>) * <span class="n">0.029</span>) }];</code></td></tr><tr class="a"><td class="no"></td><td class="no">5</td><td><code><b>+</b>}</code></td></tr></table></div>
+              <div class="file"><header><span class="chev">⌄</span><span class="ct">8</span><span class="blocks"><i class="a"></i><i class="a"></i><i class="a"></i><i class="d"></i><i class="d"></i></span><b>src/billing/invoice.ts</b><span class="cp">⧉</span><em><i>☐</i> Viewed</em><span class="kb">···</span></header><table><tr class="hk"><td class="no"></td><td class="no"></td><td><code>@@ -1,9 +1,11 @@</code></td></tr><tr class="a"><td class="no"></td><td class="no">1</td><td><code><b>+</b><span class="k">import</span> { feesFor } <span class="k">from</span> <span class="s">&quot;./fees&quot;</span>;</code></td></tr><tr class=""><td class="no">1</td><td class="no">2</td><td><code><b> </b><span class="k">import</span> <span class="k">type</span> { Line } <span class="k">from</span> <span class="s">&quot;./ledger&quot;</span>;</code></td></tr><tr class=""><td class="no">2</td><td class="no">3</td><td><code><b> </b></code></td></tr><tr class="d"><td class="no">3</td><td class="no"></td><td><code><b>-</b><span class="k">export</span> <span class="k">function</span> <span class="f">buildInvoice</span>(account: { id: string }, items: { sku: string; amount: number }[]) {</code></td></tr><tr class="a"><td class="no"></td><td class="no">4</td><td><code><b>+</b><span class="k">export</span> <span class="k">function</span> <span class="f">buildInvoice</span>(account: { id: string; plan: string }, items: { sku: string; amount: number }[]) {</code></td></tr><tr class=""><td class="no">4</td><td class="no">5</td><td><code><b> </b>  <span class="k">const</span> lines: Line[] = items.<span class="f">map</span>(toLine);</code></td></tr><tr class="d"><td class="no">5</td><td class="no"></td><td><code><b>-</b>  <span class="k">const</span> total = lines.<span class="f">reduce</span>((sum, l) =&gt; sum + l.amount, <span class="n">0</span>);</code></td></tr><tr class="d"><td class="no">6</td><td class="no"></td><td><code><b>-</b>  <span class="k">return</span> { account: account.id, lines, total };</code></td></tr><tr class="a"><td class="no"></td><td class="no">6</td><td><code><b>+</b>  <span class="k">const</span> fees = <span class="f">feesFor</span>(account, lines);</code></td></tr><tr class="a"><td class="no"></td><td class="no">7</td><td><code><b>+</b>  <span class="k">const</span> total = [...lines, ...fees].<span class="f">reduce</span>((sum, l) =&gt; sum + l.amount, <span class="n">0</span>);</code></td></tr><tr class="tr"><td colspan="3"><div class="th"><div class="tbox">
+                <div class="tc"><span class="av" style="--c:#bf8700">LI</span><div><p><b>lina</b> <span>2 hours ago</span></p><p>Do fees belong in this PR? Happy to review them separately.</p></div></div>
+                <div class="tf"><span class="reply">Reply…</span><span class="btn">Resolve conversation</span></div></div></div></td></tr><tr class="a"><td class="no"></td><td class="no">8</td><td><code><b>+</b>  <span class="k">return</span> { account: account.id, lines: [...lines, ...fees], total };</code></td></tr><tr class=""><td class="no">7</td><td class="no">9</td><td><code><b> </b>}</code></td></tr><tr class=""><td class="no">8</td><td class="no">10</td><td><code><b> </b></code></td></tr><tr class=""><td class="no">9</td><td class="no">11</td><td><code><b> </b><span class="k">function</span> <span class="f">toLine</span>(item: { sku: string; amount: number }): Line {</code></td></tr></table></div>
+              <div class="file"><header><span class="chev">⌄</span><span class="ct">4</span><span class="blocks"><i class="a"></i><i class="a"></i><i class="d"></i><i class="d"></i><i class="d"></i></span><b>src/billing/ledger.ts</b><span class="cp">⧉</span><em><i>☐</i> Viewed</em><span class="kb">···</span></header><table><tr class="hk"><td class="no"></td><td class="no"></td><td><code>@@ -1,2 +1,2 @@</code></td></tr><tr class="d"><td class="no">1</td><td class="no"></td><td><code><b>-</b><span class="k">export</span> <span class="k">interface</span> Line { sku: string; amount: number }</code></td></tr><tr class="d"><td class="no">2</td><td class="no"></td><td><code><b>-</b><span class="k">export</span> <span class="k">function</span> <span class="f">post</span>(lines: Line[]) { <span class="k">return</span> lines.length }</code></td></tr><tr class="a"><td class="no"></td><td class="no">1</td><td><code><b>+</b><span class="k">export</span> <span class="k">interface</span> Line { sku: string; amount: number; }</code></td></tr><tr class="a"><td class="no"></td><td class="no">2</td><td><code><b>+</b><span class="k">export</span> <span class="k">function</span> <span class="f">post</span>(lines: Line[]) { <span class="k">return</span> lines.length; }</code></td></tr></table></div>
+              <div class="file"><header><span class="chev">⌄</span><span class="ct">22</span><span class="blocks"><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i></span><b>src/payments/policy.ts</b><span class="cp">⧉</span><em><i>☐</i> Viewed</em><span class="kb">···</span></header><table><tr class="hk"><td class="no"></td><td class="no"></td><td><code>@@ -0,0 +1,22 @@</code></td></tr><tr class="a"><td class="no"></td><td class="no">1</td><td><code><b>+</b><span class="k">export</span> <span class="k">interface</span> RetryPolicy {</code></td></tr><tr class="a"><td class="no"></td><td class="no">2</td><td><code><b>+</b>  attempts: number;</code></td></tr><tr class="a"><td class="no"></td><td class="no">3</td><td><code><b>+</b>  baseDelayMs: number;</code></td></tr><tr class="a"><td class="no"></td><td class="no">4</td><td><code><b>+</b>}</code></td></tr><tr class="a"><td class="no"></td><td class="no">5</td><td><code><b>+</b></code></td></tr><tr class="a"><td class="no"></td><td class="no">6</td><td><code><b>+</b><span class="k">export</span> <span class="k">const</span> DEFAULT_POLICY: RetryPolicy = { attempts: <span class="n">3</span>, baseDelayMs: <span class="n">200</span> };</code></td></tr><tr class="a"><td class="no"></td><td class="no">7</td><td><code><b>+</b></code></td></tr><tr class="a"><td class="no"></td><td class="no">8</td><td><code><b>+</b><span class="k">const</span> sleep = (ms: number) =&gt; <span class="k">new</span> <span class="f">Promise</span>((r) =&gt; <span class="f">setTimeout</span>(r, ms));</code></td></tr><tr class="a"><td class="no"></td><td class="no">9</td><td><code><b>+</b></code></td></tr><tr class="a"><td class="no"></td><td class="no">10</td><td><code><b>+</b>/** Runs fn until it succeeds or the policy runs out, backing off <span class="n">200</span>ms, <span class="n">400</span>ms, <span class="n">800</span>ms… between tries. */</code></td></tr><tr class="a"><td class="no"></td><td class="no">11</td><td><code><b>+</b><span class="k">export</span> <span class="k">async</span> <span class="k">function</span> withRetry&lt;T&gt;(fn: () =&gt; Promise&lt;T&gt;, policy: RetryPolicy = DEFAULT_POLICY): Promise&lt;T&gt; {</code></td></tr><tr class="a"><td class="no"></td><td class="no">12</td><td><code><b>+</b>  <span class="k">let</span> lastError: unknown;</code></td></tr><tr class="a"><td class="no"></td><td class="no">13</td><td><code><b>+</b>  <span class="k">for</span> (<span class="k">let</span> attempt = <span class="n">0</span>; attempt &lt; policy.attempts; attempt++) {</code></td></tr><tr class="a"><td class="no"></td><td class="no">14</td><td><code><b>+</b>    <span class="k">try</span> {</code></td></tr><tr class="a"><td class="no"></td><td class="no">15</td><td><code><b>+</b>      <span class="k">return</span> <span class="k">await</span> <span class="f">fn</span>();</code></td></tr><tr class="a"><td class="no"></td><td class="no">16</td><td><code><b>+</b>    } <span class="k">catch</span> (err) {</code></td></tr><tr class="a"><td class="no"></td><td class="no">17</td><td><code><b>+</b>      lastError = err;</code></td></tr><tr class="a"><td class="no"></td><td class="no">18</td><td><code><b>+</b>      <span class="k">await</span> <span class="f">sleep</span>(policy.baseDelayMs * <span class="n">2</span> ** attempt);</code></td></tr><tr class="a"><td class="no"></td><td class="no">19</td><td><code><b>+</b>    }</code></td></tr><tr class="a"><td class="no"></td><td class="no">20</td><td><code><b>+</b>  }</code></td></tr><tr class="a"><td class="no"></td><td class="no">21</td><td><code><b>+</b>  <span class="k">throw</span> lastError;</code></td></tr><tr class="a"><td class="no"></td><td class="no">22</td><td><code><b>+</b>}</code></td></tr></table></div>
+              <div class="file"><header><span class="chev">⌄</span><span class="ct">1</span><span class="blocks"><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i></span><b>src/payments/queue.ts</b><span class="cp">⧉</span><em><i>☐</i> Viewed</em><span class="kb">···</span></header><table><tr class="hk"><td class="no"></td><td class="no"></td><td><code>@@ -0,0 +1 @@</code></td></tr><tr class="a"><td class="no"></td><td class="no">1</td><td><code><b>+</b><span class="k">export</span> <span class="k">const</span> queue = { add: <span class="k">async</span> (_name: string, _job: { id: string }) =&gt; {} };</code></td></tr></table></div>
+              <div class="file"><header><span class="chev">⌄</span><span class="ct">12</span><span class="blocks"><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="d"></i></span><b>src/payments/retry.ts</b><span class="cp">⧉</span><em><i>☐</i> Viewed</em><span class="kb">···</span></header><table><tr class="hk"><td class="no"></td><td class="no"></td><td><code>@@ -1,8 +1,14 @@</code></td></tr><tr class=""><td class="no">1</td><td class="no">1</td><td><code><b> </b><span class="k">import</span> { gateway, <span class="k">type</span> ChargeResult } <span class="k">from</span> <span class="s">&quot;./gateway&quot;</span>;</code></td></tr><tr class="a"><td class="no"></td><td class="no">2</td><td><code><b>+</b><span class="k">import</span> { withRetry } <span class="k">from</span> <span class="s">&quot;./policy&quot;</span>;</code></td></tr><tr class=""><td class="no">2</td><td class="no">3</td><td><code><b> </b><span class="k">import</span> <span class="k">type</span> { Payment } <span class="k">from</span> <span class="s">&quot;./types&quot;</span>;</code></td></tr><tr class=""><td class="no">3</td><td class="no">4</td><td><code><b> </b></code></td></tr><tr class="d"><td class="no">4</td><td class="no"></td><td><code><b>-</b>/** Retries a failed charge once. */</code></td></tr><tr class="d"><td class="no">5</td><td class="no"></td><td><code><b>-</b><span class="k">export</span> <span class="k">async</span> <span class="k">function</span> <span class="f">retryCharge</span>(payment: Payment): Promise&lt;ChargeResult&gt; {</code></td></tr><tr class="a"><td class="no"></td><td class="no">5</td><td><code><b>+</b>/** Retries a failed charge. Every attempt carries the same idempotency key, so the processor charges at most once. */</code></td></tr><tr class="a"><td class="no"></td><td class="no">6</td><td><code><b>+</b><span class="k">export</span> <span class="k">async</span> <span class="k">function</span> <span class="f">retryCharge</span>(</code></td></tr><tr class="a"><td class="no"></td><td class="no">7</td><td><code><b>+</b>  payment: Payment,</code></td></tr><tr class="a"><td class="no"></td><td class="no">8</td><td><code><b>+</b>  idempotencyKey: string,</code></td></tr><tr class="a"><td class="no"></td><td class="no">9</td><td><code><b>+</b>): Promise&lt;ChargeResult&gt; {</code></td></tr><tr class=""><td class="no">6</td><td class="no">10</td><td><code><b> </b>  payment.attempts += <span class="n">1</span>;</code></td></tr><tr class="d"><td class="no">7</td><td class="no"></td><td><code><b>-</b>  <span class="k">return</span> gateway.<span class="f">charge</span>(payment);</code></td></tr><tr class="a"><td class="no"></td><td class="no">11</td><td><code><b>+</b>  <span class="k">return</span> <span class="f">withRetry</span>(() =&gt;</code></td></tr><tr class="a"><td class="no"></td><td class="no">12</td><td><code><b>+</b>    gateway.<span class="f">charge</span>(payment, { idempotencyKey }),</code></td></tr><tr class="a"><td class="no"></td><td class="no">13</td><td><code><b>+</b>  );</code></td></tr><tr class=""><td class="no">8</td><td class="no">14</td><td><code><b> </b>}</code></td></tr></table></div>
+              <div class="file"><header><span class="chev">⌄</span><span class="ct">2</span><span class="blocks"><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i></span><b>src/payments/types.ts</b><span class="cp">⧉</span><em><i>☐</i> Viewed</em><span class="kb">···</span></header><table><tr class="hk"><td class="no"></td><td class="no"></td><td><code>@@ -4,4 +4,6 @@ export interface Payment {</code></td></tr><tr class=""><td class="no">4</td><td class="no">4</td><td><code><b> </b>  currency: string;</code></td></tr><tr class=""><td class="no">5</td><td class="no">5</td><td><code><b> </b>  source: string;</code></td></tr><tr class=""><td class="no">6</td><td class="no">6</td><td><code><b> </b>  attempts: number;</code></td></tr><tr class="a"><td class="no"></td><td class="no">7</td><td><code><b>+</b>  /** Minted on the first retry and kept <span class="k">for</span> every attempt after it. */</code></td></tr><tr class="a"><td class="no"></td><td class="no">8</td><td><code><b>+</b>  retryKey?: string;</code></td></tr><tr class=""><td class="no">7</td><td class="no">9</td><td><code><b> </b>}</code></td></tr></table></div>
+              <div class="file"><header><span class="chev">⌄</span><span class="ct">6</span><span class="blocks"><i class="a"></i><i class="a"></i><i class="a"></i><i class="d"></i><i class="d"></i></span><b>src/payments/worker.ts</b><span class="cp">⧉</span><em><i>☐</i> Viewed</em><span class="kb">···</span></header><table><tr class="hk"><td class="no"></td><td class="no"></td><td><code>@@ -1,11 +1,13 @@</code></td></tr><tr class="a"><td class="no"></td><td class="no">1</td><td><code><b>+</b><span class="k">import</span> { randomUUID } <span class="k">from</span> <span class="s">&quot;node:crypto&quot;</span>;</code></td></tr><tr class=""><td class="no">1</td><td class="no">2</td><td><code><b> </b><span class="k">import</span> { retryCharge } <span class="k">from</span> <span class="s">&quot;./retry&quot;</span>;</code></td></tr><tr class=""><td class="no">2</td><td class="no">3</td><td><code><b> </b><span class="k">import</span> <span class="k">type</span> { Payment } <span class="k">from</span> <span class="s">&quot;./types&quot;</span>;</code></td></tr><tr class=""><td class="no">3</td><td class="no">4</td><td><code><b> </b></code></td></tr><tr class=""><td class="no">4</td><td class="no">5</td><td><code><b> </b><span class="k">export</span> <span class="k">async</span> <span class="k">function</span> <span class="f">processPayment</span>(payment: Payment) {</code></td></tr><tr class="a"><td class="no"></td><td class="no">6</td><td><code><b>+</b>  payment.retryKey ??= <span class="f">randomUUID</span>();</code></td></tr><tr class=""><td class="no">5</td><td class="no">7</td><td><code><b> </b>  <span class="k">try</span> {</code></td></tr><tr class="d"><td class="no">6</td><td class="no"></td><td><code><b>-</b>    <span class="k">return</span> <span class="k">await</span> <span class="f">retryCharge</span>(payment);</code></td></tr><tr class="a"><td class="no"></td><td class="no">8</td><td><code><b>+</b>    <span class="k">return</span> <span class="k">await</span> <span class="f">retryCharge</span>(payment, payment.retryKey);</code></td></tr><tr class=""><td class="no">7</td><td class="no">9</td><td><code><b> </b>  } <span class="k">catch</span> (err) {</code></td></tr><tr class="d"><td class="no">8</td><td class="no"></td><td><code><b>-</b>    console.<span class="f">error</span>(<span class="s">&quot;retry failed&quot;</span>, payment.id, err);</code></td></tr><tr class="a"><td class="no"></td><td class="no">10</td><td><code><b>+</b>    console.<span class="f">error</span>(<span class="s">&quot;retry failed&quot;</span>, payment.id, { attempts: payment.attempts, err });</code></td></tr><tr class=""><td class="no">9</td><td class="no">11</td><td><code><b> </b>    <span class="k">throw</span> err;</code></td></tr><tr class=""><td class="no">10</td><td class="no">12</td><td><code><b> </b>  }</code></td></tr><tr class=""><td class="no">11</td><td class="no">13</td><td><code><b> </b>}</code></td></tr></table></div>
+              <div class="file"><header><span class="chev">⌄</span><span class="ct">8</span><span class="blocks"><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i></span><b>test/retry.test.ts</b><span class="cp">⧉</span><em><i>☐</i> Viewed</em><span class="kb">···</span></header><table><tr class="hk"><td class="no"></td><td class="no"></td><td><code>@@ -0,0 +1,8 @@</code></td></tr><tr class="a"><td class="no"></td><td class="no">1</td><td><code><b>+</b><span class="k">import</span> { expect, test } <span class="k">from</span> <span class="s">&quot;bun:test&quot;</span>;</code></td></tr><tr class="a"><td class="no"></td><td class="no">2</td><td><code><b>+</b><span class="k">import</span> { withRetry } <span class="k">from</span> <span class="s">&quot;../src/payments/policy&quot;</span>;</code></td></tr><tr class="a"><td class="no"></td><td class="no">3</td><td><code><b>+</b></code></td></tr><tr class="a"><td class="no"></td><td class="no">4</td><td><code><b>+</b><span class="f">test</span>(<span class="s">&quot;retries until it succeeds&quot;</span>, <span class="k">async</span> () =&gt; {</code></td></tr><tr class="a"><td class="no"></td><td class="no">5</td><td><code><b>+</b>  <span class="k">let</span> n = <span class="n">0</span>;</code></td></tr><tr class="a"><td class="no"></td><td class="no">6</td><td><code><b>+</b>  <span class="k">const</span> r = <span class="k">await</span> <span class="f">withRetry</span>(<span class="k">async</span> () =&gt; { <span class="k">if</span> (++n &lt; <span class="n">3</span>) <span class="k">throw</span> <span class="k">new</span> <span class="f">Error</span>(<span class="s">&quot;x&quot;</span>); <span class="k">return</span> n; }, { attempts: <span class="n">3</span>, baseDelayMs: <span class="n">0</span> });</code></td></tr><tr class="a"><td class="no"></td><td class="no">7</td><td><code><b>+</b>  <span class="f">expect</span>(r).<span class="f">toBe</span>(<span class="n">3</span>);</code></td></tr><tr class="a"><td class="no"></td><td class="no">8</td><td><code><b>+</b>});</code></td></tr></table></div>
+              <!-- /gh-diff -->
             </section>
 
-            <!-- Bobby's Diff view: GitHub's diffs, each file right of the files it relies on -->
-            <section class="bb bb-diff" data-in="2" data-out="4">
-              <svg class="edges" viewBox="0 0 572 556" preserveAspectRatio="none">
-                <path d="M176 58 C190 58 190 58 204 58" /><path d="M376 58 C390 58 390 58 404 58" /><path d="M376 86 C392 86 388 236 404 236" />
-              </svg>
-              <div class="col">
-                <small>Relies on</small>
-                <div class="file"><header><b>policy.ts</b><i class="add">+31</i></header>
-                  <div class="hunk">@@ -0,0 +1,31 @@</div>
-                  <p class="add"><i>1</i><code>+export async function</code></p>
-                  <p class="add"><i>2</i><code>+  withRetry&lt;T&gt;(</code></p>
-                  <p class="add"><i>3</i><code>+  fn: () =&gt; Promise&lt;T&gt;,</code></p>
-                  <p class="add"><i>4</i><code>+  tries = 3,</code></p>
-                  <p class="add"><i>5</i><code>+) {</code></p>
-                </div>
-              </div>
-              <div class="col">
-                <small>The change</small>
-                <div class="file on"><header><b>retry.ts</b><i class="add">+9</i><i class="del">−2</i></header>
-                  <div class="hunk">@@ -38,6 +38,9 @@</div>
-                  <p><i>38</i><code> export async function</code></p>
-                  <p><i>39</i><code>   payment: Payment,</code></p>
-                  <p class="add"><i>40</i><code>+  idempotencyKey: string,</code></p>
-                  <div class="thread"><span class="av sm" style="--c:#bf3989">JR</span><div><b>jon</b> 18m<p>A new key on every retry?</p></div></div>
-                  <p class="del"><i>41</i><code>-  return gateway.charge(</code></p>
-                  <p class="add"><i>42</i><code>+  return withRetry(() =&gt;</code></p>
-                  <p class="add"><i>43</i><code>+    gateway.charge(</code></p>
-                </div>
-              </div>
-              <div class="col">
-                <small>Affects</small>
-                <div class="file"><header><b>worker.ts</b><i class="add">+18</i><i class="del">−4</i></header>
-                  <div class="hunk">@@ -20,7 +20,9 @@</div>
-                  <p><i>20</i><code> await retryCharge(</code></p>
-                  <p class="add"><i>21</i><code>+  payment,</code></p>
-                  <p class="add"><i>22</i><code>+  payment.retryKey,</code></p>
-                </div>
-                <div class="file"><header><b>routes.ts</b><i class="add">+4</i><i class="del">−1</i></header>
-                  <div class="hunk">@@ -12,7 +12,10 @@</div>
-                  <p class="del"><i>13</i><code>-  retryCharge(req…)</code></p>
-                  <p class="add"><i>13</i><code>+  queue.add("retry",</code></p>
-                </div>
-              </div>
-            </section>
+            <!-- ── Bobby: the real app, captured state by state (bobby.js, made by capture/) ── -->
+            <div class="bb-host" data-bobby>
+              <div class="bl" data-state="diff" data-region="top" data-in="1" data-out="4"></div>
+              <div class="bl" data-state="diff" data-region="where" data-in="1" data-out="4"></div>
+              <div class="bl" data-state="diff" data-region="files" data-in="2" data-out="4"></div>
+              <div class="bl" data-state="diff" data-region="view" data-in="3" data-out="4"></div>
 
-            <div class="bb bb-relies" data-in="5">
-              <div class="card changed done-able"><small>RELIES ON · CHANGED</small><b>● withRetry()</b><p>New helper in policy.ts: 3 attempts, backoff.</p><span class="ck" data-in="7">✓</span></div>
-              <div class="card untouched"><small>RELIES ON · UNTOUCHED</small><b>○ gateway.charge()</b><p>Already accepts an idempotency key.</p><span class="ck" data-in="7">✓</span></div>
+              <div class="bl" data-state="lens" data-region="top" data-in="4" data-out="6"></div>
+              <div class="bl" data-state="lens" data-region="where" data-in="4" data-out="6"></div>
+              <div class="bl" data-state="lens" data-region="files" data-in="4" data-out="6"></div>
+              <div class="bl" data-state="lens" data-region="view" data-in="4" data-out="6" data-later=".side, .ring > svg, .elbl" data-later-in="5"></div>
+              <div class="bl" data-state="lens" data-region="toast" data-in="4" data-out="6"></div>
+
+              <div class="bl" data-state="lens-draft" data-region="top" data-in="6" data-out="7"></div>
+              <div class="bl" data-state="lens-draft" data-region="where" data-in="6" data-out="7"></div>
+              <div class="bl" data-state="lens-draft" data-region="files" data-in="6" data-out="7"></div>
+              <div class="bl" data-state="lens-draft" data-region="view" data-in="6" data-out="7"></div>
+
+              <div class="bl" data-state="progress" data-region="top" data-in="7" data-out="11"></div>
+              <div class="bl" data-state="progress" data-region="where" data-in="7" data-out="9"></div>
+              <div class="bl" data-state="progress" data-region="files" data-in="7" data-out="11"></div>
+              <div class="bl" data-state="progress" data-region="view" data-in="7" data-out="11"></div>
+              <div class="bl" data-state="progress" data-region="keys" data-in="7"></div>
+              <!-- the parked thought, in the bar from here on -->
+              <div class="bl" data-state="parked" data-region="where" data-in="9" data-out="11"></div>
+
+              <div class="bl" data-state="conversation" data-region="top" data-in="11"></div>
+              <div class="bl" data-state="conversation" data-region="where" data-in="11"></div>
+              <div class="bl" data-state="conversation" data-region="files" data-in="11"></div>
+              <div class="bl" data-state="conversation" data-region="view" data-in="11"></div>
             </div>
-            <div class="bb bb-affects" data-in="5">
-              <div class="card changed"><small>AFFECTS · CHANGED</small><b>● processPayment()</b><p>worker.ts passes payment.retryKey forward.</p></div>
-              <div class="card untouched risk"><small>AFFECTS · UNTOUCHED</small><b>○ handleChargeFailed()</b><p>webhooks/charge.ts: not in this PR, still calls <code>retryCharge(payment)</code>.</p></div>
+            <!-- Bobby's dialogs: a second layer, over the GitHub pieces docked in Bobby's bar -->
+            <div class="bb-host top" data-bobby>
+              <div class="bl" data-state="park" data-region="overlay" data-at="8"></div>
+              <div class="bl" data-state="welcome" data-region="overlay" data-at="9"></div>
+              <div class="bl" data-state="submit" data-region="overlay" data-at="10"></div>
             </div>
-            <svg class="bb bb-edges" data-in="5" viewBox="0 0 1040 660" preserveAspectRatio="none">
-              <path d="M330 262 C346 262 346 330 362 330" /><path d="M330 400 C346 400 346 352 362 352" />
-              <path d="M722 330 C738 330 738 262 754 262" /><path d="M722 352 C738 352 738 412 754 412" class="dashed" />
-            </svg>
 
-            <!-- Bobby's Conversation view: GitHub's Conversation tab, live -->
-            <section class="bb bb-conv" data-in="11">
-              <div class="col">
-                <h1>Retry failed charges safely <span>#482</span></h1>
-                <p class="meta"><b class="state">⇅ Open</b><b>maya</b> wants to merge 8 commits into <code>main</code></p>
-                <div class="tl">
-                  <div class="ev"><span class="av sm" style="--c:#bf8700">LI</span><b>lina</b> commented · 2 hours ago <q>Do fees belong in this PR?</q></div>
-                  <div class="ev"><span class="ico">⇡</span><b>maya</b> pushed 2 commits · 40 min ago</div>
-                  <div class="ev"><span class="ico bad">±</span><b>jon</b> requested changes · 18 min ago</div>
-                  <div class="rv">
-                    <span class="av" style="--c:#8250df">AB</span>
-                    <div class="box">
-                      <div class="hd"><b>you</b> requested changes · just now</div>
-                      <div class="bd">Key handling looks right. One gap: the webhook path.</div>
-                      <div class="rt">
-                        <div class="th"><span>src/payments/retry.ts</span><em>View code</em></div>
-                        <p class="add"><i>42</i><code>+  return withRetry(() =&gt;</code></p>
-                        <p class="add"><i>43</i><code>+    gateway.charge(payment, { idempotencyKey }),</code></p>
-                        <div class="c"><b>you</b> webhooks/charge.ts still calls retryCharge without a key.</div>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="ev"><span class="ico ok">✓</span>All 3 checks passed</div>
-                  <div class="ev"><span class="ico bad">✕</span><b>Changes requested</b> · merging is blocked</div>
-                </div>
-              </div>
-            </section>
-
-            <footer class="bb bb-keys" data-in="7">
-              <span><kbd>j</kbd> next</span><span><kbd>k</kbd> previous</span><span><kbd>a</kbd> looks good</span><span><kbd>x</kbd> flag</span><span><kbd>c</kbd> comment</span><span><kbd>m</kbd> note</span><span><kbd>p</kbd> park</span><span><kbd>esc</kbd> zoom out</span><span><kbd>?</kbd> all keys</span>
-            </footer>
-
-            <!-- one-step moments -->
+            <!-- the ping that interrupts you: over everything -->
             <div class="moment ping" data-at="8"><b>Slack</b><span><b>maya</b>: got a minute? prod is weird</span></div>
-            <div class="moment parked" data-at="8"><kbd>p</kbd> Parked: “does the webhook path keep the key?”</div>
-
-            <div class="moment overlay" data-at="9">
-              <div class="welcome">
-                <header><img src="./assets/bobby.svg" alt="" width="26" height="26" /><b>Welcome back</b><small>away 26 min</small></header>
-                <small class="k">YOU WERE ON</small>
-                <h4>Stable retry key <span>· core 1 of 3</span></h4>
-                <p class="pinned">📌 does the webhook path keep the key?</p>
-                <div class="stats"><span><b>12</b>/18 pages</span><span><b>1</b> flagged</span><span><b>2</b> drafts</span></div>
-                <div class="actions"><span class="primary">Back to where you were</span><span>See the overview first</span></div>
-              </div>
-            </div>
-
-            <div class="moment overlay" data-at="10">
-              <div class="submit-dlg">
-                <header><b>Submit review</b><small>acme/payments #482</small></header>
-                <div class="summary">Key handling looks right. One gap: the webhook path.</div>
-                <label><i></i>Comment</label>
-                <label><i></i>Approve</label>
-                <label class="on"><i></i>Request changes</label>
-                <p>2 drafts post as one GitHub review on the PR's head commit. Private notes and marks stay on your machine.</p>
-                <div class="actions"><span>Cancel</span><span class="primary">Submit review</span></div>
-              </div>
-            </div>
 
           </div>
         </div>

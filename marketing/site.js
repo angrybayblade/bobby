@@ -11,11 +11,59 @@ const caps = [...document.querySelectorAll("[data-cap]")];
 const STEPS = caps.length;
 const PER_STEP = 0.7; // of the window's height, scrolled per step
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const [W, H] = window.BOBBY.size; // the app's design size: the size Bobby was captured at
+
+// ---- Bobby's pieces: regions of the real app, captured state by state (bobby.js). Each .bl names a state and a
+// region; it's drawn in a shadow root with the app's own CSS, so the two pages' styles never meet.
+const shadows = [];
+{
+  const { root: r, css, states } = window.BOBBY;
+  const sheet = new CSSStyleSheet(); // the app's CSS, shared by every layer of Bobby
+  sheet.replaceSync(`${css}
+    .root { display: block !important; position: absolute !important; inset: 0; width: ${W}px; height: ${H}px; overflow: hidden !important; background: transparent !important; }
+    .bl { position: absolute; background: var(--bg); transition: opacity .6s cubic-bezier(.2, .7, .2, 1), transform .6s cubic-bezier(.2, .7, .2, 1), filter .6s cubic-bezier(.2, .7, .2, 1); }
+    .bl > * { position: relative !important; inset: auto !important; width: 100% !important; height: 100% !important; margin: 0 !important; }
+    .bl.overlay, .bl.toast { background: none; }
+    .bl.overlay > *, .bl.toast > * { position: absolute !important; inset: 0 !important; }
+    .bl[data-in]:not(.shown), .bl[data-at]:not(.shown) { opacity: 0; pointer-events: none; }
+    .bl.gone { opacity: 0 !important; transform: translateY(-8px) scale(.985); filter: blur(3px); }
+    .bl .later { transition: opacity .6s; }
+    .bl .later:not(.now) { opacity: 0; }
+    .bl.flash { animation: flash 1.4s cubic-bezier(.2, .7, .2, 1); }
+    @keyframes flash { 25% { box-shadow: inset 0 0 0 2px rgba(9, 105, 218, .45); } }
+    @media (prefers-reduced-motion: reduce) { .bl, .bl .later { transition: none; } .bl.flash { animation: none; } }`);
+  for (const host of document.querySelectorAll("[data-bobby]")) {
+    const shadow = host.attachShadow({ mode: "open" });
+    shadow.adoptedStyleSheets = [sheet];
+    const root = document.createElement("div");
+    root.className = "root";
+    for (const [k, v] of Object.entries(r.attrs)) root.setAttribute(k, v);
+    root.setAttribute("style", r.style);
+    for (const bl of [...host.children]) {
+      const part = states[bl.dataset.state]?.[bl.dataset.region];
+      if (!part) { console.warn("no capture for", bl.dataset.state, bl.dataset.region); bl.remove(); continue; }
+      const [x, y, w, h] = part.box;
+      bl.classList.add(bl.dataset.region);
+      Object.assign(bl.style, { left: `${x}px`, top: `${y}px`, width: `${w}px`, height: `${h}px` });
+      bl.innerHTML = part.html;
+      if (bl.dataset.later) for (const el of bl.querySelectorAll(bl.dataset.later)) el.classList.add("later");
+      root.append(bl);
+    }
+    shadow.append(root);
+    shadows.push(shadow);
+  }
+  // outerHTML loses scroll positions: put them back
+  requestAnimationFrame(() => {
+    for (const el of shadows.flatMap((s) => [...s.querySelectorAll("[data-scroll]")])) { const [t, l] = el.dataset.scroll.split(",").map(Number); el.scrollTop = t; el.scrollLeft = l; }
+  });
+}
+/** Every piece of the story, in the page and in Bobby's shadow root. */
+const pieces = (sel) => [...app.querySelectorAll(sel), ...shadows.flatMap((s) => [...s.querySelectorAll(sel)])];
 
 // ---- the app scaled to fit what's left of the stage
 function fit() {
   const w = viewport.clientWidth, h = viewport.clientHeight;
-  const scale = Math.max(0.2, Math.min(w / 1040, h / 660, 1.25));
+  const scale = Math.max(0.15, Math.min(w / W, h / H, 1));
   frame.style.setProperty("--scale", scale);
   app.style.setProperty("--scale", scale);
 }
@@ -39,9 +87,10 @@ function show(n) {
   const forward = n > step;
   step = n;
   for (let i = 1; i < STEPS; i++) app.classList.toggle(`s${i}`, i <= n);
-  for (const el of app.querySelectorAll("[data-out]")) el.classList.toggle("gone", n >= Number(el.dataset.out));
-  for (const el of app.querySelectorAll("[data-at]")) el.classList.toggle("shown", n === Number(el.dataset.at));
-  for (const el of app.querySelectorAll("[data-in]")) {
+  for (const el of pieces("[data-out]")) el.classList.toggle("gone", n >= Number(el.dataset.out));
+  for (const el of pieces("[data-at]")) el.classList.toggle("shown", n === Number(el.dataset.at));
+  for (const bl of pieces(".bl[data-later]")) for (const el of bl.querySelectorAll(".later")) el.classList.toggle("now", n >= Number(bl.dataset.laterIn));
+  for (const el of pieces("[data-in]")) {
     const at = Number(el.dataset.in), was = el.classList.contains("shown");
     el.classList.toggle("shown", n >= at);
     if (forward && !was && n === at && !reduceMotion) { // just arrived: flash it
