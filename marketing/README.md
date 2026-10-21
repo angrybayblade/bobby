@@ -24,8 +24,8 @@ Then open `http://127.0.0.1:8080/`. `j` / `k` (or the arrows) step through it. B
 - Scrolling picks the step (each takes 70% of the window's height); the transitions are time-based, so a step plays
   the same however fast you scroll.
 
-The story walks Bobby's own views, Diff (step 3), Lens (4) and Conversation (11), to show it keeps the GitHub review
-you know. To add a step: add a caption with the next `data-cap`, then tag what leaves and what arrives with that
+The story walks Bobby's own views, Diff (steps 3 and 4), Lens (5) and Conversation (12), to show it keeps the GitHub
+review you know. To add a step: add a caption with the next `data-cap`, then tag what leaves and what arrives with that
 number. Keep each step to one GitHub piece out and one Bobby piece in, and name both in the caption's **Out** / **In**
 lines.
 
@@ -39,11 +39,14 @@ lines.
   of its regions (`top`, `where`, `view`, `files`, `keys`, `overlay`, `toast`). A layer names one:
 
   ```html
-  <div class="bl" data-state="lens" data-region="view" data-in="4" data-out="6"></div>
+  <div class="bl" data-state="lens" data-region="view" data-in="5" data-out="7"></div>
   ```
 
   `site.js` draws the layers in shadow roots (`[data-bobby]`) with the app's own CSS, so its styles and the site's
-  never meet. `data-later=".side"` with `data-later-in="5"` holds part of a layer back until a later step.
+  never meet. `data-later=".side"` with `data-later-in="6"` holds part of a layer back until a later step.
+- **Between the two**, step 3 flies each file of GitHub's list (`[data-morph]`) to its viewer on Bobby's zoomed-out
+  canvas (`data-zoom`), matched by path; step 4 zooms the canvas into one file, whose focused view (`data-zoom-from`)
+  grows out of the same spot. `site.js` measures both moves on the drawn pages, at load and on resize.
 
 The site around the mock keeps the app's rules too: 3px corners, and the current thing marked by weight rather than
 an underline, a left bar or a ring.

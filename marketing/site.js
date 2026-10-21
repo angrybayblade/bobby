@@ -30,6 +30,9 @@ const shadows = [];
     .bl .later { transition: opacity .6s; }
     .bl .later:not(.now) { opacity: 0; }
     .bl.flash { animation: flash 1.4s cubic-bezier(.2, .7, .2, 1); }
+    .bl[data-zoom].shown:not(.gone) { transition-delay: .45s; } /* the canvas settles in as GitHub's files land on it */
+    .bl[data-zoom].gone { transform: var(--zoom-out, scale(2.5)); filter: blur(2px); }
+    .bl[data-zoom-from]:not(.shown) { transform: var(--zoom-in, scale(.4)); }
     @keyframes flash { 25% { box-shadow: inset 0 0 0 2px rgba(9, 105, 218, .45); } }
     @media (prefers-reduced-motion: reduce) { .bl, .bl .later { transition: none; } .bl.flash { animation: none; } }`);
   for (const host of document.querySelectorAll("[data-bobby]")) {
@@ -38,10 +41,10 @@ const shadows = [];
     const root = document.createElement("div");
     root.className = "root";
     for (const [k, v] of Object.entries(r.attrs)) root.setAttribute(k, v);
+    root.dataset.motion = "on"; // captured still (motion off), but the app's CSS would then stop every transition here
     root.setAttribute("style", r.style);
     for (const bl of [...host.children]) {
       const part = states[bl.dataset.state]?.[bl.dataset.region];
-    root.dataset.motion = "on"; // captured still (motion off), but the app's CSS would then stop every transition here
       if (!part) { console.warn("no capture for", bl.dataset.state, bl.dataset.region); bl.remove(); continue; }
       const [x, y, w, h] = part.box;
       bl.classList.add(`is-${bl.dataset.region}`); // not the bare name: the app has classes like .view
@@ -58,6 +61,68 @@ const shadows = [];
     for (const el of shadows.flatMap((s) => [...s.querySelectorAll("[data-scroll]")])) { const [t, l] = el.dataset.scroll.split(",").map(Number); el.scrollTop = t; el.scrollLeft = l; }
   });
 }
+// ---- the moves between GitHub's list and Bobby's canvas, measured on the rendered pages (in design pixels)
+const scaleNow = () => Number(getComputedStyle(app).getPropertyValue("--scale")) || 1;
+const boxIn = (el) => { // el's box in the app's own pixels
+  const a = app.getBoundingClientRect(), b = el.getBoundingClientRect(), k = scaleNow();
+  return { x: (b.left - a.left) / k, y: (b.top - a.top) / k, w: b.width / k, h: b.height / k };
+};
+/** The viewer of `path` in a captured Diff layer. */
+const viewer = (layer, path) => layer?.querySelector(`.fvh[data-handle="${CSS.escape(path)}"]`)?.closest(".fv, .fvw") ?? layer?.querySelector(`.fvh[data-handle="${CSS.escape(path)}"]`)?.parentElement;
+const layerOf = (sel) => shadows.map((sh) => sh.querySelector(sel)).find(Boolean);
+/** Runs measure() with els untransformed and still (no transitions), then restores them without animating back. */
+function still(els, measure) {
+  const saved = els.map((el) => [el.style.transition, el.style.transform]);
+  for (const el of els) { el.style.transition = "none"; el.style.transform = "none"; }
+  const out = measure();
+  els.forEach((el, i) => { el.style.transform = saved[i][1]; });
+  void app.offsetWidth; // apply the restored transforms before transitions come back
+  els.forEach((el, i) => { el.style.transition = saved[i][0]; });
+  return out;
+}
+/** Step 3: each GitHub file flies to its viewer on the canvas; back before it, they return to the list. The moves are
+ *  measured once (and on resize), never while a step changes, so measuring can't cut a transition short. */
+let moves = null;
+function measureMoves() {
+  const list = app.querySelector("[data-morph]"), canvas = layerOf(".bl[data-zoom]");
+  if (!list || !canvas) return;
+  const files = [...list.querySelectorAll(".file")], was = app.className;
+  moves = still([list, canvas, ...files], () => {
+    // measured where the list is at the step before the move, whatever step this is
+    for (let i = 1; i < STEPS; i++) app.classList.toggle(`s${i}`, i < MORPH);
+    const out = files.map((f) => {
+      const v = viewer(canvas, f.querySelector("header b")?.textContent.trim());
+      if (!v) return "scale(.9)";
+      const from = boxIn(f), to = boxIn(v);
+      return `translate(${to.x - from.x}px, ${to.y - from.y}px) scale(${to.w / from.w}, ${to.h / from.h})`;
+    });
+    app.className = was;
+    return out;
+  });
+}
+function morph(on) {
+  const files = [...app.querySelectorAll("[data-morph] .file")];
+  files.forEach((f, i) => { f.style.transform = on && moves ? moves[i] : ""; });
+}
+/** Step 4: the canvas zooms into one file, and that file's focused view grows out of the same spot. */
+function zoom() {
+  const canvas = layerOf(".bl[data-zoom]"), focus = layerOf(".bl[data-zoom-from]");
+  if (!canvas || !focus) return;
+  const path = canvas.dataset.zoom;
+  still([canvas, focus], () => {
+    const small = viewer(canvas, path), big = viewer(focus, path);
+    if (!small || !big) return;
+    const a = boxIn(small), b = boxIn(big), c = boxIn(canvas), f = boxIn(focus), k = b.w / a.w;
+    // the canvas scales by k about the point that takes the small viewer onto the big one
+    const px = (b.x - k * a.x) / (1 - k), py = (b.y - k * a.y) / (1 - k);
+    canvas.style.transformOrigin = `${px - c.x}px ${py - c.y}px`;
+    canvas.style.setProperty("--zoom-out", `scale(${k})`);
+    // and the focused view starts as the small viewer: scaled by 1/k about the same point
+    focus.style.transformOrigin = `${px - f.x}px ${py - f.y}px`;
+    focus.style.setProperty("--zoom-in", `scale(${1 / k})`);
+  });
+}
+
 /** Every piece of the story, in the page and in Bobby's shadow root. */
 const pieces = (sel) => [...app.querySelectorAll(sel), ...shadows.flatMap((s) => [...s.querySelectorAll(sel)])];
 
@@ -68,7 +133,17 @@ function fit() {
   frame.style.setProperty("--scale", scale);
   app.style.setProperty("--scale", scale);
 }
-new ResizeObserver(fit).observe(viewport);
+new ResizeObserver(() => {
+  fit();
+  requestAnimationFrame(() => { // measured on the page as drawn at this size; applied without animating
+    zoom(); measureMoves();
+    const files = [...app.querySelectorAll("[data-morph] .file")];
+    for (const f of files) f.style.transition = "none";
+    morph(step >= MORPH);
+    void app.offsetWidth;
+    for (const f of files) f.style.transition = "";
+  });
+}).observe(viewport);
 
 // ---- the scroller: one stretch per step
 const dotsEl = document.querySelector(".steps .dots");
@@ -83,6 +158,7 @@ function layout() {
 
 // ---- the state at a step
 let step = -1;
+const MORPH = Number(document.querySelector("[data-morph]")?.dataset.out ?? Infinity) - 1; // the step GitHub's files fly to the canvas
 function show(n) {
   if (n === step) return;
   const forward = n > step;
@@ -98,6 +174,7 @@ function show(n) {
       el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
     }
   }
+  morph(n >= MORPH);
   caps.forEach((c, i) => c.classList.toggle("on", i === n));
   dots.forEach((d, i) => { d.classList.toggle("on", i === n); d.classList.toggle("done", i < n); });
 }
