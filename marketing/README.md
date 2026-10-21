@@ -18,7 +18,8 @@ Then open `http://127.0.0.1:8080/`. `j` / `k` (or the arrows) step through it. B
   to fit (`site.js`). Every piece of the mock is in the page from the start; a step only shows or hides pieces.
 - Each piece says when it changes:
   - `data-out="n"`: gone from step `n` on;
-  - `data-in="n"`: there from step `n` on (it flashes as it arrives);
+  - `data-in="n"`: there from step `n` on (a new piece settles in with a soft lift; a region that only changes
+    capture, like the bar from Diff to Lens, cross-fades in place);
   - `data-at="n"`: a moment (a ping, a dialog), there only at step `n`.
 - The app also carries `s1` … `sN`, every step reached, so the layout can move with it (`.app.s2 .gh-diffs { … }`).
 - Scrolling picks the step (each takes 70% of the window's height); the transitions are time-based, so a step plays

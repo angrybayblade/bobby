@@ -1,6 +1,6 @@
 // The story: scrolling steps through STEPS states of one app. Each piece of it says when it changes:
 //   data-out="n"  a GitHub piece, gone from step n on
-//   data-in="n"   a Bobby piece, there from step n on (it flashes as it arrives)
+//   data-in="n"   a Bobby piece, there from step n on (it settles in as it arrives)
 //   data-at="n"   a moment, there only at step n
 // and the app carries s1…sN (every step reached) for the layout to move with.
 const story = document.querySelector("[data-story]");
@@ -21,20 +21,26 @@ const shadows = [];
   const sheet = new CSSStyleSheet(); // the app's CSS, shared by every layer of Bobby
   sheet.replaceSync(`${css}
     .root { display: block !important; position: absolute !important; inset: 0; width: ${W}px; height: ${H}px; overflow: hidden !important; background: transparent !important; }
-    .bl { position: absolute; background: var(--bg); transition: opacity .6s cubic-bezier(.2, .7, .2, 1), transform .6s cubic-bezier(.2, .7, .2, 1), filter .6s cubic-bezier(.2, .7, .2, 1); }
+    .bl { --ease: cubic-bezier(.4, 0, .2, 1); --move: cubic-bezier(.65, 0, .35, 1); position: absolute; background: var(--bg); transition: opacity .7s var(--ease), transform .8s var(--move); }
     .bl > * { position: relative !important; inset: auto !important; width: 100% !important; height: 100% !important; margin: 0 !important; }
     .bl.is-overlay, .bl.is-toast { background: none; }
     .bl.is-overlay > *, .bl.is-toast > * { position: absolute !important; inset: 0 !important; }
-    .bl[data-in]:not(.shown), .bl[data-at]:not(.shown) { opacity: 0; pointer-events: none; }
-    .bl.gone { opacity: 0 !important; transform: translateY(-8px) scale(.985); filter: blur(3px); }
+    .bl[data-in]:not(.shown), .bl[data-at]:not(.shown) { opacity: 0; pointer-events: none; transform: translateY(8px) scale(.985); }
+    .bl.gone { opacity: 0 !important; transform: scale(.985); }
+    .bl.swap, .bl.swap.gone, .bl.swap:not(.shown) { transform: none; } /* one capture taking over from another: no move */
     .bl .later { transition: opacity .6s; }
     .bl .later:not(.now) { opacity: 0; }
-    .bl.flash { animation: flash 1.4s cubic-bezier(.2, .7, .2, 1); }
-    .bl[data-zoom].shown:not(.gone) { transition-delay: .45s; } /* the canvas settles in as GitHub's files land on it */
-    .bl[data-zoom].gone { transform: var(--zoom-out, scale(2.5)); filter: blur(2px); }
+    /* what just arrived: a soft lift that settles, no colour */
+    .bl.arrive { animation: arrive 1.6s var(--ease); }
+    @keyframes arrive { 0% { box-shadow: 0 0 0 rgba(31, 35, 40, 0); } 35% { box-shadow: 0 14px 36px -12px rgba(31, 35, 40, .2); } 100% { box-shadow: 0 0 0 rgba(31, 35, 40, 0); } }
+    /* GitHub's files land on the canvas, and it comes up under them */
+    .bl[data-zoom] { transition: opacity .8s var(--ease), transform 1.1s var(--move); }
+    .bl[data-zoom].shown:not(.gone) { transition-delay: .5s, 0s; transform: none; }
+    /* then it zooms into one file, whose focused view grows out of the same spot */
+    .bl[data-zoom].gone { transform: var(--zoom-out, scale(2.5)); transition: opacity .6s var(--ease) .35s, transform 1.1s var(--move); }
+    .bl[data-zoom-from] { transition: opacity .55s var(--ease), transform 1.1s var(--move); }
     .bl[data-zoom-from]:not(.shown) { transform: var(--zoom-in, scale(.4)); }
-    @keyframes flash { 25% { box-shadow: inset 0 0 0 2px rgba(9, 105, 218, .45); } }
-    @media (prefers-reduced-motion: reduce) { .bl, .bl .later { transition: none; } .bl.flash { animation: none; } }`);
+    @media (prefers-reduced-motion: reduce) { .bl, .bl .later { transition: none !important; } .bl.arrive { animation: none; } }`);
   for (const host of document.querySelectorAll("[data-bobby]")) {
     const shadow = host.attachShadow({ mode: "open" });
     shadow.adoptedStyleSheets = [sheet];
@@ -94,7 +100,7 @@ function measureMoves() {
       const v = viewer(canvas, f.querySelector("header b")?.textContent.trim());
       if (!v) return "scale(.9)";
       const from = boxIn(f), to = boxIn(v);
-      return `translate(${to.x - from.x}px, ${to.y - from.y}px) scale(${to.w / from.w}, ${to.h / from.h})`;
+      return `translate(${to.x - from.x}px, ${to.y - from.y}px) scale(${to.w / from.w})`; // one scale: no squashed text
     });
     app.className = was;
     return out;
@@ -102,7 +108,7 @@ function measureMoves() {
 }
 function morph(on) {
   const files = [...app.querySelectorAll("[data-morph] .file")];
-  files.forEach((f, i) => { f.style.transform = on && moves ? moves[i] : ""; });
+  files.forEach((f, i) => { f.style.setProperty("--i", i); f.style.transform = on && moves ? moves[i] : ""; });
 }
 /** Step 4: the canvas zooms into one file, and that file's focused view grows out of the same spot. */
 function zoom() {
@@ -159,9 +165,36 @@ function layout() {
 // ---- the state at a step
 let step = -1;
 const MORPH = Number(document.querySelector("[data-morph]")?.dataset.out ?? Infinity) - 1; // the step GitHub's files fly to the canvas
+/** Is a piece on screen at step n? */
+const visibleAt = (el, n) => el.dataset.at != null ? n === Number(el.dataset.at)
+  : n >= Number(el.dataset.in ?? 0) && !(el.dataset.out != null && n >= Number(el.dataset.out));
+/** Where one capture of a region takes over from another (the bar, the view…), cross-fade without a dip or a ghost:
+ *  the upper layer fades while the lower one switches at once, underneath it. Only a region's first arrival moves. */
+function swaps(n) {
+  const groups = new Map();
+  for (const bl of pieces(".bl")) {
+    if (bl.dataset.zoom != null || bl.dataset.zoomFrom != null) continue; // the zoom has its own moves
+    bl.style.transition = ""; bl.classList.remove("swap");
+    const key = `${shadows.indexOf(bl.getRootNode())}:${bl.dataset.region}`;
+    groups.set(key, [...(groups.get(key) ?? []), bl]);
+  }
+  for (const layers of groups.values()) {
+    const coming = layers.filter((bl) => visibleAt(bl, n) && !visibleAt(bl, step));
+    const going = layers.filter((bl) => !visibleAt(bl, n) && visibleAt(bl, step));
+    if (!coming.length || !going.length) continue;
+    for (const bl of [...coming, ...going]) { bl.classList.add("swap"); bl.style.transition = "opacity .45s cubic-bezier(.4, 0, .2, 1), transform 0s"; } // a quick dissolve: two screens blended read as noise
+    for (const c of coming) for (const g of going) {
+      const cAbove = c.compareDocumentPosition(g) & Node.DOCUMENT_POSITION_PRECEDING;
+      if (cAbove) g.style.transition = "opacity 0s linear .45s, transform 0s"; // covered first, then gone
+      else c.style.transition = "opacity 0s, transform 0s"; // already there when the one above fades
+    }
+  }
+}
+
 function show(n) {
   if (n === step) return;
   const forward = n > step;
+  if (step >= 0 && !reduceMotion) swaps(n);
   step = n;
   for (let i = 1; i < STEPS; i++) app.classList.toggle(`s${i}`, i <= n);
   for (const el of pieces("[data-out]")) el.classList.toggle("gone", n >= Number(el.dataset.out));
@@ -170,8 +203,8 @@ function show(n) {
   for (const el of pieces("[data-in]")) {
     const at = Number(el.dataset.in), was = el.classList.contains("shown");
     el.classList.toggle("shown", n >= at);
-    if (forward && !was && n === at && !reduceMotion) { // just arrived: flash it
-      el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
+    if (forward && !was && n === at && !reduceMotion && !el.classList.contains("swap")) { // new here: let it settle in
+      el.classList.remove("arrive"); void el.offsetWidth; el.classList.add("arrive");
     }
   }
   morph(n >= MORPH);
