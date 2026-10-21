@@ -1,0 +1,55 @@
+{
+  "intent": "Retries failed charges up to three times with backoff, reusing one idempotency key so a charge can't happen twice.",
+  "cores": [
+    {
+      "title": "Retry with backoff",
+      "summary": "withRetry runs a charge up to three times, doubling the wait between tries.",
+      "hook": "When every try fails, does the caller still get the last error?",
+      "coreUnits": [{ "unit": "u5", "label": "withRetry()", "why": "", "attachTo": "", "relation": "" }],
+      "upstreamUnchanged": [], "upstreamChanged": [],
+      "downstreamChanged": [{ "unit": "u10", "label": "withRetry tests", "why": "covers the success-after-failures path only", "attachTo": "u5", "relation": "tests" }],
+      "downstreamUnchanged": []
+    },
+    {
+      "title": "Stable retry key",
+      "summary": "retryCharge now takes one idempotency key and reuses it on every attempt.",
+      "hook": "Does every path that retries a payment keep the same key?",
+      "coreUnits": [{ "unit": "u7", "label": "retryCharge(payment, key)", "why": "", "attachTo": "", "relation": "" }],
+      "upstreamUnchanged": [
+        { "ref": "r10", "label": "gateway.charge()", "why": "already forwards an idempotency-key header", "risk": "low", "attachTo": "u7", "relation": "now called with key" }
+      ],
+      "upstreamChanged": [
+        { "unit": "u5", "label": "withRetry()", "why": "wraps the charge in three tries", "attachTo": "u7", "relation": "now wrapped in" },
+        { "unit": "u8", "label": "Payment.retryKey", "why": "new field the worker keeps the key in", "attachTo": "u7", "relation": "key stored on" }
+      ],
+      "downstreamChanged": [
+        { "unit": "u9", "label": "processPayment()", "why": "mints the key once and passes it on", "attachTo": "u7", "relation": "passes key to" }
+      ],
+      "downstreamUnchanged": [
+        { "ref": "r7", "label": "handleChargeFailed()", "why": "not in this PR: still calls retryCharge(payment) with no key", "risk": "high", "attachTo": "u7", "relation": "still calls" }
+      ]
+    },
+    {
+      "title": "Queue manual retries",
+      "summary": "The retry endpoint now queues a job and answers 202 instead of charging inline.",
+      "hook": "Who picks up the queued job, and does it reuse the payment's key?",
+      "coreUnits": [
+        { "unit": "u1", "label": "POST /charges/:id/retry", "why": "", "attachTo": "", "relation": "" },
+        { "unit": "u6", "label": "queue.add()", "why": "", "attachTo": "", "relation": "" }
+      ],
+      "upstreamUnchanged": [], "upstreamChanged": [], "downstreamChanged": [], "downstreamUnchanged": []
+    },
+    {
+      "title": "Processing fees on invoices",
+      "summary": "Metered accounts get a 2.9% processing fee line on their invoice.",
+      "hook": "Do non-metered accounts still get exactly the old total?",
+      "coreUnits": [
+        { "unit": "u2", "label": "feesFor()", "why": "", "attachTo": "", "relation": "" },
+        { "unit": "u3", "label": "buildInvoice() fees", "why": "", "attachTo": "", "relation": "" }
+      ],
+      "upstreamUnchanged": [],
+      "upstreamChanged": [{ "unit": "u4", "label": "Line", "why": "format only: semicolons", "attachTo": "u2", "relation": "type of" }],
+      "downstreamChanged": [], "downstreamUnchanged": []
+    }
+  ]
+}

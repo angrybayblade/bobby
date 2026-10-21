@@ -1,0 +1,5 @@
+#!/bin/sh
+# Stands in for the claude CLI while the demo graph is extracted: answers with tree.json, the tree Claude would write
+# (core names, hooks, bands), so the capture doesn't depend on a login or on what a model says that day.
+cat > /dev/null
+python3 -c 'import json, sys; print(json.dumps({"is_error": False, "structured_output": json.load(open(sys.argv[1]))}))' "$(dirname "$0")/tree.json"

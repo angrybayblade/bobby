@@ -1,0 +1,7 @@
+{
+  "name": "bobby-marketing-capture",
+  "private": true,
+  "type": "module",
+  "description": "Captures the real Bobby app for the marketing mock (run.sh)",
+  "devDependencies": { "puppeteer-core": "23.11.1" }
+}
