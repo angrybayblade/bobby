@@ -20,7 +20,9 @@ Then open `http://127.0.0.1:8080/`. `j` / `k` (or the arrows) step through it.
   - `data-out="n"`: a GitHub piece, gone from step `n` on;
   - `data-in="n"`: a Bobby piece, there from step `n` on (it flashes as it arrives);
   - `data-at="n"`: a moment (a ping, a dialog), there only at step `n`.
-- The app also carries `s1` … `sN`, every step reached, so the layout can move with it (`.app.s4 .bb-core { … }`).
+- The app also carries `s1` … `sN`, every step reached, so the layout can move with it (`.app.s5 .bb-core { … }`).
+  The bar's view switcher and crumbs follow it too: the story moves through Bobby's own views, Diff (step 2),
+  Lens (4) and Conversation (11), to show it keeps the GitHub review you know.
 - Scrolling picks the step (each takes 70% of the window's height); the transitions are time-based, so a step plays
   the same however fast you scroll.
 
