@@ -22,15 +22,15 @@ const who = (login) => ({ login });
 const conversation = {
   author: who("maya"), createdAt: at(300), url: "https://github.com/acme/payments/pull/482", base: "main", head: "retry-idempotency",
   body: "Failed charges are retried up to three times with backoff. Every attempt carries the same idempotency key, so the processor charges at most once.\n\n- `withRetry` in policy.ts: 3 tries, 200ms → 800ms\n- the worker mints the key once and keeps it on `payment.retryKey`\n- the retry endpoint queues a job instead of charging inline\n\nCloses #476",
-  html: "", state: "OPEN", draft: false, mergeable: "MERGEABLE", decision: "CHANGES_REQUESTED",
+  html: "", state: "OPEN", draft: false, mergeable: "MERGEABLE", decision: "APPROVED",
   timeline: [
     { kind: "commit", sha: "4be1a0c", subject: "Add withRetry with exponential backoff", author: who("maya"), createdAt: at(290), url: "" },
     { kind: "commit", sha: "9901b67", subject: "Retry failed charges with one idempotency key", author: who("maya"), createdAt: at(288), url: "" },
     { kind: "review", id: "r1", author: who("lina"), state: "COMMENTED", body: "", html: "", createdAt: at(140), url: "" },
     { kind: "comment", id: "c1", author: who("lina"), body: "Do fees belong in this PR? Happy to review them separately.", html: "", createdAt: at(138), url: "" },
-    { kind: "review", id: "r2", author: who("jon"), state: "CHANGES_REQUESTED", body: "Close. One question on how the key survives retries.", html: "", createdAt: at(50), url: "" },
+    { kind: "review", id: "r2", author: who("jon"), state: "COMMENTED", body: "One question on how the key survives retries.", html: "", createdAt: at(50), url: "" },
     { kind: "comment", id: "c2", author: who("maya"), body: "Answered inline: the worker mints it once.", html: "", createdAt: at(38), url: "" },
-    { kind: "review", id: "r3", author: who("you"), state: "CHANGES_REQUESTED", body: "Key handling looks right. One gap: the webhook path.", html: "", createdAt: at(1), url: "" },
+    { kind: "review", id: "r3", author: who("you"), state: "APPROVED", body: "LGTM!", html: "", createdAt: at(1), url: "" },
   ],
   threads: [
     { id: "t1", path: "src/payments/policy.ts", line: 11, startLine: null, side: "RIGHT", resolved: true, outdated: false, reviewId: "r1",
@@ -41,9 +41,9 @@ const conversation = {
       comments: [{ id: "901", author: who("jon"), body: "Could this make a new key on every retry? If a caller mints one per call we're back to double charges.", html: "", createdAt: at(50), url: "" }, { id: "902", author: who("maya"), body: "The worker keeps it on `payment.retryKey`, so it's minted once per payment.", html: "", createdAt: at(38), url: "" }] },
     { id: "t3", path: "src/payments/retry.ts", line: 12, startLine: null, side: "RIGHT", resolved: false, outdated: false, reviewId: "r3",
       hunk: "@@ -6,2 +10,3 @@\n   payment.attempts += 1;\n-  return gateway.charge(payment);\n+  return withRetry(() =>\n+    gateway.charge(payment, { idempotencyKey }),",
-      comments: [{ id: "906", author: who("you"), body: "`webhooks/charge.ts` still calls `retryCharge(payment)` without a key, so a webhook retry mints a fresh charge.", html: "", createdAt: at(0), url: "" }] },
+      comments: [{ id: "906", author: who("you"), body: "Not blocking: `webhooks/charge.ts` still calls `retryCharge(payment)` without a key. Worth a follow-up so webhook retries reuse it too.", html: "", createdAt: at(0), url: "" }] },
   ],
-  verdicts: [{ author: who("jon"), state: "CHANGES_REQUESTED" }, { author: who("you"), state: "CHANGES_REQUESTED" }, { author: who("lina"), state: "COMMENTED" }],
+  verdicts: [{ author: who("you"), state: "APPROVED" }, { author: who("jon"), state: "COMMENTED" }, { author: who("lina"), state: "COMMENTED" }],
   requested: [],
   checks: [
     { name: "test", workflow: "CI", status: "success", startedAt: at(287), completedAt: at(284) },
@@ -169,7 +169,7 @@ const compose = async (line, k, text) => {
 };
 const level = (n) => p.evaluate((n) => bobby.setLevel(n), n);
 await level(2); await wait(900);
-await compose(12, "c", "webhooks/charge.ts still calls retryCharge(payment) without a key, so a webhook retry mints a fresh charge.");
+await compose(12, "c", "Not blocking: webhooks/charge.ts still calls retryCharge(payment) without a key. Worth a follow-up so webhook retries reuse it too.");
 await compose(8, "m", "Ask about the key's TTL at the processor.");
 await level(1); await wait(1000);
 console.log("scrolled", await p.evaluate(() => {
@@ -199,7 +199,7 @@ await snap("welcome");
 await key("Escape", 500);
 // submit
 await key("s", 800);
-await p.type("#rbody", "Key handling looks right. One gap: the webhook path.");
+await p.type("#rbody", "LGTM!");
 await wait(300);
 await snap("submit");
 await key("Escape", 500);
@@ -209,7 +209,7 @@ await view("Conversation"); await wait(1200);
 await closeToast();
 console.log("conv scrolled", await p.evaluate(() => {
   const c = document.querySelector(".conv"); if (!c) return "no conv";
-  const el = [...c.querySelectorAll(".item, .card, .review")].find((e) => e.textContent.includes("Key handling looks right"));
+  const el = [...c.querySelectorAll(".item, .card, .review")].find((e) => e.textContent.includes("LGTM!"));
   if (!el) return "no review";
   c.scrollTop = el.getBoundingClientRect().top - c.getBoundingClientRect().top + c.scrollTop - 150;
   return c.scrollTop;
