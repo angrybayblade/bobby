@@ -112,7 +112,7 @@ async function snap(name) {
       const blob = await (await fetch(img.src)).blob();
       data.set(src, await new Promise((r) => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(blob); }));
     }
-    for (const [region, sel] of Object.entries({ top: "#top", where: "#where", view: "#view", files: "#files", keys: "#keys", overlay: "#overlay", toast: "#toast" })) {
+    for (const [region, sel] of Object.entries({ top: "#top", where: "#where", view: "#view", files: "#files", keys: "#keys", overlay: "#overlay", toast: "#toast", inspector: ".inspector" })) {
       const el = document.querySelector(sel);
       if (!el || el.hidden || getComputedStyle(el).display === "none" || !el.getBoundingClientRect().width) continue;
       const r = el.getBoundingClientRect();
@@ -143,6 +143,40 @@ await p.evaluate(() => bobby.setLevel(0)); await wait(1200);
 await closeToast();
 await snap("diff-overview");
 await p.evaluate((l) => bobby.setLevel(l), lvl); await wait(900);
+// the inspector, on the same file: ⌘-click a name for its declaration, ⌘⇧-click for every use
+const inspectName = async (line, name, shift) => {
+  const at = await p.evaluate((line, name) => {
+    // the canvas keeps other copies of a file off screen: the one in view
+    const code = [...document.querySelectorAll(`#view .ln[data-path="src/payments/retry.ts"][data-line="${line}"][data-side="RIGHT"] code`)]
+      .find((c) => { const b = c.getBoundingClientRect(); return b.width && b.left >= 0 && b.right <= innerWidth && b.top >= 0 && b.bottom <= innerHeight; });
+    if (!code) return null;
+    const walker = document.createTreeWalker(code, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const i = walker.currentNode.textContent.indexOf(name);
+      if (i < 0) continue;
+      const range = document.createRange(); range.setStart(walker.currentNode, i); range.setEnd(walker.currentNode, i + name.length);
+      const b = range.getBoundingClientRect();
+      return { x: b.left + b.width / 2, y: b.top + b.height / 2 };
+    }
+    return null;
+  }, line, name);
+  if (!at) throw new Error(`no ${name} on line ${line}`);
+  await p.keyboard.down("Meta"); if (shift) await p.keyboard.down("Shift");
+  await p.mouse.click(at.x, at.y);
+  if (shift) await p.keyboard.up("Shift"); await p.keyboard.up("Meta");
+  await p.waitForFunction(() => document.querySelector(".inspector") && !document.querySelector(".inspector .pkw")?.textContent.includes("looking"), { timeout: 8000 }).catch(async (e) => {
+    if (shots) await p.screenshot({ path: `${shots}/inspect-failed.png` });
+    console.log("inspect failed at", at, await p.evaluate((x, y) => { const el = document.elementFromPoint(x, y); return el?.outerHTML.slice(0, 200); }, at.x, at.y));
+    throw e;
+  });
+  await wait(600);
+};
+await inspectName(11, "withRetry", false);
+await snap("definition");
+await key("Escape", 500);
+await inspectName(6, "retryCharge", true);
+await snap("uses");
+await key("Escape", 500);
 // L: the Lens view, the core's card and the hook
 await view("Lens"); await wait(400);
 // untouched code on: the webhook that still calls retryCharge without a key is the story's bug
