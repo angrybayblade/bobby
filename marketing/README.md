@@ -29,6 +29,12 @@ Keep each step to one GitHub piece out and one Bobby piece in, and name both in 
 
 ## Theme
 
-The mock is GitHub's light theme throughout: `.app` redefines the colour and font tokens with GitHub's own values, so
-the Bobby pieces arrive looking native to the page they replace. Only the site around the mock (header, captions)
-uses Bobby's warm palette.
+The mock follows the app's design rules and its GitHub light palette (`[data-palette="github"]` in
+`public/app/theme.css`): `.app` redefines the colour, font and `--radius` tokens with those values, so Bobby's pieces
+arrive looking native to the page they replace. Same rules as the app, here and in the site around the mock:
+
+- 3px corners; no pills or round cards (avatars excepted);
+- the current thing is marked by weight, never by an underline, a left bar or a ring.
+
+Bump the `?v=` on `styles.css` and `site.js` in `index.html` when they change; the preview server sends no cache
+headers.
