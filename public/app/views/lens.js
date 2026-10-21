@@ -33,8 +33,8 @@ const CSS = `
 .lens.paged .focus .w { display: none; }
 .lens .focus .m { font: 12px var(--font-code); color: var(--faint); margin-top: 10px; }
 .lens .none { color: var(--faint); font-size: 13px; padding: 8px 4px; }
-.lens svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
-.lens svg path { fill: none; stroke: var(--muted); stroke-width: 1.5; opacity: .7; }
+.lens .ring > svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.lens .ring > svg path { fill: none; stroke: var(--muted); stroke-width: 1.5; opacity: .7; }
 .lens .elbl { position: absolute; font: 11.5px var(--font-ui); color: var(--muted); background: var(--bg); padding: 1px 6px; border-radius: 1px; white-space: nowrap; transform: translate(-50%, -50%); z-index: 2; }
 .lens .orbit { grid-column: 1 / 4; display: flex; gap: 6px; align-items: center; justify-content: center; margin-top: 28px; flex-wrap: wrap; font-size: 12.5px; color: var(--faint); }
 .lens.paged .orbit { margin-top: 12px; }
@@ -52,7 +52,7 @@ const CSS = `
 .lens .grid { position: absolute; inset: 0; overflow: auto; padding: 30px 40px 60px; }
 /* f: the focus fills the stage with its code; the sides and the orbit step away */
 .lens.filled .ring { grid-template-columns: 1fr; padding: 0; gap: 0; align-items: stretch; height: 100%; }
-.lens.filled .side, .lens.filled .orbit, .lens.filled svg, .lens.filled .elbl, .lens.filled .center h4 { display: none; }
+.lens.filled .side, .lens.filled .orbit, .lens.filled .ring > svg, .lens.filled .elbl, .lens.filled .center h4 { display: none; }
 .lens.filled .center { height: 100%; min-height: 0; }
 .lens.filled .focus { height: 100%; display: flex; flex-direction: column; border-radius: 0; border-width: 0; box-shadow: none; padding: 12px 16px; cursor: default; }
 .lens.filled .focus .nbody { max-height: none; flex: 1; min-height: 0; }
@@ -126,7 +126,7 @@ export default {
     function wire() {
       const r = root.querySelector(".ring");
       if (!r) return;
-      const svg = r.querySelector("svg"), box = r.getBoundingClientRect(), f = r.querySelector(".focus").getBoundingClientRect();
+      const svg = r.querySelector(":scope > svg"), box = r.getBoundingClientRect(), f = r.querySelector(".focus").getBoundingClientRect(); // the edges' svg, not an icon in a card
       r.querySelectorAll(".elbl").forEach((n) => n.remove());
       const paths = [];
       const link = (n, side) => {
