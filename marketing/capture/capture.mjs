@@ -137,6 +137,12 @@ await view("Diff");
 await click('[data-ffile="src/payments/retry.ts"]'); await wait(1200);
 await click("#toast .x");
 await snap("diff");
+// the same canvas zoomed out: every file at once, each right of what it relies on
+const lvl = await p.evaluate(() => bobby.level);
+await p.evaluate(() => bobby.setLevel(0)); await wait(1200);
+await closeToast();
+await snap("diff-overview");
+await p.evaluate((l) => bobby.setLevel(l), lvl); await wait(900);
 // L: the Lens view, the core's card and the hook
 await view("Lens"); await wait(400);
 // untouched code on: the webhook that still calls retryCharge without a key is the story's bug
