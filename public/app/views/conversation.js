@@ -58,7 +58,7 @@ const STYLE = `
 .conv .tcode { border-top: 1px solid var(--line-soft); overflow-x: auto; font: 12.5px/20px var(--font-code); background: var(--bg); }
 .conv .tcode table { border-collapse: collapse; min-width: 100%; }
 .conv .tcode td { padding: 0 10px 0 0; white-space: pre; vertical-align: top; }
-.conv .tcode td.ln { width: 1%; min-width: 34px; padding: 0 8px; text-align: right; color: var(--faint); user-select: none; }
+.conv .tcode td.ln { display: table-cell; cursor: auto; width: 1%; min-width: 34px; padding: 0 8px; text-align: right; color: var(--faint); user-select: none; }
 .conv .tcode td.sg { width: 1%; padding: 0 6px 0 2px; color: var(--faint); user-select: none; }
 .conv .tcode tr.add { background: var(--add-tint); } .conv .tcode tr.add td.sg { color: var(--ok); }
 .conv .tcode tr.del { background: var(--del-tint); } .conv .tcode tr.del td.sg { color: var(--risk); }
