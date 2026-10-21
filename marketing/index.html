@@ -10,9 +10,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css?v=15" />
-  <script src="./bobby.js?v=15" defer></script>
-  <script src="./site.js?v=15" defer></script>
+  <link rel="stylesheet" href="./styles.css?v=16" />
+  <script src="./bobby.js?v=16" defer></script>
+  <script src="./site.js?v=16" defer></script>
 </head>
 <body>
   <header class="site">
@@ -20,7 +20,7 @@
     <nav>
       <a href="https://github.com/angrybayblade/focus-bobby#readme">Docs</a>
       <a href="https://github.com/angrybayblade/focus-bobby">GitHub ↗</a>
-      <a class="cta" href="#install" data-goto="13">Install</a>
+      <a class="cta" href="#install" data-goto="15">Install</a>
     </nav>
   </header>
 
@@ -59,54 +59,66 @@
           <p class="in"><i>In</i><span>Step in and one file fills the view: the same diff and threads as GitHub. <kbd>j</kbd> <kbd>k</kbd> follow the map, from what a change relies on to what it affects.</span></p>
         </div>
         <div class="cap" data-cap="5">
-          <small>05 · Lens view</small>
+          <small>05 · Inspect</small>
+          <h2>What is this?</h2>
+          <p class="out"><i>Out</i><span>A new tab, to find where it's declared.</span></p>
+          <p class="in"><i>In</i><span><kbd>⌘</kbd>-click a name: its declaration opens over the diff, the whole of it, and <kbd>esc</kbd> puts you back where you were.</span></p>
+        </div>
+        <div class="cap" data-cap="6">
+          <small>06 · Inspect</small>
+          <h2>Who else calls it?</h2>
+          <p class="out"><i>Out</i><span>Searching the repo for its callers.</span></p>
+          <p class="in"><i>In</i><span><kbd>⌘</kbd><kbd>⇧</kbd>-click: every use, in the diff, in the PR's files and elsewhere. One caller the PR never touched still passes no key.</span></p>
+        </div>
+        <div class="cap" data-cap="7">
+          <small>07 · Lens view</small>
           <h2>One change. One question.</h2>
           <p class="out"><i>Out</i><span>The whole diff at once.</span></p>
           <p class="in"><i>In</i><span>The <b>Lens</b> view splits the PR into <b>cores</b>, one idea each, and opens each with a question to keep in mind. With Claude Code installed, Claude names the cores and writes the questions.</span></p>
         </div>
-        <div class="cap" data-cap="6">
-          <small>06 · Context</small>
+        <div class="cap" data-cap="8">
+          <small>08 · Context</small>
           <h2>What it relies on. What it affects.</h2>
           <p class="out"><i>Out</i><span>Searching the repo for who calls it.</span></p>
           <p class="in"><i>In</i><span>The code around the change, and how each piece connects, including code the PR never touched. That's where bugs hide.</span></p>
         </div>
-        <div class="cap" data-cap="7">
-          <small>07 · Comments</small>
+        <div class="cap" data-cap="9">
+          <small>09 · Comments</small>
           <h2>Comments where they belong.</h2>
           <p class="out"><i>Out</i><span>A count of conversations, somewhere below.</span></p>
           <p class="in"><i>In</i><span>Every GitHub thread under its line. Your comments wait as drafts; private notes never leave your machine.</span></p>
         </div>
-        <div class="cap" data-cap="8">
-          <small>08 · Progress</small>
+        <div class="cap" data-cap="10">
+          <small>10 · Progress</small>
           <h2>Walk it, mark it, move on.</h2>
           <p class="out"><i>Out</i><span>"Viewed" checkboxes, file by file.</span></p>
           <p class="in"><i>In</i><span><kbd>j</kbd> <kbd>k</kbd> walk the PR in order; <kbd>a</kbd> marks a page looked at and moves on. Marks follow the code, so after a force-push only what changed comes back.</span></p>
         </div>
-        <div class="cap" data-cap="9">
-          <small>09 · Interruptions</small>
+        <div class="cap" data-cap="11">
+          <small>11 · Interruptions</small>
           <h2>Park the thought.</h2>
           <p class="out"><i>Out</i><span>Losing your place to a ping.</span></p>
           <p class="in"><i>In</i><span><kbd>p</kbd> parks what's in your head before you switch away. It waits for you in the bar.</span></p>
         </div>
-        <div class="cap" data-cap="10">
-          <small>10 · Coming back</small>
+        <div class="cap" data-cap="12">
+          <small>12 · Coming back</small>
           <h2>Pick up where you left off.</h2>
           <p class="out"><i>Out</i><span>Scrolling around for where you were.</span></p>
           <p class="in"><i>In</i><span>Where you were, how far you got, and the thought you parked. Progress survives restarts and force-pushes.</span></p>
         </div>
-        <div class="cap" data-cap="11">
-          <small>11 · Submit</small>
+        <div class="cap" data-cap="13">
+          <small>13 · Submit</small>
           <h2>One review, one key.</h2>
           <p class="out"><i>Out</i><span>"Review changes", at the end of a long page.</span></p>
           <p class="in"><i>In</i><span><kbd>s</kbd> posts every draft as one GitHub review: comment, approve or request changes. Private notes stay on your machine.</span></p>
         </div>
-        <div class="cap" data-cap="12">
-          <small>12 · Conversation view</small>
+        <div class="cap" data-cap="14">
+          <small>14 · Conversation view</small>
           <h2>Approved, on GitHub.</h2>
           <p class="out"><i>Out</i><span>Switching to the browser to check it landed.</span></p>
           <p class="in"><i>In</i><span>The <b>Conversation</b> view is GitHub's own timeline, read live: your approval is already in it, <b>LGTM!</b> and all, next to everyone else's.</span></p>
         </div>
-        <div class="cap final" data-cap="13" id="install">
+        <div class="cap final" data-cap="15" id="install">
           <small>Your next PR</small>
           <h2>Review it with Bobby.</h2>
           <div class="cmd"><span>$</span><code>curl -fsSL https://raw.githubusercontent.com/angrybayblade/focus-bobby/main/install.sh | bash</code><button type="button" data-copy="curl -fsSL https://raw.githubusercontent.com/angrybayblade/focus-bobby/main/install.sh | bash">Copy</button></div>
@@ -150,10 +162,10 @@
             </div>
             <!-- the last GitHub pieces: they dock into Bobby's bar, then leave one by one -->
             <div class="gh gh-dock">
-              <span class="chip risk" data-out="7">2 unresolved</span>
-              <span class="chip" data-out="7">💬 5 conversations</span>
-              <span class="viewed" data-out="8">0 / 10 files viewed <i>⌄</i></span>
-              <span class="review" data-out="11">Review changes ▾</span>
+              <span class="chip risk" data-out="9">2 unresolved</span>
+              <span class="chip" data-out="9">💬 5 conversations</span>
+              <span class="viewed" data-out="10">0 / 10 files viewed <i>⌄</i></span>
+              <span class="review" data-out="13">Review changes ▾</span>
             </div>
             <aside class="gh gh-tree" data-out="2">
               <div class="filter">⌕ Filter changed files</div>
@@ -192,46 +204,48 @@
 
             <!-- ── Bobby: the real app, captured state by state (bobby.js, made by capture/) ── -->
             <div class="bb-host" data-bobby>
-              <div class="bl" data-state="diff" data-region="top" data-in="1" data-out="5"></div>
-              <div class="bl" data-state="diff" data-region="where" data-in="1" data-out="5"></div>
-              <div class="bl" data-state="diff" data-region="files" data-in="2" data-out="5"></div>
+              <div class="bl" data-state="diff" data-region="top" data-in="1" data-out="7"></div>
+              <div class="bl" data-state="diff" data-region="where" data-in="1" data-out="7"></div>
+              <div class="bl" data-state="diff" data-region="files" data-in="2" data-out="7"></div>
               <div class="bl" data-state="diff-overview" data-region="where" data-in="3" data-out="4"></div>
               <div class="bl" data-state="diff-overview" data-region="view" data-in="3" data-out="4" data-zoom="src/payments/retry.ts"></div>
-              <div class="bl" data-state="diff" data-region="view" data-in="4" data-out="5" data-zoom-from="src/payments/retry.ts"></div>
+              <div class="bl" data-state="diff" data-region="view" data-in="4" data-out="7" data-zoom-from="src/payments/retry.ts"></div>
 
-              <div class="bl" data-state="lens" data-region="top" data-in="5" data-out="7"></div>
-              <div class="bl" data-state="lens" data-region="where" data-in="5" data-out="7"></div>
-              <div class="bl" data-state="lens" data-region="files" data-in="5" data-out="7"></div>
-              <div class="bl" data-state="lens" data-region="view" data-in="5" data-out="7" data-later=".side, .ring > svg, .elbl" data-later-in="6"></div>
-              <div class="bl" data-state="lens" data-region="toast" data-in="5" data-out="7"></div>
+              <div class="bl" data-state="lens" data-region="top" data-in="7" data-out="9"></div>
+              <div class="bl" data-state="lens" data-region="where" data-in="7" data-out="9"></div>
+              <div class="bl" data-state="lens" data-region="files" data-in="7" data-out="9"></div>
+              <div class="bl" data-state="lens" data-region="view" data-in="7" data-out="9" data-later=".side, .ring > svg, .elbl" data-later-in="8"></div>
+              <div class="bl" data-state="lens" data-region="toast" data-in="7" data-out="9"></div>
 
-              <div class="bl" data-state="lens-draft" data-region="top" data-in="7" data-out="8"></div>
-              <div class="bl" data-state="lens-draft" data-region="where" data-in="7" data-out="8"></div>
-              <div class="bl" data-state="lens-draft" data-region="files" data-in="7" data-out="8"></div>
-              <div class="bl" data-state="lens-draft" data-region="view" data-in="7" data-out="8"></div>
+              <div class="bl" data-state="lens-draft" data-region="top" data-in="9" data-out="10"></div>
+              <div class="bl" data-state="lens-draft" data-region="where" data-in="9" data-out="10"></div>
+              <div class="bl" data-state="lens-draft" data-region="files" data-in="9" data-out="10"></div>
+              <div class="bl" data-state="lens-draft" data-region="view" data-in="9" data-out="10"></div>
 
-              <div class="bl" data-state="progress" data-region="top" data-in="8" data-out="12"></div>
-              <div class="bl" data-state="progress" data-region="where" data-in="8" data-out="10"></div>
-              <div class="bl" data-state="progress" data-region="files" data-in="8" data-out="12"></div>
-              <div class="bl" data-state="progress" data-region="view" data-in="8" data-out="12"></div>
-              <div class="bl" data-state="progress" data-region="keys" data-in="8"></div>
+              <div class="bl" data-state="progress" data-region="top" data-in="10" data-out="14"></div>
+              <div class="bl" data-state="progress" data-region="where" data-in="10" data-out="12"></div>
+              <div class="bl" data-state="progress" data-region="files" data-in="10" data-out="14"></div>
+              <div class="bl" data-state="progress" data-region="view" data-in="10" data-out="14"></div>
+              <div class="bl" data-state="progress" data-region="keys" data-in="10"></div>
               <!-- the parked thought, in the bar from here on -->
-              <div class="bl" data-state="parked" data-region="where" data-in="10" data-out="12"></div>
+              <div class="bl" data-state="parked" data-region="where" data-in="12" data-out="14"></div>
 
-              <div class="bl" data-state="conversation" data-region="top" data-in="12"></div>
-              <div class="bl" data-state="conversation" data-region="where" data-in="12"></div>
-              <div class="bl" data-state="conversation" data-region="files" data-in="12"></div>
-              <div class="bl" data-state="conversation" data-region="view" data-in="12"></div>
+              <div class="bl" data-state="conversation" data-region="top" data-in="14"></div>
+              <div class="bl" data-state="conversation" data-region="where" data-in="14"></div>
+              <div class="bl" data-state="conversation" data-region="files" data-in="14"></div>
+              <div class="bl" data-state="conversation" data-region="view" data-in="14"></div>
             </div>
             <!-- Bobby's dialogs: a second layer, over the GitHub pieces docked in Bobby's bar -->
             <div class="bb-host top" data-bobby>
-              <div class="bl" data-state="park" data-region="overlay" data-at="9"></div>
-              <div class="bl" data-state="welcome" data-region="overlay" data-at="10"></div>
-              <div class="bl" data-state="submit" data-region="overlay" data-at="11"></div>
+              <div class="bl" data-state="definition" data-region="inspector" data-at="5"></div>
+              <div class="bl" data-state="uses" data-region="inspector" data-at="6"></div>
+              <div class="bl" data-state="park" data-region="overlay" data-at="11"></div>
+              <div class="bl" data-state="welcome" data-region="overlay" data-at="12"></div>
+              <div class="bl" data-state="submit" data-region="overlay" data-at="13"></div>
             </div>
 
             <!-- the ping that interrupts you: over everything -->
-            <div class="moment ping" data-at="9"><b>Slack</b><span><b>maya</b>: got a minute? prod is weird</span></div>
+            <div class="moment ping" data-at="11"><b>Slack</b><span><b>maya</b>: got a minute? prod is weird</span></div>
 
           </div>
         </div>

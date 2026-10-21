@@ -25,8 +25,8 @@ Then open `http://127.0.0.1:8080/`. `j` / `k` (or the arrows) step through it. B
 - Scrolling picks the step (each takes 70% of the window's height); the transitions are time-based, so a step plays
   the same however fast you scroll.
 
-The story walks Bobby's own views, Diff (steps 3 and 4), Lens (5) and Conversation (12), to show it keeps the GitHub
-review you know. To add a step: add a caption with the next `data-cap`, then tag what leaves and what arrives with that
+The story walks Bobby's own views, Diff (steps 3 and 4, then the inspector on the same file in 5 and 6), Lens (7)
+and Conversation (14), to show it keeps the GitHub review you know. To add a step: add a caption with the next `data-cap`, then tag what leaves and what arrives with that
 number. Keep each step to one GitHub piece out and one Bobby piece in, and name both in the caption's **Out** / **In**
 lines.
 
@@ -37,10 +37,10 @@ lines.
   real `git diff`.
 - **Bobby** is the real app, captured, so it follows the app's design rules by construction. `bobby.js` holds the
   app's CSS and, for each story state (`diff`, `lens`, `lens-draft`, `progress`, `park`, …), the HTML and box of each
-  of its regions (`top`, `where`, `view`, `files`, `keys`, `overlay`, `toast`). A layer names one:
+  of its regions (`top`, `where`, `view`, `files`, `keys`, `overlay`, `toast`, `inspector`). A layer names one:
 
   ```html
-  <div class="bl" data-state="lens" data-region="view" data-in="5" data-out="7"></div>
+  <div class="bl" data-state="lens" data-region="view" data-in="7" data-out="9"></div>
   ```
 
   `site.js` draws the layers in shadow roots (`[data-bobby]`) with the app's own CSS, so its styles and the site's

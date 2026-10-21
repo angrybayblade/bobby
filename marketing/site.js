@@ -23,8 +23,8 @@ const shadows = [];
     .root { display: block !important; position: absolute !important; inset: 0; width: ${W}px; height: ${H}px; overflow: hidden !important; background: transparent !important; }
     .bl { --ease: cubic-bezier(.4, 0, .2, 1); --move: cubic-bezier(.65, 0, .35, 1); position: absolute; background: var(--bg); transition: opacity .7s var(--ease), transform .8s var(--move); }
     .bl > * { position: relative !important; inset: auto !important; width: 100% !important; height: 100% !important; margin: 0 !important; }
-    .bl.is-overlay, .bl.is-toast { background: none; }
-    .bl.is-overlay > *, .bl.is-toast > * { position: absolute !important; inset: 0 !important; }
+    .bl.is-overlay, .bl.is-toast, .bl.is-inspector { background: none; }
+    .bl.is-overlay > *, .bl.is-toast > *, .bl.is-inspector > * { position: absolute !important; inset: 0 !important; }
     .bl[data-in]:not(.shown), .bl[data-at]:not(.shown) { opacity: 0; pointer-events: none; transform: translateY(8px) scale(.985); }
     .bl.gone { opacity: 0 !important; transform: scale(.985); }
     .bl.swap, .bl.swap.gone, .bl.swap:not(.shown) { transform: none; } /* one capture taking over from another: no move */
