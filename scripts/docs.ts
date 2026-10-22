@@ -105,9 +105,9 @@ function render(page: (typeof PAGES)[number]) {
   <header class="site">
     <a class="logo" href="../"><img src="../assets/bobby.svg" alt="" width="22" height="22" /><b>bobby</b></a>
     <nav>
+      <a class="cta" href="../#install">Install</a>
       <a href="./" class="on">Docs</a>
       <a href="${REPO}">GitHub ↗</a>
-      <a class="cta" href="../#install">Install</a>
     </nav>
   </header>
   <div class="shell">

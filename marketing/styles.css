@@ -191,7 +191,6 @@ code { font-family: var(--code); font-size: .9em; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
 @media (max-width: 640px) {
-  .site nav a:not(.cta):first-child { display: none; }
   .cap .out, .cap .in { font-size: 14px; grid-template-columns: 34px 1fr; }
   .cap .lede { font-size: 14.5px; }
 }
