@@ -7,7 +7,7 @@ const CSS = `
 .lens { position: absolute; inset: 0; display: grid; grid-template-rows: 1fr; }
 .lens.paged { grid-template-rows: auto 1fr; }
 .lens .ring { position: relative; display: grid; grid-template-columns: 1fr minmax(320px, 420px) 1fr; gap: 0 90px; align-items: center; padding: 30px 40px 20px; min-height: 0; }
-.lens .ring.wide { grid-template-columns: minmax(200px, 1fr) minmax(480px, 760px) minmax(200px, 1fr); gap: 0 60px; align-items: start; }
+.lens .ring.wide { grid-template-columns: minmax(200px, 1fr) minmax(480px, 760px) minmax(200px, 1fr); gap: 0 88px; align-items: start; }
 .lens .ring.wide .side { margin-top: 40px; }
 .lens .focus .nbody { margin-top: 12px; max-height: calc(100vh - 330px); overflow: auto; overscroll-behavior: contain; cursor: auto; }
 .lens .focus .nbody .code { margin-bottom: 10px; }
@@ -35,7 +35,7 @@ const CSS = `
 .lens .none { color: var(--faint); font-size: 13px; padding: 8px 4px; }
 .lens .ring > svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
 .lens .ring > svg path { fill: none; stroke: var(--muted); stroke-width: 1.5; opacity: .7; }
-.lens .elbl { position: absolute; font: 11.5px var(--font-ui); color: var(--muted); background: var(--bg); padding: 1px 6px; border-radius: 1px; white-space: nowrap; transform: translate(-50%, -50%); z-index: 2; }
+.lens .elbl { position: absolute; font: 11.5px/1.25 var(--font-ui); color: var(--muted); background: var(--bg); padding: 1px 4px; border-radius: 1px; text-align: center; width: max-content; transform: translate(-50%, -50%); z-index: 2; } /* max-width: the gutter it sits in (wire) */
 .lens .orbit { grid-column: 1 / 4; display: flex; gap: 6px; align-items: center; justify-content: center; margin-top: 28px; flex-wrap: wrap; font-size: 12.5px; color: var(--faint); }
 .lens.paged .orbit { margin-top: 12px; }
 .lens .orbit i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--muted); cursor: pointer; }
@@ -140,6 +140,7 @@ export default {
           const l = document.createElement("div");
           l.className = "elbl"; l.textContent = n.dataset.edge;
           l.style.left = `${mx}px`; l.style.top = `${(y1 + y2) / 2}px`;
+          l.style.maxWidth = `${Math.max(48, Math.abs(x2 - x1) - 8)}px`; // wraps rather than run over a card
           r.appendChild(l);
         }
       };
