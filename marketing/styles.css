@@ -41,7 +41,17 @@ html.snapping { scroll-snap-type: y mandatory; }
 .story > .snap { position: absolute; left: 0; width: 1px; height: 1px; scroll-snap-align: start; scroll-snap-stop: always; pointer-events: none; }
 html.snapping .site-foot { scroll-snap-align: end; }
 .stage { position: sticky; top: 0; height: 100vh; height: 100svh; padding: calc(var(--head) + 12px) clamp(16px, 3vw, 32px) 16px; display: grid; grid-template-rows: minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); gap: 16px; }
-.viewport { grid-row: 1; min-height: 0; min-width: 0; display: grid; place-items: center; } /* its size, not the frame's, sets the scale */
+.viewport { grid-row: 1; min-height: 0; min-width: 0; display: grid; place-items: center; position: relative; } /* its size, not the frame's, sets the scale */
+/* the scroll hint: under the mock, once you've lingered on the first step */
+.scroll-hint { position: absolute; z-index: 2; left: 50%; bottom: 4px; display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 12px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); box-shadow: 0 6px 20px -8px rgba(60, 40, 10, .25); color: var(--muted); font-size: 13px; white-space: nowrap; opacity: 0; transform: translate(-50%, 8px); transition: opacity .5s var(--ease), transform .5s var(--ease); pointer-events: none; }
+.scroll-hint.on { opacity: 1; transform: translate(-50%, 0); animation: hint-bob 2.4s var(--ease) .5s infinite; }
+.scroll-hint .mouse { position: relative; flex: none; width: 14px; height: 21px; border: 1.5px solid var(--muted); border-radius: 7px; }
+.scroll-hint .mouse i { position: absolute; left: 50%; top: 4px; width: 2px; height: 5px; margin-left: -1px; border-radius: 1px; background: var(--signal); animation: hint-wheel 1.6s var(--ease) infinite; }
+.scroll-hint .touch { display: none; }
+@media (pointer: coarse) { .scroll-hint .pc { display: none; } .scroll-hint .touch { display: inline; } }
+@keyframes hint-wheel { 0% { opacity: 0; transform: translateY(-2px); } 30% { opacity: 1; } 80% { opacity: 0; transform: translateY(6px); } 100% { opacity: 0; } }
+@keyframes hint-bob { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 4px); } }
+@media (prefers-reduced-motion: reduce) { .scroll-hint.on, .scroll-hint .mouse i { animation: none; } }
 .frame { width: calc(1440px * var(--scale, .5)); height: calc(900px * var(--scale, .5)); position: relative; border-radius: calc(4px * var(--scale, .5)); box-shadow: 0 1px 0 var(--line), 0 24px 60px -20px rgba(60, 40, 10, .28); overflow: hidden; }
 .captions { grid-row: 2; display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; position: relative; max-width: 760px; width: 100%; justify-self: center; }
 .cap { grid-area: 1 / 1; min-width: 0; opacity: 0; transform: translateY(8px); transition: opacity .35s var(--ease), transform .45s var(--ease); pointer-events: none; padding-bottom: 44px; }

@@ -244,8 +244,12 @@ function swaps(n) {
   }
 }
 
+// lingering on the first step: perhaps the scroll isn't obvious, so say how to move on. Gone once you do.
+const hint = document.querySelector(".scroll-hint");
+let hintTimer = setTimeout(() => { if (step === 0) hint?.classList.add("on"); }, 4000);
 function show(n) {
   if (n === step) return;
+  if (n !== 0 && step >= 0) { clearTimeout(hintTimer); hint?.classList.remove("on"); }
   const forward = n > step;
   if (step >= 0 && !reduceMotion) swaps(n);
   // back out of the canvas onto GitHub's list: the canvas stays until its files have landed
