@@ -574,6 +574,11 @@ mark.wd { background: var(--del-word); color: inherit; border-radius: 0; }
 .modal h2 { margin: 0 0 6px; font-size: 18px; }
 .modal p { color: var(--muted); margin: 0 0 16px; font-family: var(--font-prose); }
 .modal .row { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; align-items: center; }
+.modal .rdrafts { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; font-size: 13px; color: var(--muted); }
+.modal .rdraft { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.modal .rdraft code { flex: none; font: 12px var(--font-code); color: var(--text); }
+.modal .rdraft span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* one line each: the rest is in the draft */
+.modal .rdraft i { flex: none; color: var(--faint); }
 .btn { padding: 8px 14px; border-radius: 3px; border: 1px solid var(--line); background: var(--raised); font-size: 14px; }
 .btn.primary { background: var(--signal); border-color: var(--signal); color: var(--signal-ink); font-weight: 600; }
 .modal textarea { width: 100%; min-height: 90px; padding: 10px 12px; border-radius: 3px; border: 1px solid var(--line); background: var(--bg); color: inherit; font: inherit; }

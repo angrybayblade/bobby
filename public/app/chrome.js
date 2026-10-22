@@ -379,7 +379,7 @@ export function submit(msg) {
   open(`<h2>Submit review</h2>
     <p>${cs.length ? `${cs.length} draft comment(s) will be posted together.` : "No draft comments."}${app.state.notes.length ? ` Your ${app.state.notes.length} private note(s) stay here and aren't posted.` : ""}${wip ? ` ${wip} unfinished draft${wip > 1 ? "s" : ""} stay${wip > 1 ? "" : "s"} behind: finish ${wip > 1 ? "them" : "it"} with <i>Continue</i> to include ${wip > 1 ? "them" : "it"}.` : ""}</p>
     <textarea id="rbody" placeholder="Summary (optional for Approve)"></textarea>
-    <div style="font-size:13px;color:var(--muted);margin-top:10px">${cs.map((c) => `· <code>${esc(c.path)}:${c.line}</code> ${esc(c.body.slice(0, 70))}${inline(c) ? "" : " <i>(goes in summary)</i>"}`).join("<br>")}</div>
+    <div class="rdrafts">${cs.map((c) => `<div class="rdraft"><code>${esc(c.path)}:${c.line}</code><span>${esc(c.body)}</span>${inline(c) ? "" : "<i>goes in summary</i>"}</div>`).join("")}</div>
     <div class="row">
       <button class="btn primary" data-submit="COMMENT">Comment</button>
       <button class="btn" data-submit="APPROVE">Approve</button>
