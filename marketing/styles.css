@@ -179,7 +179,7 @@ code { font-family: var(--code); font-size: .9em; }
 .app.s1 .gh-tree, .app.s1 .gh-diffs { top: 108px; }
 .app.s2 .gh-diffs { left: 16px; width: 1118px; }
 /* then each file flies to its viewer on Bobby's canvas (site.js measures the move) and fades as the canvas settles */
-.gh-diffs .file { transform-origin: 0 0; transition: transform 1.1s var(--move) calc(var(--i, 0) * 40ms), opacity .7s var(--ease) calc(.45s + var(--i, 0) * 40ms); }
+.gh-diffs .file { transition: opacity .3s var(--ease); } /* step 3: each dissolves into its viewer on the canvas, which carries it home (site.js) */
 .app.s3 .gh-diffs .file { opacity: 0; }
 
 /* the ping that interrupts you */

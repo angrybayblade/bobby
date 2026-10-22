@@ -29,6 +29,7 @@ const shadows = [];
     .bl { --ease: cubic-bezier(.4, 0, .2, 1); --move: cubic-bezier(.65, 0, .35, 1); position: absolute; background: var(--bg); transition: opacity .7s var(--ease), transform .8s var(--move); }
     .bl > * { position: relative !important; inset: auto !important; width: 100% !important; height: 100% !important; margin: 0 !important; }
     .bl.is-overlay, .bl.is-toast, .bl.is-inspector { background: none; }
+    .bl:is(.is-top, .is-where, .is-files, .is-keys) { z-index: 1; } /* the frame stays over the view, as a zoom spills past it */
     .bl.is-overlay > *, .bl.is-toast > *, .bl.is-inspector > * { position: absolute !important; inset: 0 !important; }
     .bl[data-in]:not(.shown), .bl[data-at]:not(.shown) { opacity: 0; pointer-events: none; transform: translateY(8px) scale(.985); }
     .bl.gone { opacity: 0 !important; transform: scale(.985); }
@@ -40,7 +41,10 @@ const shadows = [];
     @keyframes arrive { 0% { box-shadow: 0 0 0 rgba(31, 35, 40, 0); } 35% { box-shadow: 0 14px 36px -12px rgba(31, 35, 40, .2); } 100% { box-shadow: 0 0 0 rgba(31, 35, 40, 0); } }
     /* GitHub's files land on the canvas, and it comes up under them */
     .bl[data-zoom] { transition: opacity .8s var(--ease), transform 1.1s var(--move); }
-    .bl[data-zoom].shown:not(.gone) { transition-delay: .5s, 0s; transform: none; }
+    .bl[data-zoom]:not(.gone) { transition: opacity .3s var(--ease), transform 1.1s var(--move); transform: none; }
+    .bl[data-zoom] .world > :not(.fv) { transition: opacity .2s var(--ease); }
+    .bl[data-zoom]:not(.shown) .world > :not(.fv) { opacity: 0; }
+    .bl[data-zoom].shown .world > :not(.fv) { transition: opacity .5s var(--ease) 1s; } /* the edges and lanes, once the files land */
     /* then it zooms into one file, whose focused view grows out of the same spot */
     .bl[data-zoom].gone { transform: var(--zoom-out, scale(2.5)); transition: opacity .6s var(--ease) .35s, transform 1.1s var(--move); }
     .bl[data-zoom] .fv.w-focus { transition: box-shadow .3s var(--ease); }
@@ -97,29 +101,41 @@ function still(els, measure) {
   els.forEach((el, i) => { el.style.transition = saved[i][0]; });
   return out;
 }
-/** Step 3: each GitHub file flies to its viewer on the canvas; back before it, they return to the list. The moves are
- *  measured once (and on resize), never while a step changes, so measuring can't cut a transition short. */
-let moves = null;
+/** Step 3: GitHub's files become the canvas. Each file's viewer on the canvas starts where the file sits in GitHub's
+ *  list, at its size, and glides to its own place; GitHub's file dissolves into it as it sets off, so there's one of
+ *  each the whole way. The starts are measured once (and on resize), never while a step changes. */
+let starts = [];
 function measureMoves() {
   const list = app.querySelector("[data-morph]"), canvas = layerOf(".bl[data-zoom]");
   if (!list || !canvas) return;
   const files = [...list.querySelectorAll(".file")], was = app.className;
-  moves = still([list, canvas, ...files], () => {
-    // measured where the list is at the step before the move, whatever step this is
+  const views = files.map((f) => viewer(canvas, f.querySelector("header b")?.textContent.trim()));
+  for (const v of views) if (v) { v.dataset.home ??= v.style.transform; v.style.transform = v.dataset.home; }
+  starts = still([list, canvas, ...files], () => {
+    // GitHub's list as it is at the step before the move, whatever step this is
     for (let i = 1; i < STEPS; i++) app.classList.toggle(`s${i}`, i < MORPH);
-    const out = files.map((f) => {
-      const v = viewer(canvas, f.querySelector("header b")?.textContent.trim());
-      if (!v) return "scale(.9)";
-      const from = boxIn(f), to = boxIn(v);
-      return `translate(${to.x - from.x}px, ${to.y - from.y}px) scale(${to.w / from.w})`; // one scale: no squashed text
+    const out = files.map((f, i) => {
+      const v = views[i], at = /translate\(([-\d.]+)px,\s*([-\d.]+)px\)/.exec(v?.dataset.home ?? "");
+      if (!v || !at) return null;
+      // the viewer's world: its scale, and where its origin sits in the app
+      const b = boxIn(v), k = b.w / v.offsetWidth, ox = b.x - Number(at[1]) * k, oy = b.y - Number(at[2]) * k;
+      const a = boxIn(f);
+      return { v, from: `translate(${(a.x - ox) / k}px, ${(a.y - oy) / k}px) scale(${a.w / b.w})` }; // one scale: no squashed text
     });
     app.className = was;
-    return out;
+    return out.filter(Boolean);
   });
 }
-function morph(on) {
-  const files = [...app.querySelectorAll("[data-morph] .file")];
-  files.forEach((f, i) => { f.style.setProperty("--i", i); f.style.transform = on && moves ? moves[i] : ""; });
+/** Into the canvas (`fly`): the viewers start on GitHub's files and glide home. Otherwise they're simply home. */
+function morph(fly) {
+  starts.forEach(({ v, from }, i) => {
+    v.style.transformOrigin = "0 0";
+    if (!fly) { v.style.transition = ""; v.style.transform = v.dataset.home; return; }
+    v.style.transition = "none"; v.style.transform = from;
+    void v.offsetWidth;
+    v.style.transition = `transform 1s var(--move) ${i * 35}ms`;
+    v.style.transform = v.dataset.home;
+  });
 }
 /** Step 2: each row of GitHub's file tree flies onto the row of the same name in Bobby's, matched by name. */
 function measureFly() {
@@ -178,11 +194,7 @@ new ResizeObserver(() => {
   fit();
   requestAnimationFrame(() => { // measured on the page as drawn at this size; applied without animating
     zoom(); measureMoves(); measureFly();
-    const files = [...app.querySelectorAll("[data-morph] .file")];
-    for (const f of files) f.style.transition = "none";
-    morph(step >= MORPH);
-    void app.offsetWidth;
-    for (const f of files) f.style.transition = "";
+    morph(false);
   });
 }).observe(viewport);
 
@@ -242,7 +254,7 @@ function show(n) {
       el.classList.remove("arrive"); void el.offsetWidth; el.classList.add("arrive");
     }
   }
-  morph(n >= MORPH);
+  if (forward && n === MORPH && !reduceMotion) morph(true);
   caps.forEach((c, i) => c.classList.toggle("on", i === n));
   document.dispatchEvent(new CustomEvent("story:step", { detail: n }));
   dots.forEach((d, i) => { d.classList.toggle("on", i === n); d.classList.toggle("done", i < n); });
