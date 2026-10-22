@@ -12,7 +12,9 @@ The UI in `public/` is plain ES modules with no build step and no framework. `in
 6. Start the tour module and the chrome. On a first launch (`/api/session` returned no saved settings), run the tour first; then show the welcome-back card if there's progress or a parked thought, or else the entry point's intro toast.
 7. While Claude or a language server is working, poll `/api/status` every 3 s (every 10 s while the server can't be reached), toast when Claude's tree is ready, and emit `llm` only when a status actually changed.
 
-**Deep links for testing**: `#view=lens&level=1&p=5` picks the view, level and walk position (1-based). `window.bobby` exposes the runtime in the console.
+**The address** says where you are: `/r/<id>/<view>`, then the step as `/<file path>#L<line>` (the line its first hunk or snippet starts on), and `?zoom=core` or `?zoom=page` only when the level isn't the view's usual one (a step's viewer in Diff, its page elsewhere). A view with no path is its overview; `~low-signal` and `~done` name the two pseudo-pages. Steps are named by file and line, not placement id, since ids change when Claude's tree replaces the static one; `pidAt` turns them back into a step. Boot reads it (a step it names wins over the entry point and the welcome-back card; one the review no longer has opens the overview, with a toast). Moving within a view rewrites it with `replaceState` (debounced 150 ms); `switchView` pushes, so back and forward go between views, and `popstate` applies the address without pushing. The server serves the page for any path under a review, and its API for `/r/<id>/api/…` only, so a file path can hold `api/`.
+
+**Deep links for testing**: `#view=lens&level=1&p=5` picks the view, level and walk position (1-based), over the address. `window.bobby` exposes the runtime in the console.
 
 ## The runtime (`app/core.js`)
 

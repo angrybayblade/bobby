@@ -36,6 +36,7 @@ export interface ReviewGraph {
   walk: string[];
   lowSignal: string[];
   discussion?: GDiscussion[];
+  outdated?: GOutdated[];
   definitions?: Record<string, Definition[]>; // path → names on its new-side diff lines and where each is declared
 }
 
@@ -46,6 +47,22 @@ export interface GDiscussion {
   replyTo?: string;
   startLine?: number; startSide?: "LEFT" | "RIGHT"; // a comment on a range: its first line (line is its last)
   avatar?: string; // the author's GitHub avatar
+  html?: string; // GitHub's rendering of body, for bots' HTML and the Markdown Bobby doesn't render itself
+  resolved?: boolean; // its thread was resolved on GitHub
+}
+
+/** A review thread whose line the diff no longer has (GitHub's "outdated"): kept off the lines, counted by file. */
+export interface GOutdated {
+  id: string; path: string; author: string; url: string; createdAt: string; // its first comment's
+  comments: number; resolved?: boolean;
+}
+
+/** A PR's review comments as read from GitHub: those on a line of the diff, and the outdated threads. */
+export interface Discussion { comments: GDiscussion[]; outdated: GOutdated[] }
+/** Puts freshly read comments on a live graph. */
+export function setDiscussion(g: ReviewGraph, d: Discussion) {
+  g.discussion = d.comments;
+  g.outdated = d.outdated;
 }
 
 export interface GFile {
@@ -94,7 +111,7 @@ export interface GEdge {
 const changeId = (file: string, symbol: string) => `chg:${file}#${symbol}`;
 const contextId = (path: string, line: number) => `ctx:${path}:${line}`;
 
-export async function buildGraph(cwd: string | null, pr: PrInfo, files: FileDiff[], a: Analysis, tree: ChangeTree, discussion: GDiscussion[] = []): Promise<ReviewGraph> {
+export async function buildGraph(cwd: string | null, pr: PrInfo, files: FileDiff[], a: Analysis, tree: ChangeTree, discussion: Discussion = { comments: [], outdated: [] }): Promise<ReviewGraph> {
   const nodes = new Map<string, GNode>();
   const unitNode = new Map<string, string>(); // unit id → node id
 
@@ -175,7 +192,8 @@ export async function buildGraph(cwd: string | null, pr: PrInfo, files: FileDiff
     edges,
     walk,
     lowSignal: tree.noiseHunkIds,
-    ...(discussion.length ? { discussion } : {}),
+    ...(discussion.comments.length ? { discussion: discussion.comments } : {}),
+    ...(discussion.outdated.length ? { outdated: discussion.outdated } : {}),
     ...(Object.keys(a.defs ?? {}).length ? { definitions: a.defs } : {}),
   };
 }

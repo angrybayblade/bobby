@@ -4,6 +4,14 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- A **Conversation** view, first in the switcher: the PR's description, comments, reviews with their threads, and pushes in time order, then its reviewers, CI checks and whether it can merge, as on GitHub. Reply to a thread or comment on the PR from it. PRs only.
+- Threads resolved on GitHub are tagged and start collapsed in every view; outdated threads, whose line the diff no longer has, are counted above their file's code and open in the Conversation view.
+- The address bar follows you: `…/diff/<file>#L42`, `…/flow/<file>#L42`, `…/conversation`. Reload, bookmark or share a link to land on the same view and step; back and forward move between views.
+- **⚙ Generated** gets its own switch, apart from **⚗ Tests**.
+- Code cut from the middle of a block comment is highlighted as comment, not as code.
+- Home page rows link to their review, so ⌘-click opens it in a new tab, even a PR you haven't opened yet. Right-click a row (or ⇧F10) to open it, open it in a new tab, open it on GitHub (`o`), or copy its link.
+- `bobby` in a repo with nothing to review (on main, say) opens the home page instead of exiting.
+
 ## 0.1.0-rc7 (2026-10-16)
 
 A home page to pick PRs from, and one Bobby for all your reviews.

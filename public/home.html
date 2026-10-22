@@ -59,6 +59,13 @@
     .home .av { width: 16px; height: 16px; border-radius: 50%; vertical-align: -3px; margin-right: 4px; }
     .home .keys { color: var(--faint); font-size: 12px; margin-top: 30px; }
     .home .busy { opacity: .55; pointer-events: none; }
+    /* a row's menu (right-click, or shift+F10 / the menu key on the selected row) */
+    .home .menu { position: fixed; z-index: 30; min-width: 200px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; box-shadow: var(--shadow); font-size: 13px; }
+    .home .menu[hidden] { display: none; }
+    .home .menu button { display: flex; width: 100%; gap: 16px; justify-content: space-between; padding: 6px 10px; border-radius: 3px; text-align: left; color: var(--text); }
+    .home .menu button:hover, .home .menu button:focus { outline: none; background: var(--raised); }
+    .home .menu button kbd { color: var(--faint); font: 11.5px var(--font-ui); }
+    .home .menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
   </style>
   <script type="module" src="/app/home.js"></script>
 </head>
@@ -82,7 +89,8 @@
     </form>
     <div class="err" role="alert"></div>
     <div class="lists"></div>
-    <div class="keys"><kbd>/</kbd> search or paste a link · <kbd>↑</kbd> <kbd>↓</kbd> move · <kbd>enter</kbd> open</div>
+    <div class="keys"><kbd>/</kbd> search or paste a link · <kbd>↑</kbd> <kbd>↓</kbd> move · <kbd>enter</kbd> open · <kbd>o</kbd> on GitHub · <kbd>⇧F10</kbd> or right-click: more</div>
+    <div class="menu" role="menu" hidden></div>
   </div>
 </body>
 </html>

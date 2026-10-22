@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { existsSync } from "node:fs";
 import type { PrInfo } from "./types.ts";
+import type { Discussion, GOutdated } from "./graph.ts";
 import { home } from "./state.ts";
 
 export async function run(
@@ -136,20 +137,47 @@ export async function fileLines(cwd: string, sha: string, path: string): Promise
   return lines;
 }
 
-/** Existing inline review comments still anchored to a line of the current diff (outdated ones are dropped). For one
- *  commit of the PR, the comments written on that commit, where they were written (GitHub's original_line).
+/** Which review threads are resolved, by their first comment's id: GraphQL only, the REST comments don't say. */
+async function resolvedThreads(pr: Pick<PrInfo, "owner" | "repo" | "number">, strict: boolean): Promise<Set<string>> {
+  const q = `query($owner: String!, $repo: String!, $n: Int!, $after: String) { repository(owner: $owner, name: $repo) { pullRequest(number: $n) {
+    reviewThreads(first: 100, after: $after) { pageInfo { hasNextPage endCursor } nodes { isResolved comments(first: 1) { nodes { databaseId } } } } } } }`;
+  const out = new Set<string>();
+  for (let after = "", k = 0; k < 20; k++) {
+    const r = await run(["gh", "api", "graphql", "-f", `query=${q}`, "-F", `owner=${pr.owner}`, "-F", `repo=${pr.repo}`, "-F", `n=${pr.number}`, ...(after ? ["-f", `after=${after}`] : [])], { allowFail: !strict });
+    const t = r.trim() ? JSON.parse(r).data?.repository?.pullRequest?.reviewThreads : null;
+    if (!t) break;
+    for (const n of t.nodes) if (n.isResolved && n.comments.nodes[0]) out.add(String(n.comments.nodes[0].databaseId));
+    if (!t.pageInfo.hasNextPage) break;
+    after = t.pageInfo.endCursor;
+  }
+  return out;
+}
+
+/** Existing inline review comments: those still anchored to a line of the current diff, each marked if its thread is
+ *  resolved, and the outdated threads, whose line is gone (kept off the lines, counted by file). For one commit of the
+ *  PR, the comments written on that commit, where they were written (GitHub's original_line), and none outdated.
  *  strict: a failed fetch throws instead of reading as no comments. */
-export async function reviewComments(pr: Pick<PrInfo, "owner" | "repo" | "number" | "commit">, strict = false) {
-  type Raw = { id: number; path: string; line: number | null; side: "LEFT" | "RIGHT"; in_reply_to_id?: number; start_line?: number | null; start_side?: "LEFT" | "RIGHT" | null; user: { login: string; avatar_url?: string } | null; body: string; html_url: string; created_at: string;
+export async function reviewComments(pr: Pick<PrInfo, "owner" | "repo" | "number" | "commit">, strict = false): Promise<Discussion> {
+  type Raw = { id: number; path: string; line: number | null; side: "LEFT" | "RIGHT"; in_reply_to_id?: number; start_line?: number | null; start_side?: "LEFT" | "RIGHT" | null; user: { login: string; avatar_url?: string } | null; body: string; body_html?: string; html_url: string; created_at: string;
     original_commit_id?: string; original_line?: number | null; original_start_line?: number | null };
-  // --jq '.[]' prints one compact object per line, so paginated pages concatenate cleanly.
-  const out = await run(["gh", "api", "--paginate", "--jq", ".[]", `repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/comments?per_page=100`], { allowFail: !strict });
+  // --jq '.[]' prints one compact object per line, so paginated pages concatenate cleanly. full+json: body_html too.
+  const out = await run(["gh", "api", "--paginate", "-H", "Accept: application/vnd.github.full+json", "--jq", ".[]", `repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/comments?per_page=100`], { allowFail: !strict });
   let raw = out.split("\n").filter((l) => l.startsWith("{")).map((l) => JSON.parse(l) as Raw);
+  const resolved = raw.length ? await resolvedThreads(pr, strict) : new Set<string>();
+  const root = (c: Raw) => String(c.in_reply_to_id ?? c.id);
   if (pr.commit) raw = raw.filter((c) => c.original_commit_id === pr.commit!.sha && c.original_line != null).map((c) => ({ ...c, line: c.original_line!, start_line: c.original_start_line ?? null }));
-  return raw.filter((c) => c.line != null).map((c) => ({
+  const outdated: GOutdated[] = [];
+  for (const c of raw) {
+    if (c.line != null || c.in_reply_to_id) continue;
+    outdated.push({ id: String(c.id), path: c.path, author: c.user?.login ?? "ghost", url: c.html_url, createdAt: c.created_at,
+      comments: raw.filter((r) => root(r) === String(c.id)).length, ...(resolved.has(String(c.id)) ? { resolved: true } : {}) });
+  }
+  const comments = raw.filter((c) => c.line != null).map((c) => ({
     id: String(c.id), path: c.path, line: c.line!, side: c.side, author: c.user?.login ?? "ghost",
-    body: c.body, url: c.html_url, createdAt: c.created_at, ...(c.user?.avatar_url ? { avatar: c.user.avatar_url } : {}), ...(c.in_reply_to_id ? { replyTo: String(c.in_reply_to_id) } : {}), ...(c.start_line && c.start_line !== c.line ? { startLine: c.start_line, startSide: c.start_side ?? c.side } : {}),
+    body: c.body, url: c.html_url, createdAt: c.created_at, ...(c.user?.avatar_url ? { avatar: c.user.avatar_url } : {}), ...(c.body_html ? { html: c.body_html } : {}), ...(c.in_reply_to_id ? { replyTo: String(c.in_reply_to_id) } : {}), ...(c.start_line && c.start_line !== c.line ? { startLine: c.start_line, startSide: c.start_side ?? c.side } : {}),
+    ...(resolved.has(root(c)) ? { resolved: true } : {}),
   }));
+  return { comments, outdated };
 }
 
 /** Who you are on GitHub (gh's login), for your own drafts and notes; asked once a day at most, null if gh can't say

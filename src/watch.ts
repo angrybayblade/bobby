@@ -4,6 +4,7 @@
 import { reviewComments, run, git } from "./git.ts";
 import { snapshot } from "./local.ts";
 import type { Session } from "./server.ts";
+import { setDiscussion } from "./graph.ts";
 
 export interface Update {
   headSha: string; // what the review would move to: a commit, or for uncommitted work, a tree
@@ -11,7 +12,9 @@ export interface Update {
   refresh: boolean; // false: a change the review can't follow (you switched branches)
 }
 
-const sig = (d: Array<{ id: string; body: string; line: number }>) => d.map((c) => `${c.id}:${c.line}:${c.body.length}`).sort().join("|");
+// what changed: a comment's line or text, a thread resolved or not, a thread gone outdated
+const sig = (d: Array<{ id: string; body?: string; line?: number; resolved?: boolean; comments?: number }>) =>
+  d.map((c) => `${c.id}:${c.line ?? "o"}:${c.body?.length ?? c.comments}:${c.resolved ? "r" : ""}`).sort().join("|");
 
 /** A PR: its comments, and whether its head or base moved on. Every minute; a failed check (offline) waits for the next.
  *  Returns what stops watching. */
@@ -20,8 +23,8 @@ export function watchPr(s: Session, every = 60_000) {
     if (s.rebuilding) return;
     const pr = s.staticGraph.pr;
     const d = await reviewComments(pr, true).catch(() => null);
-    if (d && sig(d) !== sig(s.staticGraph.discussion ?? [])) {
-      for (const g of [s.staticGraph, s.claudeGraph]) if (g) g.discussion = d;
+    if (d && sig([...d.comments, ...d.outdated]) !== sig([...s.staticGraph.discussion ?? [], ...s.staticGraph.outdated ?? []])) {
+      for (const g of [s.staticGraph, s.claudeGraph]) if (g) setDiscussion(g, d);
       s.discussionAt = Date.now();
     }
     if (pr.commit) return; // one commit doesn't move on: only its comments are kept current

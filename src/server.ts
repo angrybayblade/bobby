@@ -1,7 +1,7 @@
 import { join, normalize } from "node:path";
 import { embeddedAsset } from "./assets.ts";
 import { fileLines, reviewComments, run, whoAmI } from "./git.ts";
-import type { ReviewGraph } from "./graph.ts";
+import { type ReviewGraph, setDiscussion } from "./graph.ts";
 import { home, loadSettings, saveSettings, saveState } from "./state.ts";
 import type { Comment, Definition, PrivateNote, ReviewState } from "./types.ts";
 import { type Inspector, insideRepo, inspectSyntax, referencesSyntax, type Uses } from "./inspect.ts";
@@ -9,6 +9,7 @@ import { declineServer, inspectorFor, installServer, recheckServer, type ServerI
 import { Repo } from "./resolve.ts";
 import type { Update } from "./watch.ts";
 import { loadRecents, noteRecent, prLists } from "./recents.ts";
+import { type Conversation, conversation } from "./conversation.ts";
 import pkg from "../package.json" with { type: "json" };
 import type { Release } from "./updates.ts";
 
@@ -30,6 +31,7 @@ export interface Session {
   refresh?: boolean; // --refresh: language servers answer afresh rather than from their cache
   // Keeping it current (watch.ts): when the PR's comments last changed; new work to move to, if any; moving to it.
   discussionAt?: number;
+  conversation?: { at: number; value: Promise<Conversation> }; // the Conversation view's, read at most every 15 s
   update?: Update;
   rebuild?: () => Promise<void>;
   rebuilding?: boolean;
@@ -152,21 +154,26 @@ export function startServer(app: App, port: number) {
       const refused = guard(req, server.port);
       if (refused) return refused;
 
-      // A review: its page, or its API. Ids have slashes (owner/repo/number), so the API starts at "/api/".
+      // A review: its page, or its API. An id is three segments (owner/repo/number, or local/repo/branch); after it,
+      // /api/… is its API, and anything else is the page, at a view and what it's on (/diff/src/api/x.ts is a page).
       if (p.startsWith("/r/")) {
-        const at = p.indexOf("/api/");
-        if (at < 0) return staticFile("/index.html");
-        const id = decodeURIComponent(p.slice(3, at)), s = app.reviews.get(id);
-        if (s) return reviewApi(s, app, req, url, p.slice(at));
-        // not open, but opened before (a reload after Bobby restarted, a bookmark): open it again, from what recents kept
+        const seg = p.slice(3).split("/"), rest = `/${seg.slice(3).join("/")}`;
+        if (!rest.startsWith("/api/")) return staticFile("/index.html");
+        const id = decodeURIComponent(seg.slice(0, 3).join("/")), s = app.reviews.get(id);
+        if (s) return reviewApi(s, app, req, url, rest);
+        // not open, but opened before (a reload after Bobby restarted, a bookmark): open it again, from what recents kept;
+        // never opened, a PR's address (owner/repo/123, or @sha, @from..to): open that PR, as a new tab from home does
+        let failed = "";
         if (!app.loading.has(id) && app.open) {
           const r = (await loadRecents()).find((x) => x.id === id);
-          if (r) await app.open(r.kind === "local" ? undefined : r.arg, { repo: r.repoDir, ...(r.kind === "local" ? { base: r.baseRef } : {}) }).catch(() => {});
+          const pr = /^([\w.-]+)\/([\w.-]+)\/(\d+)(?:@((?:[0-9a-f]{7,40}\.\.)?[0-9a-f]{7,40}))?$/.exec(id);
+          const arg = r ? (r.kind === "local" ? undefined : r.arg) : pr && pr[1] !== "local" ? `https://github.com/${pr[1]}/${pr[2]}/pull/${pr[3]}${pr[4] ? `/changes/${pr[4]}` : ""}` : null;
+          if (r || arg) await app.open(arg ?? undefined, r ? { repo: r.repoDir, ...(r.kind === "local" ? { base: r.baseRef } : {}) } : {}).catch((e) => { failed = String(e?.message ?? e); });
         }
         const l = app.loading.get(id);
         // still building (or failed): with the settings, so the page wears your theme while it waits
         if (l) return json({ loading: !l.error, title: l.title, steps: l.steps, elapsed: Date.now() - l.startedAt, settings: loadSettings(), ...(l.error ? { error: l.error } : {}) }, l.error ? 500 : 202);
-        return json({ error: `No review ${id} is open. Open it from the home page, or with bobby <PR URL>.` }, 404);
+        return json({ error: failed || `No review ${id} is open. Open it from the home page, or with bobby <PR URL>.` }, 404);
       }
       if (!p.startsWith("/api/")) return staticFile(p === "/" ? "/home.html" : p);
       if (p === "/api/avatar") return avatar(url.searchParams.get("u") ?? "");
@@ -209,7 +216,38 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
       // A GitHub avatar, fetched once and kept a week in ~/.bobby/cache/avatars. Only GitHub's own avatar hosts.
       if (p === "/api/avatar") return avatar(url.searchParams.get("u") ?? "");
       if (p === "/api/status") return json({ llm: s.llm, llmError: s.llmError, claudeReady: !!s.claudeGraph, servers: Object.values(s.servers ?? {}), discussionAt: s.discussionAt ?? 0, release: app.release ?? null, update: s.rebuilding ? { ...s.update, rebuilding: true } : s.update ?? null });
-      if (p === "/api/discussion") return json(s.staticGraph.discussion ?? []);
+      if (p === "/api/discussion") return json({ comments: s.staticGraph.discussion ?? [], outdated: s.staticGraph.outdated ?? [] });
+      if (p === "/api/conversation") {
+        if (pr().provider === "local") return json({ error: "A local review has no PR, so no conversation." }, 404);
+        if (!s.conversation || url.searchParams.has("fresh") || Date.now() - s.conversation.at > 15_000) {
+          const value = conversation(pr());
+          s.conversation = { at: Date.now(), value };
+          value.catch(() => { if (s.conversation?.value === value) s.conversation = undefined; }); // a failure isn't kept
+        }
+        try { return json(await s.conversation.value); } catch (e) { return json({ error: String((e as Error).message) }, 502); }
+      }
+      // Writing in the conversation: a comment on the PR, or a reply in a review thread. Each posts at once, as GitHub's
+      // Comment and Reply buttons do (a review, with its drafts on lines, still goes through /api/submit).
+      if (req.method === "POST" && (p === "/api/conversation/comment" || p === "/api/conversation/reply")) {
+        const { body, to } = (await req.json().catch(() => ({}))) as { body?: unknown; to?: unknown };
+        if (typeof body !== "string" || !body.trim()) return json({ ok: false, error: "Nothing to post" }, 400);
+        if (p.endsWith("/reply") && (typeof to !== "string" || !/^\d+$/.test(to))) return json({ ok: false, error: "to must be the id of a review comment" }, 400);
+        if (pr().provider === "local") return json({ ok: false, error: "This is a local review with no PR, so there's nowhere to post." }, 400);
+        const { owner, repo, number } = pr();
+        const where = p.endsWith("/reply") ? `repos/${owner}/${repo}/pulls/${number}/comments/${to}/replies` : `repos/${owner}/${repo}/issues/${number}/comments`;
+        try {
+          // --input, not -f body=…: gh reads a value starting with @ as a file
+          const posted = JSON.parse(await run(["gh", "api", "--method", "POST", where, "--input", "-"], { input: JSON.stringify({ body }) }));
+          s.conversation = undefined;
+          if (p.endsWith("/reply")) { // a reply is a review comment too: it shows on its line in the other views
+            const discussion = await reviewComments(pr(), true).catch(() => null);
+            if (discussion) { for (const g of [s.staticGraph, s.claudeGraph]) if (g) setDiscussion(g, discussion); s.discussionAt = Date.now(); }
+          }
+          return json({ ok: true, url: posted.html_url });
+        } catch (e) {
+          return json({ ok: false, error: String((e as Error).message) }, 400);
+        }
+      }
       // How far you've got, for recents on the home page (the page counts pages; drafts are counted here)
       if (req.method === "POST" && p === "/api/progress") {
         const { done, total } = (await req.json()) as { done: number; total: number };
@@ -385,8 +423,8 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
           persist();
           // Re-read the PR's comments so what was just posted shows on its lines; if that fails they show next start.
           const discussion = await reviewComments(pr(), true).catch(() => null);
-          if (discussion) for (const g of [s.staticGraph, s.claudeGraph]) if (g) g.discussion = discussion;
-          return json({ ok: true, url: JSON.parse(out).html_url, ...(discussion ? { discussion } : {}) });
+          if (discussion) for (const g of [s.staticGraph, s.claudeGraph]) if (g) setDiscussion(g, discussion);
+          return json({ ok: true, url: JSON.parse(out).html_url, ...(discussion ? { discussion: discussion.comments, outdated: discussion.outdated } : {}) });
         } catch (e) {
           return json({ ok: false, error: String((e as Error).message) }, 400);
         }

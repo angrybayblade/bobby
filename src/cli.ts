@@ -3,7 +3,7 @@ import { parseArgs } from "node:util";
 import { readFileSync, statSync, writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import { git, reviewComments, run } from "./git.ts";
-import { GRAPH_SCHEMA, LEGACY_SCHEMAS, type ReviewGraph } from "./graph.ts";
+import { GRAPH_SCHEMA, LEGACY_SCHEMAS, type ReviewGraph, setDiscussion } from "./graph.ts";
 import { clean, prune } from "./prune.ts";
 import { watchReleases } from "./updates.ts";
 import { hold, holder, home, legacyHolder, loadSettings, loadState } from "./state.ts";
@@ -44,7 +44,8 @@ const { values, positionals } = parseArgs({
 const USAGE = `bobby: review a PR one focused page at a time
 
   bobby                              inside a repo: review this branch (and uncommitted changes);
-                                     elsewhere: the home page, to pick a PR (or bobby home)
+                                     elsewhere, or with nothing to review: the home page, to pick a PR
+                                     (or bobby home)
   bobby <pr-url | number>            extract + open the review UI for a PR
   bobby <pr-url>/changes/<sha>       just that commit of the PR (against its parent), or <from>..<to>
   bobby extract [pr] [-o file.json]  write the review graph (${GRAPH_SCHEMA}) and exit
@@ -148,9 +149,11 @@ if (running) {
   const local = arg ? undefined : values.repo ?? process.cwd();
   const r = await fetch(`${running}/api/open`, { method: "POST", headers: { "content-type": "application/json", origin: running }, body: JSON.stringify({ arg, repo: arg ? values.repo && resolvePath(values.repo) : resolvePath(local!), cwd: process.cwd(), base: values.base, refresh: values.refresh, noLlm: values["no-llm"], noLsp: values["no-lsp"] }) });
   const out = (await r.json()) as { id?: string; error?: string };
-  if (!out.id) fail(out.error ?? `Bobby at ${running} couldn't open it`);
-  const url = `${running}/r/${out.id}`;
-  console.log(`  opened in the Bobby already running (its terminal shows the progress)\n\n  ▶ ${url}\n`);
+  if (!out.id && arg) fail(out.error ?? `Bobby at ${running} couldn't open it`);
+  // a bare `bobby` in a repo with nothing to review: the home page instead
+  const url = out.id ? `${running}/r/${out.id}` : `${running}/`;
+  console.log(out.id ? `  opened in the Bobby already running (its terminal shows the progress)\n\n  ▶ ${url}\n`
+    : `  ${out.error ?? "Nothing to review here"}\n  opening the home page instead\n\n  ▶ ${url}\n`);
   if (!values["no-open"]) await run(openCommand(url), { allowFail: true }).catch(() => {});
   process.exit(0);
 }
@@ -187,7 +190,7 @@ if (cmd === "open") {
   // The file's comments are as of its extraction: read the PR's current ones, keeping the file's if GitHub can't be reached.
   if (graph.pr.provider !== "local" && graph.pr.number) {
     const discussion = await reviewComments(graph.pr, true).catch(() => null);
-    if (discussion) graph.discussion = discussion;
+    if (discussion) setDiscussion(graph, discussion);
   }
   const session: Session = { cwd: values.repo ?? null, staticGraph: graph, state: loadState({ ...graph.pr }), llm: "off", refresh: values.refresh };
   void startServers(session, { ask: true, off: values["no-lsp"], log });
@@ -196,11 +199,13 @@ if (cmd === "open") {
   app.reviews.set(id, session);
   path = `/r/${id}`;
 } else if (!toHome) {
+  // a bare `bobby` in a repo with nothing to review (on main, say) still starts: on the home page
   const id = await app.open(arg, { repo: values.repo, base: values.base }).catch((e) => {
-    if (!arg) { console.error(`✗ ${e.message}\n\n${USAGE}`); process.exit(1); }
-    throw e;
+    if (arg) throw e;
+    console.log(`  ${e.message}\n  opening the home page instead`);
+    return null;
   });
-  path = `/r/${id}`;
+  if (id) path = `/r/${id}`;
 }
 await serve(app, path);
 
