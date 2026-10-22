@@ -35,7 +35,7 @@ const CSS = `
 .lens .none { color: var(--faint); font-size: 13px; padding: 8px 4px; }
 .lens .ring > svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
 .lens .ring > svg path { fill: none; stroke: var(--muted); stroke-width: 1.5; opacity: .7; }
-.lens .elbl { position: absolute; font: 11.5px/1.25 var(--font-ui); color: var(--muted); background: var(--bg); padding: 1px 4px; border-radius: 1px; text-align: center; width: max-content; transform: translate(-50%, -50%); z-index: 2; } /* max-width: the gutter it sits in (wire) */
+.lens .elbl { position: absolute; font: 11.5px/1.25 var(--font-ui); color: var(--muted); background: var(--bg); padding: 1px 4px; border-radius: 1px; text-align: center; text-wrap: balance; width: max-content; transform: translate(-50%, -50%); z-index: 2; } /* max-width: the gutter it sits in (wire) */
 .lens .orbit { grid-column: 1 / 4; display: flex; gap: 6px; align-items: center; justify-content: center; margin-top: 28px; flex-wrap: wrap; font-size: 12.5px; color: var(--faint); }
 .lens.paged .orbit { margin-top: 12px; }
 .lens .orbit i { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--muted); cursor: pointer; }
