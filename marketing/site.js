@@ -21,7 +21,9 @@ const shadows = [];
   const sheet = new CSSStyleSheet(); // the app's CSS, shared by every layer of Bobby
   sheet.replaceSync(`${css}
     .root { display: block !important; position: absolute !important; inset: 0; width: ${W}px; height: ${H}px; overflow: hidden !important; background: transparent !important; }
-    .root.root.root { --line: #bcc5ce; --line-soft: #d5dce3; } /* a shade darker than the app's, to hold up when scaled down */
+    .root.root.root { --line: #bcc5ce; --line-soft: #d5dce3; }
+    .root.root.root .dv { --shadow: 0 1px 2px rgba(31, 35, 40, .05), 0 4px 12px rgba(31, 35, 40, .05); } /* the Diff viewers sit lighter on the page */
+    .root.root.root .dv .fv.w-focus { box-shadow: 0 1px 2px rgba(31, 35, 40, .06), 0 6px 18px rgba(31, 35, 40, .08); } /* a shade darker than the app's, to hold up when scaled down */
     .bl { --ease: cubic-bezier(.4, 0, .2, 1); --move: cubic-bezier(.65, 0, .35, 1); position: absolute; background: var(--bg); transition: opacity .7s var(--ease), transform .8s var(--move); }
     .bl > * { position: relative !important; inset: auto !important; width: 100% !important; height: 100% !important; margin: 0 !important; }
     .bl.is-overlay, .bl.is-toast, .bl.is-inspector { background: none; }
