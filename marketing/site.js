@@ -38,6 +38,8 @@ const shadows = [];
     .bl[data-zoom].shown:not(.gone) { transition-delay: .5s, 0s; transform: none; }
     /* then it zooms into one file, whose focused view grows out of the same spot */
     .bl[data-zoom].gone { transform: var(--zoom-out, scale(2.5)); transition: opacity .6s var(--ease) .35s, transform 1.1s var(--move); }
+    .bl[data-zoom] .fv.w-focus { transition: box-shadow .3s var(--ease); }
+    .bl[data-zoom].gone .fv.w-focus { box-shadow: none; } /* scaled up, its drop shadow would swell into a halo */
     .bl[data-zoom-from] { transition: opacity .55s var(--ease), transform 1.1s var(--move); }
     .bl[data-zoom-from]:not(.shown) { transform: var(--zoom-in, scale(.4)); }
     @media (prefers-reduced-motion: reduce) { .bl, .bl .later { transition: none !important; } .bl.arrive { animation: none; } }`);
@@ -203,7 +205,7 @@ function show(n) {
   for (const el of pieces("[data-in]")) {
     const at = Number(el.dataset.in), was = el.classList.contains("shown");
     el.classList.toggle("shown", n >= at);
-    if (forward && !was && n === at && !reduceMotion && !el.classList.contains("swap")) { // new here: let it settle in
+    if (forward && !was && n === at && !reduceMotion && !el.classList.contains("swap") && el.dataset.zoom == null && el.dataset.zoomFrom == null) { // new here: let it settle in
       el.classList.remove("arrive"); void el.offsetWidth; el.classList.add("arrive");
     }
   }
