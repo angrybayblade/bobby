@@ -175,6 +175,10 @@ await inspectName(11, "withRetry", false);
 await snap("definition");
 await key("Escape", 500);
 await inspectName(6, "retryCharge", true);
+// open the caller in the PR: its code in place, and the button to its diff node
+await p.click('.inspector .uitem[data-use="0"]');
+await p.waitForSelector(".inspector .uview [data-uopen]", { timeout: 8000 });
+await wait(400);
 await snap("uses");
 await key("Escape", 500);
 // L: the Lens view, the core's card and the hook
