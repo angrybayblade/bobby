@@ -23,13 +23,12 @@ kbd { font: 500 .85em var(--code); padding: 1px 5px; border: 1px solid var(--lin
 code { font-family: var(--code); font-size: .9em; }
 
 /* ── the site's own header and footer ─────────────────────────────────── */
-.site { position: fixed; z-index: 20; inset: 0 0 auto; height: var(--head); display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(16px, 3vw, 32px); background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line-soft); }
-.site .logo { display: flex; align-items: center; gap: 8px; text-decoration: none; font-size: 17px; letter-spacing: -.02em; }
-.site nav { display: flex; align-items: center; gap: clamp(12px, 2.4vw, 26px); font-size: 14px; }
-.site nav a { text-decoration: none; color: var(--muted); }
+.site { position: fixed; z-index: 20; inset: 0 0 auto; height: var(--head); display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(16px, 3vw, 32px); }
+.site .logo { display: flex; align-items: center; gap: 8px; text-decoration: none; font-size: 15px; letter-spacing: -.01em; }
+.site nav { display: flex; align-items: center; gap: clamp(14px, 2.4vw, 24px); font-size: 13px; }
+.site nav a { text-decoration: none; color: var(--muted); transition: color .2s var(--ease); }
 .site nav a:hover { color: var(--text); }
-.site nav .cta { color: var(--surface); background: var(--text); padding: 7px 14px; border-radius: 3px; font-weight: 600; }
-.site nav .cta:hover { color: var(--surface); background: #000; }
+.site nav .cta { color: var(--text); font-weight: 600; }
 .site-foot { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; justify-content: center; padding: 28px 16px 40px; color: var(--muted); font-size: 13px; }
 .site-foot span { display: flex; align-items: center; gap: 6px; }
 .site-foot a { text-decoration: none; }
