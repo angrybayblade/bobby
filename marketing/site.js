@@ -40,6 +40,10 @@ const shadows = [];
     .bl[data-zoom].gone { transform: var(--zoom-out, scale(2.5)); transition: opacity .6s var(--ease) .35s, transform 1.1s var(--move); }
     .bl[data-zoom] .fv.w-focus { transition: box-shadow .3s var(--ease); }
     .bl[data-zoom].gone .fv.w-focus { box-shadow: none; } /* scaled up, its drop shadow would swell into a halo */
+    /* Bobby's tree in step 2: the panel fades in, each row shows as GitHub's row lands on it */
+    .bl[data-fly-to], .bl[data-fly-to]:not(.shown), .bl[data-fly-to].gone { transform: none; }
+    .bl[data-fly-to].shown:not(.gone) :is(.fdir, .frow, .fhd input) { transition: opacity .3s var(--ease) calc(.8s + var(--i, 0) * 25ms); }
+    .bl[data-fly-to]:not(.shown) :is(.fdir, .frow, .fhd input) { opacity: 0; transition: opacity .2s var(--ease); }
     .bl[data-zoom-from] { transition: opacity .55s var(--ease), transform 1.1s var(--move); }
     .bl[data-zoom-from]:not(.shown) { transform: var(--zoom-in, scale(.4)); }
     @media (prefers-reduced-motion: reduce) { .bl, .bl .later { transition: none !important; } .bl.arrive { animation: none; } }`);
@@ -112,6 +116,30 @@ function morph(on) {
   const files = [...app.querySelectorAll("[data-morph] .file")];
   files.forEach((f, i) => { f.style.setProperty("--i", i); f.style.transform = on && moves ? moves[i] : ""; });
 }
+/** Step 2: each row of GitHub's file tree flies onto the row of the same name in Bobby's, matched by name. */
+function measureFly() {
+  const tree = app.querySelector("[data-fly]"), to = layerOf(".bl[data-fly-to]");
+  if (!tree || !to) return;
+  const targets = new Map();
+  for (const el of to.querySelectorAll(".fdir > span:last-child, .ffile .nm")) targets.set(el.textContent.trim(), el);
+  const rows = [...tree.querySelectorAll(".t, .filter")], was = app.className;
+  const size = (el) => parseFloat(getComputedStyle(el).fontSize);
+  still([tree, to, ...rows], () => {
+    for (let i = 1; i < STEPS; i++) app.classList.toggle(`s${i}`, i < Number(tree.dataset.out));
+    let i = 0;
+    for (const row of rows) {
+      const nm = row.querySelector(".nm") ?? row, t = row.matches(".filter") ? to.querySelector(".fhd input") : targets.get(nm.textContent.trim());
+      row.style.removeProperty("--fly");
+      if (!t) continue;
+      // scale by the type sizes, and carry the name's start onto the target's (the row turns about its top left)
+      const o = boxIn(row), a = boxIn(nm), b = boxIn(t), k = row.matches(".filter") ? b.h / o.h : size(t) / size(nm);
+      const dx = b.x - o.x - k * (a.x - o.x), dy = b.y + b.h / 2 - o.y - k * (a.y + a.h / 2 - o.y);
+      row.style.setProperty("--fly", `translate(${dx}px, ${dy}px) scale(${k})`);
+      row.style.setProperty("--i", i); (t.closest(".fdir, .frow") ?? t).style.setProperty("--i", i); i++;
+    }
+    app.className = was;
+  });
+}
 /** Step 4: the canvas zooms into one file, and that file's focused view grows out of the same spot. */
 function zoom() {
   const canvas = layerOf(".bl[data-zoom]"), focus = layerOf(".bl[data-zoom-from]");
@@ -144,7 +172,7 @@ function fit() {
 new ResizeObserver(() => {
   fit();
   requestAnimationFrame(() => { // measured on the page as drawn at this size; applied without animating
-    zoom(); measureMoves();
+    zoom(); measureMoves(); measureFly();
     const files = [...app.querySelectorAll("[data-morph] .file")];
     for (const f of files) f.style.transition = "none";
     morph(step >= MORPH);
@@ -205,7 +233,7 @@ function show(n) {
   for (const el of pieces("[data-in]")) {
     const at = Number(el.dataset.in), was = el.classList.contains("shown");
     el.classList.toggle("shown", n >= at);
-    if (forward && !was && n === at && !reduceMotion && !el.classList.contains("swap") && el.dataset.zoom == null && el.dataset.zoomFrom == null) { // new here: let it settle in
+    if (forward && !was && n === at && !reduceMotion && !el.classList.contains("swap") && el.dataset.zoom == null && el.dataset.zoomFrom == null && el.dataset.flyTo == null) { // new here: let it settle in
       el.classList.remove("arrive"); void el.offsetWidth; el.classList.add("arrive");
     }
   }

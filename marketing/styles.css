@@ -128,6 +128,15 @@ code { font-family: var(--code); font-size: .9em; }
 .gh-tree .t.on { background: #818b9826; font-weight: 600; }
 .gh-tree .t i { margin-left: auto; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 3px; font: 700 11px var(--gh-ui); font-style: normal; color: #fff; }
 .gh-tree .t i.a { background: #1a7f37; } .gh-tree .t i.m { background: #9a6700; }
+/* step 2: each name flies onto the same name in Bobby's tree (site.js measures --fly), then hands over to it */
+.gh-tree { overflow: visible; }
+.gh-tree .t, .gh-tree .filter { transform-origin: 0 0; transition: transform .9s var(--move), opacity .3s var(--ease), background-color .3s var(--ease); }
+.gh-tree :is(.ic, .t > i) { transition: opacity .3s var(--ease); }
+.app .gh-tree.gone { opacity: 1 !important; transform: none; z-index: 6; }
+.app .gh-tree.gone :is(.t, .filter) { transform: var(--fly, none); background-color: transparent; transition: transform .9s var(--move) calc(var(--i, 0) * 25ms), opacity .2s var(--ease) calc(.85s + var(--i, 0) * 25ms), background-color .3s var(--ease); }
+.app .gh-tree.gone :is(.ic, .t > i) { opacity: 0; transition-duration: .2s; } /* only the names travel */
+.app .gh-tree.gone :is(.t, .filter) { opacity: 0; }
+.app .gh-tree.gone :is(.t, .filter):not([style*="--fly"]) { transition-delay: 0s; } /* nothing to land on: just go */
 .gh-diffs { left: 322px; top: 318px; width: 1102px; bottom: 0; overflow: hidden; }
 .gh-diffs .file { border: 1px solid #d1d9e0; border-radius: 6px; margin-bottom: 16px; overflow: hidden; background: #fff; }
 .gh-diffs .file header { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; background: #f6f8fa; border-bottom: 1px solid #d1d9e0; font-size: 12px; }
