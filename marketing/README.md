@@ -66,6 +66,12 @@ editing it, run `bun run docs` and commit the pages with it. `bun run check` (an
 is out of date. Links between docs become links between pages, and heading anchors match GitHub's, so `views.md#lens`
 still works; anything else in the repo links to GitHub. The page chrome is `docs/docs.css` and `docs/docs.js`.
 
+## Link previews
+
+`index.html` (and each docs page) carries Open Graph and Twitter tags with absolute `https://bobby.viraj.computer`
+URLs. The card, `assets/og.png` (1200 × 630), is Bobby's head and the line beside the real mock at the Lens step:
+regenerate it with `node capture/og.mjs` while the site is served locally, after the mock changes.
+
 ## Re-capturing Bobby
 
 When the app changes, capture it again so the mock stays a copy of the real thing:

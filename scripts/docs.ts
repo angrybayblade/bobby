@@ -7,6 +7,7 @@ import { dirname, join, normalize } from "node:path";
 const ROOT = join(import.meta.dir, "..");
 const OUT = join(ROOT, "marketing/docs");
 const REPO = "https://github.com/angrybayblade/focus-bobby";
+const SITE = "https://bobby.viraj.computer";
 
 /** The sidebar, in reading order. `src` is the Markdown, relative to the repo. */
 const GROUPS: { title: string; pages: { slug: string; src: string; label: string }[] }[] = [
@@ -91,6 +92,13 @@ function render(page: (typeof PAGES)[number]) {
   <meta name="theme-color" content="#f6f2ea" />
   <title>${page.slug === "index" ? "Bobby docs" : `${title} · Bobby docs`}</title>
   <link rel="icon" href="../assets/bobby.svg" type="image/svg+xml" />
+  <link rel="canonical" href="${SITE}/docs/${page.slug === "index" ? "" : `${page.slug}.html`}" />
+  <meta property="og:type" content="article" />
+  <meta property="og:site_name" content="Bobby" />
+  <meta property="og:title" content="${page.slug === "index" ? "Bobby docs" : `${title} · Bobby docs`}" />
+  <meta property="og:image" content="${SITE}/assets/og.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="${SITE}/assets/og.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
