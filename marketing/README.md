@@ -31,7 +31,7 @@ number. Keep each step to one GitHub piece out and one Bobby piece in, and name 
 lines.
 
 Above the captions on wide screens, Bobby's head floats and watches the cursor (`buddy.js`: transforms on the inline
-SVG's parts, eased each frame). It glances at the app when the step changes, hops at the approval (or a click), gets excited with the cursor on him (hops, perked ears, tongue out), and stays still
+SVG's parts, eased each frame). It glances at the app when the step changes, hops at the approval (or a click), smiles with the cursor on him, and stays still
 for reduced motion.
 
 ## Two pages in one frame
