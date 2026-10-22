@@ -56,6 +56,14 @@ for reduced motion.
 The site around the mock keeps the app's rules too: 3px corners, and the current thing marked by weight rather than
 an underline, a left bar or a ring.
 
+## Docs
+
+`docs/` is the repo's docs as pages of the site: `docs/*.md` and `SPEC.md`, rendered by `scripts/docs.ts` (Bun's own
+Markdown) with the site's header, a sidebar, the page's sections and prev/next. The Markdown is the source; after
+editing it, run `bun run docs` and commit the pages with it. `bun run check` (and so every commit) fails while a page
+is out of date. Links between docs become links between pages, and heading anchors match GitHub's, so `views.md#lens`
+still works; anything else in the repo links to GitHub. The page chrome is `docs/docs.css` and `docs/docs.js`.
+
 ## Re-capturing Bobby
 
 When the app changes, capture it again so the mock stays a copy of the real thing:

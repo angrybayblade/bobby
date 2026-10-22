@@ -1,0 +1,80 @@
+/* Bobby docs: the site's tokens and header (../styles.css), a sidebar, the page, and its sections.
+   Same rules as the app: 3px corners, and the current thing marked by weight. */
+.docs .site { background: var(--bg); }
+.docs .site nav a.on { color: var(--text); font-weight: 600; }
+
+.shell { display: grid; grid-template-columns: 220px minmax(0, 760px) 200px; gap: 48px; justify-content: center; padding: calc(var(--head) + 24px) clamp(16px, 3vw, 32px) 64px; }
+
+/* the sidebar */
+.side { position: sticky; top: calc(var(--head) + 24px); align-self: start; max-height: calc(100vh - var(--head) - 48px); overflow-y: auto; font-size: 14px; }
+.side summary { display: none; }
+.side .group { display: flex; flex-direction: column; margin-bottom: 20px; }
+.side h4, .toc h4 { margin: 0 0 6px; font: 500 11.5px var(--code); letter-spacing: .04em; color: var(--signal); }
+.side a { padding: 4px 0; text-decoration: none; color: var(--muted); }
+.side a:hover { color: var(--text); }
+.side a.on { color: var(--text); font-weight: 600; }
+
+/* the page */
+.doc { min-width: 0; }
+.doc article { font-size: 15.5px; line-height: 1.65; }
+.doc h1 { margin: 0 0 16px; font-size: clamp(28px, 4vw, 38px); line-height: 1.12; letter-spacing: -.03em; }
+.doc h2 { margin: 44px 0 12px; font-size: 23px; letter-spacing: -.02em; line-height: 1.25; }
+.doc h3 { margin: 30px 0 8px; font-size: 18px; letter-spacing: -.01em; }
+.doc h4 { margin: 24px 0 6px; font-size: 15.5px; }
+.doc :is(h2, h3, h4) { position: relative; scroll-margin-top: calc(var(--head) + 20px); }
+.doc .anchor { position: absolute; left: -1em; width: 1em; color: var(--faint); text-decoration: none; font-weight: 400; opacity: 0; transition: opacity .15s; }
+.doc :is(h2, h3, h4):hover .anchor { opacity: 1; }
+.doc p, .doc ul, .doc ol { margin: 0 0 14px; }
+.doc ul, .doc ol { padding-left: 22px; }
+.doc li { margin: 4px 0; }
+.doc li > p { margin: 0; }
+.doc a { color: var(--signal); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--signal) 30%, transparent); text-underline-offset: 2px; }
+.doc a:hover { text-decoration-color: var(--signal); }
+.doc strong { font-weight: 650; }
+.doc :not(pre) > code { padding: 1px 5px; border-radius: 3px; background: var(--raised); font-size: .86em; }
+.doc pre { margin: 0 0 16px; padding: 14px 16px; overflow-x: auto; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); font: 13px/1.6 var(--code); }
+.doc pre code { font-size: inherit; }
+.doc blockquote { margin: 0 0 16px; padding: 10px 16px; border-radius: 3px; background: var(--raised); color: var(--muted); }
+.doc blockquote p:last-child { margin: 0; }
+.doc hr { border: 0; border-top: 1px solid var(--line); margin: 32px 0; }
+.doc img { max-width: 100%; }
+.doc .table { margin: 0 0 18px; overflow-x: auto; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); }
+.doc table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.5; }
+.doc th, .doc td { padding: 8px 12px; text-align: left; vertical-align: top; border-top: 1px solid var(--line-soft); }
+.doc thead th { border-top: 0; font-weight: 600; background: var(--raised); }
+.doc td code { white-space: nowrap; }
+
+.pager { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 56px; }
+.pager a { display: flex; flex-direction: column; gap: 2px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); text-decoration: none; font-weight: 600; color: var(--text); }
+.pager a:hover { border-color: var(--faint); }
+.pager .next { text-align: right; }
+.pager small { font: 500 11.5px var(--code); color: var(--muted); }
+.edit { margin: 20px 0 0; font-size: 13px; }
+.edit a { color: var(--muted); text-decoration: none; }
+.edit a:hover { color: var(--text); }
+
+/* the page's sections */
+.toc { position: sticky; top: calc(var(--head) + 24px); align-self: start; display: flex; flex-direction: column; max-height: calc(100vh - var(--head) - 48px); overflow-y: auto; font-size: 13px; }
+.toc a { padding: 3px 0; text-decoration: none; color: var(--muted); line-height: 1.4; }
+.toc a:hover { color: var(--text); }
+.toc a.on { color: var(--text); font-weight: 600; }
+.toc code { font-size: .92em; }
+
+@media (max-width: 1240px) {
+  .shell { grid-template-columns: 200px minmax(0, 760px); gap: 40px; }
+  .toc { display: none; }
+}
+/* narrow: the sidebar folds into a menu above the page */
+@media (max-width: 860px) {
+  .shell { grid-template-columns: minmax(0, 1fr); gap: 16px; padding-top: calc(var(--head) + 8px); }
+  .side { position: static; max-height: none; overflow: visible; }
+  .side details { border: 1px solid var(--line); border-radius: 3px; background: var(--surface); }
+  .side summary { display: flex; justify-content: space-between; padding: 10px 14px; cursor: pointer; font-weight: 600; list-style: none; }
+  .side summary::-webkit-details-marker { display: none; }
+  .side summary::after { content: "Menu ▾"; font-weight: 400; color: var(--muted); }
+  .side details[open] summary::after { content: "Close ▴"; }
+  .side details[open] { padding-bottom: 6px; }
+  .side .group { padding: 0 14px; margin-bottom: 12px; }
+  .doc .anchor { display: none; }
+  .doc td code { white-space: normal; }
+}
