@@ -8,6 +8,7 @@
   --ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --code: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
   --gh-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+  --gh-line: #bcc5ce; /* GitHub's #d1d9e0, a shade darker to hold up when scaled down */
   --gh-code: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   --ease: cubic-bezier(.4, 0, .2, 1);
   --move: cubic-bezier(.65, 0, .35, 1); /* for things that travel: start and land gently */
@@ -86,14 +87,14 @@ code { font-family: var(--code); font-size: .9em; }
 
 /* GitHub: the PR's Files changed tab, light theme ---------------------------- */
 .gh code { font: 12px var(--gh-code); }
-.gh .btn { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 12px; border: 1px solid #d1d9e0; border-radius: 6px; background: #f6f8fa; font-weight: 500; font-size: 14px; color: #25292e; white-space: nowrap; }
+.gh .btn { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 12px; border: 1px solid var(--gh-line); border-radius: 6px; background: #f6f8fa; font-weight: 500; font-size: 14px; color: #25292e; white-space: nowrap; }
 .gh-head { left: 0; top: 0; width: 1440px; height: 64px; display: flex; align-items: center; gap: 12px; padding: 0 16px; background: #f6f8fa; }
-.gh-head .ibtn { display: grid; place-items: center; min-width: 32px; height: 32px; padding: 0 8px; border: 1px solid #d1d9e0; border-radius: 6px; color: #59636e; font-size: 13px; background: #fff; }
+.gh-head .ibtn { display: grid; place-items: center; min-width: 32px; height: 32px; padding: 0 8px; border: 1px solid var(--gh-line); border-radius: 6px; color: #59636e; font-size: 13px; background: #fff; }
 .gh-head .crumb { font-size: 14px; } .gh-head .crumb i { color: #59636e; font-style: normal; margin: 0 2px; } .gh-head .crumb b { font-weight: 600; }
-.gh-head .search { margin-left: auto; width: 340px; height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid #d1d9e0; border-radius: 6px; background: #fff; color: #59636e; font-size: 14px; }
-.gh-head .search kbd { font: 11px var(--gh-code); padding: 0 5px; border: 1px solid #d1d9e0; border-radius: 4px; background: none; }
+.gh-head .search { margin-left: auto; width: 340px; height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--gh-line); border-radius: 6px; background: #fff; color: #59636e; font-size: 14px; }
+.gh-head .search kbd { font: 11px var(--gh-code); padding: 0 5px; border: 1px solid var(--gh-line); border-radius: 4px; background: none; }
 .gh-head .av { width: 32px; height: 32px; font-size: 11px; }
-.gh-repo { left: 0; top: 64px; width: 1440px; height: 48px; display: flex; align-items: flex-end; gap: 4px; padding: 0 16px; background: #f6f8fa; border-bottom: 1px solid #d1d9e0; }
+.gh-repo { left: 0; top: 64px; width: 1440px; height: 48px; display: flex; align-items: flex-end; gap: 4px; padding: 0 16px; background: #f6f8fa; border-bottom: 1px solid var(--gh-line); }
 .gh-repo span { padding: 0 8px 12px; color: #1f2328; white-space: nowrap; }
 .gh-repo span.on { font-weight: 600; box-shadow: inset 0 -2px #fd8c73; }
 .gh-repo b, .gh-pr .tabs b { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 4px; border-radius: 2em; background: #818b981f; font: 500 12px/18px var(--gh-ui); text-align: center; }
@@ -106,23 +107,23 @@ code { font-family: var(--code); font-size: .9em; }
 .gh-pr p b { color: #1f2328; font-weight: 600; }
 .gh-pr p code { padding: 2px 6px; border-radius: 6px; background: #ddf4ff; color: #0969da; }
 .gh-pr .state { padding: 5px 12px; border-radius: 2em; background: #1f883d; color: #fff !important; font-weight: 500 !important; margin-right: 4px; }
-.gh-pr .tabs { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; display: flex; align-items: flex-end; gap: 4px; padding: 0 24px; border-bottom: 1px solid #d1d9e0; }
+.gh-pr .tabs { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; display: flex; align-items: flex-end; gap: 4px; padding: 0 24px; border-bottom: 1px solid var(--gh-line); }
 .gh-pr .tabs span { padding: 0 12px 12px; white-space: nowrap; }
 .gh-pr .tabs span.on { font-weight: 600; box-shadow: inset 0 -2px #fd8c73; }
 .gh-pr .tabs em { margin-left: auto; padding-bottom: 14px; font: 600 12px var(--gh-ui); display: flex; gap: 4px; align-items: center; }
 .add { color: #1a7f37; font-style: normal; } .del { color: #d1242f; font-style: normal; }
-.blocks { display: inline-flex; gap: 1px; } .blocks i { width: 8px; height: 8px; border-radius: 1px; background: #d1d9e0; } .blocks .a { background: #1f883d; } .blocks .d { background: #d1242f; }
+.blocks { display: inline-flex; gap: 1px; } .blocks i { width: 8px; height: 8px; border-radius: 1px; background: var(--gh-line); } .blocks .a { background: #1f883d; } .blocks .d { background: #d1242f; }
 .gh-bar { left: 0; top: 262px; width: 1440px; height: 56px; display: flex; align-items: center; gap: 8px; padding: 0 16px; }
 .gh-bar .btn { height: 28px; font-size: 12px; padding: 0 10px; }
 .gh-dock { right: 16px; top: 274px; height: 32px; display: flex; align-items: center; gap: 10px; z-index: 6; font-size: 12px; }
 .gh-dock > * { transition: opacity .7s var(--ease), transform var(--dur) var(--move); white-space: nowrap; }
-.gh-dock .chip { padding: 2px 10px; border: 1px solid #d1d9e0; border-radius: 2em; background: #fff; font-weight: 600; box-shadow: 0 1px 0 #1f23280a; }
+.gh-dock .chip { padding: 2px 10px; border: 1px solid var(--gh-line); border-radius: 2em; background: #fff; font-weight: 600; box-shadow: 0 1px 0 #1f23280a; }
 .gh-dock .chip.risk { color: #d1242f; border-color: #ff818266; }
 .gh-dock .viewed { color: #59636e; }
 .gh-dock .review { display: inline-flex; align-items: center; height: 28px; padding: 0 12px; border-radius: 6px; background: #1f883d; border: 1px solid #1a7f37; color: #fff; font-weight: 600; }
 .app.s1 .gh-dock { top: 58px; right: 260px; }
 .gh-tree { left: 16px; top: 318px; width: 290px; bottom: 0; padding: 0 8px 0 0; overflow: hidden; font-size: 14px; }
-.gh-tree .filter { height: 32px; display: flex; align-items: center; padding: 0 10px; margin-bottom: 8px; border: 1px solid #d1d9e0; border-radius: 6px; color: #818b98; }
+.gh-tree .filter { height: 32px; display: flex; align-items: center; padding: 0 10px; margin-bottom: 8px; border: 1px solid var(--gh-line); border-radius: 6px; color: #818b98; }
 .gh-tree .t { height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-radius: 6px; white-space: nowrap; }
 .gh-tree .t.l2 { padding-left: 24px; } .gh-tree .t.l3 { padding-left: 40px; }
 .gh-tree .t.on { background: #818b9826; font-weight: 600; }
@@ -138,12 +139,12 @@ code { font-family: var(--code); font-size: .9em; }
 .app .gh-tree.gone :is(.t, .filter) { opacity: 0; }
 .app .gh-tree.gone :is(.t, .filter):not([style*="--fly"]) { transition-delay: 0s; } /* nothing to land on: just go */
 .gh-diffs { left: 322px; top: 318px; width: 1102px; bottom: 0; overflow: hidden; }
-.gh-diffs .file { border: 1px solid #d1d9e0; border-radius: 6px; margin-bottom: 16px; overflow: hidden; background: #fff; }
-.gh-diffs .file header { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; background: #f6f8fa; border-bottom: 1px solid #d1d9e0; font-size: 12px; }
+.gh-diffs .file { border: 1px solid var(--gh-line); border-radius: 6px; margin-bottom: 16px; overflow: hidden; background: #fff; }
+.gh-diffs .file header { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; background: #f6f8fa; border-bottom: 1px solid var(--gh-line); font-size: 12px; }
 .gh-diffs .file header b { font: 600 12px var(--gh-code); }
 .gh-diffs .file header .ct { font: 600 12px var(--gh-code); color: #59636e; }
 .gh-diffs .file header .cp, .gh-diffs .file header .chev { color: #59636e; }
-.gh-diffs .file header em { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; padding: 3px 10px; border: 1px solid #d1d9e0; border-radius: 6px; background: #fff; font-style: normal; color: #59636e; }
+.gh-diffs .file header em { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; padding: 3px 10px; border: 1px solid var(--gh-line); border-radius: 6px; background: #fff; font-style: normal; color: #59636e; }
 .gh-diffs .file header em i { font-style: normal; }
 .gh-diffs table { width: 100%; border-collapse: collapse; font: 12px/20px var(--gh-code); }
 .gh-diffs td { padding: 0 10px; vertical-align: top; }
@@ -154,14 +155,14 @@ code { font-family: var(--code); font-size: .9em; }
 .gh-diffs tr.d td { background: #ffebe9; } .gh-diffs tr.d td.no { background: #ffcecb; }
 .gh-diffs tr.hk td { background: #ddf4ff; color: #59636e; } .gh-diffs tr.hk td.no { background: #b6e3ff; }
 .gh-diffs .k { color: #cf222e; } .gh-diffs .s { color: #0a3069; } .gh-diffs .f { color: #8250df; } .gh-diffs .n { color: #0550ae; }
-.gh-diffs tr.tr td { padding: 0; background: #f6f8fa; border-top: 1px solid #d1d9e0; border-bottom: 1px solid #d1d9e0; }
+.gh-diffs tr.tr td { padding: 0; background: #f6f8fa; border-top: 1px solid var(--gh-line); border-bottom: 1px solid var(--gh-line); }
 .gh-diffs .th { padding: 12px 16px; font: 14px/1.5 var(--gh-ui); white-space: normal; }
-.gh-diffs .tbox { max-width: 760px; border: 1px solid #d1d9e0; border-radius: 6px; background: #fff; overflow: hidden; }
+.gh-diffs .tbox { max-width: 760px; border: 1px solid var(--gh-line); border-radius: 6px; background: #fff; overflow: hidden; }
 .gh-diffs .tc { display: flex; gap: 10px; padding: 12px 16px; }
 .gh-diffs .tc .av { width: 24px; height: 24px; font-size: 9px; }
 .gh-diffs .tc p { margin: 0; } .gh-diffs .tc p span { color: #59636e; font-size: 12px; }
-.gh-diffs .tf { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px; border-top: 1px solid #d1d9e0; background: #f6f8fa; }
-.gh-diffs .tf .reply { flex: 1; padding: 5px 12px; border: 1px solid #d1d9e0; border-radius: 6px; background: #fff; color: #818b98; }
+.gh-diffs .tf { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px; border-top: 1px solid var(--gh-line); background: #f6f8fa; }
+.gh-diffs .tf .reply { flex: 1; padding: 5px 12px; border: 1px solid var(--gh-line); border-radius: 6px; background: #fff; color: #818b98; }
 .gh-diffs .tf .btn { height: 28px; font-size: 12px; }
 /* the page moves up into Bobby's bars, then the diffs make room for Bobby's file tree */
 .app.s1 .gh-tree, .app.s1 .gh-diffs { top: 108px; }
@@ -171,7 +172,7 @@ code { font-family: var(--code); font-size: .9em; }
 .app.s3 .gh-diffs .file { opacity: 0; }
 
 /* the ping that interrupts you */
-.ping { right: 24px; top: 108px; width: 320px; z-index: 9; display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; background: #fff; border: 1px solid #d1d9e0; border-radius: 12px; box-shadow: 0 12px 30px rgba(31, 35, 40, .2); font-size: 14px; }
+.ping { right: 24px; top: 108px; width: 320px; z-index: 9; display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; background: #fff; border: 1px solid var(--gh-line); border-radius: 12px; box-shadow: 0 12px 30px rgba(31, 35, 40, .2); font-size: 14px; }
 .ping > b { font-size: 12px; color: #611f69; }
 
 /* toast */
