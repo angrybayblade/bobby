@@ -57,7 +57,8 @@ code { font-family: var(--code); font-size: .9em; }
 .cap .in code { color: var(--signal); }
 .cap .cmd { display: flex; align-items: center; gap: 10px; margin: 10px 0; padding: 8px 8px 8px 14px; background: #1f1c18; color: #ece5d8; border-radius: 3px; font-size: 13px; }
 .cap .cmd span { color: #e0a54e; }
-.cap .cmd code { flex: 1; min-width: 0; white-space: pre-wrap; word-break: break-all; line-height: 1.5; }
+.cap .cmd code { flex: 1; min-width: 0; white-space: nowrap; overflow-x: auto; scrollbar-width: none; line-height: 1.5; mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); } /* one line: scrolls, and Copy takes it all */
+.cap .cmd code::-webkit-scrollbar { display: none; }
 .cap .cmd button { flex: none; padding: 6px 12px; border-radius: 3px; background: #e0a54e; color: #1a1815; font-weight: 600; font-size: 13px; }
 .cap .then { margin: 0; color: var(--muted); font-size: 14px; }
 .steps { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 10px; }
