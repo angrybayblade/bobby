@@ -475,7 +475,7 @@ body.inspecting .ln[data-side="RIGHT"] code, body.inspecting .inspector .pl code
 .inspector .pkhint { padding: 6px 14px; border-top: 1px solid var(--line-soft); font: 11.5px var(--font-ui); color: var(--faint); }
 .inspector .pktag { margin-left: 8px; font: 11px/16px var(--font-ui); color: var(--signal); border: 1px solid var(--signal); border-radius: 1px; padding: 0 6px; }
 /* Uses: file cards, one quiet line per use (line · where · code), its code opened in place. Colour only where it carries meaning. */
-.inspector .ufilters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 0 14px 10px; border-bottom: 1px solid var(--line-soft); flex: none; }
+.inspector .ufilters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 9px 14px; border-bottom: 1px solid var(--line-soft); flex: none; }
 .inspector .ufilter { font: 12px var(--font-ui); color: var(--muted); border: 1px solid var(--line-soft); border-radius: 12px; padding: 1px 9px; }
 .inspector .ufilter span { color: var(--faint); margin-left: 3px; }
 .inspector .ufilter:hover { color: var(--text); }
