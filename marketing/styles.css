@@ -52,7 +52,7 @@ html.snapping .site-foot { scroll-snap-align: end; }
 @keyframes hint-wheel { 0% { opacity: 0; transform: translateY(-2px); } 30% { opacity: 1; } 80% { opacity: 0; transform: translateY(6px); } 100% { opacity: 0; } }
 @keyframes hint-bob { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 4px); } }
 @media (prefers-reduced-motion: reduce) { .scroll-hint.on, .scroll-hint .mouse i { animation: none; } }
-.frame { width: calc(1440px * var(--scale, .5)); height: calc(900px * var(--scale, .5)); position: relative; border-radius: calc(4px * var(--scale, .5)); box-shadow: 0 1px 0 var(--line), 0 24px 60px -20px rgba(60, 40, 10, .28); overflow: hidden; }
+.frame { width: calc(1440px * var(--scale, .5)); height: calc(900px * var(--scale, .5)); position: relative; border-radius: calc(4px * var(--scale, .5)); box-shadow: 0 0 0 1px rgba(60, 40, 10, .16), 0 24px 60px -20px rgba(60, 40, 10, .28); overflow: hidden; } /* a hairline all round: the white page stands off the cream */
 .captions { grid-row: 2; display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; position: relative; max-width: 760px; width: 100%; justify-self: center; }
 .cap { grid-area: 1 / 1; min-width: 0; opacity: 0; transform: translateY(8px); transition: opacity .35s var(--ease), transform .45s var(--ease); pointer-events: none; padding-bottom: 44px; }
 .cap.on { opacity: 1; transform: none; pointer-events: auto; }
