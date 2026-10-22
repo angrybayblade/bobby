@@ -37,6 +37,9 @@ code { font-family: var(--code); font-size: .9em; }
 
 /* ── the story: a tall scroller, a sticky stage ───────────────────────── */
 .story { position: relative; height: 900vh; } /* site.js sets it from the step count */
+html.snapping { scroll-snap-type: y mandatory; }
+.story > .snap { position: absolute; left: 0; width: 1px; height: 1px; scroll-snap-align: start; scroll-snap-stop: always; pointer-events: none; }
+html.snapping .site-foot { scroll-snap-align: end; }
 .stage { position: sticky; top: 0; height: 100vh; height: 100svh; padding: calc(var(--head) + 12px) clamp(16px, 3vw, 32px) 16px; display: grid; grid-template-rows: minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); gap: 16px; }
 .viewport { grid-row: 1; min-height: 0; min-width: 0; display: grid; place-items: center; } /* its size, not the frame's, sets the scale */
 .frame { width: calc(1440px * var(--scale, .5)); height: calc(900px * var(--scale, .5)); position: relative; border-radius: calc(4px * var(--scale, .5)); box-shadow: 0 1px 0 var(--line), 0 24px 60px -20px rgba(60, 40, 10, .28); overflow: hidden; }

@@ -22,8 +22,9 @@ Then open `http://127.0.0.1:8080/`. `j` / `k` (or the arrows) step through it. B
     capture, like the bar from Diff to Lens, cross-fades in place);
   - `data-at="n"`: a moment (a ping, a dialog), there only at step `n`.
 - The app also carries `s1` … `sN`, every step reached, so the layout can move with it (`.app.s2 .gh-diffs { … }`).
-- Scrolling picks the step (each takes 70% of the window's height); the transitions are time-based, so a step plays
-  the same however fast you scroll.
+- Scrolling moves one step at a time: a wheel or trackpad gesture is one step (its momentum is ignored, so a flick
+  never skips), touch and keys snap to each step, and the footer is one more stop after the last. The transitions are
+  time-based, so a step plays the same however fast you scroll.
 
 The story walks Bobby's own views, Diff (steps 3 and 4, then the inspector on the same file in 5 and 6), Lens (7)
 and Conversation (14), to show it keeps the GitHub review you know. To add a step: add a caption with the next `data-cap`, then tag what leaves and what arrives with that

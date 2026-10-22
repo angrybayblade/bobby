@@ -9,7 +9,7 @@ const frame = document.querySelector(".frame");
 const viewport = document.querySelector(".viewport");
 const caps = [...document.querySelectorAll("[data-cap]")];
 const STEPS = caps.length;
-const PER_STEP = 0.7; // of the window's height, scrolled per step
+const PER_STEP = 0.5; // of the window's height, scrolled per step (one gesture: scroll snaps to each step)
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const [W, H] = window.BOBBY.size; // the app's design size: the size Bobby was captured at
 
@@ -208,6 +208,11 @@ const travel = () => story.offsetHeight - innerHeight;
 const stepTop = (i) => story.offsetTop + Math.round((travel() * (i + 0.5)) / STEPS);
 function layout() {
   story.style.height = `${(STEPS * PER_STEP + 1) * innerHeight}px`;
+  // a snap point at each step, so one scroll gesture is one step: no scrolling through a stretch to reach the next
+  const marks = story.querySelectorAll(":scope > .snap");
+  for (let i = marks.length; i < STEPS; i++) story.insertAdjacentHTML("beforeend", '<i class="snap" aria-hidden="true"></i>');
+  story.querySelectorAll(":scope > .snap").forEach((m, i) => { m.style.top = `${stepTop(i) - story.offsetTop}px`; });
+  document.documentElement.classList.add("snapping");
 }
 
 // ---- the state at a step
@@ -275,6 +280,26 @@ function go(n) {
   const i = Math.max(0, Math.min(STEPS - 1, n));
   scrollTo({ top: stepTop(i), behavior: reduceMotion ? "auto" : "smooth" });
 }
+// the wheel and trackpad: one gesture, one stop (each step, then the footer). A gesture's trailing momentum is
+// ignored, so a flick never skips steps.
+let wheelLock = 0, lastWheel = 0, lastMag = 0, wheelSum = 0;
+addEventListener("wheel", (e) => {
+  if (e.ctrlKey || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return; // pinch-zoom, sideways
+  const stops = [...Array.from({ length: STEPS }, (_, i) => stepTop(i)), document.documentElement.scrollHeight - innerHeight];
+  const at = stops.reduce((best, y, i) => (Math.abs(y - scrollY) < Math.abs(stops[best] - scrollY) ? i : best), 0);
+  const dir = Math.sign(e.deltaY), to = at + dir;
+  if (!dir || to < 0 || to >= stops.length) return;
+  e.preventDefault();
+  const now = performance.now(), gap = now - lastWheel, mag = Math.abs(e.deltaY);
+  const momentum = gap < 180 && mag <= lastMag + 1; // still the same gesture, slowing down
+  lastWheel = now; lastMag = mag;
+  if (gap > 180) wheelSum = 0;
+  if (now < wheelLock || (momentum && now < wheelLock + 1200)) return;
+  wheelSum += e.deltaY;
+  if (Math.abs(wheelSum) < 24) return; // a nudge, not a scroll
+  wheelSum = 0; wheelLock = now + 650;
+  scrollTo({ top: stops[to], behavior: reduceMotion ? "auto" : "smooth" });
+}, { passive: false });
 document.addEventListener("click", (ev) => {
   const t = ev.target.closest("[data-goto]");
   if (!t) return;
