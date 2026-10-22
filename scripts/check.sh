@@ -3,6 +3,7 @@
 set -e
 if ls src/*.ts >/dev/null 2>&1; then bunx tsc --noEmit; fi
 for f in $(find public -name '*.js' 2>/dev/null); do node --check "$f"; done
+if [ -f scripts/docs.ts ] && [ -d marketing/docs ]; then bun scripts/docs.ts --check; fi
 if ls test/*.test.ts >/dev/null 2>&1; then
   out=$(bun test --bail 2>&1) || { echo "$out"; exit 1; }
   echo "$out" | tail -n 4
