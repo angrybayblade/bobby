@@ -199,11 +199,26 @@ function zoom() {
 const pieces = (sel) => [...app.querySelectorAll(sel), ...shadows.flatMap((s) => [...s.querySelectorAll(sel)])];
 
 // ---- the app scaled to fit what's left of the stage
+// A tall, narrow stage (a phone held upright) would shrink the whole app to a quarter of its size: there it's drawn up
+// to twice as big, cropped to the stage's width, and pans to the part each step is about (its caption's data-focus,
+// in design pixels across).
+let crop = 0; // the design width shown when cropped, else 0
 function fit() {
   const w = viewport.clientWidth, h = viewport.clientHeight;
-  const scale = Math.max(0.15, Math.min(w / W, h / H, 1));
+  const whole = Math.min(w / W, h / H, 1);
+  const scale = Math.max(0.15, h / H > (w / W) * 1.3 ? Math.min(h / H, (w / W) * 2, 1) : whole);
+  crop = scale > whole ? w / scale : 0;
   frame.style.setProperty("--scale", scale);
+  frame.style.setProperty("--frame-w", crop ? `${w}px` : "");
   app.style.setProperty("--scale", scale);
+  pan(Math.max(0, step), false);
+}
+function pan(n, animate = true) {
+  const focus = Number(caps[n]?.dataset.focus ?? W / 2);
+  const x = crop ? Math.max(0, Math.min(W - crop, focus - crop / 2)) : 0;
+  if (!animate) app.style.transition = "none";
+  app.style.setProperty("--pan", `${-x * scaleNow()}px`);
+  if (!animate) { void app.offsetWidth; app.style.transition = ""; }
 }
 new ResizeObserver(() => {
   fit();
@@ -285,6 +300,7 @@ function show(n) {
   else if (unmorph) morph("back");
   else if (n >= MORPH) morph("home");
   placeDock(n);
+  pan(n, !reduceMotion);
   caps.forEach((c, i) => c.classList.toggle("on", i === n));
   document.dispatchEvent(new CustomEvent("story:step", { detail: n }));
   dots.forEach((d, i) => { d.classList.toggle("on", i === n); d.classList.toggle("done", i < n); });

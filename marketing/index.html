@@ -25,10 +25,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css?v=40" />
-  <script src="./bobby.js?v=40" defer></script>
-  <script src="./site.js?v=40" defer></script>
-  <script src="./buddy.js?v=40" defer></script>
+  <link rel="stylesheet" href="./styles.css?v=41" />
+  <script src="./bobby.js?v=41" defer></script>
+  <script src="./site.js?v=41" defer></script>
+  <script src="./buddy.js?v=41" defer></script>
 </head>
 <body>
   <header class="site">
@@ -60,106 +60,106 @@
           </svg>
           <i class="b-shadow"></i>
         </div>
-        <div class="cap" data-cap="0">
+        <div class="cap" data-cap="0" data-focus="0">
           <small>Bobby · a focus-first PR reviewer</small>
           <h1>This is a pull request on GitHub.</h1>
           <p class="lede">Ten files, A to Z, and five threads. Where would you start?</p>
           <p class="lede">Scroll, and Bobby takes it over, one piece at a time. Same PR, same threads, same review at the end.</p>
         </div>
-        <div class="cap" data-cap="1">
+        <div class="cap" data-cap="1" data-focus="0">
           <small>01 · Navigation</small>
           <h2>Know where you are.</h2>
           <p class="out"><i>Out</i><span>Four rows of repo and PR navigation.</span></p>
           <p class="in"><i>In</i><span>One bar: where you are in the PR, how far you've got, and the view you're reading in.</span></p>
         </div>
-        <div class="cap" data-cap="2">
+        <div class="cap" data-cap="2" data-focus="1080">
           <small>02 · Files</small>
           <h2>The files that matter, placed.</h2>
           <p class="out"><i>Out</i><span>The file tree, A to Z.</span></p>
           <p class="in"><i>In</i><span>Each file tagged by where it sits: <code>L-1</code> what the change relies on, <code>L0</code> the change, <code>L1</code> what it affects. Tests and generated files stay hidden until you ask.</span></p>
         </div>
-        <div class="cap" data-cap="3">
+        <div class="cap" data-cap="3" data-focus="620">
           <small>03 · Diff view</small>
           <h2>From a list to a map.</h2>
           <p class="out"><i>Out</i><span>Every diff, stacked top to bottom.</span></p>
           <p class="in"><i>In</i><span>Bobby's <b>Diff</b> view lays the same diffs out on one canvas, each file right of the files it relies on, so you see the shape of the change before you read a line.</span></p>
         </div>
-        <div class="cap" data-cap="4">
+        <div class="cap" data-cap="4" data-focus="560">
           <small>04 · Diff view</small>
           <h2>The diff you know, in order.</h2>
           <p class="out"><i>Out</i><span>The whole map at once.</span></p>
           <p class="in"><i>In</i><span>Step in and one file fills the view: the same diff and threads as GitHub. <kbd>j</kbd> <kbd>k</kbd> follow the map, from what a change relies on to what it affects.</span></p>
         </div>
-        <div class="cap" data-cap="5">
+        <div class="cap" data-cap="5" data-focus="720">
           <small>05 · Inspect</small>
           <h2>What is this?</h2>
           <p class="out"><i>Out</i><span>A new tab, to find where it's declared.</span></p>
           <p class="in"><i>In</i><span><kbd>⌘</kbd>-click a name: its declaration opens over the diff, the whole of it, and <kbd>esc</kbd> puts you back where you were.</span></p>
         </div>
-        <div class="cap" data-cap="6">
+        <div class="cap" data-cap="6" data-focus="720">
           <small>06 · Inspect</small>
           <h2>Who else calls it?</h2>
           <p class="out"><i>Out</i><span>Searching the repo for its callers.</span></p>
           <p class="in"><i>In</i><span><kbd>⌘</kbd><kbd>⇧</kbd>-click: every use, in the diff, in the PR's files and elsewhere. Open one to read it in place, or go to it in the diff. One caller the PR never touched still passes no key.</span></p>
         </div>
-        <div class="cap" data-cap="7">
+        <div class="cap" data-cap="7" data-focus="600">
           <small>07 · Lens view</small>
           <h2>One change. One question.</h2>
           <p class="out"><i>Out</i><span>The whole diff at once.</span></p>
           <p class="in"><i>In</i><span>The <b>Lens</b> view splits the PR into <b>cores</b>, one idea each, and opens each with a question to keep in mind. With Claude Code installed, Claude names the cores and writes the questions.</span></p>
         </div>
-        <div class="cap" data-cap="8">
+        <div class="cap" data-cap="8" data-focus="560">
           <small>08 · Context</small>
           <h2>What it relies on. What it affects.</h2>
           <p class="out"><i>Out</i><span>Searching the repo for who calls it.</span></p>
           <p class="in"><i>In</i><span>The code around the change, and how each piece connects, including code the PR never touched. That's where bugs hide.</span></p>
         </div>
-        <div class="cap" data-cap="9">
+        <div class="cap" data-cap="9" data-focus="560">
           <small>09 · Comments</small>
           <h2>Comments where they belong.</h2>
           <p class="out"><i>Out</i><span>A count of conversations, somewhere below.</span></p>
           <p class="in"><i>In</i><span>Every GitHub thread under its line. Your comments wait as drafts; private notes never leave your machine.</span></p>
         </div>
-        <div class="cap" data-cap="10">
+        <div class="cap" data-cap="10" data-focus="480">
           <small>10 · Progress</small>
           <h2>Walk it, mark it, move on.</h2>
           <p class="out"><i>Out</i><span>"Viewed" checkboxes, file by file.</span></p>
           <p class="in"><i>In</i><span><kbd>j</kbd> <kbd>k</kbd> walk the PR in order; <kbd>a</kbd> marks a page looked at and moves on. Marks follow the code, so after a force-push only what changed comes back.</span></p>
         </div>
-        <div class="cap" data-cap="11">
+        <div class="cap" data-cap="11" data-focus="705">
           <small>11 · Interruptions</small>
           <h2>Park the thought.</h2>
           <p class="out"><i>Out</i><span>Losing your place to a ping.</span></p>
           <p class="in"><i>In</i><span><kbd>p</kbd> parks what's in your head before you switch away. It waits for you in the bar.</span></p>
         </div>
-        <div class="cap" data-cap="12">
+        <div class="cap" data-cap="12" data-focus="700">
           <small>12 · Coming back</small>
           <h2>Pick up where you left off.</h2>
           <p class="out"><i>Out</i><span>Scrolling around for where you were.</span></p>
           <p class="in"><i>In</i><span>Where you were, how far you got, and the thought you parked. Progress survives restarts and force-pushes.</span></p>
         </div>
-        <div class="cap" data-cap="13">
+        <div class="cap" data-cap="13" data-focus="700">
           <small>13 · Submit</small>
           <h2>One review, one key.</h2>
           <p class="out"><i>Out</i><span>"Review changes", at the end of a long page.</span></p>
           <p class="in"><i>In</i><span><kbd>s</kbd> posts every draft as one GitHub review: comment, approve or request changes. Private notes stay on your machine.</span></p>
         </div>
-        <div class="cap" data-cap="14">
+        <div class="cap" data-cap="14" data-focus="590">
           <small>14 · Conversation view</small>
           <h2>Approved, on GitHub.</h2>
           <p class="out"><i>Out</i><span>Switching to the browser to check it landed.</span></p>
           <p class="in"><i>In</i><span>The <b>Conversation</b> view is GitHub's own timeline, read live: your approval is already in it, <b>LGTM!</b> and all, next to everyone else's.</span></p>
         </div>
-        <div class="cap final" data-cap="15" id="install">
+        <div class="cap final" data-cap="15" data-focus="590" id="install">
           <small>Your next PR</small>
           <h2>Review it with Bobby.</h2>
           <div class="cmd"><span>$</span><code>curl -fsSL https://raw.githubusercontent.com/angrybayblade/focus-bobby/main/install.sh | bash</code><button type="button" data-copy="curl -fsSL https://raw.githubusercontent.com/angrybayblade/focus-bobby/main/install.sh | bash">Copy</button></div>
           <p class="then">Then <code>bobby &lt;pr-url&gt;</code>, or just <code>bobby</code> to pick one. Needs <code>git</code> and <code>gh</code>, logged in. Claude Code is optional.</p>
         </div>
         <nav class="steps" aria-label="Steps">
-          <button type="button" data-goto="prev" aria-label="Previous step">k</button>
+          <button type="button" data-goto="prev" aria-label="Previous step"><span class="key">k</span><span class="arrow">↑</span></button>
           <div class="dots"></div>
-          <button type="button" data-goto="next" aria-label="Next step">j</button>
+          <button type="button" data-goto="next" aria-label="Next step"><span class="key">j</span><span class="arrow">↓</span></button>
         </nav>
       </section>
 
