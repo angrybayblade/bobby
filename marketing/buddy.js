@@ -6,7 +6,7 @@
   if (!el || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const part = (c) => el.querySelector(c);
   const svg = part("svg"), head = part(".b-head"), face = part(".b-face"), eyes = part(".b-eyes");
-  const earL = part(".b-ear-l"), earR = part(".b-ear-r"), shadow = part(".b-shadow");
+  const earL = part(".b-ear-l"), earR = part(".b-ear-r"), shadow = part(".b-shadow"), tongue = part(".b-tongue");
 
   /** A critically damped spring toward a moving target: eases in and out, never overshoots, frame-rate free. */
   const spring = (omega) => ({ x: 0, v: 0, omega });
@@ -23,13 +23,18 @@
   const lookX = spring(11), lookY = spring(11);       // where he looks, -1…1
   const glance = spring(7), idle = spring(2.5);        // how much each overrides the cursor, 0…1
   const earSwing = spring(18), earLift = spring(18);    // the ears' answer to how fast the head moves
-  let pointer = null, lastMove = -1e9, glanceUntil = 0, hopAt = -1e9, blinkAt = performance.now() + 1800, double = false;
+  const joy = spring(6);                                 // the cursor on him: 0…1
+  let over = false, pointer = null, lastMove = -1e9, glanceUntil = 0, hopAt = -1e9, blinkAt = performance.now() + 1800, double = false;
 
   addEventListener("pointermove", (e) => {
     if (e.pointerType === "touch") return;
     pointer = [e.clientX, e.clientY]; lastMove = performance.now();
   }, { passive: true });
   document.documentElement.addEventListener("pointerleave", () => { lastMove = -1e9; });
+  // the cursor on him: he gets excited; a click, and he jumps
+  svg.addEventListener("pointerenter", () => { over = true; });
+  svg.addEventListener("pointerleave", () => { over = false; });
+  svg.addEventListener("click", () => { hopAt = performance.now(); });
 
   const approved = [...document.querySelectorAll("[data-cap]")].findIndex((c) => /^Approved/.test(c.querySelector("h1, h2")?.textContent ?? ""));
   document.addEventListener("story:step", (e) => {
@@ -56,6 +61,8 @@
     tx += (0.95 - tx) * glance.x; ty += (0.05 - ty) * glance.x;
     step(lookX, tx, dt); step(lookY, ty, dt);
     const lx = lookX.x, ly = lookY.x;
+    step(joy, over ? 1 : 0, dt);
+    const j = joy.x, beat = now / 1000;
 
     // the ears answer the head's speed: they trail when it turns, lift a little when it drops
     wobble(earSwing, -lookX.v * 0.09, dt); wobble(earLift, -lookY.v * 0.06, dt);
@@ -70,7 +77,7 @@
       else if (t < 0.62) { const u = (t - 0.12) / 0.5; jump = -22 * 4 * u * (1 - u); }   // up and down, as thrown
       else squash = Math.sin((t - 0.62) / 0.48 * Math.PI) * 0.05 * (1 - (t - 0.62) / 0.48); // land
     }
-    const y = float + jump;
+    const y = float + jump - Math.abs(Math.sin(beat * Math.PI * 3.2)) * 7 * j; // excited: quick little hops
     el.style.transform = `translate3d(0, ${y.toFixed(2)}px, 0)`;
     svg.style.transform = `scale(${1 + squash}, ${1 - squash})`;
     const height = Math.max(0, -y) / 25;
@@ -85,17 +92,19 @@
       double = !double && Math.random() < 0.2;
       blinkAt = now + (double ? 120 : 2600 + Math.random() * 3600);
     }
-    lid = Math.max(0.1, lid);
+    lid = Math.max(0.1, Math.min(lid, 1 - 0.42 * j)); // and a happy squint
 
     // the head turns and leans; the face moves further than the outline, the eyes further still: it reads as 3D.
     // the ears sit behind the face, so they move the other way
-    const lean = 9 + lx * 8 + lookX.v * 0.6;
+    const lean = 9 + lx * 8 + lookX.v * 0.6 + Math.sin(beat * 13) * 7 * j; // a wiggle when excited
     const f = (n) => n.toFixed(3);
+    const perk = j * (22 + Math.sin(beat * 19) * 8); // ears up and flapping
     head.setAttribute("transform", `translate(${f(lx * 2.2)} ${f(ly * 1.8)}) rotate(${f(lean)} 32 34)`);
     face.setAttribute("transform", `translate(${f(lx * 2.6)} ${f(ly * 2.4)})`);
     eyes.setAttribute("transform", `translate(${f(lx * 1.2)} ${f(ly * 1.2 + 31 * (1 - lid))}) scale(1 ${f(lid)})`);
-    earL.setAttribute("transform", `translate(${f(-lx * 0.8)} ${f(-ly * 0.4)}) rotate(${f(swing * 14 - ear * 10 - lx * 3)} 26 14)`);
-    earR.setAttribute("transform", `translate(${f(-lx * 0.8)} ${f(-ly * 0.4)}) rotate(${f(swing * 14 + ear * 10 - lx * 3)} 37 14)`);
+    earL.setAttribute("transform", `translate(${f(-lx * 0.8)} ${f(-ly * 0.4)}) rotate(${f(swing * 14 - ear * 10 - lx * 3 + perk)} 26 14)`);
+    earR.setAttribute("transform", `translate(${f(-lx * 0.8)} ${f(-ly * 0.4)}) rotate(${f(swing * 14 + ear * 10 - lx * 3 - perk)} 37 14)`);
+    tongue.setAttribute("transform", `matrix(1 0 0 ${f(j)} 0 ${f(47.5 * (1 - j))})`); // out from under the smile
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
