@@ -163,6 +163,19 @@ function measureFly() {
     app.className = was;
   });
 }
+/** GitHub's strip (chips, files viewed, Review changes) rides in Bobby's bar from step 1: it ends a little before the
+ *  bar's own controls, which sit further left or right as the bar changes, so measure where they start in each. */
+const dockAt = new Map();
+function measureDock() {
+  for (const bl of pieces(".bl.is-where")) {
+    const lay = bl.querySelector(".seg.lay");
+    if (lay) still([bl], () => dockAt.set(bl, W - boxIn(lay).x + 12));
+  }
+}
+function placeDock(n) {
+  const bar = pieces(".bl.is-where").filter((bl) => visibleAt(bl, n)).pop();
+  if (bar && dockAt.has(bar)) app.style.setProperty("--dock-right", `${dockAt.get(bar)}px`);
+}
 /** Step 4: the canvas zooms into one file, and that file's focused view grows out of the same spot. */
 function zoom() {
   const canvas = layerOf(".bl[data-zoom]"), focus = layerOf(".bl[data-zoom-from]");
@@ -195,7 +208,7 @@ function fit() {
 new ResizeObserver(() => {
   fit();
   requestAnimationFrame(() => { // measured on the page as drawn at this size; applied without animating
-    measureMoves(); morph("home"); zoom(); measureFly(); // the zoom is measured with the viewers home
+    measureMoves(); morph("home"); zoom(); measureFly(); measureDock(); placeDock(Math.max(0, step)); // the zoom is measured with the viewers home
   });
 }).observe(viewport);
 
@@ -271,6 +284,7 @@ function show(n) {
   if (forward && n === MORPH && !reduceMotion) morph("in");
   else if (unmorph) morph("back");
   else if (n >= MORPH) morph("home");
+  placeDock(n);
   caps.forEach((c, i) => c.classList.toggle("on", i === n));
   document.dispatchEvent(new CustomEvent("story:step", { detail: n }));
   dots.forEach((d, i) => { d.classList.toggle("on", i === n); d.classList.toggle("done", i < n); });

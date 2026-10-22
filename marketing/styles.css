@@ -145,7 +145,7 @@ html.snapping .site-foot { scroll-snap-align: end; }
 .gh-dock .chip.risk { color: #d1242f; border-color: #ff818266; }
 .gh-dock .viewed { color: #59636e; }
 .gh-dock .review { display: inline-flex; align-items: center; height: 28px; padding: 0 12px; border-radius: 6px; background: #1f883d; border: 1px solid #1a7f37; color: #fff; font-weight: 600; }
-.app.s1 .gh-dock { top: 58px; right: 260px; }
+.app.s1 .gh-dock { top: 58px; right: var(--dock-right, 260px); } /* just before Bobby's own controls (site.js) */
 .gh-tree { left: 16px; top: 318px; width: 290px; bottom: 0; padding: 0 8px 0 0; overflow: hidden; font-size: 14px; }
 .gh-tree .filter { height: 32px; display: flex; align-items: center; padding: 0 10px; margin-bottom: 8px; border: 1px solid var(--gh-line); border-radius: 6px; color: #818b98; }
 .gh-tree .t { height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-radius: 6px; white-space: nowrap; }
