@@ -30,6 +30,10 @@ and Conversation (14), to show it keeps the GitHub review you know. To add a ste
 number. Keep each step to one GitHub piece out and one Bobby piece in, and name both in the caption's **Out** / **In**
 lines.
 
+Above the captions on wide screens, Bobby's head floats and watches the cursor (`buddy.js`: transforms on the inline
+SVG's parts, eased each frame). It glances at the app when the step changes, hops at the approval, and stays still
+for reduced motion.
+
 ## Two pages in one frame
 
 - **GitHub** is hand-built HTML in `index.html` (`.gh-*`, styled in `styles.css`): the PR's Files changed tab, in

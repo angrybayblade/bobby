@@ -240,6 +240,7 @@ function show(n) {
   }
   morph(n >= MORPH);
   caps.forEach((c, i) => c.classList.toggle("on", i === n));
+  document.dispatchEvent(new CustomEvent("story:step", { detail: n }));
   dots.forEach((d, i) => { d.classList.toggle("on", i === n); d.classList.toggle("done", i < n); });
 }
 function onScroll() {
