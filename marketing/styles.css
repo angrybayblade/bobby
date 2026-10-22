@@ -180,6 +180,7 @@ code { font-family: var(--code); font-size: .9em; }
 .app.s2 .gh-diffs { left: 16px; width: 1118px; }
 /* then each file flies to its viewer on Bobby's canvas (site.js measures the move) and fades as the canvas settles */
 .gh-diffs .file { transition: opacity .3s var(--ease); } /* step 3: each dissolves into its viewer on the canvas, which carries it home (site.js) */
+.app.unmorph .gh-diffs .file { transition: opacity .35s var(--ease) calc(.75s + var(--i, 0) * 35ms); } /* and back: shows as its viewer lands on it */
 .app.s3 .gh-diffs .file { opacity: 0; }
 
 /* the ping that interrupts you */

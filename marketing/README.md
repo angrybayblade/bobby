@@ -51,7 +51,7 @@ for reduced motion.
   never meet. `data-later=".side"` with `data-later-in="6"` holds part of a layer back until a later step.
 - **Between the two**, step 3 turns GitHub's list (`[data-morph]`) into Bobby's zoomed-out canvas (`data-zoom`): each
   file's viewer, matched by path, starts on top of the file at its size and glides to its place as the file dissolves
-  into it; step 4 zooms the canvas into one file, whose focused view (`data-zoom-from`)
+  into it (and back the same way: the viewers return onto the files, which show as each lands); step 4 zooms the canvas into one file, whose focused view (`data-zoom-from`)
   grows out of the same spot. `site.js` measures both moves on the drawn pages, at load and on resize.
 
 The site around the mock keeps the app's rules too: 3px corners, and the current thing marked by weight rather than

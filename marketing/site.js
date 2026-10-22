@@ -44,6 +44,7 @@ const shadows = [];
     .bl[data-zoom]:not(.gone) { transition: opacity .3s var(--ease), transform 1.1s var(--move); transform: none; }
     .bl[data-zoom] .world > :not(.fv) { transition: opacity .2s var(--ease); }
     .bl[data-zoom]:not(.shown) .world > :not(.fv) { opacity: 0; }
+    .bl[data-zoom].unmorph:not(.shown) { transition: opacity .35s var(--ease) 1.05s; } /* out: once its files are back on GitHub's */
     .bl[data-zoom].shown .world > :not(.fv) { transition: opacity .5s var(--ease) 1s; } /* the edges and lanes, once the files land */
     /* then it zooms into one file, whose focused view grows out of the same spot */
     .bl[data-zoom].gone { transform: var(--zoom-out, scale(2.5)); transition: opacity .6s var(--ease) .35s, transform 1.1s var(--move); }
@@ -120,21 +121,22 @@ function measureMoves() {
       // the viewer's world: its scale, and where its origin sits in the app
       const b = boxIn(v), k = b.w / v.offsetWidth, ox = b.x - Number(at[1]) * k, oy = b.y - Number(at[2]) * k;
       const a = boxIn(f);
-      return { v, from: `translate(${(a.x - ox) / k}px, ${(a.y - oy) / k}px) scale(${a.w / b.w})` }; // one scale: no squashed text
+      return { v, f, from: `translate(${(a.x - ox) / k}px, ${(a.y - oy) / k}px) scale(${a.w / b.w})` }; // one scale: no squashed text
     });
     app.className = was;
     return out.filter(Boolean);
   });
+  starts.forEach(({ f }, i) => f.style.setProperty("--i", i)); // so each file shows as its own viewer lands
 }
-/** Into the canvas (`fly`): the viewers start on GitHub's files and glide home. Otherwise they're simply home. */
-function morph(fly) {
+/** "in": into the canvas, the viewers start on GitHub's files and glide home. "back": out of it, they glide back onto
+ *  the files (and the files fade in under them as they land). "home": simply home. */
+function morph(mode) {
   starts.forEach(({ v, from }, i) => {
     v.style.transformOrigin = "0 0";
-    if (!fly) { v.style.transition = ""; v.style.transform = v.dataset.home; return; }
-    v.style.transition = "none"; v.style.transform = from;
-    void v.offsetWidth;
+    if (mode === "home") { v.style.transition = "none"; v.style.transform = v.dataset.home; return; }
+    if (mode === "in") { v.style.transition = "none"; v.style.transform = from; void v.offsetWidth; }
     v.style.transition = `transform 1s var(--move) ${i * 35}ms`;
-    v.style.transform = v.dataset.home;
+    v.style.transform = mode === "in" ? v.dataset.home : from;
   });
 }
 /** Step 2: each row of GitHub's file tree flies onto the row of the same name in Bobby's, matched by name. */
@@ -193,8 +195,7 @@ function fit() {
 new ResizeObserver(() => {
   fit();
   requestAnimationFrame(() => { // measured on the page as drawn at this size; applied without animating
-    zoom(); measureMoves(); measureFly();
-    morph(false);
+    measureMoves(); morph("home"); zoom(); measureFly(); // the zoom is measured with the viewers home
   });
 }).observe(viewport);
 
@@ -242,6 +243,10 @@ function show(n) {
   if (n === step) return;
   const forward = n > step;
   if (step >= 0 && !reduceMotion) swaps(n);
+  // back out of the canvas onto GitHub's list: the canvas stays until its files have landed
+  const unmorph = !forward && step === MORPH && n === MORPH - 1 && !reduceMotion;
+  app.classList.toggle("unmorph", unmorph);
+  layerOf(".bl[data-zoom]")?.classList.toggle("unmorph", unmorph);
   step = n;
   for (let i = 1; i < STEPS; i++) app.classList.toggle(`s${i}`, i <= n);
   for (const el of pieces("[data-out]")) el.classList.toggle("gone", n >= Number(el.dataset.out));
@@ -254,7 +259,9 @@ function show(n) {
       el.classList.remove("arrive"); void el.offsetWidth; el.classList.add("arrive");
     }
   }
-  if (forward && n === MORPH && !reduceMotion) morph(true);
+  if (forward && n === MORPH && !reduceMotion) morph("in");
+  else if (unmorph) morph("back");
+  else if (n >= MORPH) morph("home");
   caps.forEach((c, i) => c.classList.toggle("on", i === n));
   document.dispatchEvent(new CustomEvent("story:step", { detail: n }));
   dots.forEach((d, i) => { d.classList.toggle("on", i === n); d.classList.toggle("done", i < n); });
