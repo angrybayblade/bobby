@@ -71,7 +71,8 @@ code { font-family: var(--code); font-size: .9em; }
 
 /* Bobby, floating above the captions on wide screens; buddy.js moves him */
 .buddy { display: none; position: absolute; left: 50%; bottom: calc(100% + clamp(24px, 6vh, 64px)); width: clamp(96px, 11vw, 150px); margin-left: calc(clamp(96px, 11vw, 150px) / -2); pointer-events: none; }
-.buddy svg { display: block; width: 100%; overflow: visible; filter: drop-shadow(0 1px 0 rgba(60, 40, 10, .08)); }
+.buddy { will-change: transform; }
+.buddy svg { display: block; width: 100%; overflow: visible; transform-origin: 50% 90%; filter: drop-shadow(0 1px 0 rgba(60, 40, 10, .08)); }
 .buddy .b-shadow { display: block; width: 56%; height: 10px; margin: 14px auto 0; border-radius: 50%; background: radial-gradient(closest-side, rgba(60, 40, 10, .22), transparent); }
 
 /* Wide screens: the captions beside the app */

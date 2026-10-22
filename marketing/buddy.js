@@ -1,71 +1,101 @@
 // Bobby's head over the captions: floats, watches the cursor, blinks, and glances at the app when a step changes.
-// Everything is a transform on the inline SVG's groups, eased toward a target each frame.
+// One spring drives the look; everything else (the parallax, the lean, the ears) is read off that spring, so the
+// parts move as one head. All of it is transforms on the inline SVG's groups.
 (() => {
   const el = document.querySelector(".buddy");
   if (!el || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const part = (c) => el.querySelector(c);
-  const head = part(".b-head"), face = part(".b-face"), eyes = part(".b-eyes"), earL = part(".b-ear-l"), earR = part(".b-ear-r");
-  const svg = el.querySelector("svg"), shadow = part(".b-shadow");
+  const svg = part("svg"), head = part(".b-head"), face = part(".b-face"), eyes = part(".b-eyes");
+  const earL = part(".b-ear-l"), earR = part(".b-ear-r"), shadow = part(".b-shadow");
 
-  // where he looks, -1…1 on each axis; `look` chases `want`, the ears chase `look` (they lag, so they flop)
-  const want = { x: 0, y: 0 }, look = { x: 0, y: 0 }, ear = { x: 0, y: 0, vx: 0, vy: 0 };
-  let lastMove = -1e9, glanceUntil = 0, hop = 0, blink = 0, nextBlink = 2000;
+  /** A critically damped spring toward a moving target: eases in and out, never overshoots, frame-rate free. */
+  const spring = (omega) => ({ x: 0, v: 0, omega });
+  function step(s, target, dt) {
+    const w = s.omega, e = Math.exp(-w * dt), d = s.x - target, t = (s.v + w * d) * dt;
+    s.x = target + (d + t) * e; s.v = (s.v - w * t) * e;
+  }
+  /** A springier one, for the ears: a little overshoot, settles fast. */
+  function wobble(s, target, dt, zeta = 0.45) {
+    const w = s.omega, n = Math.max(1, Math.ceil(dt / 0.008)), h = dt / n;
+    for (let i = 0; i < n; i++) { s.v += (w * w * (target - s.x) - 2 * zeta * w * s.v) * h; s.x += s.v * h; }
+  }
+
+  const lookX = spring(11), lookY = spring(11);       // where he looks, -1…1
+  const glance = spring(7), idle = spring(2.5);        // how much each overrides the cursor, 0…1
+  const earSwing = spring(18), earLift = spring(18);    // the ears' answer to how fast the head moves
+  let pointer = null, lastMove = -1e9, glanceUntil = 0, hopAt = -1e9, blinkAt = performance.now() + 1800, double = false;
 
   addEventListener("pointermove", (e) => {
     if (e.pointerType === "touch") return;
-    const r = svg.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    const dx = e.clientX - cx, dy = e.clientY - cy, d = Math.hypot(dx, dy) || 1;
-    const reach = Math.min(1, d / 260); // close by, he looks less far; far off, all the way
-    want.x = (dx / d) * reach; want.y = (dy / d) * reach;
-    lastMove = performance.now();
+    pointer = [e.clientX, e.clientY]; lastMove = performance.now();
   }, { passive: true });
-  document.addEventListener("pointerleave", () => { lastMove = -1e9; });
+  document.documentElement.addEventListener("pointerleave", () => { lastMove = -1e9; });
 
-  // a new step: a look at the app (to his right), and a hop when the review is approved
   const approved = [...document.querySelectorAll("[data-cap]")].findIndex((c) => /^Approved/.test(c.querySelector("h1, h2")?.textContent ?? ""));
   document.addEventListener("story:step", (e) => {
-    glanceUntil = performance.now() + 900;
-    if (e.detail === approved) hop = 1;
+    glanceUntil = performance.now() + 1100;
+    if (e.detail === approved) hopAt = performance.now();
   });
 
-  const ease = (a, b, k) => a + (b - a) * k;
-  let prev = performance.now();
+  let prev = performance.now(), float = 0;
   function frame(now) {
-    const dt = Math.min(50, now - prev); prev = now;
-    const k = 1 - Math.pow(0.001, dt / 1000 * 2.2); // frame-rate independent easing
+    const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
 
-    // idle: no cursor for a while, he looks around on his own
-    let tx = want.x, ty = want.y;
-    if (now < glanceUntil) { tx = 0.9; ty = 0.1; }
-    else if (now - lastMove > 4000) { tx = Math.sin(now / 2300) * 0.6; ty = Math.sin(now / 3100) * 0.25 + 0.1; }
-    look.x = ease(look.x, tx, k); look.y = ease(look.y, ty, k);
+    // the cursor, measured from where his head sits at rest (not where the float has carried it)
+    let cx = 0, cy = 0.15;
+    if (pointer) {
+      const r = svg.getBoundingClientRect(), x = pointer[0] - (r.left + r.width / 2), y = pointer[1] - (r.top + r.height / 2 - float);
+      const d = Math.hypot(x, y) || 1, reach = Math.min(1, d / 280) ** 0.8; // close by he looks less far
+      cx = (x / d) * reach; cy = (y / d) * reach;
+    }
+    // blend in the glance at the app and the idle look-around, rather than switch to them
+    step(glance, now < glanceUntil ? 1 : 0, dt);
+    step(idle, now - lastMove > 3500 ? 1 : 0, dt);
+    const ix = Math.sin(now / 2300) * 0.55 + Math.sin(now / 1370) * 0.15, iy = Math.sin(now / 3100) * 0.22 + 0.12;
+    let tx = cx + (ix - cx) * idle.x, ty = cy + (iy - cy) * idle.x;
+    tx += (0.95 - tx) * glance.x; ty += (0.05 - ty) * glance.x;
+    step(lookX, tx, dt); step(lookY, ty, dt);
+    const lx = lookX.x, ly = lookY.x;
 
-    // the ears: a spring on the look, underdamped
-    const s = dt / 1000;
-    ear.vx += ((look.x - ear.x) * 90 - ear.vx * 9) * s; ear.x += ear.vx * s;
-    ear.vy += ((look.y - ear.y) * 90 - ear.vy * 9) * s; ear.y += ear.vy * s;
-    const flopX = (look.x - ear.x) * 10, flopY = (look.y - ear.y) * 8;
+    // the ears answer the head's speed: they trail when it turns, lift a little when it drops
+    wobble(earSwing, -lookX.v * 0.09, dt); wobble(earLift, -lookY.v * 0.06, dt);
+    const swing = Math.max(-1, Math.min(1, earSwing.x)), ear = Math.max(-1, Math.min(1, earLift.x));
 
-    // float, and the hop on approval
-    const bob = Math.sin(now / 700) * 3;
-    if (hop > 0) hop = Math.max(0, hop - dt / 900);
-    const jump = hop > 0 ? -Math.sin((1 - hop) * Math.PI) * 18 : 0;
-    el.style.transform = `translateY(${bob + jump}px)`;
-    shadow.style.transform = `scaleX(${1 - (bob + jump) / -60 - 0.05})`;
-    shadow.style.opacity = String(1 + (bob + jump) / 40);
+    // float, and the hop: a crouch, a jump, a squash on landing
+    float = Math.sin(now / 900) * 3;
+    const t = (now - hopAt) / 1000;
+    let jump = 0, squash = 0;
+    if (t >= 0 && t < 1.1) {
+      if (t < 0.12) squash = Math.sin(t / 0.12 * Math.PI) * 0.06;                       // crouch
+      else if (t < 0.62) { const u = (t - 0.12) / 0.5; jump = -22 * 4 * u * (1 - u); }   // up and down, as thrown
+      else squash = Math.sin((t - 0.62) / 0.48 * Math.PI) * 0.05 * (1 - (t - 0.62) / 0.48); // land
+    }
+    const y = float + jump;
+    el.style.transform = `translate3d(0, ${y.toFixed(2)}px, 0)`;
+    svg.style.transform = `scale(${1 + squash}, ${1 - squash})`;
+    const height = Math.max(0, -y) / 25;
+    shadow.style.transform = `translate3d(0, ${(-y).toFixed(2)}px, 0) scaleX(${(1 - height * 0.35).toFixed(3)})`;
+    shadow.style.opacity = (0.95 - height * 0.5).toFixed(3);
 
-    // blink now and then (sometimes twice)
-    if (now > nextBlink) { blink = 1; nextBlink = now + 2500 + Math.random() * 3500; if (Math.random() < .2) nextBlink = now + 260; }
-    if (blink > 0) blink = Math.max(0, blink - dt / 140);
-    const lid = blink > 0 ? Math.max(0.1, Math.abs(blink * 2 - 1)) : 1;
+    // blink now and then, sometimes twice: shut quickly, open a touch slower
+    let lid = 1;
+    const b = (now - blinkAt) / 1000;
+    if (b >= 0 && b < 0.16) lid = b < 0.06 ? 1 - b / 0.06 * 0.9 : 0.1 + (b - 0.06) / 0.1 * 0.9;
+    else if (b >= 0.16) {
+      double = !double && Math.random() < 0.2;
+      blinkAt = now + (double ? 120 : 2600 + Math.random() * 3600);
+    }
+    lid = Math.max(0.1, lid);
 
-    // the head turns and tilts; the face moves further than the outline, the eyes further still: it reads as 3D
-    const lx = look.x, ly = look.y;
-    head.setAttribute("transform", `translate(${lx * 2.5} ${ly * 2}) rotate(${9 + lx * 9} 32 34)`);
-    face.setAttribute("transform", `translate(${lx * 3} ${ly * 2.6})`);
-    eyes.setAttribute("transform", `translate(${lx * 1.4} ${ly * 1.6 + 31 * (1 - lid)}) scale(1 ${lid})`);
-    earL.setAttribute("transform", `translate(${lx * -0.6} 0) rotate(${flopX * 3 + flopY * 2 - lx * 4} 26 14)`);
-    earR.setAttribute("transform", `translate(${lx * -0.6} 0) rotate(${flopX * 3 - flopY * 2 - lx * 4} 37 14)`);
+    // the head turns and leans; the face moves further than the outline, the eyes further still: it reads as 3D.
+    // the ears sit behind the face, so they move the other way
+    const lean = 9 + lx * 8 + lookX.v * 0.6;
+    const f = (n) => n.toFixed(3);
+    head.setAttribute("transform", `translate(${f(lx * 2.2)} ${f(ly * 1.8)}) rotate(${f(lean)} 32 34)`);
+    face.setAttribute("transform", `translate(${f(lx * 2.6)} ${f(ly * 2.4)})`);
+    eyes.setAttribute("transform", `translate(${f(lx * 1.2)} ${f(ly * 1.2 + 31 * (1 - lid))}) scale(1 ${f(lid)})`);
+    earL.setAttribute("transform", `translate(${f(-lx * 0.8)} ${f(-ly * 0.4)}) rotate(${f(swing * 14 - ear * 10 - lx * 3)} 26 14)`);
+    earR.setAttribute("transform", `translate(${f(-lx * 0.8)} ${f(-ly * 0.4)}) rotate(${f(swing * 14 + ear * 10 - lx * 3)} 37 14)`);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
