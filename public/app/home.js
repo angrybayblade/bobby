@@ -243,3 +243,12 @@ setInterval(() => loadLists(), 180_000);
 render();
 asked = JSON.stringify(filters());
 loadLists();
+
+// Claude Code: offered the first time it isn't set up; the header keeps a way back to it while it isn't
+import("/app/claude-setup.js").then(async ({ offerClaude }) => {
+  const st = await fetch("/api/claude").then((r) => r.json()).catch(() => null);
+  const pill = $("button.claude");
+  if (st && !(st.installed && st.loggedIn)) { pill.hidden = false; pill.textContent = st.installed ? "Sign in to Claude" : "Set up Claude"; }
+  pill.addEventListener("click", () => offerClaude({ force: true }));
+  offerClaude();
+});

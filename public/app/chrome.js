@@ -4,6 +4,7 @@ import { MOD } from "./palette.js";
 import * as tour from "./tour.js";
 import { ACTIONS, action, bind, bindable, kbdHtml, keyHtml, keyName, keyOfEvent, keysOf, keyText, reset, unbind } from "./keys.js";
 import { bubble, nextUnresolved, prCount, togglePR, unresolved } from "./comments.js";
+import { offerClaude } from "./claude-setup.js";
 
 const $ = (q) => document.querySelector(q);
 const PALETTE_KEY = MOD === "⌘" ? "⌘K" : "ctrl k";
@@ -363,7 +364,7 @@ export function settings() {
   open(`<h2>Settings</h2><p>Changes apply immediately and are remembered.</p>
     ${SETTINGS.map(([key, label, opts]) => `<div class="setting"><label>${label}</label><div class="seg">${opts.map(([v, t]) =>
       `<button data-set="${key}" data-val="${v}" aria-pressed="${String(app.settings[key]) === String(v)}">${t}</button>`).join("")}</div></div>`).join("")}
-    <div class="row"><button class="btn" data-act="keys">Keyboard shortcuts…</button><button class="btn primary" data-act="close" style="margin-left:auto">Done</button></div>`);
+    <div class="row"><button class="btn" data-act="keys">Keyboard shortcuts…</button><button class="btn" data-act="claude">Claude Code…</button><button class="btn primary" data-act="close" style="margin-left:auto">Done</button></div>`);
 }
 
 export function submit(msg) {
@@ -623,6 +624,7 @@ function onClick(ev) {
     generated: () => app.saveSettings({ generated: app.settings.generated === "show" ? "hide" : "show" }),
     files: () => toggleFiles(),
     keys: () => keysEditor(),
+    claude: () => { close(); offerClaude({ force: true }); },
     "pr-comments": () => togglePR(app),
     "next-unresolved": () => nextUnresolved(app),
     "key-add": () => keyEdit("key-add", ds.id), "key-unbind": () => keyEdit("key-unbind", ds.id, ds.key), "key-reset": () => keyEdit("key-reset", ds.id),
