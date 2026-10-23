@@ -363,6 +363,7 @@ kbd {
 .cmain { flex: 1; min-width: 0; }
 .cwho { display: flex; align-items: center; gap: 8px; font: 13px var(--font-ui); color: var(--muted); }
 .cwho b { color: var(--text); font-weight: 600; }
+.cwho[data-tid], .fnhead[data-tid] { cursor: pointer; } /* the header folds its thread, as the bubble does */
 .cgrow { flex: 1; }
 .cwhen { color: var(--faint); font-size: 12px; }
 .crange { font: 11.5px var(--font-code); color: var(--faint); }

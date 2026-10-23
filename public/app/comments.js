@@ -131,7 +131,7 @@ function threadHtml(app, t) {
       <span class="cprev">${esc(plain(first.body))}</span>${n > 1 ? `<span class="cn">${n} comments</span>` : ""}${bubble(false)}</div>`;
   }
   const items = t.items.map((i, k) => `<div class="citem">${avatar(i)}<div class="cmain">
-      <div class="cwho"><b>${esc(i.author)}</b>${i.draft ? `<span class="ctag">${i.wip ? "unfinished draft" : "draft"}</span>` : ""}<span class="cwhen" title="${esc(i.createdAt ?? "")}">${ago(i.createdAt)}</span>
+      <div class="cwho"${k === 0 ? ` data-tid="${esc(t.id)}" data-tpath="${esc(t.path)}" title="Collapse${n > 1 ? " this thread" : ""}"` : ""}><b>${esc(i.author)}</b>${i.draft ? `<span class="ctag">${i.wip ? "unfinished draft" : "draft"}</span>` : ""}<span class="cwhen" title="${esc(i.createdAt ?? "")}">${ago(i.createdAt)}</span>
         ${k === 0 ? range(t) : ""}${k === 0 && t.resolved ? `<span class="ctag">resolved</span>` : ""}${i.url ? `<a class="clink" href="${esc(i.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a>` : ""}<span class="cgrow"></span>
         ${i.wip ? `<button class="cact" data-wip="${esc(i.cid)}" title="Open it again to finish">Continue</button>` : ""}${i.cid ? `<button class="cact" data-del="${esc(i.cid)}" title="Discard this draft">Delete</button>` : ""}
         ${k === 0 ? `<button class="cfold" data-tid="${esc(t.id)}" data-tpath="${esc(t.path)}" title="Collapse${n > 1 ? " this thread" : ""}">${bubble(true)}</button>` : ""}</div>
@@ -148,7 +148,7 @@ export function notesFor(app, keys) {
   return keys.flatMap((k) => idx.notesByKey.get(k) ?? []).map((n) => {
     if (!itemOpen(app, n.id, n.path)) return `<button class="fnote slim" data-thread="${esc(n.id)}" data-tid="${esc(n.id)}" data-tpath="${esc(n.path)}" data-at="${esc(keyOf(n))}" title="Your private note: ${esc(plain(n.body))}">${NOTE_ICON}</button>`;
     return `<div class="fnote${n.wip ? " wip" : ""}" data-thread="${esc(n.id)}" data-at="${esc(keyOf(n))}">
-      <div class="fnhead">${NOTE_ICON}<span>${n.wip ? "unfinished note" : "private note"}${n.startLine && n.startLine !== n.line ? ` · L${n.startLine}–L${n.line}` : ""}</span><span class="cwhen">${ago(n.createdAt)}</span><span class="cgrow"></span>
+      <div class="fnhead" data-tid="${esc(n.id)}" data-tpath="${esc(n.path)}" title="Collapse">${NOTE_ICON}<span>${n.wip ? "unfinished note" : "private note"}${n.startLine && n.startLine !== n.line ? ` · L${n.startLine}–L${n.line}` : ""}</span><span class="cwhen">${ago(n.createdAt)}</span><span class="cgrow"></span>
         ${n.wip ? `<button class="cact" data-wip="${esc(n.cid)}">Continue</button>` : ""}<button class="cact" ${n.nid ? `data-delnote="${esc(n.nid)}"` : `data-del="${esc(n.cid)}"`} title="Delete">✕</button>
         <button class="cfold" data-tid="${esc(n.id)}" data-tpath="${esc(n.path)}" title="Collapse">–</button></div>
       <div class="cbody">${md(n.body)}</div></div>`;
