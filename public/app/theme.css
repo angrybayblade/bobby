@@ -372,6 +372,14 @@ kbd {
 .clink:hover, .cact:hover, .cfold:hover { color: var(--text); }
 .cact { font: 12px var(--font-ui); color: var(--muted); padding: 0 4px; }
 .ctfoot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 6px 12px; border-top: 1px solid var(--line-soft); } /* under a GitHub thread: Reply, Resolve */
+.creplyb { flex: 1; text-align: left; padding: 4px 8px; margin-left: -8px; border-radius: var(--radius); color: var(--faint); font: 13px var(--font-ui); cursor: text; }
+.creplyb:hover { color: var(--muted); background: var(--raised); }
+.creply { display: flex; gap: 10px; padding: 10px 12px; border-top: 1px solid var(--line-soft); }
+.creply textarea { width: 100%; min-height: 72px; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); font: 13px/1.5 var(--font-ui); resize: vertical; outline: 0; }
+.creply textarea:focus { border-color: color-mix(in srgb, var(--focus, var(--signal)) 70%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus, var(--signal)) 15%, transparent); }
+.creply .crow { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.creply .chint { font: 11.5px var(--font-ui); color: var(--faint); }
+.creply .btn { padding: 4px 12px; font-size: 12.5px; }
 .cbtn { padding: 3px 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised); font: 500 12px var(--font-ui); color: var(--text); }
 .cbtn:hover { border-color: var(--muted); }
 .cbtn:disabled { opacity: .6; cursor: progress; }

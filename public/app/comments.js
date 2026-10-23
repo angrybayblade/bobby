@@ -2,6 +2,7 @@
 // private notes floating beside it. Any of them can be collapsed to a slim marker that stays put: one thread, every
 // comment in a file, or every comment in the PR (settings.comments, the default for all of them).
 import { LOW, api, esc, live } from "./core.js";
+import { MOD } from "./palette.js";
 
 // ---- the icon that says whether comments are showing: filled when they are, an outline when they're collapsed
 export const bubble = (filled) => `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path ${filled ? 'fill="currentColor"' : 'fill="none" stroke="currentColor" stroke-width="1.4"'} d="M2.5 2.5h11a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H8l-3 2.5V11.5H2.5a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1Z"/></svg>`;
@@ -106,10 +107,43 @@ export async function resolveThread(app, node, resolved, clicked) {
     app.toast?.(`<span>Couldn't ${resolved ? "resolve" : "unresolve"} it: ${esc(e.message)}</span>`, 8000);
   }
 }
+// ---- replying in place, under the thread: posted at once, as GitHub's Reply in a thread is. The box's text lives here
+// while the page is open, so a re-render (a poll, a mark) rebuilds it as it was.
+const replies = (app) => (pageState(app).replies ??= new Map()); // thread id (its first comment's) → text so far
+const replyBox = (id) => [...document.querySelectorAll(`textarea[data-rbox="${CSS.escape(id)}"]`)].find(live);
+export function startReply(app, id, clicked) {
+  if (!replies(app).has(id)) replies(app).set(id, "");
+  keepPlace(app, clicked);
+  replyBox(id)?.focus({ preventScroll: true });
+}
+export const typeReply = (app, id, text) => replies(app).set(id, text);
+/** Closes a reply box; what's in it is dropped only on Cancel, or when there's nothing in it. */
+export function closeReply(app, id, clicked, drop = true) {
+  if (drop || !replies(app).get(id)?.trim()) { replies(app).delete(id); keepPlace(app, clicked); }
+  else document.activeElement?.blur();
+}
+export async function postReply(app, id, clicked) {
+  const body = replies(app).get(id)?.trim();
+  if (!body) return replyBox(id)?.focus();
+  const btn = clicked.matches("button") ? clicked : clicked.closest(".creply")?.querySelector("[data-rpost]");
+  if (btn) { btn.disabled = true; btn.textContent = "Posting…"; }
+  try {
+    const r = await api("/api/conversation/reply", { body, to: id });
+    if (!r.ok) throw new Error(r.error);
+    replies(app).delete(id);
+    const d = await api("/api/discussion"); // the server re-read it: the reply, with GitHub's id and rendering
+    app.graph.discussion = d.comments;
+    app.graph.outdated = d.outdated ?? [];
+    keepPlace(app, clicked);
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = "Reply"; }
+    app.toast?.(`<span>Couldn't post the reply: ${esc(e.message)}</span>`, 8000);
+  }
+}
 /** Shows a long comment in full, and remembers it while the page is open. */
 export function showFull(app, ck, clicked) { pageState(app).full = (pageState(app).full ?? new Set()).add(ck); keepPlace(app, clicked); }
 /** What the comment state of a file is, for knowing when to redraw it. */
-export const fileStamp = (app, path) => `${fileState(app, path)}:${pageState(app).full?.size ?? 0}:${(commentIndex(app).byPath.get(path) ?? []).map((x) => (itemOpen(app, x.id, path) ? 1 : 0)).join("")}`;
+export const fileStamp = (app, path) => `${fileState(app, path)}:${pageState(app).full?.size ?? 0}:${(commentIndex(app).byPath.get(path) ?? []).map((x) => (itemOpen(app, x.id, path) ? 1 : 0) + (pageState(app).replies?.has(x.id) ? "r" : "")).join("")}`;
 export const fileCount = (app, path) => (commentIndex(app).byPath.get(path) ?? []).reduce((n, x) => n + (x.items?.length ?? 1), 0);
 /** The PR's comments and notes in files on screen: one hidden by Tests or Untouched isn't counted, as its comments aren't shown. */
 export const prCount = (app) => [...commentIndex(app).byPath].filter(([path]) => !path || shown(app, path)).flatMap(([, xs]) => xs).reduce((n, x) => n + (x.items?.length ?? 1), 0);
@@ -136,8 +170,13 @@ function threadHtml(app, t) {
         ${i.wip ? `<button class="cact" data-wip="${esc(i.cid)}" title="Open it again to finish">Continue</button>` : ""}${i.cid ? `<button class="cact" data-del="${esc(i.cid)}" title="Discard this draft">Delete</button>` : ""}
         ${k === 0 ? `<button class="cfold" data-tid="${esc(t.id)}" data-tpath="${esc(t.path)}" title="Collapse${n > 1 ? " this thread" : ""}">${bubble(true)}</button>` : ""}</div>
       <div class="cbody${i.html ? " gh" : ""}" data-ck="${esc(t.id)}:${k}">${i.html ? ghHtml(i.html) : md(i.body)}</div></div></div>`).join("");
-  // GitHub's own button, under the thread: done with it (it collapses, for everyone), or not done after all
-  const foot = t.node ? `<div class="ctfoot"><button class="cbtn" data-resolve="${esc(t.node)}" data-to="${t.resolved ? "0" : "1"}">${t.resolved ? "Unresolve conversation" : "Resolve conversation"}</button></div>` : "";
+  // GitHub's own footer: a reply, posted at once; and done with it (it collapses, for everyone), or not done after all
+  const resolve = t.node ? `<button class="cbtn" data-resolve="${esc(t.node)}" data-to="${t.resolved ? "0" : "1"}">${t.resolved ? "Unresolve conversation" : "Resolve conversation"}</button>` : "";
+  const text = replies(app).get(t.id);
+  const foot = t.kind !== "gh" ? "" : text != null
+    ? `<div class="creply">${avatar({ author: app.me?.login ?? "", avatar: app.me?.avatar })}<div class="cmain"><textarea data-rbox="${esc(t.id)}" placeholder="Reply…">${esc(text)}</textarea>
+        <div class="crow"><span class="chint">${MOD}↵ posts · esc closes</span><span class="cgrow"></span><button class="btn" data-rcancel="${esc(t.id)}">Cancel</button><button class="btn primary" data-rpost="${esc(t.id)}">Reply</button></div></div></div>`
+    : `<div class="ctfoot"><button class="creplyb" data-rstart="${esc(t.id)}">Reply…</button>${resolve}</div>`;
   return `<div class="cthread${t.kind === "draft" ? " draft" : ""}${t.resolved ? " resolved" : ""}" data-thread="${esc(t.id)}">${items}${foot}</div>`;
 }
 

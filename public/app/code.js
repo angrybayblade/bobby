@@ -3,7 +3,7 @@
 import { BAND_TEXT, DONE, LOW, api, esc, live } from "./core.js";
 import { MOD } from "./palette.js";
 import { keyHtml, keyName } from "./keys.js";
-import { bubble, notesFor, outside, placeNotes, resolveThread, showFull, threadsAt, toggleItem } from "./comments.js";
+import { bubble, closeReply, notesFor, outside, placeNotes, postReply, resolveThread, showFull, startReply, threadsAt, toggleItem, typeReply } from "./comments.js";
 
 const EXT = {
   ts: "typescript", tsx: "typescript", mts: "typescript", cts: "typescript", js: "javascript", jsx: "javascript", mjs: "javascript", cjs: "javascript",
@@ -486,13 +486,22 @@ export function renderNode(app, el, pid, { head = true } = {}) {
       ${fileNotesHtml(app, pathOf(node))}
       ${node.kind === "change" ? app.hunksOf(pid).map((h) => hunkBox(app, h, rerender)).join("") : contextBox(app, node, rerender)}`;
   }
+  const typing = replying(el);
   el.innerHTML = `<div class="node ${head ? "page" : "body"}">${body}</div>`;
   const ta = el.querySelector("textarea[data-composer]");
   if (ta) ta.focus({ preventScroll: !head });
+  typing?.();
   syncPop(app, el);
   placeNotes(el, app);
 }
 export const renderPage = (app, el, pid) => renderNode(app, el, pid);
+/** Before a render: if you're typing a reply in el, what puts you back in its box afterwards, caret and all. */
+function replying(el) {
+  const a = document.activeElement;
+  if (!a?.matches?.("textarea[data-rbox]") || !el.contains(a)) return null;
+  const { rbox } = a.dataset, at = [a.selectionStart, a.selectionEnd];
+  return () => { const b = el.querySelector(`textarea[data-rbox="${CSS.escape(rbox)}"]`); if (b) { b.focus({ preventScroll: true }); b.setSelectionRange(...at); } };
+}
 
 /** A whole file for file-level viewers: one section per node in file order, each with its comments, nothing collapsed. */
 export function renderFile(app, el, pids) {
@@ -500,6 +509,7 @@ export function renderFile(app, el, pids) {
   bind(app, el, rerender);
   const opts = { whole: true };
   const path = pids.length ? pathOf(app.nodeOf(pids[0])) : "";
+  const typing = replying(el);
   el.innerHTML = `<div class="node file">${fileNotesHtml(app, path)}${pids.map((pid) => {
     const { pl } = app.get(pid), node = app.nodeOf(pid), done = app.isReviewed(pid);
     const code = node.kind === "change" ? app.hunksOf(pid).map((h) => hunkBox(app, h, rerender, opts)).join("") : contextBox(app, node, rerender, opts);
@@ -509,6 +519,7 @@ export function renderFile(app, el, pids) {
   }).join("")}</div>`;
   const ta = el.querySelector("textarea[data-composer]");
   if (ta) ta.focus({ preventScroll: true });
+  typing?.();
   syncPop(app, el);
   placeNotes(el, app);
 }
@@ -869,6 +880,8 @@ function bind(app, el, rerender) {
     if (od) { app.convTarget = od.dataset.outdated; return app.switchView("conversation"); } // it opens on that thread
     const rs = ev.target.closest("[data-resolve]");
     if (rs) return resolveThread(app, rs.dataset.resolve, rs.dataset.to === "1", rs);
+    const rp = ev.target.closest("[data-rstart],[data-rpost],[data-rcancel]");
+    if (rp) return rp.dataset.rstart ? startReply(app, rp.dataset.rstart, rp) : rp.dataset.rpost ? postReply(app, rp.dataset.rpost, rp) : closeReply(app, rp.dataset.rcancel, rp);
     const full = ev.target.closest("[data-cfull]");
     if (full) return showFull(app, full.dataset.cfull, full.closest(".cthread"));
     const fold = ev.target.closest("[data-tid]");
@@ -976,6 +989,13 @@ function bind(app, el, rerender) {
   });
   // the text lives in app.page.composing as you type, so a re-render (a status poll, a mark) rebuilds the box with it
   el.addEventListener("input", (ev) => { if (ev.target.matches("textarea[data-composer]") && app.page.composing) app.page.composing.text = ev.target.value; });
+  el.addEventListener("input", (ev) => { if (ev.target.matches("textarea[data-rbox]")) typeReply(app, ev.target.dataset.rbox, ev.target.value); });
+  el.addEventListener("keydown", (ev) => { // a reply box: ⌘↵ posts, esc closes it (kept if there's text in it)
+    if (!ev.target.matches("textarea[data-rbox]")) return;
+    ev.stopPropagation();
+    if (ev.key === "Escape") { ev.preventDefault(); closeReply(app, ev.target.dataset.rbox, ev.target, false); }
+    if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); postReply(app, ev.target.dataset.rbox, ev.target); }
+  });
   el.addEventListener("keydown", (ev) => {
     if (!ev.target.matches("textarea[data-composer]")) return;
     ev.stopPropagation();
