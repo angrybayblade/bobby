@@ -4,6 +4,8 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- **Resolve conversation** and **Unresolve conversation** under each GitHub thread, in the code and in the Conversation view, as on GitHub: resolved, a thread collapses for everyone.
+
 ## 0.1.0-rc9 (2026-10-23)
 
 No change to Bobby itself; its site, bobby.viraj.computer, now works on phones.
