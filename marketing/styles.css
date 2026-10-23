@@ -16,7 +16,7 @@
   --head: 56px;
 }
 * { box-sizing: border-box; }
-html { background: var(--bg); }
+html { background: var(--bg); overflow-x: clip; } /* iOS Safari pans the page sideways onto anything past the edge, body's overflow or not */
 body { margin: 0; color: var(--text); background: var(--bg); font: 15px/1.5 var(--ui); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
 a { color: inherit; }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
@@ -40,7 +40,7 @@ code { font-family: var(--code); font-size: .9em; }
 html.snapping { scroll-snap-type: y mandatory; }
 .story > .snap { position: absolute; left: 0; width: 1px; height: 1px; scroll-snap-align: start; scroll-snap-stop: always; pointer-events: none; }
 html.snapping .site-foot { scroll-snap-align: end; }
-.stage { position: sticky; top: 0; height: 100vh; height: 100svh; padding: calc(var(--head) + 12px) clamp(16px, 3vw, 32px) 16px; display: grid; grid-template-rows: minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.stage { touch-action: pan-y pinch-zoom; position: sticky; top: 0; height: 100vh; height: 100svh; padding: calc(var(--head) + 12px) clamp(16px, 3vw, 32px) 16px; display: grid; grid-template-rows: minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); gap: 16px; }
 .viewport { grid-row: 1; min-height: 0; min-width: 0; display: grid; place-items: center; position: relative; } /* its size, not the frame's, sets the scale */
 /* the scroll hint: under the mock, once you've lingered on the first step */
 .scroll-hint { position: absolute; z-index: 2; left: 50%; bottom: 4px; display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 12px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); box-shadow: 0 6px 20px -8px rgba(60, 40, 10, .25); color: var(--muted); font-size: 13px; white-space: nowrap; opacity: 0; transform: translate(-50%, 8px); transition: opacity .5s var(--ease), transform .5s var(--ease); pointer-events: none; }
@@ -52,7 +52,7 @@ html.snapping .site-foot { scroll-snap-align: end; }
 @keyframes hint-wheel { 0% { opacity: 0; transform: translateY(-2px); } 30% { opacity: 1; } 80% { opacity: 0; transform: translateY(6px); } 100% { opacity: 0; } }
 @keyframes hint-bob { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 4px); } }
 @media (prefers-reduced-motion: reduce) { .scroll-hint.on, .scroll-hint .mouse i { animation: none; } }
-.frame { width: var(--frame-w, calc(1440px * var(--scale, .5))); height: calc(900px * var(--scale, .5)); position: relative; border-radius: calc(4px * var(--scale, .5)); box-shadow: 0 0 0 1px rgba(60, 40, 10, .16), 0 24px 60px -20px rgba(60, 40, 10, .28); overflow: hidden; } /* a hairline all round: the white page stands off the cream */
+.frame { width: var(--frame-w, calc(1440px * var(--scale, .5))); height: calc(900px * var(--scale, .5)); position: relative; border-radius: calc(4px * var(--scale, .5)); box-shadow: 0 0 0 1px rgba(60, 40, 10, .16), 0 24px 60px -20px rgba(60, 40, 10, .28); overflow: hidden; contain: paint; } /* paint: on a phone the app runs past it (cropped), and nothing of that may reach the page */ /* a hairline all round: the white page stands off the cream */
 .captions { grid-row: 2; display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; position: relative; max-width: 760px; width: 100%; justify-self: center; }
 .cap { grid-area: 1 / 1; min-width: 0; opacity: 0; transform: translateY(8px); transition: opacity .35s var(--ease), transform .45s var(--ease); pointer-events: none; padding-bottom: 44px; }
 .cap.on { opacity: 1; transform: none; pointer-events: auto; }
