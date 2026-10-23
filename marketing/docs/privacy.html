@@ -57,7 +57,7 @@
     <main class="doc">
       <article>
 <h1>What leaves your machine</h1>
-<p>Bobby runs on your machine: the review UI is served by Bobby itself on <code>127.0.0.1</code>, and your marks, drafts and notes stay in <code>~/.bobby</code>. These are the times it talks to something else, and how to turn each off.</p>
+<p>Bobby runs on your machine: the review UI is served by Bobby itself on <code>127.0.0.1</code> (unless you <a href="getting-started.html#on-a-remote-machine">open it up</a> with <code>--host</code>), and your marks, drafts and notes stay in <code>~/.bobby</code>. These are the times it talks to something else, and how to turn each off.</p>
 <div class="table"><table>
 <thead>
 <tr><th>What</th><th>Where it goes</th><th>When</th><th>To turn it off</th></tr>
@@ -85,7 +85,7 @@
 <h2 id="what-stays-local"><a class="anchor" href="#what-stays-local" aria-hidden="true">#</a>What stays local</h2>
 <ul>
 <li><strong>Language servers</strong> read the PR's head commit exported to <code>~/.bobby/trees</code>, and never run the PR's code. Go's runs with module and toolchain downloads off (<code>GOPROXY=off</code>, <code>GOTOOLCHAIN=local</code>) and without cgo.</li>
-<li><strong>Bobby's server</strong> only answers its own page: requests must name <code>127.0.0.1</code> or <code>localhost</code> with its port, and writes must come from that page.</li>
+<li><strong>Bobby's server</strong> only answers its own page: requests must name <code>127.0.0.1</code> or <code>localhost</code> (or a name you allowed with <code>--allow-host</code>), and writes must come from the page at that same name.</li>
 <li><strong>Private notes</strong> are never posted. Drafts are posted only when you submit.</li>
 </ul>
 

@@ -149,6 +149,8 @@ bobby lsp install &lt;language&gt;          # install one (typescript, python), 
 <tr><td><code>--base &lt;ref&gt;</code></td><td>detected</td><td>No PR: the branch or commit to compare with.</td></tr>
 <tr><td><code>--repo &lt;dir&gt;</code></td><td>cwd, else auto-clone</td><td>Local clone to use. With no PR, the repo to review.</td></tr>
 <tr><td><code>--port &lt;n&gt;</code></td><td><code>4173</code></td><td>UI port.</td></tr>
+<tr><td><code>--host &lt;addr&gt;</code></td><td><code>127.0.0.1</code></td><td>The address to listen on. <code>0.0.0.0</code> listens on every interface, as on a cloud VM: see <a href="#on-a-remote-machine">On a remote machine</a>.</td></tr>
+<tr><td><code>--allow-host &lt;name[:port]&gt;</code></td><td>none</td><td>Another name the page may be opened at: a bare name at any port, <code>name:port</code> at that one only, <code>*</code> at any name. Repeat it, or separate names with commas.</td></tr>
 <tr><td><code>--no-llm</code></td><td>off</td><td>Static analysis only; skip Claude.</td></tr>
 <tr><td><code>--no-lsp</code></td><td>off</td><td>Don't start language servers. The inspector then finds what imports can.</td></tr>
 <tr><td><code>--lsp</code></td><td>off</td><td><code>extract</code> only: ask the installed language servers too, and write their definitions. Nothing is installed.</td></tr>
@@ -157,7 +159,18 @@ bobby lsp install &lt;language&gt;          # install one (typescript, python), 
 <tr><td><code>-o, --out &lt;file&gt;</code></td><td>stdout</td><td>Output file for <code>extract</code>.</td></tr>
 </tbody>
 </table></div>
-<p>Environment: <code>BOBBY_MODEL</code> picks the Claude model passed to <code>claude --model</code> (the old <code>PRFOCUS_MODEL</code> still works). <code>BOBBY_NO_UPDATE_CHECK=1</code> turns off the check for new versions.</p>
+<p>Environment: <code>BOBBY_MODEL</code> picks the Claude model passed to <code>claude --model</code> (the old <code>PRFOCUS_MODEL</code> still works). <code>BOBBY_NO_UPDATE_CHECK=1</code> turns off the check for new versions. <code>BOBBY_HOST</code> and <code>BOBBY_ALLOW_HOSTS</code> (comma-separated) set <code>--host</code> and <code>--allow-host</code>.</p>
+<h2 id="on-a-remote-machine"><a class="anchor" href="#on-a-remote-machine" aria-hidden="true">#</a>On a remote machine</h2>
+<p>Bobby can run on a cloud VM or a dev box and be opened from your laptop's browser. There's no sign-in: <strong>anyone who can reach its port can read the code under review and post on GitHub as you.</strong> So pick one of these, safest first.</p>
+<p><strong>An SSH tunnel</strong> (nothing to open up). Bobby stays on the VM's loopback, and the tunnel brings it to yours; any local port works:</p>
+<pre><code class="language-sh">ssh -L 4173:localhost:4173 you@vm     # then, on the VM:
+bobby &lt;pr-url&gt; --no-open              # and open http://localhost:4173 on your laptop
+</code></pre>
+<p><strong>Its own address, behind a firewall or VPN.</strong> Listen on every interface and name the address you'll open it at, the VM's IP or DNS name (or the name a reverse proxy serves it at):</p>
+<pre><code class="language-sh">bobby &lt;pr-url&gt; --no-open --host 0.0.0.0 --allow-host 10.0.0.12
+bobby &lt;pr-url&gt; --no-open --host 0.0.0.0 --allow-host bobby.dev.internal   # any port; bobby.dev.internal:8443 for only that one
+</code></pre>
+<p>Bobby only answers at names it knows, so a website can't reach it by pointing its own name at the machine (DNS rebinding): <code>localhost</code> and <code>127.0.0.1</code> at any port, plus each <code>--allow-host</code>. Opened at any other name, it says which to allow. <code>--allow-host '*'</code> takes any name, which gives that protection up; use it only on a network nothing else can reach. Bobby warns at startup whenever it listens beyond loopback.</p>
 <h2 id="what-it-writes-to-disk"><a class="anchor" href="#what-it-writes-to-disk" aria-hidden="true">#</a>What it writes to disk</h2>
 <p>Everything lives under <code>~/.bobby/</code>. If you used Bobby when it was called prfocus, <code>~/.prfocus</code> is moved there on the first run, progress and clones included:</p>
 <div class="table"><table>
@@ -196,6 +209,7 @@ bobby lsp install &lt;language&gt;          # install one (typescript, python), 
       <a href="#review-your-own-branch-no-pr-needed">Review your own branch, no PR needed</a>
       <a href="#commands">Commands</a>
       <a href="#flags">Flags</a>
+      <a href="#on-a-remote-machine">On a remote machine</a>
       <a href="#what-it-writes-to-disk">What it writes to disk</a>
     </aside>
   </div>

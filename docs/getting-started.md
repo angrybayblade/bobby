@@ -114,6 +114,8 @@ bobby lsp install <language>          # install one (typescript, python), or say
 | `--base <ref>` | detected | No PR: the branch or commit to compare with. |
 | `--repo <dir>` | cwd, else auto-clone | Local clone to use. With no PR, the repo to review. |
 | `--port <n>` | `4173` | UI port. |
+| `--host <addr>` | `127.0.0.1` | The address to listen on. `0.0.0.0` listens on every interface, as on a cloud VM: see [On a remote machine](#on-a-remote-machine). |
+| `--allow-host <name[:port]>` | none | Another name the page may be opened at: a bare name at any port, `name:port` at that one only, `*` at any name. Repeat it, or separate names with commas. |
 | `--no-llm` | off | Static analysis only; skip Claude. |
 | `--no-lsp` | off | Don't start language servers. The inspector then finds what imports can. |
 | `--lsp` | off | `extract` only: ask the installed language servers too, and write their definitions. Nothing is installed. |
@@ -121,7 +123,27 @@ bobby lsp install <language>          # install one (typescript, python), or say
 | `--no-open` | off | Don't open the browser. |
 | `-o, --out <file>` | stdout | Output file for `extract`. |
 
-Environment: `BOBBY_MODEL` picks the Claude model passed to `claude --model` (the old `PRFOCUS_MODEL` still works). `BOBBY_NO_UPDATE_CHECK=1` turns off the check for new versions.
+Environment: `BOBBY_MODEL` picks the Claude model passed to `claude --model` (the old `PRFOCUS_MODEL` still works). `BOBBY_NO_UPDATE_CHECK=1` turns off the check for new versions. `BOBBY_HOST` and `BOBBY_ALLOW_HOSTS` (comma-separated) set `--host` and `--allow-host`.
+
+## On a remote machine
+
+Bobby can run on a cloud VM or a dev box and be opened from your laptop's browser. There's no sign-in: **anyone who can reach its port can read the code under review and post on GitHub as you.** So pick one of these, safest first.
+
+**An SSH tunnel** (nothing to open up). Bobby stays on the VM's loopback, and the tunnel brings it to yours; any local port works:
+
+```sh
+ssh -L 4173:localhost:4173 you@vm     # then, on the VM:
+bobby <pr-url> --no-open              # and open http://localhost:4173 on your laptop
+```
+
+**Its own address, behind a firewall or VPN.** Listen on every interface and name the address you'll open it at, the VM's IP or DNS name (or the name a reverse proxy serves it at):
+
+```sh
+bobby <pr-url> --no-open --host 0.0.0.0 --allow-host 10.0.0.12
+bobby <pr-url> --no-open --host 0.0.0.0 --allow-host bobby.dev.internal   # any port; bobby.dev.internal:8443 for only that one
+```
+
+Bobby only answers at names it knows, so a website can't reach it by pointing its own name at the machine (DNS rebinding): `localhost` and `127.0.0.1` at any port, plus each `--allow-host`. Opened at any other name, it says which to allow. `--allow-host '*'` takes any name, which gives that protection up; use it only on a network nothing else can reach. Bobby warns at startup whenever it listens beyond loopback.
 
 ## What it writes to disk
 

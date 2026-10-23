@@ -1,6 +1,6 @@
 # What leaves your machine
 
-Bobby runs on your machine: the review UI is served by Bobby itself on `127.0.0.1`, and your marks, drafts and notes stay in `~/.bobby`. These are the times it talks to something else, and how to turn each off.
+Bobby runs on your machine: the review UI is served by Bobby itself on `127.0.0.1` (unless you [open it up](getting-started.md#on-a-remote-machine) with `--host`), and your marks, drafts and notes stay in `~/.bobby`. These are the times it talks to something else, and how to turn each off.
 
 | What | Where it goes | When | To turn it off |
 |---|---|---|---|
@@ -27,5 +27,5 @@ It runs `claude -p` with no tools and no saved session, from a temporary directo
 ## What stays local
 
 - **Language servers** read the PR's head commit exported to `~/.bobby/trees`, and never run the PR's code. Go's runs with module and toolchain downloads off (`GOPROXY=off`, `GOTOOLCHAIN=local`) and without cgo.
-- **Bobby's server** only answers its own page: requests must name `127.0.0.1` or `localhost` with its port, and writes must come from that page.
+- **Bobby's server** only answers its own page: requests must name `127.0.0.1` or `localhost` (or a name you allowed with `--allow-host`), and writes must come from the page at that same name.
 - **Private notes** are never posted. Drafts are posted only when you submit.

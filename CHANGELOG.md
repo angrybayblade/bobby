@@ -4,6 +4,8 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- Run Bobby on a cloud VM: `--host 0.0.0.0` to listen beyond this machine, and `--allow-host <name>` for the names its page may be opened at (`$BOBBY_HOST`, `$BOBBY_ALLOW_HOSTS`). `localhost` at any port works, so an SSH tunnel needs neither. Bobby warns when it's reachable from elsewhere.
+
 - Reply to a GitHub thread where it sits in the code, not only in the Conversation view: **Reply…** under it, posted at once.
 - Click a thread's or a note's header to collapse it.
 - **Edit** and **Delete** your own comments already on GitHub, in the code and in the Conversation view.

@@ -29,6 +29,8 @@ const { values, positionals } = parseArgs({
     repo: { type: "string" },
     base: { type: "string" },
     port: { type: "string", default: "4173" },
+    host: { type: "string", default: process.env.BOBBY_HOST ?? "127.0.0.1" },
+    "allow-host": { type: "string", multiple: true, default: [] },
     out: { type: "string", short: "o" },
     "no-llm": { type: "boolean", default: false },
     "no-lsp": { type: "boolean", default: false },
@@ -59,6 +61,11 @@ const USAGE = `bobby: review a PR one focused page at a time
                  origin's default branch, then main/master/develop/trunk; asks if none)
   --repo <dir>   local clone (default: cwd, else auto-clone to ~/.bobby/repos)
   --port <n>     UI port (default 4173)
+  --host <addr>  the address to listen on (default 127.0.0.1, this machine only; 0.0.0.0 for
+                 every interface, as on a cloud VM). Also $BOBBY_HOST
+  --allow-host <name[:port]>   another name the page may be opened at, as a VM's IP or DNS name
+                 (any port, or only that one; * for any name); repeat it or separate with commas.
+                 Also $BOBBY_ALLOW_HOSTS. localhost at any port (an SSH tunnel) always works
   --no-llm       static analysis only; skip Claude
   --no-lsp       don't start language servers (the inspector then answers from imports alone)
   --lsp          extract: ask the installed language servers too (slower: they load the project first)
@@ -233,13 +240,23 @@ async function runningApp(): Promise<string | null> {
 async function serve(app: App, path: string) {
   // The default port may be taken (a dev server): fall back to any free one.
   let server;
-  try { server = startServer(app, Number(values.port)); }
+  const hostname = values.host!, open = !["127.0.0.1", "localhost", "::1"].includes(hostname);
+  const allow = [...(values["allow-host"] ?? []), ...(process.env.BOBBY_ALLOW_HOSTS ?? "").split(",")].flatMap((h) => h.split(",")).map((h) => h.trim()).filter(Boolean);
+  if (open && !["0.0.0.0", "::"].includes(hostname)) allow.push(hostname); // listening on one address: its own name is fine
+  try { server = startServer(app, Number(values.port), { hostname, allow }); }
   catch (e) {
     if (!/EADDRINUSE|in use/i.test(String((e as Error).message ?? e))) throw e;
-    server = startServer(app, 0);
+    server = startServer(app, 0, { hostname, allow });
     console.log(`  port ${values.port} is in use, using ${server.port}`);
   }
-  const url = `http://127.0.0.1:${server.port}${path}`;
+  const here = open && !hostname.includes(":") && hostname !== "0.0.0.0" ? hostname : "127.0.0.1"; // on one address only, loopback doesn't reach it
+  const url = `http://${here}:${server.port}${path}`;
+  if (open) { // reachable from elsewhere, with no sign-in: say so, every time
+    console.log(`\n  ⚠ Listening on ${hostname}:${server.port}. Anyone who can reach this port can read the code under review and post\n    on GitHub as you: keep it behind a firewall, a VPN or an SSH tunnel.`);
+    const names = allow.filter((h) => h !== "*").map((h) => (/:\d+$/.test(h) ? `http://${h}${path}` : `http://${h}:${server.port}${path}`));
+    if (names.length) console.log(`  ▶ ${names.join("\n  ▶ ")}`);
+    else if (!allow.includes("*")) console.log(`  Opening it at this machine's IP or name? Add --allow-host <that name>.`);
+  }
   hold(server.port!);
   watchReleases((r) => { app.release = r; console.log(`  ▸ Bobby ${r.version} is out (you have ${pkg.version}): ${r.url}`); });
   console.log(`\n  ▶ ${url}\n`);

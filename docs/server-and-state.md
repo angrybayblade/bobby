@@ -1,6 +1,6 @@
 # Server and state
 
-`src/server.ts` is a single `Bun.serve` on `127.0.0.1` (port 4173 by default). It serves `public/` as static files (from the copy embedded in a compiled binary, if there is one) and a small JSON API. If the port is taken, the CLI falls back to a free one.
+`src/server.ts` is a single `Bun.serve` on `127.0.0.1` (port 4173 by default; `--host` changes the address). It serves `public/` as static files (from the copy embedded in a compiled binary, if there is one) and a small JSON API. If the port is taken, the CLI falls back to a free one.
 
 It's one **app** holding every review you open, each a **session** in memory at `/r/<id>`, with its API under `/r/<id>/api/`. The id is `owner/repo/<n>` for a PR, `owner/repo/<n>@<sha>` (or `@<from>..<to>`) for commits of one, and `local/<repo>/<branch>` for a branch. `src/review.ts` builds them: `resolve()` names the review cheaply (it asks GitHub or git what it is), so its page can open at once, and `build()` does the slow part in the background; meanwhile its API answers `202 { loading, title }`. The running app leaves a lock in `~/.bobby/state/app.lock`, and a second `bobby` hands its review to it (`POST /api/open`) instead of starting another. A review no page has asked about for 15 minutes is unloaded: its language servers and watchers stop, and it's built again, from the cache, when opened.
 
@@ -103,6 +103,6 @@ Position is stored as a **node id** (`chg:…` or `ctx:…`), which is stable ac
 
 ## Security notes
 
-- The server binds to `127.0.0.1` only and has no authentication. Anything running locally can call it, including `/api/submit`, which posts as your `gh` user.
+- The server binds to `127.0.0.1` unless `--host` says otherwise, and has no authentication. Anything that can reach it can call it, including `/api/submit`, which posts as your `gh` user. `guard()` refuses a Host that isn't loopback or allowed (`hostAllowed`, against DNS rebinding) and a write whose Origin isn't the page at that Host.
 - Static file paths are normalised, and anything escaping `public/` is a 404.
 - `/api/file` passes `path` to `git show <sha>:<path>`, so it can read any file in the repo at those two commits. That's fine for a local tool, but it's not meant to be exposed.
