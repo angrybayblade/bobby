@@ -49,12 +49,13 @@ export interface GDiscussion {
   avatar?: string; // the author's GitHub avatar
   html?: string; // GitHub's rendering of body, for bots' HTML and the Markdown Bobby doesn't render itself
   resolved?: boolean; // its thread was resolved on GitHub
+  thread?: string; // its thread's GraphQL node id, to resolve or unresolve it
 }
 
 /** A review thread whose line the diff no longer has (GitHub's "outdated"): kept off the lines, counted by file. */
 export interface GOutdated {
   id: string; path: string; author: string; url: string; createdAt: string; // its first comment's
-  comments: number; resolved?: boolean;
+  comments: number; resolved?: boolean; thread?: string;
 }
 
 /** A PR's review comments as read from GitHub: those on a line of the diff, and the outdated threads. */

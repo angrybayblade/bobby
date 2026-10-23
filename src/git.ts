@@ -137,16 +137,17 @@ export async function fileLines(cwd: string, sha: string, path: string): Promise
   return lines;
 }
 
-/** Which review threads are resolved, by their first comment's id: GraphQL only, the REST comments don't say. */
-async function resolvedThreads(pr: Pick<PrInfo, "owner" | "repo" | "number">, strict: boolean): Promise<Set<string>> {
+/** Each review thread, by its first comment's id: its GraphQL node id (to resolve it) and whether it's resolved. GraphQL
+ *  only: the REST comments say neither. */
+async function reviewThreads(pr: Pick<PrInfo, "owner" | "repo" | "number">, strict: boolean): Promise<Map<string, { id: string; resolved: boolean }>> {
   const q = `query($owner: String!, $repo: String!, $n: Int!, $after: String) { repository(owner: $owner, name: $repo) { pullRequest(number: $n) {
-    reviewThreads(first: 100, after: $after) { pageInfo { hasNextPage endCursor } nodes { isResolved comments(first: 1) { nodes { databaseId } } } } } } }`;
-  const out = new Set<string>();
+    reviewThreads(first: 100, after: $after) { pageInfo { hasNextPage endCursor } nodes { id isResolved comments(first: 1) { nodes { databaseId } } } } } } }`;
+  const out = new Map<string, { id: string; resolved: boolean }>();
   for (let after = "", k = 0; k < 20; k++) {
     const r = await run(["gh", "api", "graphql", "-f", `query=${q}`, "-F", `owner=${pr.owner}`, "-F", `repo=${pr.repo}`, "-F", `n=${pr.number}`, ...(after ? ["-f", `after=${after}`] : [])], { allowFail: !strict });
     const t = r.trim() ? JSON.parse(r).data?.repository?.pullRequest?.reviewThreads : null;
     if (!t) break;
-    for (const n of t.nodes) if (n.isResolved && n.comments.nodes[0]) out.add(String(n.comments.nodes[0].databaseId));
+    for (const n of t.nodes) if (n.comments.nodes[0]) out.set(String(n.comments.nodes[0].databaseId), { id: n.id, resolved: n.isResolved });
     if (!t.pageInfo.hasNextPage) break;
     after = t.pageInfo.endCursor;
   }
@@ -163,19 +164,20 @@ export async function reviewComments(pr: Pick<PrInfo, "owner" | "repo" | "number
   // --jq '.[]' prints one compact object per line, so paginated pages concatenate cleanly. full+json: body_html too.
   const out = await run(["gh", "api", "--paginate", "-H", "Accept: application/vnd.github.full+json", "--jq", ".[]", `repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/comments?per_page=100`], { allowFail: !strict });
   let raw = out.split("\n").filter((l) => l.startsWith("{")).map((l) => JSON.parse(l) as Raw);
-  const resolved = raw.length ? await resolvedThreads(pr, strict) : new Set<string>();
+  const threads = raw.length ? await reviewThreads(pr, strict) : new Map<string, { id: string; resolved: boolean }>();
   const root = (c: Raw) => String(c.in_reply_to_id ?? c.id);
+  const of = (first: string) => { const t = threads.get(first); return t ? { thread: t.id, ...(t.resolved ? { resolved: true as const } : {}) } : {}; };
   if (pr.commit) raw = raw.filter((c) => c.original_commit_id === pr.commit!.sha && c.original_line != null).map((c) => ({ ...c, line: c.original_line!, start_line: c.original_start_line ?? null }));
   const outdated: GOutdated[] = [];
   for (const c of raw) {
     if (c.line != null || c.in_reply_to_id) continue;
     outdated.push({ id: String(c.id), path: c.path, author: c.user?.login ?? "ghost", url: c.html_url, createdAt: c.created_at,
-      comments: raw.filter((r) => root(r) === String(c.id)).length, ...(resolved.has(String(c.id)) ? { resolved: true } : {}) });
+      comments: raw.filter((r) => root(r) === String(c.id)).length, ...of(String(c.id)) });
   }
   const comments = raw.filter((c) => c.line != null).map((c) => ({
     id: String(c.id), path: c.path, line: c.line!, side: c.side, author: c.user?.login ?? "ghost",
     body: c.body, url: c.html_url, createdAt: c.created_at, ...(c.user?.avatar_url ? { avatar: c.user.avatar_url } : {}), ...(c.body_html ? { html: c.body_html } : {}), ...(c.in_reply_to_id ? { replyTo: String(c.in_reply_to_id) } : {}), ...(c.start_line && c.start_line !== c.line ? { startLine: c.start_line, startSide: c.start_side ?? c.side } : {}),
-    ...(resolved.has(root(c)) ? { resolved: true } : {}),
+    ...of(root(c)),
   }));
   return { comments, outdated };
 }
