@@ -148,12 +148,19 @@ export function start(p: Prepared, o: ReviewOptions): Session {
     llm: p.claudeGraph ? "done" : p.wantLlm ? "pending" : "off", refresh: o.refresh,
   };
   void startServers(session, { ask: true, off: o.noLsp, log });
-  if (p.wantLlm) {
+  // Claude's tree, in the background: now, and again if it failed once Claude is set up (claude.ts). Not with --no-llm.
+  let asking = false;
+  if (!o.noLlm) session.askClaude = () => {
+    if (asking || session.claudeGraph) return;
+    asking = true;
+    Object.assign(session, { llm: "pending", llmError: undefined });
     log("▸ asking Claude to build the change tree (UI is usable meanwhile)…");
     p.claude()
       .then((g) => { session.claudeGraph = g; session.llm = "done"; log(`  ✓ Claude tree ready: ${g.cores.length} cores`); })
-      .catch((e) => { session.llm = "failed"; session.llmError = String(e.message ?? e); console.error(`  ✗ Claude tree failed, keeping static tree: ${session.llmError}`); });
-  }
+      .catch((e) => { session.llm = "failed"; session.llmError = String(e.message ?? e); console.error(`  ✗ Claude tree failed, keeping static tree: ${session.llmError}`); })
+      .finally(() => { asking = false; });
+  };
+  if (p.wantLlm) session.askClaude?.();
 
   // Moving to new work when you ask (watch.ts notices it): the same pipeline as a fresh start, on the new head. Marks
   // carry over by content, so what the push didn't touch stays reviewed; drafts stay as they are.

@@ -1,5 +1,6 @@
 import { join, normalize } from "node:path";
 import { embeddedAsset } from "./assets.ts";
+import { cancelLogin, claudeStatus, dismiss, INSTALL_TEXT, installClaude, startLogin, submitCode } from "./claude.ts";
 import { fileLines, reviewComments, run, whoAmI } from "./git.ts";
 import { type ReviewGraph, setDiscussion } from "./graph.ts";
 import { home, loadSettings, saveSettings, saveState } from "./state.ts";
@@ -20,6 +21,7 @@ export interface Session {
   state: ReviewState;
   llm: "pending" | "done" | "failed" | "off";
   llmError?: string;
+  askClaude?: () => void; // asks Claude for the tree again (once it's set up, after it failed)
   // Language servers, one per language in the review (servers.ts): where each stands, the running ones, and the
   // definitions with their answers merged in. root: the tree they read; log: where they report.
   servers?: Record<string, ServerInfo>;
@@ -206,9 +208,40 @@ export function startServer(app: App, port: number, { hostname = "127.0.0.1", al
         try { return json({ id: await app.open(arg?.trim() || undefined, { repo, base, ...(cwd ? { cwd } : {}), ...flags }) }); }
         catch (e) { return json({ error: String((e as Error).message ?? e) }, 400); }
       }
+      // Setting up Claude Code (claude.ts): where it stands, install it, sign in by pasting the code from its sign-in page
+      if (p === "/api/claude" || p.startsWith("/api/claude/")) return claudeApi(app, req, p);
       return json({ error: "not found" }, 404);
     },
   });
+}
+
+/** Claude's setup, for the page. Once it's ready (just installed and signed in), the open reviews whose Claude tree
+ *  failed ask again. */
+let claudeWasReady: boolean | undefined;
+async function claudeApi(app: App, req: Request, p: string): Promise<Response> {
+  const status = async () => {
+    const st = await claudeStatus(), ready = st.installed && st.loggedIn;
+    if (ready && claudeWasReady === false) for (const s of app.reviews.values()) if (s.llm === "failed") s.askClaude?.();
+    claudeWasReady = ready;
+    return { ...st, ask: !ready && !st.dismissed && loadSettings().claude !== "never", install: INSTALL_TEXT };
+  };
+  if (req.method === "GET" && p === "/api/claude") return json(await status());
+  if (req.method !== "POST") return json({ error: "not found" }, 404);
+  try {
+    if (p === "/api/claude/install") installClaude();
+    else if (p === "/api/claude/login") await startLogin();
+    else if (p === "/api/claude/code") {
+      const { code } = (await req.json().catch(() => ({}))) as { code?: unknown };
+      if (typeof code !== "string" || !code.trim()) return json({ ok: false, error: "Paste the code from the sign-in page" }, 400);
+      claudeWasReady = false; // signing in now: what failed for want of it asks again
+      await submitCode(code);
+    } else if (p === "/api/claude/cancel") cancelLogin();
+    else if (p === "/api/claude/dismiss") dismiss();
+    else return json({ error: "not found" }, 404);
+    return json({ ok: true, ...(await status()) });
+  } catch (e) {
+    return json({ ok: false, error: String((e as Error).message ?? e), ...(await status()) }, 400);
+  }
 }
 
 /** One review's API: p is the path from /api/. */
