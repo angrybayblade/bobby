@@ -248,6 +248,30 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
           return json({ ok: false, error: String((e as Error).message) }, 400);
         }
       }
+      // Edit or delete a comment already on GitHub (yours, as GitHub allows): a review comment on a line ("review") or
+      // a comment on the PR ("issue"). At once, as on GitHub; the inline discussion is then read again.
+      if (req.method === "POST" && (p === "/api/posted/edit" || p === "/api/posted/delete")) {
+        const { kind, id, body } = (await req.json().catch(() => ({}))) as { kind?: unknown; id?: unknown; body?: unknown };
+        const edit = p.endsWith("/edit");
+        if ((kind !== "review" && kind !== "issue") || typeof id !== "string" || !/^\d+$/.test(id)) return json({ ok: false, error: "kind must be review or issue, and id a comment's id" }, 400);
+        if (edit && (typeof body !== "string" || !body.trim())) return json({ ok: false, error: "Nothing to save: delete it instead" }, 400);
+        if (pr().provider === "local") return json({ ok: false, error: "This is a local review with no PR." }, 400);
+        const { owner, repo } = pr();
+        const where = `repos/${owner}/${repo}/${kind === "review" ? "pulls" : "issues"}/comments/${id}`;
+        try {
+          await run(["gh", "api", "--method", edit ? "PATCH" : "DELETE", where, ...(edit ? ["--input", "-"] : [])], edit ? { input: JSON.stringify({ body }) } : {});
+          s.conversation = undefined;
+          if (kind === "review") {
+            const discussion = await reviewComments(pr(), true).catch(() => null);
+            if (discussion) { for (const g of [s.staticGraph, s.claudeGraph]) if (g) setDiscussion(g, discussion); s.discussionAt = Date.now(); }
+          }
+          return json({ ok: true, comments: s.staticGraph.discussion ?? [], outdated: s.staticGraph.outdated ?? [] });
+        } catch (e) {
+          const msg = String((e as Error).message);
+          if (/\b(403|404)\b|not accessible|forbidden/i.test(msg)) return json({ ok: false, error: `GitHub won't let you ${edit ? "edit" : "delete"} it: only its author (or a repo admin) can` }, 403);
+          return json({ ok: false, error: msg }, 400);
+        }
+      }
       // Resolve or unresolve a review thread, at once, as GitHub's button does; every view then reads it from the graph
       if (req.method === "POST" && p === "/api/thread") {
         const { thread, resolved } = (await req.json().catch(() => ({}))) as { thread?: unknown; resolved?: unknown };

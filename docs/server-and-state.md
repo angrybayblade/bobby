@@ -32,6 +32,7 @@ Paths are under `/r/<id>`.
 | `GET /api/conversation` | → `Conversation` (`src/conversation.ts`) | The PR's description, timeline, review threads, verdicts, requested reviewers and CI checks, from one GitHub GraphQL query; read at most every 15 s, `?fresh` to read now. 404 for a local review. |
 | `POST /api/conversation/comment` | `{ body }` → `{ ok, url }` | Posts a comment on the PR. |
 | `POST /api/conversation/reply` | `{ body, to }` → `{ ok, url }` | Replies in the review thread whose first comment is `to`, and re-reads the inline discussion. |
+| `POST /api/posted/edit`, `/api/posted/delete` | `{ kind, id, body? }` → `{ ok, comments, outdated }` | Edits (or deletes) a comment already on GitHub: `kind` `review` for one on a line, `issue` for one on the PR. A review comment's change re-reads the inline discussion. |
 | `POST /api/thread` | `{ thread, resolved }` → `{ ok, comments, outdated }` | Resolves (or unresolves) the review thread with that GraphQL node id, then re-reads the inline discussion and returns it. |
 | `GET /api/status` | → `{ llm, llmError, claudeReady, servers }` | Polled every 3 s while Claude works or a server installs or loads. |
 | `POST /api/servers/install`, `/check`, `/decline` | `{ id, never? }` → `{ servers }` | A language server: yes, install it (in the background); look again for what you installed yourself (gopls); not now, or never (saved). |
