@@ -4,6 +4,12 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+## 0.1.0-rc9 (2026-10-23)
+
+No change to Bobby itself; its site, bobby.viraj.computer, now works on phones.
+
+- On a phone held upright, the walkthrough's mock is drawn twice as big and follows what each step is about; held sideways, the captions sit beside it. Touch screens get ↑ ↓ buttons in place of the `j` / `k` keys.
+
 ## 0.1.0-rc8 (2026-10-22)
 
 A Conversation view of the PR, as on GitHub, and links that take you back to the same place.
