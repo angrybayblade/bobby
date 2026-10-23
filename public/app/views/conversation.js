@@ -84,6 +84,9 @@ const STYLE = `
 .conv .tfoot .replyb { flex: 1; border-top: 0; }
 .conv .tfoot .grow { flex: 1; min-height: 38px; }
 .conv .newc .compose { border-top: 0; }
+.conv .own { margin-left: 8px; font: 12px var(--font-ui); color: var(--faint); padding: 0 3px; }
+.conv .own:hover { color: var(--text); } .conv .own.sure { color: var(--risk); }
+.conv .bd .compose, .conv .tc .compose { padding: 0; border-top: 0; }
 .conv .newc .compose textarea { min-height: 110px; }
 .conv h2 { font: 600 12px var(--font-ui); letter-spacing: .09em; text-transform: uppercase; color: var(--faint); margin: 34px 0 10px; }
 .conv .status { border: 1px solid var(--line); border-radius: var(--radius, 6px); background: var(--surface); }
@@ -137,6 +140,12 @@ export default {
     const drafts = new Map(), errors = new Map(); // composer key → text, and why posting it failed
 
     const isShut = (t) => shut.get(t.id) ?? (t.resolved || t.outdated);
+    // your own comments on GitHub: edited in place (key "issue:<id>" or "review:<id>"), deleted on a second click
+    const editing = new Map(); let sure = null, sureTimer;
+    const mine = (c) => app.me?.login && c.author?.login === app.me.login;
+    const ownButtons = (key, c) => !mine(c) || editing.has(key) ? "" : `<button class="own" data-eopen="${esc(key)}">Edit</button><button class="own${sure === key ? " sure" : ""}" data-edel="${esc(key)}">${sure === key ? "Delete it? Click again" : "Delete"}</button>`;
+    const bodyOf = (key, c) => editing.has(key) ? `<div class="compose"><textarea data-ckey="e:${esc(key)}">${esc(editing.get(key))}</textarea>
+      <div class="row">${errors.get(`e:${key}`) ? `<span class="err">${esc(errors.get(`e:${key}`))}</span>` : `<span class="hint">${MOD === "⌘" ? "⌘" : "ctrl"}+enter saves</span>`}<span class="grow"></span><button class="btn" data-ecancel="${esc(key)}">Cancel</button><button class="btn primary" data-esave="${esc(key)}">Save</button></div></div>` : text(c);
     const composer = (key, label, placeholder) => `<div class="compose" data-ck="${esc(key)}">
       <textarea placeholder="${esc(placeholder)}" data-ckey="${esc(key)}">${esc(drafts.get(key) ?? "")}</textarea>
       <div class="row">${errors.get(key) ? `<span class="err">${esc(errors.get(key))}</span>` : `<span class="hint">Markdown · ${MOD === "⌘" ? "⌘" : "ctrl"}+enter posts</span>`}<span class="grow"></span>
@@ -169,8 +178,8 @@ export default {
         ${t.resolved ? `<span class="tag">Resolved</span>` : ""}${t.outdated ? `<span class="tag">Outdated</span>` : ""}<span class="grow"></span>
         ${isShut(t) ? `<span class="tag">${plural(t.comments.length, "comment")}</span>` : ""}
         ${canGo ? `<button class="go" data-go="${esc(t.id)}" title="Open this code in the Diff view">View code →</button>` : ""}</div>`;
-      const items = t.comments.map((c) => `<div class="tc">${avatar(c.author)}<div><div class="who"><b>${esc(c.author.login)}</b> ${when(c.createdAt)}<a href="${esc(c.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a></div>
-        ${text(c)}</div></div>`).join("");
+      const items = t.comments.map((c) => `<div class="tc">${avatar(c.author)}<div><div class="who"><b>${esc(c.author.login)}</b> ${when(c.createdAt)}<a href="${esc(c.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a>${ownButtons(`review:${c.id}`, c)}</div>
+        ${bodyOf(`review:${c.id}`, c)}</div></div>`).join("");
       const key = `r:${t.comments[0]?.id}`;
       const resolve = `<button class="cbtn" data-resolve="${esc(t.id)}" data-to="${t.resolved ? "0" : "1"}">${t.resolved ? "Unresolve conversation" : "Resolve conversation"}</button>`;
       const reply = replying.has(t.id) ? composer(key, "Reply", "Reply…")
@@ -192,8 +201,8 @@ export default {
           out.push(`<div class="item"><div class="event"><span class="ico">⎔</span><span><b>${esc(who)}</b> added ${plural(run.length, "commit")}</span>${when(run.at(-1).createdAt)}</div>
             <div class="commits">${run.map((c) => `<a href="${esc(c.url)}" target="_blank" rel="noopener" title="${esc(c.subject)}"><span class="s">${esc(c.subject)}</span><code>${esc(c.sha.slice(0, 7))}</code></a>`).join("")}</div></div>`);
         } else if (it.kind === "comment") {
-          out.push(`<div class="item card" data-item>${avatar(it.author)}<div class="box"><div class="hd"><b>${esc(it.author.login)}</b> commented ${when(it.createdAt)}<span class="grow"></span><a href="${esc(it.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a></div>
-            <div class="bd">${text(it)}</div></div></div>`);
+          out.push(`<div class="item card" data-item>${avatar(it.author)}<div class="box"><div class="hd"><b>${esc(it.author.login)}</b> commented ${when(it.createdAt)}<span class="grow"></span>${ownButtons(`issue:${it.id}`, it)}<a href="${esc(it.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a></div>
+            <div class="bd">${bodyOf(`issue:${it.id}`, it)}</div></div></div>`);
         } else {
           const threads = byReview.get(it.id) ?? [];
           threads.forEach((t) => shown.add(t.id));
@@ -295,16 +304,33 @@ export default {
       await load(true);
     }
 
-    root.addEventListener("input", (ev) => { const k = ev.target.dataset?.ckey; if (k) drafts.set(k, ev.target.value); });
+    /** Saves an edit, or (on its second click) deletes one of your comments; both on GitHub, at once. */
+    async function changeOwn(key, del) {
+      const [kind, id] = key.split(":"), body = editing.get(key)?.trim();
+      if (!del && !body) return;
+      const r = await api(`/api/posted/${del ? "delete" : "edit"}`, { kind, id, ...(del ? {} : { body }) }).catch((e) => ({ ok: false, error: e.message }));
+      document.activeElement?.blur();
+      if (!r.ok) { if (del) return app.toast?.(`<span>Couldn't delete it: ${esc(r.error)}</span>`, 8000); errors.set(`e:${key}`, r.error); return render(); }
+      editing.delete(key); errors.delete(`e:${key}`);
+      if (kind === "review") { app.graph.discussion = r.comments; app.graph.outdated = r.outdated; app.emit("comments"); }
+      await load(true);
+    }
+
+    root.addEventListener("input", (ev) => { const k = ev.target.dataset?.ckey; if (k?.startsWith("e:")) editing.set(k.slice(2), ev.target.value); else if (k) drafts.set(k, ev.target.value); });
     root.addEventListener("focusout", () => setTimeout(() => pending && render(), 0));
     root.addEventListener("keydown", (ev) => {
       const k = ev.target.dataset?.ckey;
+      if (k?.startsWith("e:")) { // editing one of yours: ⌘↵ saves, esc cancels
+        if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); changeOwn(k.slice(2)); }
+        else if (ev.key === "Escape") { ev.preventDefault(); ev.stopPropagation(); editing.delete(k.slice(2)); document.activeElement?.blur(); render(); }
+        return;
+      }
       if (k && ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); post(k); }
       else if (k && ev.key === "Escape" && k.startsWith("r:") && !ev.target.value.trim()) { ev.stopPropagation(); cancel(k); }
     });
     const cancel = (key) => { drafts.delete(key); errors.delete(key); for (const t of data.threads) if (`r:${t.comments[0]?.id}` === key) replying.delete(t.id); document.activeElement?.blur(); render(); };
     root.addEventListener("click", (ev) => {
-      const t = ev.target.closest("[data-go],[data-tog],[data-reply],[data-post],[data-cancel],[data-resolve]");
+      const t = ev.target.closest("[data-go],[data-tog],[data-reply],[data-post],[data-cancel],[data-resolve],[data-eopen],[data-esave],[data-ecancel],[data-edel]");
       if (!t) return;
       const ds = t.dataset, thread = (id) => data.threads.find((x) => x.id === id);
       if (ds.go) {
@@ -316,6 +342,19 @@ export default {
       } else if (ds.tog) { const th = thread(ds.tog); shut.set(ds.tog, !isShut(th)); render(); }
       else if (ds.reply) { replying.add(ds.reply); render(); root.querySelector(`[data-thread="${CSS.escape(ds.reply)}"] textarea`)?.focus(); }
       else if (ds.resolve) resolve(t, ds.resolve, ds.to === "1");
+      else if (ds.eopen) {
+        const [kind, id] = ds.eopen.split(":"), c = kind === "issue" ? data.timeline.find((x) => x.kind === "comment" && x.id === id) : data.threads.flatMap((x) => x.comments).find((x) => x.id === id);
+        if (!c) return;
+        editing.set(ds.eopen, c.body); render();
+        const box = root.querySelector(`[data-ckey="e:${CSS.escape(ds.eopen)}"]`);
+        box?.focus(); box?.setSelectionRange(box.value.length, box.value.length);
+      }
+      else if (ds.esave) changeOwn(ds.esave);
+      else if (ds.ecancel) { editing.delete(ds.ecancel); errors.delete(`e:${ds.ecancel}`); render(); }
+      else if (ds.edel) {
+        if (sure !== ds.edel) { sure = ds.edel; render(); clearTimeout(sureTimer); sureTimer = setTimeout(() => { sure = null; render(); }, 4000); return; }
+        sure = null; changeOwn(ds.edel, true);
+      }
       else if (ds.post) post(ds.post);
       else if (ds.cancel) cancel(ds.cancel);
     });
