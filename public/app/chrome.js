@@ -351,6 +351,7 @@ const SETTINGS = [
   ["rabbit", "Rabbit-hole nudge", [[0, "Off"], [8, "8m"], [12, "12m"], [20, "20m"]]],
   ["drift", "Drift prompt", [["on", "On"], ["off", "Off"]]],
   ["comments", "Comments", [["open", "Open"], ["collapsed", "Collapsed"]]],
+  ["resolved", "Resolved threads", [["collapsed", "Collapsed"], ["hidden", "Hidden"]]],
   ["updates", "Tell me about new versions", [["on", "On"], ["off", "Off"]]],
   ["untouched", "Untouched code", [["hide", "Hidden"], ["show", "Shown"]]],
   ["fileTree", "File tree", [["show", "Shown"], ["hide", "Hidden"]]],

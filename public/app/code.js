@@ -306,7 +306,7 @@ function privateNote(n, where, key) {
 // (their line is gone from the diff, so they can't sit in the code): a line that opens them in the Conversation view.
 const pathOf = (node) => (node.kind === "change" ? node.file : node.location.path);
 function outdatedHtml(app, path) {
-  const list = (app.graph.outdated ?? []).filter((t) => t.path === path);
+  const list = (app.graph.outdated ?? []).filter((t) => t.path === path && !(t.resolved && app.settings.resolved === "hidden"));
   if (!list.length) return "";
   const open = list.filter((t) => !t.resolved).length, n = list.length;
   const what = `${n} outdated thread${n > 1 ? "s" : ""}${open < n ? ` (${open ? `${open} unresolved` : n > 1 ? "all resolved" : "resolved"})` : ""}`;

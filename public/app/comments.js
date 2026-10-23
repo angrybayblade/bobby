@@ -13,7 +13,7 @@ const keyOf = (c) => `${c.path}|${c.side}|${c.line}`;
 let memo = null;
 export function commentIndex(app) {
   const disc = app.graph.discussion ?? [], mine = app.state.comments, notes = app.state.notes;
-  const sig = `${disc.length}:${disc.at(-1)?.id}:${disc.filter((c) => c.resolved).length}|${mine.map((c) => `${c.id}${c.wip ? "w" : ""}${c.kind ?? ""}${c.body.length}`).join()}|${notes.map((n) => `${n.id}${n.body.length}`).join()}`;
+  const sig = `${app.settings.resolved ?? "collapsed"}:${disc.length}:${disc.at(-1)?.id}:${disc.filter((c) => c.resolved).length}|${mine.map((c) => `${c.id}${c.wip ? "w" : ""}${c.kind ?? ""}${c.body.length}`).join()}|${notes.map((n) => `${n.id}${n.body.length}`).join()}`;
   if (memo?.graph === app.graph && memo.sig === sig) return memo.idx;
   const me = app.me ?? {}, threads = new Map(), byKey = new Map(), byPath = new Map();
   const add = (map, k, v) => (map.get(k) ?? map.set(k, []).get(k)).push(v);
@@ -31,6 +31,7 @@ export function commentIndex(app) {
     threads.set(`d:${c.id}`, { id: `d:${c.id}`, kind: "draft", path: c.path, side: c.side, line: c.line, startLine: c.startLine, startSide: c.startSide,
       items: [{ author: me.login ?? "you", avatar: me.avatar, body: c.body, createdAt: c.createdAt, draft: true, wip: c.wip, cid: c.id }] });
   }
+  if (app.settings.resolved === "hidden") for (const [id, t] of threads) if (t.resolved) threads.delete(id); // only what's still open
   for (const t of threads.values()) { add(byKey, keyOf(t), t); add(byPath, t.path, t); }
   // private notes, and unfinished ones from the composer
   const noteList = [

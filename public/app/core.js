@@ -25,6 +25,7 @@ export const DEFAULT_SETTINGS = {
   rabbit: 12, // minutes on one page before offering to flag it and move on; 0 = off
   drift: "on", // on | off: after 90s idle on a page, offer to park a thought
   comments: "open", // open | collapsed: comments and notes in place, open or as a slim marker (per file and thread too)
+  resolved: "collapsed", // collapsed | hidden: GitHub threads resolved there, as a slim marker or not shown at all
   untouched: "hide", // hide | show: untouched code the changes rely on or affect, in every view (the top bar's switch)
   tests: "hide", // hide | show: test files, in every view (the top bar's switch)
   generated: "hide", // hide | show: generated files, in every view (the top bar's switch)
