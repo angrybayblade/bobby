@@ -1,4 +1,5 @@
 import { tmpdir } from "node:os";
+import { claudeBin } from "./claude.ts";
 import { run } from "./git.ts";
 import { emptyBands, finalize, refNode, type Analysis } from "./analyze.ts";
 import type { ChangeTree, Core, FileDiff, PrInfo, TreeNode } from "./types.ts";
@@ -70,7 +71,7 @@ Rules:
 
 export async function claudeTree(pr: PrInfo, a: Analysis, files: FileDiff[]): Promise<ChangeTree> {
   const prompt = buildPrompt(pr, a);
-  const cmd = ["claude", "-p", "--output-format", "json", "--tools", "", "--no-session-persistence", "--json-schema", JSON.stringify(SCHEMA)];
+  const cmd = [claudeBin() ?? "claude", "-p", "--output-format", "json", "--tools", "", "--no-session-persistence", "--json-schema", JSON.stringify(SCHEMA)];
   const model = process.env.BOBBY_MODEL ?? process.env.PRFOCUS_MODEL; // PRFOCUS_MODEL: the old name
   if (model) cmd.push("--model", model);
   const out = JSON.parse(await run(cmd, { cwd: tmpdir(), input: prompt, timeoutMs: 15 * 60_000 })); // a stuck claude mustn't leave the review "organising" forever
