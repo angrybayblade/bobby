@@ -12,9 +12,10 @@ export interface Update {
   refresh: boolean; // false: a change the review can't follow (you switched branches)
 }
 
-// what changed: a comment's line or text, a thread resolved or not, a thread gone outdated
-const sig = (d: Array<{ id: string; body?: string; line?: number; resolved?: boolean; comments?: number }>) =>
-  d.map((c) => `${c.id}:${c.line ?? "o"}:${c.body?.length ?? c.comments}:${c.resolved ? "r" : ""}`).sort().join("|");
+// what changed: a comment's line or text, a thread resolved or not, a thread gone outdated, a thread's id first read (a
+// review built before Bobby kept them can't resolve its threads until then)
+const sig = (d: Array<{ id: string; body?: string; line?: number; resolved?: boolean; comments?: number; thread?: string }>) =>
+  d.map((c) => `${c.id}:${c.line ?? "o"}:${c.body?.length ?? c.comments}:${c.resolved ? "r" : ""}${c.thread ? "t" : ""}`).sort().join("|");
 
 /** A PR: its comments, and whether its head or base moved on. Every minute; a failed check (offline) waits for the next.
  *  Returns what stops watching. */
