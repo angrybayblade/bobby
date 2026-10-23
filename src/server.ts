@@ -248,6 +248,22 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
           return json({ ok: false, error: String((e as Error).message) }, 400);
         }
       }
+      // Resolve or unresolve a review thread, at once, as GitHub's button does; every view then reads it from the graph
+      if (req.method === "POST" && p === "/api/thread") {
+        const { thread, resolved } = (await req.json().catch(() => ({}))) as { thread?: unknown; resolved?: unknown };
+        if (typeof thread !== "string" || !/^[\w-]+$/.test(thread) || typeof resolved !== "boolean") return json({ ok: false, error: "thread must be a review thread's node id, and resolved true or false" }, 400);
+        if (pr().provider === "local") return json({ ok: false, error: "This is a local review with no PR, so no threads to resolve." }, 400);
+        const op = resolved ? "resolveReviewThread" : "unresolveReviewThread";
+        try {
+          await run(["gh", "api", "graphql", "-f", `query=mutation($id: ID!) { ${op}(input: { threadId: $id }) { thread { isResolved } } }`, "-f", `id=${thread}`]);
+          s.conversation = undefined;
+          const discussion = await reviewComments(pr(), true).catch(() => null);
+          if (discussion) { for (const g of [s.staticGraph, s.claudeGraph]) if (g) setDiscussion(g, discussion); s.discussionAt = Date.now(); }
+          return json({ ok: true, comments: s.staticGraph.discussion ?? [], outdated: s.staticGraph.outdated ?? [] });
+        } catch (e) {
+          return json({ ok: false, error: String((e as Error).message) }, 400);
+        }
+      }
       // How far you've got, for recents on the home page (the page counts pages; drafts are counted here)
       if (req.method === "POST" && p === "/api/progress") {
         const { done, total } = (await req.json()) as { done: number; total: number };
