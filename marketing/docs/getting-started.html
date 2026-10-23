@@ -65,7 +65,7 @@
 <tbody>
 <tr><td><code>git</code></td><td>Fetches the PR and computes the diff locally.</td></tr>
 <tr><td><a href="https://cli.github.com"><code>gh</code></a>, logged in</td><td>Reads PR metadata and review comments, clones repos, posts your review.</td></tr>
-<tr><td><code>claude</code> (Claude Code CLI), optional</td><td>Builds the smarter change tree. It uses your Claude Code login, so no API key is needed. Without it, or with <code>--no-llm</code>, you get the static tree.</td></tr>
+<tr><td><code>claude</code> (Claude Code CLI), optional</td><td>Builds the smarter change tree. It uses your Claude Code login, so no API key is needed. Without it, or with <code>--no-llm</code>, you get the static tree. Bobby offers to install it and sign you in the first time it runs: see <a href="#setting-up-claude">Setting up Claude</a>.</td></tr>
 <tr><td><code>node</code> 18+, optional</td><td>Runs the TypeScript and Python language servers behind the inspector. Bobby installs them itself, after asking; without Node it runs them on Bun, where a large project takes minutes rather than seconds to load.</td></tr>
 <tr><td><code>gopls</code>, optional</td><td>The Go language server: <code>go install golang.org/x/tools/gopls@latest</code>. Bobby finds it on PATH or in <code>$(go env GOPATH)/bin</code>.</td></tr>
 <tr><td><a href="https://bun.sh"><code>bun</code></a>, only from source</td><td>The release binary carries its own runtime. Building it, installing Bobby as a package, or running a clone needs Bun 1.1+.</td></tr>
@@ -96,6 +96,13 @@ bun install &amp;&amp; bun link                # `bobby` now runs this checkout
 <p><strong>Staying up to date.</strong> Bobby checks GitHub for a newer release when it starts and every 6 hours while it runs. When there is one, it says so in the terminal and in the top bar, with the command to update: the install script for a release binary, <code>git pull</code> for a clone. On a release candidate it also tells you about newer release candidates. Turn it off in Settings, or with <code>BOBBY_NO_UPDATE_CHECK=1</code>.</p>
 <p>Release binaries aren't code-signed. On macOS, if Gatekeeper blocks a downloaded one, run <code>xattr -d com.apple.quarantine &quot;$(which bobby)&quot;</code>. Each release has a <code>SHA256SUMS</code> file to check downloads against.</p>
 <p>The binary is 62–86 MB, depending on the platform (27–41 MB to download), because it carries the Bun runtime and the tree-sitter grammars. The UI's files are embedded in it, so it runs with nothing beside it.</p>
+<h2 id="setting-up-claude"><a class="anchor" href="#setting-up-claude" aria-hidden="true">#</a>Setting up Claude</h2>
+<p>Installing Bobby doesn't need Claude Code. The first time Bobby runs without it (not installed, or not signed in), its page offers to set it up; <strong>Not now</strong> asks again next time, <strong>Don't ask again</strong> doesn't. You can always start it from <strong>Settings › Claude Code…</strong>, the command palette (<strong>Set up Claude Code</strong>), or <strong>Set up Claude</strong> on the home page.</p>
+<ol>
+<li><strong>Install.</strong> Bobby runs Anthropic's installer (<code>curl -fsSL https://claude.ai/install.sh | bash</code>; on Windows, <code>irm https://claude.ai/install.ps1 | iex</code>), which puts <code>claude</code> in <code>~/.local/bin</code>. Bobby finds it there even if your shell's PATH doesn't have it yet.</li>
+<li><strong>Sign in.</strong> Bobby runs <code>claude auth login</code> and shows its sign-in link. Open it (a new tab), sign in with your Claude account and authorize Claude Code; the page then shows a code. Paste it into Bobby and press <strong>Sign in</strong>. A code works once, for a few minutes: if it's refused, get a new link. This works the same when Bobby runs on a <a href="#on-a-remote-machine">remote machine</a>, as nothing needs to reach it.</li>
+</ol>
+<p>Once Claude is ready, reviews open without it ask it for their tree, and the <strong>Smarter tree ready</strong> pill appears when it's done. Signed in another way (<code>ANTHROPIC_API_KEY</code>, or <code>claude</code> signed in already), there's nothing to set up.</p>
 <h2 id="review-a-pr"><a class="anchor" href="#review-a-pr" aria-hidden="true">#</a>Review a PR</h2>
 <pre><code class="language-sh">bobby https://github.com/owner/repo/pull/123
 # or, inside a clone of the repo:
@@ -205,6 +212,7 @@ bobby &lt;pr-url&gt; --no-open --host 0.0.0.0 --allow-host bobby.dev.internal   
       <h4>On this page</h4>
       <a href="#requirements">Requirements</a>
       <a href="#install">Install</a>
+      <a href="#setting-up-claude">Setting up Claude</a>
       <a href="#review-a-pr">Review a PR</a>
       <a href="#review-your-own-branch-no-pr-needed">Review your own branch, no PR needed</a>
       <a href="#commands">Commands</a>

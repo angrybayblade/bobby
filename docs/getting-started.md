@@ -6,7 +6,7 @@
 |---|---|
 | `git` | Fetches the PR and computes the diff locally. |
 | [`gh`](https://cli.github.com), logged in | Reads PR metadata and review comments, clones repos, posts your review. |
-| `claude` (Claude Code CLI), optional | Builds the smarter change tree. It uses your Claude Code login, so no API key is needed. Without it, or with `--no-llm`, you get the static tree. |
+| `claude` (Claude Code CLI), optional | Builds the smarter change tree. It uses your Claude Code login, so no API key is needed. Without it, or with `--no-llm`, you get the static tree. Bobby offers to install it and sign you in the first time it runs: see [Setting up Claude](#setting-up-claude). |
 | `node` 18+, optional | Runs the TypeScript and Python language servers behind the inspector. Bobby installs them itself, after asking; without Node it runs them on Bun, where a large project takes minutes rather than seconds to load. |
 | `gopls`, optional | The Go language server: `go install golang.org/x/tools/gopls@latest`. Bobby finds it on PATH or in `$(go env GOPATH)/bin`. |
 | [`bun`](https://bun.sh), only from source | The release binary carries its own runtime. Building it, installing Bobby as a package, or running a clone needs Bun 1.1+. |
@@ -45,6 +45,15 @@ Binaries are built for macOS, Linux and Windows. Windows gets the least use, so 
 Release binaries aren't code-signed. On macOS, if Gatekeeper blocks a downloaded one, run `xattr -d com.apple.quarantine "$(which bobby)"`. Each release has a `SHA256SUMS` file to check downloads against.
 
 The binary is 62–86 MB, depending on the platform (27–41 MB to download), because it carries the Bun runtime and the tree-sitter grammars. The UI's files are embedded in it, so it runs with nothing beside it.
+
+## Setting up Claude
+
+Installing Bobby doesn't need Claude Code. The first time Bobby runs without it (not installed, or not signed in), its page offers to set it up; **Not now** asks again next time, **Don't ask again** doesn't. You can always start it from **Settings › Claude Code…**, the command palette (**Set up Claude Code**), or **Set up Claude** on the home page.
+
+1. **Install.** Bobby runs Anthropic's installer (`curl -fsSL https://claude.ai/install.sh | bash`; on Windows, `irm https://claude.ai/install.ps1 | iex`), which puts `claude` in `~/.local/bin`. Bobby finds it there even if your shell's PATH doesn't have it yet.
+2. **Sign in.** Bobby runs `claude auth login` and shows its sign-in link. Open it (a new tab), sign in with your Claude account and authorize Claude Code; the page then shows a code. Paste it into Bobby and press **Sign in**. A code works once, for a few minutes: if it's refused, get a new link. This works the same when Bobby runs on a [remote machine](#on-a-remote-machine), as nothing needs to reach it.
+
+Once Claude is ready, reviews open without it ask it for their tree, and the **Smarter tree ready** pill appears when it's done. Signed in another way (`ANTHROPIC_API_KEY`, or `claude` signed in already), there's nothing to set up.
 
 ## Review a PR
 

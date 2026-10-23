@@ -21,7 +21,7 @@ bobby home       # or bobby outside a repo: pick a PR from your recents, review 
 
 One Bobby holds every review you open: running `bobby <PR>` again adds it to the one already running.
 
-You'll need `git` and `gh` (logged in); the release binary carries everything else. With the `claude` CLI installed, Claude organises the PR into a smarter tree in the background, using your Claude Code login.
+You'll need `git` and `gh` (logged in); the release binary carries everything else. With the `claude` CLI installed, Claude organises the PR into a smarter tree in the background, using your Claude Code login; Bobby offers to install it and sign you in the first time it runs.
 
 In the UI: `j`/`k` to step, arrow keys to move up and down in the tree, `enter`/`esc` to zoom, `a` for looks good, `c` to comment, `v` to switch view, `s` to submit, and `?` for every key.
 
