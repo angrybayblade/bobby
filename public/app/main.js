@@ -1,6 +1,7 @@
 import { DONE, LOW, api, createApp, esc, reviewBase } from "./core.js";
 import { escapeCode, inspectorKey, inspectorOpen, expandAll, keepDraft, moveLine, renderFile, renderNode, renderPage, startComment, startFileNote } from "./code.js";
 import * as chrome from "./chrome.js";
+import { nextUnresolved } from "./comments.js";
 import * as palette from "./palette.js";
 import * as tour from "./tour.js";
 import { ACTIONS, actionFor, keyHtml, keyOfEvent, keysOf, keyText } from "./keys.js";
@@ -341,6 +342,7 @@ const ACTS = {
   left: () => app.step(-1), right: () => app.step(1), up: () => app.step(-1), down: () => app.step(1), // views follow their shape instead
   nextCore: () => app.stepCore(1), prevCore: () => app.stepCore(-1),
   nextUnreviewed: () => app.nextUnreviewed(),
+  nextUnresolved: () => nextUnresolved(app) || chrome.toast("No unresolved threads: every GitHub thread here is resolved.", 4000),
   nextFlagged: () => app.nextFlagged() || chrome.toast(`Nothing flagged yet. Skim at the core level and press ${keyHtml(app.settings, "flag")} on anything worth a closer look.`, 5000),
   reviewed: () => { app.mark(app.focus, "reviewed"); app.nextUnreviewed(); },
   unmark: () => app.mark(app.focus, null),

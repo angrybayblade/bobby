@@ -454,6 +454,9 @@ kbd {
 .cmore { display: flex; align-items: center; gap: 6px; color: var(--muted); }
 .cmore svg { color: var(--faint); }
 .cmpill { display: inline-flex; align-items: center; gap: 5px; }
+.unrpill { color: var(--risk); border-color: color-mix(in srgb, var(--risk) 35%, var(--line)); }
+.cthread.cflash { animation: cflash 1.4s var(--ease, ease); }
+@keyframes cflash { 0%, 40% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--signal) 35%, transparent); } 100% { box-shadow: 0 0 0 3px transparent; } }
 .cmpill[aria-pressed="false"] { color: var(--faint); }
 :is(.dv, .fvw) .fvh .fcm { display: inline-flex; align-items: center; gap: 3px; font: 11.5px var(--font-ui); }
 :is(.dv, .fvw) .fvh .fcm[aria-pressed="false"] { color: var(--faint); }

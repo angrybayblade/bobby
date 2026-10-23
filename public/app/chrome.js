@@ -3,7 +3,7 @@ import { BAND_TEXT, DONE, LEVELS, LOW, api, esc, inline } from "./core.js";
 import { MOD } from "./palette.js";
 import * as tour from "./tour.js";
 import { ACTIONS, action, bind, bindable, kbdHtml, keyHtml, keyName, keyOfEvent, keysOf, keyText, reset, unbind } from "./keys.js";
-import { bubble, prCount, togglePR } from "./comments.js";
+import { bubble, nextUnresolved, prCount, togglePR, unresolved } from "./comments.js";
 
 const $ = (q) => document.querySelector(q);
 const PALETTE_KEY = MOD === "⌘" ? "⌘K" : "ctrl k";
@@ -182,7 +182,7 @@ function renderTop() {
     <button class="pill tog" data-act="generated" aria-pressed="${app.settings.generated === "show"}" title="Generated files (openapi specs, __generated__/, @generated, DO NOT EDIT…), in every view: ${app.settings.generated === "show" ? "shown. Click to hide" : "hidden. Click to show"}">⚙ Generated</button>
     <button class="pill tog" data-act="untouched" aria-pressed="${app.settings.untouched !== "hide"}" title="Untouched code the changes rely on or affect, in every view: ${app.settings.untouched === "hide" ? "hidden. Click to show" : "shown. Click to hide"}">○ Untouched</button>
     <button class="pill" data-act="notes" title="Your private notes (${esc(keyName(app.settings, "notes"))}). Never posted to GitHub.">✎ Notes${app.state.notes.length ? ` · ${app.state.notes.length}` : ""}</button>
-    ${commentsButton()}
+    ${unresolvedButton()}${commentsButton()}
     <button class="iconbtn" data-act="files" aria-pressed="${app.settings.fileTree !== "hide"}" title="File tree (${esc(keysOf(app.settings, "files").map(keyText)[0] ?? "")})" aria-label="File tree">▤</button>
     <button class="iconbtn" data-act="settings" title="Settings (${esc(keyName(app.settings, "settings"))})" aria-label="Settings">${GEAR}</button>`;
 }
@@ -540,6 +540,12 @@ function commentsButton() {
   return n ? `<button class="pill cmpill" data-act="pr-comments" aria-pressed="${open}" title="${open ? "Collapse" : "Show"} every comment in the PR">${bubble(open)} ${n}</button>` : "";
 }
 
+// GitHub's threads still open, as GitHub counts them on the PR: a click (or N) goes through them.
+function unresolvedButton() {
+  const n = unresolved(app).length;
+  return n ? `<button class="pill unrpill" data-act="next-unresolved" title="Go to the next unresolved thread (${esc(keyName(app.settings, "nextUnresolved"))})">${n} unresolved</button>` : "";
+}
+
 // ---------------------------------------------------------------- language servers
 // A chip for each language whose server needs you (a yes, something to install) or is on its way; nothing once it's up.
 function serverChip(s) {
@@ -617,6 +623,7 @@ function onClick(ev) {
     files: () => toggleFiles(),
     keys: () => keysEditor(),
     "pr-comments": () => togglePR(app),
+    "next-unresolved": () => nextUnresolved(app),
     "key-add": () => keyEdit("key-add", ds.id), "key-unbind": () => keyEdit("key-unbind", ds.id, ds.key), "key-reset": () => keyEdit("key-reset", ds.id),
     "key-reset-all": () => keyEdit("key-reset-all"),
     server: () => serverCard(ds.id),

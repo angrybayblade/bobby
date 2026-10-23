@@ -140,6 +140,37 @@ export async function postReply(app, id, clicked) {
     app.toast?.(`<span>Couldn't post the reply: ${esc(e.message)}</span>`, 8000);
   }
 }
+// ---- unresolved threads: GitHub's, on lines and outdated, in walk order; their count in the bar, N to go through them
+/** The unresolved threads in files on screen: on a line (with the page that shows it), then the outdated ones. */
+export function unresolved(app) {
+  const pos = (pid) => app.index.walkPos.get(pid) ?? Infinity;
+  const on = [...commentIndex(app).threads.values()].filter((t) => t.kind === "gh" && !t.resolved && shown(app, t.path))
+    .map((t) => ({ id: t.id, path: t.path, line: t.line, pid: app.pidAt(t.path, t.line) })).filter((x) => x.pid)
+    .sort((a, b) => pos(a.pid) - pos(b.pid) || a.line - b.line);
+  const gone = (app.graph.outdated ?? []).filter((t) => !t.resolved && shown(app, t.path)).map((t) => ({ id: t.id, path: t.path, outdated: true }));
+  return [...on, ...gone];
+}
+/** `N`: the next unresolved thread after the last one it went to (else the first at or after where you are), open and
+ *  in view; an outdated one opens in the Conversation view. Wraps around. False when there are none. */
+export function nextUnresolved(app) {
+  const list = unresolved(app), s = pageState(app);
+  if (!list.length) return false;
+  const was = list.findIndex((x) => x.id === s.lastUnresolved), here = app.index.walkPos.get(app.focus) ?? -1;
+  const t = was >= 0 ? list[(was + 1) % list.length] : list.find((x) => !x.outdated && app.index.walkPos.get(x.pid) >= here) ?? list[0];
+  s.lastUnresolved = t.id;
+  if (t.outdated) { app.convTarget = t.id; app.switchView("conversation"); return true; }
+  if (app.settings.view === "conversation") app.switchView("diff");
+  s.items.set(t.id, "open");
+  app.setFocus(t.pid, { level: 2 });
+  app.emit("comments");
+  setTimeout(() => { // once the view has drawn it
+    const el = [...document.querySelectorAll(`.cthread[data-thread="${CSS.escape(t.id)}"]`)].find(live);
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    el.classList.remove("cflash"); void el.offsetWidth; el.classList.add("cflash");
+  }, 60);
+  return true;
+}
 /** Shows a long comment in full, and remembers it while the page is open. */
 export function showFull(app, ck, clicked) { pageState(app).full = (pageState(app).full ?? new Set()).add(ck); keepPlace(app, clicked); }
 /** What the comment state of a file is, for knowing when to redraw it. */

@@ -19,6 +19,7 @@ export const ACTIONS = [
   { id: "entry", group: "Moving", title: "Back to the entry point, where a load starts", keys: ["!"] },
   { id: "nextUnreviewed", group: "Moving", title: "Next unreviewed page", keys: ["n"] },
   { id: "nextFlagged", group: "Moving", title: "Next flagged page", keys: ["F"] },
+  { id: "nextUnresolved", group: "Moving", title: "Next unresolved GitHub thread", keys: ["N"] },
   { id: "zoomIn", group: "Moving", title: "Zoom in: overview → core → page", keys: ["Enter", "+", "="] },
   { id: "zoomOut", group: "Moving", title: "Zoom out (esc also closes what's open first)", keys: ["Escape", "-", "_"] },
   // reading
