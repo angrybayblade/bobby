@@ -108,16 +108,27 @@ async function changedSince(cwd: string, snapshot: string, path: string) {
   return live.trim() !== then.trim();
 }
 
+/** Whether Bobby's page may be opened at this Host. A loopback name, at any port (an SSH tunnel's port is its own); else
+ *  only a name you allowed (--allow-host): "name" at any port, "name:port" at that one, "*" any name at all. A website
+ *  that rebinds its own name to this machine sends that name, which isn't on the list. */
+export function hostAllowed(host: string, allow: string[] = []): boolean {
+  host = host.toLowerCase();
+  const name = host.replace(/:\d+$/, "");
+  if (["127.0.0.1", "localhost", "[::1]"].includes(name)) return true;
+  return allow.some((a) => (a = a.toLowerCase()) === "*" || a === host || a === name);
+}
+
 /** Only Bobby's own page may use the server. A website you have open could otherwise post a review as you (a no-cors
- *  POST needs no preflight), and one that rebinds its name to 127.0.0.1 could read your code. So: the Host must be this
- *  server's own (defeats DNS rebinding), a request that changes something must come from this page's own Origin, and a
- *  POST must be JSON (which a foreign page can't send without a preflight, and the server answers none). */
-function guard(req: Request, port: number): Response | null {
-  const here = [`127.0.0.1:${port}`, `localhost:${port}`], host = req.headers.get("host") ?? "";
-  if (!here.includes(host)) return new Response("Bobby only answers its own page (unexpected Host).", { status: 403 });
+ *  POST needs no preflight), and one that rebinds its name to 127.0.0.1 could read your code. So: the Host must be one
+ *  Bobby answers at (defeats DNS rebinding), a request that changes something must come from the page at that same
+ *  Host (its Origin), and a POST must be JSON (which a foreign page can't send without a preflight, and the server
+ *  answers none). */
+function guard(req: Request, allow: string[]): Response | null {
+  const host = (req.headers.get("host") ?? "").toLowerCase();
+  if (!hostAllowed(host, allow)) return new Response(`Bobby only answers its own page (unexpected Host "${host}"). Opening it at another name, as on a remote machine? Start Bobby with --allow-host ${host.replace(/:\d+$/, "") || "<name>"}`, { status: 403 });
   if (req.method === "GET" || req.method === "HEAD") return null;
   const origin = req.headers.get("origin");
-  if (origin && !here.some((h) => origin === `http://${h}`)) return new Response("Bobby only answers its own page (foreign Origin).", { status: 403 });
+  if (origin && origin.toLowerCase().replace(/^https?:\/\//, "") !== host) return new Response("Bobby only answers its own page (foreign Origin).", { status: 403 });
   if (req.method === "POST" && !(req.headers.get("content-type") ?? "").toLowerCase().startsWith("application/json"))
     return new Response("Bobby only takes JSON.", { status: 415 });
   return null;
@@ -144,14 +155,16 @@ async function staticFile(p: string): Promise<Response> {
   return (await file.exists()) ? new Response(file) : new Response("Not found", { status: 404 });
 }
 
-export function startServer(app: App, port: number) {
+/** hostname: the address to listen on (127.0.0.1 unless you're opening Bobby from elsewhere); allow: the other names
+ *  its page may be opened at (hostAllowed). */
+export function startServer(app: App, port: number, { hostname = "127.0.0.1", allow = [] as string[] } = {}) {
   return Bun.serve({
     port,
-    hostname: "127.0.0.1",
-    async fetch(req, server) {
+    hostname,
+    async fetch(req) {
       const url = new URL(req.url);
       const p = url.pathname;
-      const refused = guard(req, server.port);
+      const refused = guard(req, allow);
       if (refused) return refused;
 
       // A review: its page, or its API. An id is three segments (owner/repo/number, or local/repo/branch); after it,
