@@ -80,6 +80,9 @@ const STYLE = `
 .conv .compose .hint { color: var(--faint); font-size: 12px; }
 .conv .replyb { display: block; width: 100%; text-align: left; padding: 8px 12px; border: 0; border-top: 1px solid var(--line-soft); background: none; color: var(--faint); font: 13px var(--font-ui); cursor: text; }
 .conv .replyb:hover { color: var(--muted); background: var(--raised); }
+.conv .tfoot { display: flex; align-items: center; gap: 8px; padding-right: 12px; border-top: 1px solid var(--line-soft); }
+.conv .tfoot .replyb { flex: 1; border-top: 0; }
+.conv .tfoot .grow { flex: 1; min-height: 38px; }
 .conv .newc .compose { border-top: 0; }
 .conv .newc .compose textarea { min-height: 110px; }
 .conv h2 { font: 600 12px var(--font-ui); letter-spacing: .09em; text-transform: uppercase; color: var(--faint); margin: 34px 0 10px; }
@@ -169,7 +172,9 @@ export default {
       const items = t.comments.map((c) => `<div class="tc">${avatar(c.author)}<div><div class="who"><b>${esc(c.author.login)}</b> ${when(c.createdAt)}<a href="${esc(c.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a></div>
         ${text(c)}</div></div>`).join("");
       const key = `r:${t.comments[0]?.id}`;
-      const reply = !t.comments[0] ? "" : replying.has(t.id) ? composer(key, "Reply", "Reply…") : `<button class="replyb" data-reply="${esc(t.id)}">Reply…</button>`;
+      const resolve = `<button class="cbtn" data-resolve="${esc(t.id)}" data-to="${t.resolved ? "0" : "1"}">${t.resolved ? "Unresolve conversation" : "Resolve conversation"}</button>`;
+      const reply = replying.has(t.id) ? composer(key, "Reply", "Reply…")
+        : `<div class="tfoot">${t.comments[0] ? `<button class="replyb" data-reply="${esc(t.id)}">Reply…</button>` : `<span class="grow"></span>`}${resolve}</div>`;
       return `<div class="thread${isShut(t) ? " shut" : ""}" data-thread="${esc(t.id)}">${head}${code.html}${items}${reply}</div>`;
     }
 
@@ -279,6 +284,17 @@ export default {
       await load(true);
     }
 
+    /** Resolves or unresolves a thread on GitHub: resolved, it collapses, as resolved threads start out. */
+    async function resolve(btn, id, to) {
+      btn.disabled = true;
+      const r = await api("/api/thread", { thread: id, resolved: to }).catch((e) => ({ ok: false, error: e.message }));
+      if (!r.ok) { btn.disabled = false; return app.toast?.(`<span>Couldn't ${to ? "resolve" : "unresolve"} it: ${esc(r.error)}</span>`, 8000); }
+      app.graph.discussion = r.comments; // the other views' threads, at once
+      app.graph.outdated = r.outdated;
+      shut.delete(id);
+      await load(true);
+    }
+
     root.addEventListener("input", (ev) => { const k = ev.target.dataset?.ckey; if (k) drafts.set(k, ev.target.value); });
     root.addEventListener("focusout", () => setTimeout(() => pending && render(), 0));
     root.addEventListener("keydown", (ev) => {
@@ -288,7 +304,7 @@ export default {
     });
     const cancel = (key) => { drafts.delete(key); errors.delete(key); for (const t of data.threads) if (`r:${t.comments[0]?.id}` === key) replying.delete(t.id); document.activeElement?.blur(); render(); };
     root.addEventListener("click", (ev) => {
-      const t = ev.target.closest("[data-go],[data-tog],[data-reply],[data-post],[data-cancel]");
+      const t = ev.target.closest("[data-go],[data-tog],[data-reply],[data-post],[data-cancel],[data-resolve]");
       if (!t) return;
       const ds = t.dataset, thread = (id) => data.threads.find((x) => x.id === id);
       if (ds.go) {
@@ -299,6 +315,7 @@ export default {
         app.switchView("diff");
       } else if (ds.tog) { const th = thread(ds.tog); shut.set(ds.tog, !isShut(th)); render(); }
       else if (ds.reply) { replying.add(ds.reply); render(); root.querySelector(`[data-thread="${CSS.escape(ds.reply)}"] textarea`)?.focus(); }
+      else if (ds.resolve) resolve(t, ds.resolve, ds.to === "1");
       else if (ds.post) post(ds.post);
       else if (ds.cancel) cancel(ds.cancel);
     });
