@@ -261,7 +261,10 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
           if (discussion) { for (const g of [s.staticGraph, s.claudeGraph]) if (g) setDiscussion(g, discussion); s.discussionAt = Date.now(); }
           return json({ ok: true, comments: s.staticGraph.discussion ?? [], outdated: s.staticGraph.outdated ?? [] });
         } catch (e) {
-          return json({ ok: false, error: String((e as Error).message) }, 400);
+          const msg = String((e as Error).message);
+          // GitHub lets the PR's author and anyone with write access resolve
+          if (/not accessible|permission|forbidden/i.test(msg)) return json({ ok: false, error: `only the PR's author or someone with write access to ${pr().owner}/${pr().repo} can resolve its threads` }, 403);
+          return json({ ok: false, error: msg }, 400);
         }
       }
       // How far you've got, for recents on the home page (the page counts pages; drafts are counted here)
