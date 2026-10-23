@@ -12,7 +12,7 @@ export async function run(
   const missing = !Bun.which(cmd[0], { PATH: opts.env?.PATH ?? process.env.PATH ?? "" }) && !cmd[0].includes("/");
   if (missing) {
     if (opts.allowFail) return "";
-    throw new Error(`${cmd[0]} isn't installed, or isn't on your PATH${{ gh: ": https://cli.github.com", git: ": https://git-scm.com", claude: ": https://claude.com/claude-code" }[cmd[0]] ?? ""}`);
+    throw new Error(`${cmd[0]} isn't installed, or isn't on your PATH${{ gh: ": https://cli.github.com", git: ": https://git-scm.com", claude: ": set it up from Bobby's page (it offers to), or see https://claude.com/claude-code" }[cmd[0]] ?? ""}`);
   }
   const proc = Bun.spawn(cmd, {
     cwd: opts.cwd,
