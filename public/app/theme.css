@@ -377,9 +377,13 @@ kbd {
 .creply { display: flex; gap: 10px; padding: 10px 12px; border-top: 1px solid var(--line-soft); }
 .creply textarea { width: 100%; min-height: 72px; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); font: 13px/1.5 var(--font-ui); resize: vertical; outline: 0; }
 .creply textarea:focus { border-color: color-mix(in srgb, var(--focus, var(--signal)) 70%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus, var(--signal)) 15%, transparent); }
-.creply .crow { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
-.creply .chint { font: 11.5px var(--font-ui); color: var(--faint); }
-.creply .btn { padding: 4px 12px; font-size: 12.5px; }
+.cedit { margin-top: 4px; }
+.cact.sure { color: var(--risk); }
+.creply textarea, .cedit textarea { width: 100%; min-height: 72px; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); font: 13px/1.5 var(--font-ui); resize: vertical; outline: 0; }
+.cedit textarea:focus { border-color: color-mix(in srgb, var(--focus, var(--signal)) 70%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus, var(--signal)) 15%, transparent); }
+.cedit .crow, .creply .crow { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.cedit .chint, .creply .chint { font: 11.5px var(--font-ui); color: var(--faint); }
+.cedit .btn, .creply .btn { padding: 4px 12px; font-size: 12.5px; }
 .cbtn { padding: 3px 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised); font: 500 12px var(--font-ui); color: var(--text); }
 .cbtn:hover { border-color: var(--muted); }
 .cbtn:disabled { opacity: .6; cursor: progress; }

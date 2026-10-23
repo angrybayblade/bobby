@@ -23,7 +23,7 @@ export function commentIndex(app) {
     const root = c.replyTo && ids.has(c.replyTo) ? c.replyTo : c.id;
     let t = threads.get(root);
     if (!t) threads.set(root, (t = { id: root, kind: "gh", path: c.path, side: c.side, line: c.line, startLine: c.startLine, startSide: c.startSide, node: c.thread, items: [] }));
-    t.items.push({ author: c.author, avatar: c.avatar, body: c.body, html: c.html, url: c.url, createdAt: c.createdAt });
+    t.items.push({ gid: c.id, author: c.author, avatar: c.avatar, body: c.body, html: c.html, url: c.url, createdAt: c.createdAt });
     if (c.resolved) t.resolved = true;
   }
   // your drafts: comments to be, so threads of their own
@@ -172,10 +172,58 @@ export function nextUnresolved(app) {
   }, 60);
   return true;
 }
+// ---- your own comments already on GitHub: edit them in place, or delete them (a second click, as it can't be undone)
+const edits = (app) => (pageState(app).edits ??= new Map()); // comment id → its text as you edit it
+const editBox = (gid) => [...document.querySelectorAll(`textarea[data-gedit="${CSS.escape(gid)}"]`)].find(live);
+function landed(app, r, clicked) { app.graph.discussion = r.comments; app.graph.outdated = r.outdated ?? []; keepPlace(app, clicked); }
+export function startEdit(app, gid, clicked) {
+  const c = (app.graph.discussion ?? []).find((x) => x.id === gid);
+  if (!c) return;
+  edits(app).set(gid, c.body);
+  keepPlace(app, clicked);
+  const b = editBox(gid);
+  if (b) { b.focus({ preventScroll: true }); b.setSelectionRange(b.value.length, b.value.length); }
+}
+export const typeEdit = (app, gid, text) => edits(app).set(gid, text);
+export function cancelEdit(app, gid, clicked) { edits(app).delete(gid); keepPlace(app, clicked); }
+export async function saveEdit(app, gid, clicked) {
+  const body = edits(app).get(gid)?.trim();
+  if (!body) return editBox(gid)?.focus();
+  const btn = clicked.closest(".cedit")?.querySelector("[data-gesave]");
+  if (btn) { btn.disabled = true; btn.textContent = "Saving…"; }
+  try {
+    const r = await api("/api/posted/edit", { kind: "review", id: gid, body });
+    if (!r.ok) throw new Error(r.error);
+    edits(app).delete(gid);
+    landed(app, r, clicked);
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = "Save"; }
+    app.toast?.(`<span>Couldn't save it: ${esc(e.message)}</span>`, 8000);
+  }
+}
+export async function deletePosted(app, gid, clicked) {
+  const s = pageState(app);
+  if (s.confirm !== gid) { // first click: ask; it stops asking after a few seconds
+    s.confirm = gid;
+    keepPlace(app, clicked);
+    clearTimeout(s.confirmTimer);
+    s.confirmTimer = setTimeout(() => { if (s.confirm === gid) { s.confirm = null; app.emit("comments"); } }, 4000);
+    return;
+  }
+  s.confirm = null;
+  try {
+    const r = await api("/api/posted/delete", { kind: "review", id: gid });
+    if (!r.ok) throw new Error(r.error);
+    landed(app, r, clicked);
+  } catch (e) {
+    keepPlace(app, clicked);
+    app.toast?.(`<span>Couldn't delete it: ${esc(e.message)}</span>`, 8000);
+  }
+}
 /** Shows a long comment in full, and remembers it while the page is open. */
 export function showFull(app, ck, clicked) { pageState(app).full = (pageState(app).full ?? new Set()).add(ck); keepPlace(app, clicked); }
 /** What the comment state of a file is, for knowing when to redraw it. */
-export const fileStamp = (app, path) => `${fileState(app, path)}:${pageState(app).full?.size ?? 0}:${(commentIndex(app).byPath.get(path) ?? []).map((x) => (itemOpen(app, x.id, path) ? 1 : 0) + (pageState(app).replies?.has(x.id) ? "r" : "")).join("")}`;
+export const fileStamp = (app, path) => `${fileState(app, path)}:${pageState(app).full?.size ?? 0}:${[...(pageState(app).edits?.keys() ?? [])].join()}:${pageState(app).confirm ?? ""}:${(commentIndex(app).byPath.get(path) ?? []).map((x) => (itemOpen(app, x.id, path) ? 1 : 0) + (pageState(app).replies?.has(x.id) ? "r" : "")).join("")}`;
 export const fileCount = (app, path) => (commentIndex(app).byPath.get(path) ?? []).reduce((n, x) => n + (x.items?.length ?? 1), 0);
 /** The PR's comments and notes in files on screen: one hidden by Tests or Untouched isn't counted, as its comments aren't shown. */
 export const prCount = (app) => [...commentIndex(app).byPath].filter(([path]) => !path || shown(app, path)).flatMap(([, xs]) => xs).reduce((n, x) => n + (x.items?.length ?? 1), 0);
@@ -196,12 +244,17 @@ function threadHtml(app, t) {
       <span class="cfaces">${faces}</span><b>${esc(first.author)}</b>${t.kind === "draft" ? `<span class="ctag">${first.wip ? "unfinished" : "draft"}</span>` : ""}${t.resolved ? `<span class="ctag">resolved</span>` : ""}
       <span class="cprev">${esc(plain(first.body))}</span>${n > 1 ? `<span class="cn">${n} comments</span>` : ""}${bubble(false)}</div>`;
   }
+  const s = pageState(app), mine = (i) => i.gid && app.me?.login && i.author === app.me.login;
+  const own = (i) => !mine(i) || s.edits?.has(i.gid) ? "" : `<button class="cact" data-geopen="${esc(i.gid)}" title="Edit your comment on GitHub">Edit</button><button class="cact${s.confirm === i.gid ? " sure" : ""}" data-gedel="${esc(i.gid)}" title="Delete your comment from GitHub">${s.confirm === i.gid ? "Delete it? Click again" : "Delete"}</button>`;
+  const body = (i, k) => s.edits?.has(i.gid)
+    ? `<div class="cedit"><textarea data-gedit="${esc(i.gid)}">${esc(s.edits.get(i.gid))}</textarea><div class="crow"><span class="chint">${MOD}↵ saves · esc cancels</span><span class="cgrow"></span><button class="btn" data-gecancel="${esc(i.gid)}">Cancel</button><button class="btn primary" data-gesave="${esc(i.gid)}">Save</button></div></div>`
+    : `<div class="cbody${i.html ? " gh" : ""}" data-ck="${esc(t.id)}:${k}">${i.html ? ghHtml(i.html) : md(i.body)}</div>`;
   const items = t.items.map((i, k) => `<div class="citem">${avatar(i)}<div class="cmain">
       <div class="cwho"${k === 0 ? ` data-tid="${esc(t.id)}" data-tpath="${esc(t.path)}" title="Collapse${n > 1 ? " this thread" : ""}"` : ""}><b>${esc(i.author)}</b>${i.draft ? `<span class="ctag">${i.wip ? "unfinished draft" : "draft"}</span>` : ""}<span class="cwhen" title="${esc(i.createdAt ?? "")}">${ago(i.createdAt)}</span>
         ${k === 0 ? range(t) : ""}${k === 0 && t.resolved ? `<span class="ctag">resolved</span>` : ""}${i.url ? `<a class="clink" href="${esc(i.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a>` : ""}<span class="cgrow"></span>
-        ${i.wip ? `<button class="cact" data-wip="${esc(i.cid)}" title="Open it again to finish">Continue</button>` : ""}${i.cid ? `<button class="cact" data-del="${esc(i.cid)}" title="Discard this draft">Delete</button>` : ""}
+        ${i.wip ? `<button class="cact" data-wip="${esc(i.cid)}" title="Open it again to finish">Continue</button>` : ""}${i.cid ? `<button class="cact" data-del="${esc(i.cid)}" title="Discard this draft">Delete</button>` : ""}${own(i)}
         ${k === 0 ? `<button class="cfold" data-tid="${esc(t.id)}" data-tpath="${esc(t.path)}" title="Collapse${n > 1 ? " this thread" : ""}">${bubble(true)}</button>` : ""}</div>
-      <div class="cbody${i.html ? " gh" : ""}" data-ck="${esc(t.id)}:${k}">${i.html ? ghHtml(i.html) : md(i.body)}</div></div></div>`).join("");
+      ${body(i, k)}</div></div>`).join("");
   // GitHub's own footer: a reply, posted at once; and done with it (it collapses, for everyone), or not done after all
   const resolve = t.node ? `<button class="cbtn" data-resolve="${esc(t.node)}" data-to="${t.resolved ? "0" : "1"}">${t.resolved ? "Unresolve conversation" : "Resolve conversation"}</button>` : "";
   const text = replies(app).get(t.id);

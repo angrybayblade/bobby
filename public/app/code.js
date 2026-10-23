@@ -3,7 +3,7 @@
 import { BAND_TEXT, DONE, LOW, api, esc, live } from "./core.js";
 import { MOD } from "./palette.js";
 import { keyHtml, keyName } from "./keys.js";
-import { bubble, closeReply, notesFor, outside, placeNotes, postReply, resolveThread, showFull, startReply, threadsAt, toggleItem, typeReply } from "./comments.js";
+import { bubble, cancelEdit, closeReply, deletePosted, notesFor, outside, placeNotes, postReply, resolveThread, saveEdit, showFull, startEdit, startReply, threadsAt, toggleItem, typeEdit, typeReply } from "./comments.js";
 
 const EXT = {
   ts: "typescript", tsx: "typescript", mts: "typescript", cts: "typescript", js: "javascript", jsx: "javascript", mjs: "javascript", cjs: "javascript",
@@ -495,12 +495,14 @@ export function renderNode(app, el, pid, { head = true } = {}) {
   placeNotes(el, app);
 }
 export const renderPage = (app, el, pid) => renderNode(app, el, pid);
-/** Before a render: if you're typing a reply in el, what puts you back in its box afterwards, caret and all. */
+/** Before a render: if you're typing a reply (or editing a comment) in el, what puts you back in its box afterwards,
+ *  caret and all. */
 function replying(el) {
   const a = document.activeElement;
-  if (!a?.matches?.("textarea[data-rbox]") || !el.contains(a)) return null;
-  const { rbox } = a.dataset, at = [a.selectionStart, a.selectionEnd];
-  return () => { const b = el.querySelector(`textarea[data-rbox="${CSS.escape(rbox)}"]`); if (b) { b.focus({ preventScroll: true }); b.setSelectionRange(...at); } };
+  const attr = a?.matches?.("textarea[data-rbox]") ? "data-rbox" : a?.matches?.("textarea[data-gedit]") ? "data-gedit" : null;
+  if (!attr || !el.contains(a)) return null;
+  const sel = `textarea[${attr}="${CSS.escape(a.getAttribute(attr))}"]`, at = [a.selectionStart, a.selectionEnd];
+  return () => { const b = el.querySelector(sel); if (b) { b.focus({ preventScroll: true }); b.setSelectionRange(...at); } };
 }
 
 /** A whole file for file-level viewers: one section per node in file order, each with its comments, nothing collapsed. */
@@ -882,6 +884,8 @@ function bind(app, el, rerender) {
     if (rs) return resolveThread(app, rs.dataset.resolve, rs.dataset.to === "1", rs);
     const rp = ev.target.closest("[data-rstart],[data-rpost],[data-rcancel]");
     if (rp) return rp.dataset.rstart ? startReply(app, rp.dataset.rstart, rp) : rp.dataset.rpost ? postReply(app, rp.dataset.rpost, rp) : closeReply(app, rp.dataset.rcancel, rp);
+    const ge = ev.target.closest("[data-geopen],[data-gesave],[data-gecancel],[data-gedel]");
+    if (ge) { const d = ge.dataset; return d.geopen ? startEdit(app, d.geopen, ge) : d.gesave ? saveEdit(app, d.gesave, ge) : d.gecancel ? cancelEdit(app, d.gecancel, ge) : deletePosted(app, d.gedel, ge); }
     const full = ev.target.closest("[data-cfull]");
     if (full) return showFull(app, full.dataset.cfull, full.closest(".cthread"));
     const fold = ev.target.closest("[data-tid]");
@@ -990,6 +994,13 @@ function bind(app, el, rerender) {
   // the text lives in app.page.composing as you type, so a re-render (a status poll, a mark) rebuilds the box with it
   el.addEventListener("input", (ev) => { if (ev.target.matches("textarea[data-composer]") && app.page.composing) app.page.composing.text = ev.target.value; });
   el.addEventListener("input", (ev) => { if (ev.target.matches("textarea[data-rbox]")) typeReply(app, ev.target.dataset.rbox, ev.target.value); });
+  el.addEventListener("input", (ev) => { if (ev.target.matches("textarea[data-gedit]")) typeEdit(app, ev.target.dataset.gedit, ev.target.value); });
+  el.addEventListener("keydown", (ev) => { // editing your comment: ⌘↵ saves, esc cancels
+    if (!ev.target.matches("textarea[data-gedit]")) return;
+    ev.stopPropagation();
+    if (ev.key === "Escape") { ev.preventDefault(); cancelEdit(app, ev.target.dataset.gedit, ev.target); }
+    if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); saveEdit(app, ev.target.dataset.gedit, ev.target); }
+  });
   el.addEventListener("keydown", (ev) => { // a reply box: ⌘↵ posts, esc closes it (kept if there's text in it)
     if (!ev.target.matches("textarea[data-rbox]")) return;
     ev.stopPropagation();
