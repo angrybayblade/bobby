@@ -14,7 +14,7 @@ let memo = null;
 export function commentIndex(app) {
   const disc = app.graph.discussion ?? [], mine = app.state.comments, notes = app.state.notes;
   const sig = `${app.settings.resolved ?? "collapsed"}:${disc.length}:${disc.at(-1)?.id}:${disc.filter((c) => c.resolved).length}|${mine.map((c) => `${c.id}${c.wip ? "w" : ""}${c.kind ?? ""}${c.body.length}`).join()}|${notes.map((n) => `${n.id}${n.body.length}`).join()}`;
-  if (memo?.graph === app.graph && memo.sig === sig) return memo.idx;
+  if (memo?.graph === app.graph && memo.disc === disc && memo.sig === sig) return memo.idx; // disc: a new list on every read, edits too
   const me = app.me ?? {}, threads = new Map(), byKey = new Map(), byPath = new Map();
   const add = (map, k, v) => (map.get(k) ?? map.set(k, []).get(k)).push(v);
   // GitHub's comments: a reply points at the first comment of its thread
@@ -40,7 +40,7 @@ export function commentIndex(app) {
   ];
   const notesByKey = new Map();
   for (const n of noteList) { add(notesByKey, keyOf(n), n); add(byPath, n.path, { ...n, note: true }); }
-  memo = { graph: app.graph, sig, idx: { byKey, notesByKey, byPath, threads } };
+  memo = { graph: app.graph, disc, sig, idx: { byKey, notesByKey, byPath, threads } };
   return memo.idx;
 }
 

@@ -276,7 +276,7 @@ export default {
     const fileSig = (path) => {
       const on = (x) => x.path === path;
       return JSON.stringify([app.layoutOf(path), app.state.comments.filter(on).map((c) => [c.id, c.line, c.body]),
-        app.state.notes.filter(on).map((n) => [n.id, n.line, n.body]), (app.graph.discussion ?? []).filter(on).map((c) => c.resolved ? 1 : 0).join(""), (app.graph.outdated ?? []).filter(on).map((t) => `${t.id}${t.resolved ? "r" : ""}`), fileStamp(app, path)]);
+        app.state.notes.filter(on).map((n) => [n.id, n.line, n.body]), (app.graph.discussion ?? []).filter(on).map((c) => [c.id, c.body, c.resolved ? 1 : 0]), (app.graph.outdated ?? []).filter(on).map((t) => `${t.id}${t.resolved ? "r" : ""}`), fileStamp(app, path)]);
     };
     /** Re-render only the viewers whose content changed, and re-measure only them. Returns the paths re-rendered. */
     function refresh() {
