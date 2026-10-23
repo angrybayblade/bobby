@@ -236,7 +236,11 @@ async function claudeApi(app: App, req: Request, p: string): Promise<Response> {
       claudeWasReady = false; // signing in now: what failed for want of it asks again
       await submitCode(code);
     } else if (p === "/api/claude/cancel") cancelLogin();
-    else if (p === "/api/claude/dismiss") dismiss();
+    else if (p === "/api/claude/dismiss") { // not now (this run), or never: saved, as settings.claude
+      const { never } = (await req.json().catch(() => ({}))) as { never?: boolean };
+      dismiss();
+      if (never) saveSettings({ ...loadSettings(), claude: "never" });
+    }
     else return json({ error: "not found" }, 404);
     return json({ ok: true, ...(await status()) });
   } catch (e) {
