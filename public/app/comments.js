@@ -137,7 +137,7 @@ function threadHtml(app, t) {
         ${k === 0 ? `<button class="cfold" data-tid="${esc(t.id)}" data-tpath="${esc(t.path)}" title="Collapse${n > 1 ? " this thread" : ""}">${bubble(true)}</button>` : ""}</div>
       <div class="cbody${i.html ? " gh" : ""}" data-ck="${esc(t.id)}:${k}">${i.html ? ghHtml(i.html) : md(i.body)}</div></div></div>`).join("");
   // GitHub's own button, under the thread: done with it (it collapses, for everyone), or not done after all
-  const foot = t.node ? `<div class="cfoot"><button class="cbtn" data-resolve="${esc(t.node)}" data-to="${t.resolved ? "0" : "1"}">${t.resolved ? "Unresolve conversation" : "Resolve conversation"}</button></div>` : "";
+  const foot = t.node ? `<div class="ctfoot"><button class="cbtn" data-resolve="${esc(t.node)}" data-to="${t.resolved ? "0" : "1"}">${t.resolved ? "Unresolve conversation" : "Resolve conversation"}</button></div>` : "";
   return `<div class="cthread${t.kind === "draft" ? " draft" : ""}${t.resolved ? " resolved" : ""}" data-thread="${esc(t.id)}">${items}${foot}</div>`;
 }
 

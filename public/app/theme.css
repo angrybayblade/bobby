@@ -371,7 +371,7 @@ kbd {
 .clink { color: var(--faint); text-decoration: none; }
 .clink:hover, .cact:hover, .cfold:hover { color: var(--text); }
 .cact { font: 12px var(--font-ui); color: var(--muted); padding: 0 4px; }
-.cfoot { display: flex; justify-content: flex-end; padding: 6px 12px; border-top: 1px solid var(--line-soft); }
+.ctfoot { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 6px 12px; border-top: 1px solid var(--line-soft); } /* under a GitHub thread: Reply, Resolve */
 .cbtn { padding: 3px 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised); font: 500 12px var(--font-ui); color: var(--text); }
 .cbtn:hover { border-color: var(--muted); }
 .cbtn:disabled { opacity: .6; cursor: progress; }
