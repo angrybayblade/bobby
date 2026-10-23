@@ -2,9 +2,9 @@
 
 ## User manual
 
-- [Getting started](getting-started.md): requirements, install, commands, flags, and what's written to disk
-- [Reviewing a PR](reviewing.md): the walk, zoom levels, keys, marks, comments, submitting, focus aids
-- [Views](views.md): Flow, Outline, Lens and Diff, and how to drive each one
+- [Getting started](getting-started.md): requirements, install, setting up Claude, commands, flags, running on a remote machine, and what's written to disk
+- [Reviewing a PR](reviewing.md): the walk, zoom levels, keys, marks, comments and threads (reply, resolve, edit), submitting, focus aids
+- [Views](views.md): Conversation, Flow, Outline, Lens and Diff, and how to drive each one
 - [Settings](settings.md): every setting and the design choices behind the UI
 - [What leaves your machine](privacy.md): what Bobby sends to Claude, GitHub and others, and how to turn each off
 

@@ -21,9 +21,9 @@ bobby home       # or bobby outside a repo: pick a PR from your recents, review 
 
 One Bobby holds every review you open: running `bobby <PR>` again adds it to the one already running.
 
-You'll need `git` and `gh` (logged in); the release binary carries everything else. With the `claude` CLI installed, Claude organises the PR into a smarter tree in the background, using your Claude Code login; Bobby offers to install it and sign you in the first time it runs.
+You'll need `git` and `gh` (logged in); the release binary carries everything else. On a cloud VM, open it through an SSH tunnel, or with `--host 0.0.0.0 --allow-host <its name>` (see [on a remote machine](docs/getting-started.md#on-a-remote-machine)). With the `claude` CLI installed, Claude organises the PR into a smarter tree in the background, using your Claude Code login; Bobby offers to install it and sign you in the first time it runs.
 
-In the UI: `j`/`k` to step, arrow keys to move up and down in the tree, `enter`/`esc` to zoom, `a` for looks good, `c` to comment, `v` to switch view, `s` to submit, and `?` for every key.
+In the UI: `j`/`k` to step, arrow keys to move up and down in the tree, `enter`/`esc` to zoom, `a` for looks good, `c` to comment, `N` for the next unresolved thread, `v` to switch view, `s` to submit, and `?` for every key. Reply to, resolve, edit and delete GitHub threads where they sit.
 
 ## Docs
 

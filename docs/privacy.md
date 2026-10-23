@@ -4,13 +4,14 @@ Bobby runs on your machine: the review UI is served by Bobby itself on `127.0.0.
 
 | What | Where it goes | When | To turn it off |
 |---|---|---|---|
-| **The PR, to organise it** | Anthropic, through your `claude` CLI and its login | When `claude` is on your PATH, in the background on each new head commit | `--no-llm`, or no `claude` on PATH |
-| **PR metadata, comments, the code** | GitHub, through `gh` and `git` | Reading the PR, fetching and cloning, posting your review when you submit; the Conversation view reads the PR's comments, reviews and CI checks while it's open, and posts a comment or reply when you send one | Review a local branch (`bobby` with no PR) |
+| **The PR, to organise it** | Anthropic, through your `claude` CLI and its login | When `claude` is installed, in the background on each new head commit | `--no-llm`, or no `claude` |
+| **PR metadata, comments, the code** | GitHub, through `gh` and `git` | Reading the PR, fetching and cloning, posting your review when you submit; the Conversation view reads the PR's comments, reviews and CI checks while it's open, and posts a comment or reply when you send one; resolving or unresolving a thread, and editing or deleting your own comment, reach GitHub at once | Review a local branch (`bobby` with no PR) |
 | **Avatars** | `avatars.githubusercontent.com` / `github.com`, from Bobby's server | Showing who wrote a comment; cached a week in `~/.bobby/cache/avatars` | |
 | **Images in comments** | GitHub's image proxy (`camo.githubusercontent.com`) and GitHub's attachment hosts, from your browser | Showing images and badges in the Conversation view's comments, as github.com does | |
 | **Fonts** | Google Fonts, from your browser | Loading the UI | |
 | **Language servers** | The npm registry | Only after you say yes to installing one (or run `bobby lsp install`) | Say **Not now** or **Never** |
 | **The install script** | GitHub releases | Installing or updating Bobby | |
+| **Setting up Claude Code** | `claude.ai` (Anthropic's installer, then its sign-in) | Only when you press **Install Claude Code** or **Sign in** in Bobby's [setup](getting-started.md#setting-up-claude) | **Not now** or **Don't ask again** |
 | **New versions** | GitHub's releases API (no login, nothing about you or your code) | At start and every 6 hours, at most once in 6 hours across runs | Settings › Tell me about new versions, or `BOBBY_NO_UPDATE_CHECK=1` |
 
 ## What Claude is sent

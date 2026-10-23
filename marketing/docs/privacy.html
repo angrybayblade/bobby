@@ -63,13 +63,14 @@
 <tr><th>What</th><th>Where it goes</th><th>When</th><th>To turn it off</th></tr>
 </thead>
 <tbody>
-<tr><td><strong>The PR, to organise it</strong></td><td>Anthropic, through your <code>claude</code> CLI and its login</td><td>When <code>claude</code> is on your PATH, in the background on each new head commit</td><td><code>--no-llm</code>, or no <code>claude</code> on PATH</td></tr>
-<tr><td><strong>PR metadata, comments, the code</strong></td><td>GitHub, through <code>gh</code> and <code>git</code></td><td>Reading the PR, fetching and cloning, posting your review when you submit; the Conversation view reads the PR's comments, reviews and CI checks while it's open, and posts a comment or reply when you send one</td><td>Review a local branch (<code>bobby</code> with no PR)</td></tr>
+<tr><td><strong>The PR, to organise it</strong></td><td>Anthropic, through your <code>claude</code> CLI and its login</td><td>When <code>claude</code> is installed, in the background on each new head commit</td><td><code>--no-llm</code>, or no <code>claude</code></td></tr>
+<tr><td><strong>PR metadata, comments, the code</strong></td><td>GitHub, through <code>gh</code> and <code>git</code></td><td>Reading the PR, fetching and cloning, posting your review when you submit; the Conversation view reads the PR's comments, reviews and CI checks while it's open, and posts a comment or reply when you send one; resolving or unresolving a thread, and editing or deleting your own comment, reach GitHub at once</td><td>Review a local branch (<code>bobby</code> with no PR)</td></tr>
 <tr><td><strong>Avatars</strong></td><td><code>avatars.githubusercontent.com</code> / <code>github.com</code>, from Bobby's server</td><td>Showing who wrote a comment; cached a week in <code>~/.bobby/cache/avatars</code></td><td></td></tr>
 <tr><td><strong>Images in comments</strong></td><td>GitHub's image proxy (<code>camo.githubusercontent.com</code>) and GitHub's attachment hosts, from your browser</td><td>Showing images and badges in the Conversation view's comments, as github.com does</td><td></td></tr>
 <tr><td><strong>Fonts</strong></td><td>Google Fonts, from your browser</td><td>Loading the UI</td><td></td></tr>
 <tr><td><strong>Language servers</strong></td><td>The npm registry</td><td>Only after you say yes to installing one (or run <code>bobby lsp install</code>)</td><td>Say <strong>Not now</strong> or <strong>Never</strong></td></tr>
 <tr><td><strong>The install script</strong></td><td>GitHub releases</td><td>Installing or updating Bobby</td><td></td></tr>
+<tr><td><strong>Setting up Claude Code</strong></td><td><code>claude.ai</code> (Anthropic's installer, then its sign-in)</td><td>Only when you press <strong>Install Claude Code</strong> or <strong>Sign in</strong> in Bobby's <a href="getting-started.html#setting-up-claude">setup</a></td><td><strong>Not now</strong> or <strong>Don't ask again</strong></td></tr>
 <tr><td><strong>New versions</strong></td><td>GitHub's releases API (no login, nothing about you or your code)</td><td>At start and every 6 hours, at most once in 6 hours across runs</td><td>Settings › Tell me about new versions, or <code>BOBBY_NO_UPDATE_CHECK=1</code></td></tr>
 </tbody>
 </table></div>
