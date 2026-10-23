@@ -3,7 +3,7 @@
 import { BAND_TEXT, DONE, LOW, api, esc, live } from "./core.js";
 import { MOD } from "./palette.js";
 import { keyHtml, keyName } from "./keys.js";
-import { bubble, notesFor, outside, placeNotes, showFull, threadsAt, toggleItem } from "./comments.js";
+import { bubble, notesFor, outside, placeNotes, resolveThread, showFull, threadsAt, toggleItem } from "./comments.js";
 
 const EXT = {
   ts: "typescript", tsx: "typescript", mts: "typescript", cts: "typescript", js: "javascript", jsx: "javascript", mjs: "javascript", cjs: "javascript",
@@ -867,6 +867,8 @@ function bind(app, el, rerender) {
     if (ev.target.closest("a")) return;
     const od = ev.target.closest("[data-outdated]");
     if (od) { app.convTarget = od.dataset.outdated; return app.switchView("conversation"); } // it opens on that thread
+    const rs = ev.target.closest("[data-resolve]");
+    if (rs) return resolveThread(app, rs.dataset.resolve, rs.dataset.to === "1", rs);
     const full = ev.target.closest("[data-cfull]");
     if (full) return showFull(app, full.dataset.cfull, full.closest(".cthread"));
     const fold = ev.target.closest("[data-tid]");

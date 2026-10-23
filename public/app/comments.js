@@ -1,7 +1,7 @@
 // Comments in place, like GitHub: threads (other reviewers' comments, and your drafts) under the line they're on, and
 // private notes floating beside it. Any of them can be collapsed to a slim marker that stays put: one thread, every
 // comment in a file, or every comment in the PR (settings.comments, the default for all of them).
-import { LOW, esc, live } from "./core.js";
+import { LOW, api, esc, live } from "./core.js";
 
 // ---- the icon that says whether comments are showing: filled when they are, an outline when they're collapsed
 export const bubble = (filled) => `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path ${filled ? 'fill="currentColor"' : 'fill="none" stroke="currentColor" stroke-width="1.4"'} d="M2.5 2.5h11a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H8l-3 2.5V11.5H2.5a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1Z"/></svg>`;
@@ -21,7 +21,7 @@ export function commentIndex(app) {
   for (const c of [...disc].sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))) {
     const root = c.replyTo && ids.has(c.replyTo) ? c.replyTo : c.id;
     let t = threads.get(root);
-    if (!t) threads.set(root, (t = { id: root, kind: "gh", path: c.path, side: c.side, line: c.line, startLine: c.startLine, startSide: c.startSide, items: [] }));
+    if (!t) threads.set(root, (t = { id: root, kind: "gh", path: c.path, side: c.side, line: c.line, startLine: c.startLine, startSide: c.startSide, node: c.thread, items: [] }));
     t.items.push({ author: c.author, avatar: c.avatar, body: c.body, html: c.html, url: c.url, createdAt: c.createdAt });
     if (c.resolved) t.resolved = true;
   }
@@ -89,6 +89,23 @@ export function togglePR(app) {
   keepPlace(app);
   app.saveSettings({ comments: app.settings.comments });
 }
+/** Resolves or unresolves a thread on GitHub, at once, as its button there does. A resolved thread then collapses, as
+ *  it starts out; an unresolved one goes back to what its file shows. */
+export async function resolveThread(app, node, resolved, clicked) {
+  const t = [...commentIndex(app).threads.values()].find((x) => x.node === node);
+  clicked.disabled = true;
+  try {
+    const r = await api("/api/thread", { thread: node, resolved });
+    if (!r.ok) throw new Error(r.error);
+    app.graph.discussion = r.comments;
+    app.graph.outdated = r.outdated;
+    if (t) pageState(app).items.delete(t.id);
+    keepPlace(app, clicked);
+  } catch (e) {
+    clicked.disabled = false;
+    app.toast?.(`<span>Couldn't ${resolved ? "resolve" : "unresolve"} it: ${esc(e.message)}</span>`, 8000);
+  }
+}
 /** Shows a long comment in full, and remembers it while the page is open. */
 export function showFull(app, ck, clicked) { pageState(app).full = (pageState(app).full ?? new Set()).add(ck); keepPlace(app, clicked); }
 /** What the comment state of a file is, for knowing when to redraw it. */
@@ -119,7 +136,9 @@ function threadHtml(app, t) {
         ${i.wip ? `<button class="cact" data-wip="${esc(i.cid)}" title="Open it again to finish">Continue</button>` : ""}${i.cid ? `<button class="cact" data-del="${esc(i.cid)}" title="Discard this draft">Delete</button>` : ""}
         ${k === 0 ? `<button class="cfold" data-tid="${esc(t.id)}" data-tpath="${esc(t.path)}" title="Collapse${n > 1 ? " this thread" : ""}">${bubble(true)}</button>` : ""}</div>
       <div class="cbody${i.html ? " gh" : ""}" data-ck="${esc(t.id)}:${k}">${i.html ? ghHtml(i.html) : md(i.body)}</div></div></div>`).join("");
-  return `<div class="cthread${t.kind === "draft" ? " draft" : ""}${t.resolved ? " resolved" : ""}" data-thread="${esc(t.id)}">${items}</div>`;
+  // GitHub's own button, under the thread: done with it (it collapses, for everyone), or not done after all
+  const foot = t.node ? `<div class="cfoot"><button class="cbtn" data-resolve="${esc(t.node)}" data-to="${t.resolved ? "0" : "1"}">${t.resolved ? "Unresolve conversation" : "Resolve conversation"}</button></div>` : "";
+  return `<div class="cthread${t.kind === "draft" ? " draft" : ""}${t.resolved ? " resolved" : ""}" data-thread="${esc(t.id)}">${items}${foot}</div>`;
 }
 
 // ---- notes: floating beside their line, over the code's right edge; collapsed to an icon

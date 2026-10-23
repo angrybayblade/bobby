@@ -370,6 +370,10 @@ kbd {
 .clink { color: var(--faint); text-decoration: none; }
 .clink:hover, .cact:hover, .cfold:hover { color: var(--text); }
 .cact { font: 12px var(--font-ui); color: var(--muted); padding: 0 4px; }
+.cfoot { display: flex; justify-content: flex-end; padding: 6px 12px; border-top: 1px solid var(--line-soft); }
+.cbtn { padding: 3px 10px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised); font: 500 12px var(--font-ui); color: var(--text); }
+.cbtn:hover { border-color: var(--muted); }
+.cbtn:disabled { opacity: .6; cursor: progress; }
 .cfold { display: inline-flex; color: var(--faint); padding: 2px; }
 .cbody { margin-top: 3px; color: var(--text); overflow-wrap: anywhere; max-height: 18em; overflow: hidden; } /* long ones: Show more */
 .cbody.full { max-height: none; }
