@@ -16,8 +16,8 @@
   --head: 56px;
 }
 * { box-sizing: border-box; }
-html { background: var(--bg); overflow-x: clip; } /* iOS Safari pans the page sideways onto anything past the edge, body's overflow or not */
-body { margin: 0; color: var(--text); background: var(--bg); font: 15px/1.5 var(--ui); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+html { background: var(--bg); }
+body { margin: 0; color: var(--text); background: var(--bg); font: 15px/1.5 var(--ui); -webkit-font-smoothing: antialiased; overflow-x: clip; } /* clip, not hidden: never a scroller of its own, or the sticky stage and the snap points would hang off it */
 a { color: inherit; }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 kbd { font: 500 .85em var(--code); padding: 1px 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; background: var(--surface); }
