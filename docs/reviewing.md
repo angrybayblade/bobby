@@ -77,6 +77,7 @@ Every key above is a default. To change one, press `?`, then **Customize keys** 
 | `a` | Looks good: mark reviewed and go to the next unreviewed page |
 | `x` | Flag to come back to (press again to clear) |
 | `F` | Next flagged page |
+| `N` | Next unresolved GitHub thread |
 | `u` | Un-mark |
 | **Viewed** (Diff) | Toggle one section viewed, without moving on. The **☐ Mark viewed** checkbox in a file's header (in Diff, Flow and Outline), or the one beside it in the file tree, marks or clears the whole file, and stays ticked while every page of it is viewed. |
 
@@ -113,6 +114,8 @@ For TypeScript, JavaScript, Python and Go, a language server answers: it places 
 **Comments sit under the line they're on**, as on GitHub: the PR's existing comments, with their author's avatar, name and time, replies stacked under the first, Markdown rendered (code, tables, lists, links) and long ones cut short with **Show more**; and your drafts, the same way. A comment on a range sits under its last line. In the inline layout a thread is as wide as the file; in split, it's on the side it was made on (removed lines left, the rest right), as wide as that side. A comment just outside the lines a hunk shows is announced at its edge, **"2 comments below"**, which opens the code down to it. A thread resolved on GitHub is tagged **resolved** and starts collapsed, as on GitHub; click it to read it. **Reply…**, under an open thread, opens a box to answer in it; **Reply** (or ⌘↵, ctrl+enter) posts it to GitHub at once, as a reply in a thread does there, and esc closes the box, keeping what you wrote while the page is open. **Resolve conversation**, beside it, resolves it on GitHub at once (it collapses), and **Unresolve conversation** undoes it; as on GitHub, only the PR's author and people with write access to the repo can. A thread whose line this diff no longer has (GitHub's *outdated*) can't sit in the code, so each file with any shows a line above its code, **"2 outdated threads on this file"**, which opens the first unresolved one in the [Conversation view](views.md#conversation).
 
 **Collapsing** leaves a comment where it is, as one slim line with its author, how it starts and how many replies. Three levels, each a speech-bubble button that's filled while comments show and an outline while they're collapsed: a thread's own (in its corner, or click its header to collapse it and the slim line to open it), a file's (in the file's header, with its count), and the whole PR's (in the top bar, with its count). A broader one sets everything under it; a thread can still be opened or collapsed on its own afterwards. The PR's is saved as the **Comments** setting (open by default), and the rest last while the page is open.
+
+**Unresolved threads** are counted in the top bar, **3 unresolved**, as GitHub counts them, outdated ones included. Click it, or press `N`, to go to the next one in walk order, opened and in view (an outdated one opens in the Conversation view); it wraps around. To see only what's still open, set **Resolved threads** to **Hidden** in Settings: resolved threads then leave the code and the counts.
 
 Comments on **untouched code** can't be inline on GitHub. They're kept as drafts and go into the review summary under "Notes on code this PR doesn't touch".
 

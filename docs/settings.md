@@ -17,6 +17,7 @@ Open settings with `,` or the gear in the header. Changes apply immediately and 
 | Rabbit-hole nudge | Off · 8m · 12m · 20m | 12m |
 | Drift prompt | On · Off | On |
 | Comments | Open · Collapsed (also the speech bubble in the top bar) | Open |
+| Resolved threads | Collapsed · Hidden: GitHub threads resolved there, as a slim line or not shown at all (the Conversation view always shows them) | Collapsed |
 | Untouched code | Hidden · Shown (also the top bar's **○ Untouched**) | Hidden |
 | File tree | Shown · Hidden (also `t`, or ▤ in the top bar) | Shown |
 | File tree side | Right · Left (also ⇄ in the tree's header) | Right |

@@ -6,6 +6,7 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 - Reply to a GitHub thread where it sits in the code, not only in the Conversation view: **Reply…** under it, posted at once.
 - Click a thread's or a note's header to collapse it.
+- **3 unresolved** in the top bar counts GitHub's open threads; click it, or press `N`, to go through them. A **Resolved threads** setting hides resolved ones, to see only what's still open.
 - **Resolve conversation** and **Unresolve conversation** under each GitHub thread, in the code and in the Conversation view, as on GitHub: resolved, a thread collapses for everyone.
 
 ## 0.1.0-rc9 (2026-10-23)
