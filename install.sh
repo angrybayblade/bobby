@@ -40,9 +40,17 @@ if [ "$os" = "darwin" ] && [ "$arch" = "x64" ] && [ "$(sysctl -n sysctl.proc_tra
 tag="${BOBBY_VERSION:-}"
 if [ -z "$tag" ]; then
   api="https://api.github.com/repos/$REPO/releases"
-  tag_of() { sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -n 1; }
-  tag="$(curl -fsSL "$api/latest" 2>/dev/null | tag_of || true)"
-  [ -n "$tag" ] || tag="$(curl -fsSL "$api?per_page=1" 2>/dev/null | tag_of || true)" # no stable release yet
+  tags() { sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p'; }
+  # The newest by version, not GitHub's order (which puts rc9 before rc10): each tag gets a key with its numbers
+  # zero-padded, and a release sorts after its own pre-releases ("~" after any letter).
+  newest() {
+    awk '{ t = $0; core = t; pre = "~"; i = index(t, "-"); if (i) { core = substr(t, 1, i - 1); pre = substr(t, i + 1) }
+      n = split(core, c, "."); k = ""; for (j = 1; j <= 3; j++) k = k sprintf("%09d.", (j <= n ? c[j] : 0) + 0)
+      p = ""; while (match(pre, /[0-9]+/)) { p = p substr(pre, 1, RSTART - 1) sprintf("%09d", substr(pre, RSTART, RLENGTH) + 0); pre = substr(pre, RSTART + RLENGTH) }
+      print k p pre "\t" t }' | LC_ALL=C sort | tail -n 1 | cut -f 2
+  }
+  tag="$(curl -fsSL "$api/latest" 2>/dev/null | tags | head -n 1 || true)"
+  [ -n "$tag" ] || tag="$(curl -fsSL "$api?per_page=100" 2>/dev/null | tags | newest || true)" # no stable release yet
   [ -n "$tag" ] || die "Couldn't find a release of $REPO. Set BOBBY_VERSION to pick one."
 fi
 

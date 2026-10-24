@@ -4,6 +4,8 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- The install script installs the newest pre-release: it picked rc9 over rc10, in GitHub's order, instead of by version.
+
 ## 0.1.0-rc10 (2026-10-23)
 
 GitHub's thread workflow in Bobby, Claude Code set up from the page, and Bobby on a cloud VM.
