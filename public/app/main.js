@@ -3,6 +3,7 @@ import { escapeCode, inspectorKey, inspectorOpen, expandAll, keepDraft, moveLine
 import * as chrome from "./chrome.js";
 import { nextUnresolved } from "./comments.js";
 import { offerClaude } from "./claude-setup.js";
+import { offerGh } from "./gh-setup.js";
 import * as palette from "./palette.js";
 import * as tour from "./tour.js";
 import { ACTIONS, actionFor, keyHtml, keyOfEvent, keysOf, keyText } from "./keys.js";
@@ -368,6 +369,7 @@ function commands() {
       .map((a) => ({ id: `key:${a.id}`, title: a.title, keys: keysOf(app.settings, a.id).slice(0, 1).flatMap((k) => keyText(k).split(" ")), run: () => runAction(a.id, { learn: false }) })),
     { id: "keys", title: "Customize keyboard shortcuts", sub: "bind any action to the keys you like", run: () => chrome.keysEditor() },
     { id: "tour", title: "Take the tour", sub: "how the walk, the views and the keys fit together", run: () => tour.start() },
+    { id: "gh", title: "Set up GitHub CLI", sub: "install gh and sign in to GitHub, for PRs and posting reviews", run: () => offerGh({ force: true }) },
     { id: "claude", title: "Set up Claude Code", sub: "install it and sign in, for Claude's tree of the change", run: () => offerClaude({ force: true }) },
     ...views.filter((v) => v.id !== currentId).map((v) => ({ id: `view:${v.id}`, title: `${v.name} view`, sub: v.hint, run: () => app.switchView(v.id) })),
     { id: "set:tests", title: `${s.tests === "show" ? "Hide" : "Show"} tests`, run: () => flip("tests", "show", "hide") },
@@ -403,10 +405,10 @@ document.addEventListener("keydown", (ev) => {
 
 window.bobby = app; // handy for debugging and tests
 
-// The first time Bobby runs without Claude Code (installed and signed in): offer to set it up, once whatever else opens
-// on arrival (the tour, welcome back) is closed.
+// The first time Bobby runs without GitHub's CLI or Claude Code (installed and signed in): offer to set them up, GitHub's
+// first, once whatever else opens on arrival (the tour, welcome back) is closed.
 {
   let tries = 0;
-  const offer = () => (chrome.isOpen() && tries++ < 150 ? setTimeout(offer, 2000) : offerClaude());
+  const offer = () => (chrome.isOpen() && tries++ < 150 ? setTimeout(offer, 2000) : offerGh().then(() => offerClaude()));
   setTimeout(offer, 1500);
 }

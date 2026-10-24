@@ -8,13 +8,15 @@ const call = async (path, body) => {
   return r.json().catch(() => ({ ok: false, error: `${r.status} ${r.statusText}` }));
 };
 
-let el = null, timer = null, st = null, busy = "", returnTo = null;
+let el = null, timer = null, st = null, busy = "", returnTo = null, settle = null;
 
-/** Offers the setup if Claude isn't ready and you haven't said not now or never; with force, opens it whatever. */
+/** Offers the setup if Claude isn't ready and you haven't said not now or never; with force, opens it whatever.
+ *  Resolves when the dialog closes (or isn't shown). */
 export async function offerClaude({ force = false } = {}) {
   const s = await call("").catch(() => null);
   if (!s || (!force && !s.ask) || el) return;
   show(s);
+  return new Promise((r) => { settle = r; });
 }
 
 function show(s) {
@@ -38,6 +40,7 @@ function close() {
   clearTimeout(timer);
   el?.remove(); el = null; busy = "";
   if (returnTo?.isConnected) returnTo.focus({ preventScroll: true });
+  settle?.(); settle = null;
 }
 
 function body() {

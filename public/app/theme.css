@@ -601,6 +601,11 @@ mark.wd { background: var(--del-word); color: inherit; border-radius: 0; }
 .csetup .cs-code { display: flex; gap: 8px; margin-top: 8px; }
 .csetup .cs-code input { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 3px; background: var(--bg); color: var(--text); font: 13px var(--font-code); }
 .csetup .cs-code input:focus { outline: none; border-color: var(--signal); }
+.csetup .cs-devcode { margin-top: 8px; }
+.csetup .cs-devcode input { width: 11ch; padding: 8px 10px; border: 1px solid var(--line); border-radius: 3px; background: var(--bg); color: var(--text); font: 600 20px var(--font-code); letter-spacing: .08em; text-align: center; box-sizing: content-box; }
+.csetup .cs-devcode input:focus { outline: none; border-color: var(--signal); }
+.csetup .cs-wait { margin: 14px 0 0; color: var(--faint); font-size: 13px; }
+.csetup p code { font: 12.5px var(--font-code); }
 .btn.quiet { border-color: transparent; background: none; color: var(--muted); }
 .btn:disabled { opacity: .6; cursor: progress; }
 .modal { width: min(560px, calc(100vw - 32px)); max-height: 86vh; overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 24px 26px; box-shadow: var(--shadow); }

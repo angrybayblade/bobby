@@ -9,7 +9,7 @@ const ago = (iso) => {
 const json = async (url, body) => {
   const r = await fetch(url, body ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : {});
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error ?? `${r.status} ${r.statusText}`);
+  if (!r.ok) throw Object.assign(new Error(j.error ?? `${r.status} ${r.statusText}`), { data: j });
   return j;
 };
 
@@ -36,7 +36,11 @@ async function open(body, el) {
   $(".err").textContent = "";
   el?.classList.add("busy");
   try { location.href = `/r/${(await json("/api/open", body)).id}`; }
-  catch (e) { $(".err").textContent = e.message; el?.classList.remove("busy"); }
+  catch (e) {
+    el?.classList.remove("busy");
+    if (e.data?.setup === "gh" && body.arg) return setupGh({ force: true, then: body.arg }); // set gh up, then open it
+    $(".err").textContent = e.message;
+  }
 }
 // Enter in the box: a pasted PR opens; a search opens the first match.
 $("form.tools").addEventListener("submit", (ev) => {
@@ -244,11 +248,22 @@ render();
 asked = JSON.stringify(filters());
 loadLists();
 
-// Claude Code: offered the first time it isn't set up; the header keeps a way back to it while it isn't
-import("/app/claude-setup.js").then(async ({ offerClaude }) => {
-  const st = await fetch("/api/claude").then((r) => r.json()).catch(() => null);
-  const pill = $("button.claude");
-  if (st && !(st.installed && st.loggedIn)) { pill.hidden = false; pill.textContent = st.installed ? "Sign in to Claude" : "Set up Claude"; }
+// GitHub's CLI, then Claude Code: each offered the first time it isn't set up, GitHub's first (Bobby needs it for PRs);
+// the header keeps a way back to each while it isn't. A PR asked for before gh was set up (?open=) opens once it is.
+const setup = Promise.all([import("/app/gh-setup.js"), import("/app/claude-setup.js")]);
+async function setupGh(o) {
+  const { offerGh } = (await setup)[0];
+  await offerGh({ ...o, onReady: () => { $("button.gh").hidden = true; loadLists(true); json("/api/home").then((h) => { recents = h.recents; render(); }, () => {}); } });
+}
+setup.then(async ([{ offerGh }, { offerClaude }]) => {
+  const [gh, claude] = await Promise.all(["/api/gh", "/api/claude"].map((u) => fetch(u).then((r) => r.json()).catch(() => null)));
+  const ghPill = $("button.gh"), pill = $("button.claude");
+  if (gh && !(gh.installed && gh.loggedIn)) { ghPill.hidden = false; ghPill.textContent = gh.installed ? "Sign in to GitHub" : "Set up GitHub"; }
+  if (claude && !(claude.installed && claude.loggedIn)) { pill.hidden = false; pill.textContent = claude.installed ? "Sign in to Claude" : "Set up Claude"; }
+  ghPill.addEventListener("click", () => setupGh({ force: true }));
   pill.addEventListener("click", () => offerClaude({ force: true }));
+  const asked = new URLSearchParams(location.search).get("open"); // just now, from the terminal: ask whatever
+  if (asked) history.replaceState(null, "", "/");
+  await setupGh({ force: !!asked, then: asked ?? home.waiting });
   offerClaude();
 });
