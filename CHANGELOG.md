@@ -4,6 +4,10 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+## 0.1.0-rc12 (2026-10-23)
+
+Fixes to rc11's home page and setup dialogs.
+
 - The home page scrolls as one page again, with its header and search held at the top while the lists scroll under them (rc11 had boxed the page into a window-high scroller).
 - The setup dialogs' buttons and boxes are one height, and GitHub's code sits with its button; Claude's sign-in reads as one paragraph, then the link and the box for its code.
 
