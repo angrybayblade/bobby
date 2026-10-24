@@ -3,6 +3,7 @@ import { parseArgs } from "node:util";
 import { readFileSync, statSync, writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import { git, reviewComments, run } from "./git.ts";
+import { ghStatus } from "./github.ts";
 import { GRAPH_SCHEMA, LEGACY_SCHEMAS, type ReviewGraph, setDiscussion } from "./graph.ts";
 import { clean, prune } from "./prune.ts";
 import { watchReleases } from "./updates.ts";
@@ -155,7 +156,13 @@ if (running) {
   if (cmd === "open") fail(`Bobby is already running at ${running}: stop it to open a graph file`);
   const local = arg ? undefined : values.repo ?? process.cwd();
   const r = await fetch(`${running}/api/open`, { method: "POST", headers: { "content-type": "application/json", origin: running }, body: JSON.stringify({ arg, repo: arg ? values.repo && resolvePath(values.repo) : resolvePath(local!), cwd: process.cwd(), base: values.base, refresh: values.refresh, noLlm: values["no-llm"], noLsp: values["no-lsp"] }) });
-  const out = (await r.json()) as { id?: string; error?: string };
+  const out = (await r.json()) as { id?: string; error?: string; setup?: string };
+  if (!out.id && arg && out.setup === "gh") { // its page sets gh up, then opens the PR
+    const url = `${running}/?open=${encodeURIComponent(arg)}`;
+    console.log(`  ${out.error}\n  GitHub's CLI isn't set up: the page sets it up, then opens the PR\n\n  ▶ ${url}\n`);
+    if (!values["no-open"]) await run(openCommand(url), { allowFail: true }).catch(() => {});
+    process.exit(0);
+  }
   if (!out.id && arg) fail(out.error ?? `Bobby at ${running} couldn't open it`);
   // a bare `bobby` in a repo with nothing to review: the home page instead
   const url = out.id ? `${running}/r/${out.id}` : `${running}/`;
@@ -207,7 +214,14 @@ if (cmd === "open") {
   path = `/r/${id}`;
 } else if (!toHome) {
   // a bare `bobby` in a repo with nothing to review (on main, say) still starts: on the home page
-  const id = await app.open(arg, { repo: values.repo, base: values.base }).catch((e) => {
+  const id = await app.open(arg, { repo: values.repo, base: values.base }).catch(async (e) => {
+    const gh = await ghStatus();
+    if (arg && !(gh.installed && gh.loggedIn)) { // the page sets gh up, then opens the PR
+      console.log(`  ${e.message}\n  GitHub's CLI isn't set up: the page sets it up, then opens the PR`);
+      app.waiting = { arg, o: { repo: values.repo, base: values.base } };
+      path = `/?open=${encodeURIComponent(arg)}`;
+      return null;
+    }
     if (arg) throw e;
     console.log(`  ${e.message}\n  opening the home page instead`);
     return null;
