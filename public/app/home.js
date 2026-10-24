@@ -253,11 +253,11 @@ loadLists();
 const setup = Promise.all([import("/app/gh-setup.js"), import("/app/claude-setup.js")]);
 async function setupGh(o) {
   const { offerGh } = (await setup)[0];
-  await offerGh({ ...o, onReady: () => { $("button.gh").hidden = true; loadLists(true); json("/api/home").then((h) => { recents = h.recents; render(); }, () => {}); } });
+  await offerGh({ ...o, onReady: () => { $("button.ghsetup").hidden = true; loadLists(true); json("/api/home").then((h) => { recents = h.recents; render(); }, () => {}); } });
 }
 setup.then(async ([{ offerGh }, { offerClaude }]) => {
   const [gh, claude] = await Promise.all(["/api/gh", "/api/claude"].map((u) => fetch(u).then((r) => r.json()).catch(() => null)));
-  const ghPill = $("button.gh"), pill = $("button.claude");
+  const ghPill = $("button.ghsetup"), pill = $("button.claude");
   if (gh && !(gh.installed && gh.loggedIn)) { ghPill.hidden = false; ghPill.textContent = gh.installed ? "Sign in to GitHub" : "Set up GitHub"; }
   if (claude && !(claude.installed && claude.loggedIn)) { pill.hidden = false; pill.textContent = claude.installed ? "Sign in to Claude" : "Set up Claude"; }
   ghPill.addEventListener("click", () => setupGh({ force: true }));

@@ -54,11 +54,9 @@ function body() {
     <code class="cs-cmd">${esc(st.install)}</code>${err}
     <div class="row"><button class="btn primary" data-cs="install">Install Claude Code</button>${later}</div>`;
   if (!st.loggedIn && st.url && st.step !== "idle") return `<h2 id="cs-h">Sign in to Claude</h2>
-    <ol class="cs-steps">
-      <li><a class="btn primary" href="${esc(st.url)}" target="_blank" rel="noopener" data-cs="opened">Open the sign-in page ↗</a></li>
-      <li>Sign in with your Claude account, and authorize Claude Code. The page then shows a code: copy it.</li>
-      <li>Paste it here:<div class="cs-code"><input name="code" placeholder="Paste the code" autocomplete="off" spellcheck="false"${st.step === "verifying" ? " disabled" : ""}><button class="btn primary" data-cs="code"${st.step === "verifying" ? " disabled" : ""}>${st.step === "verifying" ? "Signing in…" : "Sign in"}</button></div></li>
-    </ol>${err}
+    <p>Open the sign-in page, sign in with your Claude account, and authorize Claude Code. It then shows a code: paste it here.</p>
+    <a class="btn" href="${esc(st.url)}" target="_blank" rel="noopener" data-cs="opened">Open the sign-in page ↗</a>
+    <div class="cs-code"><input name="code" placeholder="Paste the code" aria-label="The code from the sign-in page" autocomplete="off" spellcheck="false"${st.step === "verifying" ? " disabled" : ""}><button class="btn primary" data-cs="code"${st.step === "verifying" ? " disabled" : ""}>${st.step === "verifying" ? "Signing in…" : "Sign in"}</button></div>${err}
     <div class="row"><button class="btn" data-cs="cancel">Cancel</button></div>`;
   if (!st.loggedIn) return `<h2 id="cs-h">Sign in to Claude</h2>
     <p>Claude Code ${esc(st.version ?? "")} is installed, but not signed in. Bobby gets a sign-in link from it: you open it, sign in with your Claude account, and paste back the code it shows.</p>${err}

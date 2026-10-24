@@ -4,6 +4,8 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- The setup dialogs' buttons and boxes are one height, and GitHub's code sits with its button; Claude's sign-in reads as one paragraph, then the link and the box for its code.
+
 ## 0.1.0-rc11 (2026-10-23)
 
 GitHub's CLI set up from the page, as Claude Code is: Bobby on a fresh machine needs only itself and git.

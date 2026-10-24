@@ -67,13 +67,9 @@ function body() {
     <p>Bobby downloads it from <a href="https://github.com/cli/cli/releases/latest" target="_blank" rel="noopener">GitHub's releases</a>, checks it against their checksums, and puts it in <code>~/.local/bin</code>. No sudo, nothing else changed.</p>${err}
     <div class="row"><button class="btn primary" data-gs="install">Install GitHub CLI</button>${later}</div>`;
   if (!st.loggedIn && st.code) return `<h2 id="gs-h">Sign in to GitHub</h2>
-    <ol class="cs-steps">
-      <li>Your one-time code:<div class="cs-devcode"><input value="${esc(st.code)}" readonly aria-label="One-time code" spellcheck="false"></div></li>
-      <li><a class="btn primary" href="${esc(st.url)}" target="_blank" rel="noopener" data-gs="opened">${copied ? "Copied · open" : "Copy it and open"} GitHub ↗</a></li>
-      <li>Enter the code there, and authorize GitHub CLI. Bobby notices when you're done.</li>
-    </ol>${err}
-    <p class="cs-wait">Waiting for GitHub…</p>
-    <div class="row"><button class="btn" data-gs="cancel">Cancel</button></div>`;
+    <p>Enter this one-time code on GitHub, and authorize GitHub CLI. Bobby notices when you're done.</p>
+    <div class="cs-devcode"><input value="${esc(st.code)}" readonly aria-label="One-time code" spellcheck="false"><a class="btn primary" href="${esc(st.url)}" target="_blank" rel="noopener" data-gs="opened">${copied ? "Copied · open GitHub" : "Copy and open GitHub"} ↗</a></div>${err}
+    <div class="row"><button class="btn" data-gs="cancel">Cancel</button><span class="cs-wait">Waiting for GitHub…</span></div>`;
   if (!st.loggedIn) return `<h2 id="gs-h">Sign in to GitHub</h2>
     <p>${then ? `${why} ` : ""}GitHub CLI ${esc(st.version ?? "")} is installed, but not signed in. Bobby gets a one-time code from it: you enter it on github.com, and authorize it.</p>${err}
     <div class="row"><button class="btn primary" data-gs="login"${busy === "login" ? " disabled" : ""}>${busy === "login" ? "Getting a code…" : "Get a sign-in code"}</button>${later}</div>`;

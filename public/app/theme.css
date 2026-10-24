@@ -596,15 +596,21 @@ mark.wd { background: var(--del-word); color: inherit; border-radius: 0; }
 .csetup .cs-cmd { display: block; padding: 8px 12px; border: 1px solid var(--line); border-radius: 3px; background: var(--bg); font: 12.5px var(--font-code); overflow-x: auto; white-space: nowrap; }
 .csetup .cs-log { max-height: 9em; overflow: auto; margin: 0; padding: 8px 12px; border-radius: 3px; background: var(--bg); color: var(--muted); font: 12px/1.5 var(--font-code); white-space: pre-wrap; }
 .csetup .cs-err { color: var(--risk); margin: 12px 0 0; }
-.csetup .cs-steps { margin: 14px 0 0; padding-left: 20px; display: grid; gap: 12px; color: var(--muted); font-family: var(--font-prose); }
-.csetup .cs-steps a.btn { display: inline-block; text-decoration: none; }
-.csetup .cs-code { display: flex; gap: 8px; margin-top: 8px; }
+.csetup .cs-code { display: flex; gap: 8px; margin-top: 10px; }
 .csetup .cs-code input { flex: 1; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 3px; background: var(--bg); color: var(--text); font: 13px var(--font-code); }
 .csetup .cs-code input:focus { outline: none; border-color: var(--signal); }
-.csetup .cs-devcode { margin-top: 8px; }
-.csetup .cs-devcode input { width: 11ch; padding: 8px 10px; border: 1px solid var(--line); border-radius: 3px; background: var(--bg); color: var(--text); font: 600 20px var(--font-code); letter-spacing: .08em; text-align: center; box-sizing: content-box; }
+/* one height for every button and field in the setup dialogs: the body's line-height makes them tall and uneven */
+.csetup .btn { height: 34px; padding: 0 14px; line-height: 32px; box-sizing: border-box; white-space: nowrap; }
+.csetup a.btn { display: inline-block; text-decoration: none; }
+.csetup .cs-code input { height: 34px; box-sizing: border-box; padding: 0 10px; }
+.csetup .cs-devcode { display: flex; width: max-content; max-width: 100%; }
+.csetup .cs-devcode input { width: 15ch; height: 34px; box-sizing: border-box; padding: 0 12px; border: 1px solid var(--line); border-right: 0; border-radius: 3px 0 0 3px; background: var(--bg); color: var(--text); font: 600 15px var(--font-code); letter-spacing: .1em; text-align: center; }
 .csetup .cs-devcode input:focus { outline: none; border-color: var(--signal); }
-.csetup .cs-wait { margin: 14px 0 0; color: var(--faint); font-size: 13px; }
+.csetup .cs-devcode .btn { border-radius: 0 3px 3px 0; }
+.csetup .cs-wait { color: var(--faint); font-size: 13px; }
+.csetup .cs-wait::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 8px; border-radius: 50%; background: var(--signal); vertical-align: 1px; animation: cs-pulse 1.4s ease-in-out infinite; }
+@keyframes cs-pulse { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .csetup .cs-wait::before { animation: none; } }
 .csetup p code { font: 12.5px var(--font-code); }
 .btn.quiet { border-color: transparent; background: none; color: var(--muted); }
 .btn:disabled { opacity: .6; cursor: progress; }
