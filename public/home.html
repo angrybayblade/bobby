@@ -15,7 +15,10 @@
   <link rel="stylesheet" href="/app/theme.css" />
   <style>
     /* The home page: one column, the box to paste a PR into, then the lists. Shares theme.css's tokens with reviews. */
-    body.home .wrap { display: block; overflow: auto; height: auto; min-height: 100%; }
+    body.home { display: block; overflow: auto; height: auto; min-height: 100%; }
+    /* the header and the search stay put; the lists scroll under them */
+    .home .wrap .top { position: sticky; top: 0; z-index: 20; margin: -22px 0 0; padding: 22px 0 12px; background: var(--bg); border-bottom: 1px solid var(--line-soft, var(--line)); }
+    .home .wrap .row { scroll-margin: 140px 0 16px; } /* moved to with ↑ ↓: clear of the bar */
     .home .wrap { max-width: 980px; margin: 0 auto; padding: 22px 24px 80px; }
     .home .wrap header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
     .home .wrap header .ver { color: var(--faint); font-size: 12px; }
@@ -71,6 +74,7 @@
 </head>
 <body class="home">
   <div class="wrap">
+    <div class="top">
     <header>
       <span class="brand"><img src="/bobby.svg" alt="" width="22" height="22">bobby</span>
       <span class="ver"></span>
@@ -89,6 +93,7 @@
       <select name="author" aria-label="Author"><option value="">Anyone</option></select>
       <button type="button" class="reload" title="Ask GitHub again" aria-label="Refresh the lists"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M1.7 7.25a6.3 6.3 0 0 1 11.12-3.6V2.25a.75.75 0 0 1 1.5 0V5.5a.75.75 0 0 1-.75.75H10.3a.75.75 0 0 1 0-1.5h1.42A4.8 4.8 0 0 0 3.2 7.33a.75.75 0 1 1-1.5-.08Zm12.58 1.5a.75.75 0 0 1 .7.8 6.3 6.3 0 0 1-11.12 2.8v1.4a.75.75 0 0 1-1.5 0V10.5a.75.75 0 0 1 .75-.75H5.7a.75.75 0 0 1 0 1.5H4.28a4.8 4.8 0 0 0 8.52-2.58.75.75 0 0 1 .8-.7Z"/></svg></button>
     </form>
+    </div>
     <div class="err" role="alert"></div>
     <div class="lists"></div>
     <div class="keys"><kbd>/</kbd> search or paste a link · <kbd>↑</kbd> <kbd>↓</kbd> move · <kbd>enter</kbd> open · <kbd>o</kbd> on GitHub · <kbd>⇧F10</kbd> or right-click: more</div>
