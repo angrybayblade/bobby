@@ -2,7 +2,7 @@
 
 ## User manual
 
-- [Getting started](getting-started.md): requirements, install, setting up Claude, commands, flags, running on a remote machine, and what's written to disk
+- [Getting started](getting-started.md): requirements, install, setting up GitHub and Claude, commands, flags, running on a remote machine, and what's written to disk
 - [Reviewing a PR](reviewing.md): the walk, zoom levels, keys, marks, comments and threads (reply, resolve, edit), submitting, focus aids
 - [Views](views.md): Conversation, Flow, Outline, Lens and Diff, and how to drive each one
 - [Settings](settings.md): every setting and the design choices behind the UI

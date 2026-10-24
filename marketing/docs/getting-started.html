@@ -64,7 +64,7 @@
 </thead>
 <tbody>
 <tr><td><code>git</code></td><td>Fetches the PR and computes the diff locally.</td></tr>
-<tr><td><a href="https://cli.github.com"><code>gh</code></a>, logged in</td><td>Reads PR metadata and review comments, clones repos, posts your review.</td></tr>
+<tr><td><a href="https://cli.github.com"><code>gh</code></a>, signed in</td><td>Reads PR metadata and review comments, clones repos, posts your review. Bobby offers to install it and sign you in the first time it runs without it: see <a href="#setting-up-github">Setting up GitHub</a>. Without it, Bobby reviews local branches only.</td></tr>
 <tr><td><code>claude</code> (Claude Code CLI), optional</td><td>Builds the smarter change tree. It uses your Claude Code login, so no API key is needed. Without it, or with <code>--no-llm</code>, you get the static tree. Bobby offers to install it and sign you in the first time it runs: see <a href="#setting-up-claude">Setting up Claude</a>.</td></tr>
 <tr><td><code>node</code> 18+, optional</td><td>Runs the TypeScript and Python language servers behind the inspector. Bobby installs them itself, after asking; without Node it runs them on Bun, where a large project takes minutes rather than seconds to load.</td></tr>
 <tr><td><code>gopls</code>, optional</td><td>The Go language server: <code>go install golang.org/x/tools/gopls@latest</code>. Bobby finds it on PATH or in <code>$(go env GOPATH)/bin</code>.</td></tr>
@@ -90,12 +90,19 @@ bun add -g github:angrybayblade/bobby  # or, once published: bun add -g focus-bo
 # 4. From a clone, for development
 bun install &amp;&amp; bun link                # `bobby` now runs this checkout
 </code></pre>
-<p>Either way you still need <code>git</code> and <code>gh</code> on your PATH, and <code>claude</code> for the smarter tree. <code>bobby -v</code> prints the version. The examples below use <code>bobby</code>; <code>bun run src/cli.ts</code> works the same from a clone.</p>
-<p>The install script picks the build for your OS and CPU, checks it against the release's <code>SHA256SUMS</code>, and tells you if the install folder isn't on your <code>PATH</code> or if <code>git</code> or <code>gh</code> is missing. With no <code>BOBBY_VERSION</code>, it takes the latest release, or the newest pre-release while there's no stable one.</p>
+<p>Either way you still need <code>git</code> on your PATH, <code>gh</code> for PRs and <code>claude</code> for the smarter tree; Bobby can set up the last two from its page. <code>bobby -v</code> prints the version. The examples below use <code>bobby</code>; <code>bun run src/cli.ts</code> works the same from a clone.</p>
+<p>The install script picks the build for your OS and CPU, checks it against the release's <code>SHA256SUMS</code>, and tells you if the install folder isn't on your <code>PATH</code>, if <code>git</code> is missing, or if <code>gh</code> is (Bobby sets that one up when it first runs). With no <code>BOBBY_VERSION</code>, it takes the latest release, or the newest pre-release while there's no stable one.</p>
 <p>Binaries are built for macOS, Linux and Windows. Windows gets the least use, so expect rough edges there. Bobby isn't on npm yet: install it from a release or from GitHub.</p>
 <p><strong>Staying up to date.</strong> Bobby checks GitHub for a newer release when it starts and every 6 hours while it runs. When there is one, it says so in the terminal and in the top bar, with the command to update: the install script for a release binary, <code>git pull</code> for a clone. On a release candidate it also tells you about newer release candidates. Turn it off in Settings, or with <code>BOBBY_NO_UPDATE_CHECK=1</code>.</p>
 <p>Release binaries aren't code-signed. On macOS, if Gatekeeper blocks a downloaded one, run <code>xattr -d com.apple.quarantine &quot;$(which bobby)&quot;</code>. Each release has a <code>SHA256SUMS</code> file to check downloads against.</p>
 <p>The binary is 62–86 MB, depending on the platform (27–41 MB to download), because it carries the Bun runtime and the tree-sitter grammars. The UI's files are embedded in it, so it runs with nothing beside it.</p>
+<h2 id="setting-up-github"><a class="anchor" href="#setting-up-github" aria-hidden="true">#</a>Setting up GitHub</h2>
+<p>Bobby reads PRs and posts your reviews through GitHub's CLI, <code>gh</code>, signed in as you. The first time Bobby runs without it (not installed, or not signed in), its page offers to set it up, before Claude; <strong>Not now</strong> asks again next time, <strong>Don't ask again</strong> doesn't. <code>bobby &lt;pr-url&gt;</code> without it opens the page to set it up, then opens the PR. You can always start it from <strong>Settings › GitHub CLI…</strong>, the command palette (<strong>Set up GitHub CLI</strong>), or <strong>Set up GitHub</strong> on the home page.</p>
+<ol>
+<li><strong>Install.</strong> Bobby downloads <code>gh</code>'s latest release for your OS and CPU from <a href="https://github.com/cli/cli/releases/latest">GitHub</a>, checks it against the release's checksums, and puts it in <code>~/.local/bin</code>: no sudo or package manager. Bobby finds it there even if your shell's PATH doesn't have it.</li>
+<li><strong>Sign in.</strong> Bobby runs <code>gh auth login --web</code> and shows its one-time code. <strong>Copy it and open GitHub</strong> opens github.com/login/device in a new tab; enter the code, and authorize GitHub CLI. Bobby notices on its own, and opens the PR you asked for. This works the same when Bobby runs on a <a href="#on-a-remote-machine">remote machine</a>.</li>
+</ol>
+<p><code>gh</code> keeps its sign-in itself (<code>gh auth status</code> shows it), for your own use too. Bobby's <code>git fetch</code> asks it for github.com's credentials, so a private repo fetches on a machine whose git was never given any; your git config isn't changed. Signed in already, or with <code>GH_TOKEN</code>, there's nothing to set up. (Signing in with Bobby's own GitHub app, without <code>gh</code>, may come later.)</p>
 <h2 id="setting-up-claude"><a class="anchor" href="#setting-up-claude" aria-hidden="true">#</a>Setting up Claude</h2>
 <p>Installing Bobby doesn't need Claude Code. The first time Bobby runs without it (not installed, or not signed in), its page offers to set it up; <strong>Not now</strong> asks again next time, <strong>Don't ask again</strong> doesn't. You can always start it from <strong>Settings › Claude Code…</strong>, the command palette (<strong>Set up Claude Code</strong>), or <strong>Set up Claude</strong> on the home page.</p>
 <ol>
@@ -168,7 +175,7 @@ bobby lsp install &lt;language&gt;          # install one (typescript, python), 
 </table></div>
 <p>Environment: <code>BOBBY_MODEL</code> picks the Claude model passed to <code>claude --model</code> (the old <code>PRFOCUS_MODEL</code> still works). <code>BOBBY_NO_UPDATE_CHECK=1</code> turns off the check for new versions. <code>BOBBY_HOST</code> and <code>BOBBY_ALLOW_HOSTS</code> (comma-separated) set <code>--host</code> and <code>--allow-host</code>.</p>
 <h2 id="on-a-remote-machine"><a class="anchor" href="#on-a-remote-machine" aria-hidden="true">#</a>On a remote machine</h2>
-<p>Bobby can run on a cloud VM or a dev box and be opened from your laptop's browser. There's no sign-in: <strong>anyone who can reach its port can read the code under review and post on GitHub as you.</strong> So pick one of these, safest first.</p>
+<p>Bobby can run on a cloud VM or a dev box and be opened from your laptop's browser. It sets up <code>gh</code> and Claude there from its page: both sign in through a tab on your laptop, so nothing needs to reach the VM. There's no sign-in: <strong>anyone who can reach its port can read the code under review and post on GitHub as you.</strong> So pick one of these, safest first.</p>
 <p><strong>An SSH tunnel</strong> (nothing to open up). Bobby stays on the VM's loopback, and the tunnel brings it to yours; any local port works:</p>
 <pre><code class="language-sh">ssh -L 4173:localhost:4173 you@vm     # then, on the VM:
 bobby &lt;pr-url&gt; --no-open              # and open http://localhost:4173 on your laptop
@@ -212,6 +219,7 @@ bobby &lt;pr-url&gt; --no-open --host 0.0.0.0 --allow-host bobby.dev.internal   
       <h4>On this page</h4>
       <a href="#requirements">Requirements</a>
       <a href="#install">Install</a>
+      <a href="#setting-up-github">Setting up GitHub</a>
       <a href="#setting-up-claude">Setting up Claude</a>
       <a href="#review-a-pr">Review a PR</a>
       <a href="#review-your-own-branch-no-pr-needed">Review your own branch, no PR needed</a>

@@ -5,7 +5,7 @@
 | Tool | Why |
 |---|---|
 | `git` | Fetches the PR and computes the diff locally. |
-| [`gh`](https://cli.github.com), logged in | Reads PR metadata and review comments, clones repos, posts your review. |
+| [`gh`](https://cli.github.com), signed in | Reads PR metadata and review comments, clones repos, posts your review. Bobby offers to install it and sign you in the first time it runs without it: see [Setting up GitHub](#setting-up-github). Without it, Bobby reviews local branches only. |
 | `claude` (Claude Code CLI), optional | Builds the smarter change tree. It uses your Claude Code login, so no API key is needed. Without it, or with `--no-llm`, you get the static tree. Bobby offers to install it and sign you in the first time it runs: see [Setting up Claude](#setting-up-claude). |
 | `node` 18+, optional | Runs the TypeScript and Python language servers behind the inspector. Bobby installs them itself, after asking; without Node it runs them on Bun, where a large project takes minutes rather than seconds to load. |
 | `gopls`, optional | The Go language server: `go install golang.org/x/tools/gopls@latest`. Bobby finds it on PATH or in `$(go env GOPATH)/bin`. |
@@ -34,9 +34,9 @@ bun add -g github:angrybayblade/bobby  # or, once published: bun add -g focus-bo
 bun install && bun link                # `bobby` now runs this checkout
 ```
 
-Either way you still need `git` and `gh` on your PATH, and `claude` for the smarter tree. `bobby -v` prints the version. The examples below use `bobby`; `bun run src/cli.ts` works the same from a clone.
+Either way you still need `git` on your PATH, `gh` for PRs and `claude` for the smarter tree; Bobby can set up the last two from its page. `bobby -v` prints the version. The examples below use `bobby`; `bun run src/cli.ts` works the same from a clone.
 
-The install script picks the build for your OS and CPU, checks it against the release's `SHA256SUMS`, and tells you if the install folder isn't on your `PATH` or if `git` or `gh` is missing. With no `BOBBY_VERSION`, it takes the latest release, or the newest pre-release while there's no stable one.
+The install script picks the build for your OS and CPU, checks it against the release's `SHA256SUMS`, and tells you if the install folder isn't on your `PATH`, if `git` is missing, or if `gh` is (Bobby sets that one up when it first runs). With no `BOBBY_VERSION`, it takes the latest release, or the newest pre-release while there's no stable one.
 
 Binaries are built for macOS, Linux and Windows. Windows gets the least use, so expect rough edges there. Bobby isn't on npm yet: install it from a release or from GitHub.
 
@@ -45,6 +45,15 @@ Binaries are built for macOS, Linux and Windows. Windows gets the least use, so 
 Release binaries aren't code-signed. On macOS, if Gatekeeper blocks a downloaded one, run `xattr -d com.apple.quarantine "$(which bobby)"`. Each release has a `SHA256SUMS` file to check downloads against.
 
 The binary is 62–86 MB, depending on the platform (27–41 MB to download), because it carries the Bun runtime and the tree-sitter grammars. The UI's files are embedded in it, so it runs with nothing beside it.
+
+## Setting up GitHub
+
+Bobby reads PRs and posts your reviews through GitHub's CLI, `gh`, signed in as you. The first time Bobby runs without it (not installed, or not signed in), its page offers to set it up, before Claude; **Not now** asks again next time, **Don't ask again** doesn't. `bobby <pr-url>` without it opens the page to set it up, then opens the PR. You can always start it from **Settings › GitHub CLI…**, the command palette (**Set up GitHub CLI**), or **Set up GitHub** on the home page.
+
+1. **Install.** Bobby downloads `gh`'s latest release for your OS and CPU from [GitHub](https://github.com/cli/cli/releases/latest), checks it against the release's checksums, and puts it in `~/.local/bin`: no sudo or package manager. Bobby finds it there even if your shell's PATH doesn't have it.
+2. **Sign in.** Bobby runs `gh auth login --web` and shows its one-time code. **Copy it and open GitHub** opens github.com/login/device in a new tab; enter the code, and authorize GitHub CLI. Bobby notices on its own, and opens the PR you asked for. This works the same when Bobby runs on a [remote machine](#on-a-remote-machine).
+
+`gh` keeps its sign-in itself (`gh auth status` shows it), for your own use too. Bobby's `git fetch` asks it for github.com's credentials, so a private repo fetches on a machine whose git was never given any; your git config isn't changed. Signed in already, or with `GH_TOKEN`, there's nothing to set up. (Signing in with Bobby's own GitHub app, without `gh`, may come later.)
 
 ## Setting up Claude
 
@@ -136,7 +145,7 @@ Environment: `BOBBY_MODEL` picks the Claude model passed to `claude --model` (th
 
 ## On a remote machine
 
-Bobby can run on a cloud VM or a dev box and be opened from your laptop's browser. There's no sign-in: **anyone who can reach its port can read the code under review and post on GitHub as you.** So pick one of these, safest first.
+Bobby can run on a cloud VM or a dev box and be opened from your laptop's browser. It sets up `gh` and Claude there from its page: both sign in through a tab on your laptop, so nothing needs to reach the VM. There's no sign-in: **anyone who can reach its port can read the code under review and post on GitHub as you.** So pick one of these, safest first.
 
 **An SSH tunnel** (nothing to open up). Bobby stays on the VM's loopback, and the tunnel brings it to yours; any local port works:
 

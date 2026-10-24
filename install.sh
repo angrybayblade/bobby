@@ -86,6 +86,7 @@ case ":$PATH:" in
   *) say "! $INSTALL_DIR isn't on your PATH. Add it, e.g.:"
      say "    echo 'export PATH=\"$INSTALL_DIR:\$PATH\"' >> ~/.$(basename "${SHELL:-bash}")rc" ;;
 esac
-for tool in git gh; do command -v "$tool" >/dev/null 2>&1 || say "! bobby also needs $tool on your PATH"; done
+command -v git >/dev/null 2>&1 || say "! bobby also needs git on your PATH"
+command -v gh >/dev/null 2>&1 || say "  GitHub's CLI (gh), for PRs: Bobby offers to set it up when you first run it"
 command -v claude >/dev/null 2>&1 || say "  (optional) Claude Code, for the smarter change tree: Bobby offers to set it up when you first run it"
 say "Run bobby inside a repo, or bobby <pr-url>."
