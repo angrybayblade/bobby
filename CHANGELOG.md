@@ -5,6 +5,7 @@ What changed in each release, newest first. Each release's full notes, with inst
 ## Unreleased
 
 - The install script installs the newest pre-release: it picked rc9 over rc10, in GitHub's order, instead of by version.
+- The Claude Code setup on the home page has its own buttons' sizes: Cancel no longer stretches across the dialog, and its title isn't shrunk to a section heading.
 
 ## 0.1.0-rc10 (2026-10-23)
 
