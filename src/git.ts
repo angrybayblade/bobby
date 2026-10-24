@@ -3,16 +3,19 @@ import { existsSync } from "node:fs";
 import type { PrInfo } from "./types.ts";
 import type { Discussion, GOutdated } from "./graph.ts";
 import { home } from "./state.ts";
+import { ghBin } from "./github.ts";
 
 export async function run(
   cmd: string[],
   opts: { cwd?: string; input?: string; allowFail?: boolean; env?: Record<string, string>; timeoutMs?: number } = {},
 ): Promise<string> {
+  const said = cmd; // what errors name: gh, not where it is
+  if (cmd[0] === "gh" && !Bun.which("gh", { PATH: opts.env?.PATH ?? process.env.PATH ?? "" })) cmd = [ghBin() ?? "gh", ...cmd.slice(1)]; // gh Bobby installed in ~/.local/bin, not on PATH
   // A program that isn't installed throws here, not as an exit code: say which, or read it as a failure when allowed
   const missing = !Bun.which(cmd[0], { PATH: opts.env?.PATH ?? process.env.PATH ?? "" }) && !cmd[0].includes("/");
   if (missing) {
     if (opts.allowFail) return "";
-    throw new Error(`${cmd[0]} isn't installed, or isn't on your PATH${{ gh: ": https://cli.github.com", git: ": https://git-scm.com", claude: ": set it up from Bobby's page (it offers to), or see https://claude.com/claude-code" }[cmd[0]] ?? ""}`);
+    throw new Error(`${cmd[0]} isn't installed, or isn't on your PATH${{ gh: ": set it up from Bobby's page (it offers to), or see https://cli.github.com", git: ": https://git-scm.com", claude: ": set it up from Bobby's page (it offers to), or see https://claude.com/claude-code" }[cmd[0]] ?? ""}`);
   }
   const proc = Bun.spawn(cmd, {
     cwd: opts.cwd,
@@ -28,9 +31,9 @@ export async function run(
     new Response(proc.stderr).text(),
     proc.exited,
   ]).finally(() => clearTimeout(timer));
-  if (timedOut) { const s = Math.round(opts.timeoutMs! / 1000); throw new Error(`${cmd.slice(0, 2).join(" ")} gave no answer in ${s >= 120 ? `${Math.round(s / 60)} min` : `${s} s`}`); }
+  if (timedOut) { const s = Math.round(opts.timeoutMs! / 1000); throw new Error(`${said.slice(0, 2).join(" ")} gave no answer in ${s >= 120 ? `${Math.round(s / 60)} min` : `${s} s`}`); }
   if (code !== 0 && !opts.allowFail) {
-    throw new Error(`${cmd.slice(0, 3).join(" ")} failed (${code}): ${err.trim() || out.trim()}`);
+    throw new Error(`${said.slice(0, 3).join(" ")} failed (${code}): ${err.trim() || out.trim()}`);
   }
   return out;
 }
@@ -99,8 +102,12 @@ export async function resolvePr(arg: string, repoDir?: string, from = process.cw
 export async function fetchPr(resolved: ResolvedPr): Promise<PrInfo> {
   const { cwd, remote, owner, repo, meta } = resolved;
   const ns = `refs/bobby/${meta.number}`;
+  // Signed in with gh: git asks it for github.com's credentials, as gh does for its own commands (a private repo on a
+  // machine whose git was never given them). Only for this fetch: your git config is left alone.
+  const gh = ghBin();
+  const viaGh = gh ? ["-c", "credential.https://github.com.helper=", "-c", `credential.https://github.com.helper=!'${gh.replaceAll("'", "'\\''")}' auth git-credential`] : [];
   await git(cwd, [
-    "fetch", "--quiet", "--no-tags", remote,
+    ...viaGh, "fetch", "--quiet", "--no-tags", remote,
     `+refs/pull/${meta.number}/head:${ns}/head`,
     `+refs/heads/${meta.baseRefName}:${ns}/base`,
   ]);
@@ -185,6 +192,8 @@ export async function reviewComments(pr: Pick<PrInfo, "owner" | "repo" | "number
 /** Who you are on GitHub (gh's login), for your own drafts and notes; asked once a day at most, null if gh can't say
  *  (not installed, logged out, offline), and then not asked again for an hour. */
 let unknownSince = 0;
+/** Ask GitHub again, now: gh was just set up. */
+export const forgetUnknownMe = () => { unknownSince = 0; };
 export async function whoAmI(cache: string): Promise<{ login: string; avatar: string } | null> {
   try {
     const f = Bun.file(cache);

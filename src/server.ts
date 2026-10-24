@@ -1,7 +1,8 @@
 import { join, normalize } from "node:path";
 import { embeddedAsset } from "./assets.ts";
 import { cancelLogin, claudeStatus, dismiss, INSTALL_TEXT, installClaude, startLogin, submitCode } from "./claude.ts";
-import { fileLines, reviewComments, run, whoAmI } from "./git.ts";
+import { fileLines, forgetUnknownMe, reviewComments, run, whoAmI } from "./git.ts";
+import { cancelGhLogin, dismissGh, ghStatus, installGh, startGhLogin } from "./github.ts";
 import { type ReviewGraph, setDiscussion } from "./graph.ts";
 import { home, loadSettings, saveSettings, saveState } from "./state.ts";
 import type { Comment, Definition, PrivateNote, ReviewState } from "./types.ts";
@@ -145,8 +146,12 @@ export interface App {
   loading: Map<string, Loading>;
   release?: Release; // a newer Bobby, if one is out (updates.ts)
   /** Opens a review (a PR's URL or number, or with repo and no arg, a local branch): its id at once, built meanwhile. */
-  open?: (arg: string | undefined, o: { repo?: string; cwd?: string; base?: string; refresh?: boolean; noLlm?: boolean; noLsp?: boolean }) => Promise<string>;
+  open?: (arg: string | undefined, o: OpenOptions) => Promise<string>;
+  /** A PR asked for before gh was set up, with what it was asked with (a PR number means one in that cwd's repo): the
+   *  page sets gh up, then opens it. */
+  waiting?: { arg: string; o: OpenOptions };
 }
+export type OpenOptions = { repo?: string; cwd?: string; base?: string; refresh?: boolean; noLlm?: boolean; noLsp?: boolean };
 
 async function staticFile(p: string): Promise<Response> {
   const rel = normalize(p.slice(1));
@@ -195,7 +200,7 @@ export function startServer(app: App, port: number, { hostname = "127.0.0.1", al
       // The home page: what you've opened (and which are open now), and the GitHub lists, filtered.
       if (p === "/api/home") {
         const recents = (await loadRecents()).map((r) => ({ ...r, open: app.reviews.has(r.id), loading: app.loading.has(r.id) && !app.loading.get(r.id)!.error }));
-        return json({ settings: loadSettings(), me: await whoAmI(join(home(), "cache", "me.json")), release: app.release ?? null, version: pkg.version, recents });
+        return json({ settings: loadSettings(), me: await whoAmI(join(home(), "cache", "me.json")), release: app.release ?? null, version: pkg.version, recents, ...(app.waiting ? { waiting: app.waiting.arg } : {}) });
       }
       if (p === "/api/home/prs") {
         const q = (k: string) => url.searchParams.get(k) ?? undefined;
@@ -205,9 +210,20 @@ export function startServer(app: App, port: number, { hostname = "127.0.0.1", al
         const { arg, repo, cwd, base, refresh, noLlm, noLsp } = (await req.json().catch(() => ({}))) as { arg?: string; repo?: string; cwd?: string; base?: string; refresh?: boolean; noLlm?: boolean; noLsp?: boolean };
         if (!app.open) return json({ error: "this Bobby can't open reviews" }, 400);
         const flags = Object.fromEntries(Object.entries({ refresh, noLlm, noLsp }).filter(([, v]) => v !== undefined));
-        try { return json({ id: await app.open(arg?.trim() || undefined, { repo, base, ...(cwd ? { cwd } : {}), ...flags }) }); }
-        catch (e) { return json({ error: String((e as Error).message ?? e) }, 400); }
+        const a = arg?.trim() || undefined, waited = a && !cwd && !repo && app.waiting?.arg === a; // the page, once gh is set up
+        const o: OpenOptions = waited ? app.waiting!.o : { repo, base, ...(cwd ? { cwd } : {}), ...flags };
+        try {
+          const id = await app.open(a, o);
+          if (a && app.waiting?.arg === a) app.waiting = undefined;
+          return json({ id });
+        } catch (e) { // without gh signed in, setting it up is the way on: the page offers it, then opens this
+          const gh = await ghStatus(), setup = !(gh.installed && gh.loggedIn);
+          if (setup && a) app.waiting = { arg: a, o };
+          return json({ error: String((e as Error).message ?? e), ...(setup ? { setup: "gh" } : {}) }, 400);
+        }
       }
+      // Setting up GitHub's CLI (github.ts): where it stands, install it, sign in with a one-time code on github.com
+      if (p === "/api/gh" || p.startsWith("/api/gh/")) return ghApi(req, p);
       // Setting up Claude Code (claude.ts): where it stands, install it, sign in by pasting the code from its sign-in page
       if (p === "/api/claude" || p.startsWith("/api/claude/")) return claudeApi(app, req, p);
       return json({ error: "not found" }, 404);
@@ -240,6 +256,33 @@ async function claudeApi(app: App, req: Request, p: string): Promise<Response> {
       const { never } = (await req.json().catch(() => ({}))) as { never?: boolean };
       dismiss();
       if (never) saveSettings({ ...loadSettings(), claude: "never" });
+    }
+    else return json({ error: "not found" }, 404);
+    return json({ ok: true, ...(await status()) });
+  } catch (e) {
+    return json({ ok: false, error: String((e as Error).message ?? e), ...(await status()) }, 400);
+  }
+}
+
+/** gh's setup, for the page. */
+let ghWasReady: boolean | undefined;
+async function ghApi(req: Request, p: string): Promise<Response> {
+  const status = async () => {
+    const st = await ghStatus(), ready = st.installed && st.loggedIn;
+    if (ready && ghWasReady === false) forgetUnknownMe(); // just set up: who you are on GitHub, ask again
+    ghWasReady = ready;
+    return { ...st, ask: !ready && !st.dismissed && loadSettings().gh !== "never" };
+  };
+  if (req.method === "GET" && p === "/api/gh") return json(await status());
+  if (req.method !== "POST") return json({ error: "not found" }, 404);
+  try {
+    if (p === "/api/gh/install") installGh();
+    else if (p === "/api/gh/login") await startGhLogin();
+    else if (p === "/api/gh/cancel") cancelGhLogin();
+    else if (p === "/api/gh/dismiss") { // not now (this run), or never: saved, as settings.gh
+      const { never } = (await req.json().catch(() => ({}))) as { never?: boolean };
+      dismissGh();
+      if (never) saveSettings({ ...loadSettings(), gh: "never" });
     }
     else return json({ error: "not found" }, 404);
     return json({ ok: true, ...(await status()) });
