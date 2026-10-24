@@ -4,6 +4,10 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+## 0.1.0-rc11 (2026-10-23)
+
+GitHub's CLI set up from the page, as Claude Code is: Bobby on a fresh machine needs only itself and git.
+
 - **Set up GitHub's CLI from Bobby.** The first time Bobby runs without `gh` (installed and signed in), the page offers to install it (from GitHub's releases, into `~/.local/bin`) and sign you in: copy the one-time code, enter it on github.com, and Bobby notices. `bobby <pr-url>` without it opens the page to set it up, then the PR. Works on a remote machine too.
 - The install script installs the newest pre-release: it picked rc9 over rc10, in GitHub's order, instead of by version.
 - The Claude Code setup on the home page has its own buttons' sizes: Cancel no longer stretches across the dialog, and its title isn't shrunk to a section heading.
