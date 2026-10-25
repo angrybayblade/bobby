@@ -13,7 +13,8 @@ const keyOf = (c) => `${c.path}|${c.side}|${c.line}`;
 let memo = null;
 export function commentIndex(app) {
   const disc = app.graph.discussion ?? [], mine = app.state.comments, notes = app.state.notes;
-  const sig = `${app.settings.resolved ?? "collapsed"}:${disc.length}:${disc.at(-1)?.id}:${disc.filter((c) => c.resolved).length}|${mine.map((c) => `${c.id}${c.wip ? "w" : ""}${c.kind ?? ""}${c.body.length}`).join()}|${notes.map((n) => `${n.id}${n.body.length}`).join()}`;
+  const found = (app.agentReview?.findings ?? []).filter((f) => f.status === "open");
+  const sig = `${found.map((f) => f.id).join()}|${app.settings.resolved ?? "collapsed"}:${disc.length}:${disc.at(-1)?.id}:${disc.filter((c) => c.resolved).length}|${mine.map((c) => `${c.id}${c.wip ? "w" : ""}${c.kind ?? ""}${c.body.length}`).join()}|${notes.map((n) => `${n.id}${n.body.length}`).join()}`;
   if (memo?.graph === app.graph && memo.disc === disc && memo.sig === sig) return memo.idx; // disc: a new list on every read, edits too
   const me = app.me ?? {}, threads = new Map(), byKey = new Map(), byPath = new Map();
   const add = (map, k, v) => (map.get(k) ?? map.set(k, []).get(k)).push(v);
@@ -30,6 +31,11 @@ export function commentIndex(app) {
   for (const c of mine.filter((x) => x.kind !== "note")) {
     threads.set(`d:${c.id}`, { id: `d:${c.id}`, kind: "draft", path: c.path, side: c.side, line: c.line, startLine: c.startLine, startSide: c.startSide,
       items: [{ author: me.login ?? "you", avatar: me.avatar, body: c.body, createdAt: c.createdAt, draft: true, wip: c.wip, cid: c.id }] });
+  }
+  // Claude's findings (agent.js): suggestions, until you add them to your drafts or dismiss them
+  for (const f of found) {
+    threads.set(`a:${f.id}`, { id: `a:${f.id}`, kind: "agent", path: f.path, side: f.side, line: f.line, startLine: f.startLine, finding: f,
+      items: [{ author: "Claude", body: f.body, createdAt: app.agentReview.at }] });
   }
   if (app.settings.resolved === "hidden") for (const [id, t] of threads) if (t.resolved) threads.delete(id); // only what's still open
   for (const t of threads.values()) { add(byKey, keyOf(t), t); add(byPath, t.path, t); }
@@ -226,7 +232,7 @@ export function showFull(app, ck, clicked) { pageState(app).full = (pageState(ap
 export const fileStamp = (app, path) => `${fileState(app, path)}:${pageState(app).full?.size ?? 0}:${[...(pageState(app).edits?.keys() ?? [])].join()}:${pageState(app).confirm ?? ""}:${(commentIndex(app).byPath.get(path) ?? []).map((x) => (itemOpen(app, x.id, path) ? 1 : 0) + (pageState(app).replies?.has(x.id) ? "r" : "")).join("")}`;
 export const fileCount = (app, path) => (commentIndex(app).byPath.get(path) ?? []).reduce((n, x) => n + (x.items?.length ?? 1), 0);
 /** The PR's comments and notes in files on screen: one hidden by Tests or Untouched isn't counted, as its comments aren't shown. */
-export const prCount = (app) => [...commentIndex(app).byPath].filter(([path]) => !path || shown(app, path)).flatMap(([, xs]) => xs).reduce((n, x) => n + (x.items?.length ?? 1), 0);
+export const prCount = (app) => [...commentIndex(app).byPath].filter(([path]) => !path || shown(app, path)).flatMap(([, xs]) => xs).filter((x) => x.kind !== "agent").reduce((n, x) => n + (x.items?.length ?? 1), 0);
 const shown = (app, path) => app.filePages(path).length > 0 || app.hunksOf(LOW).some((h) => h.file === path);
 
 // ---- threads
@@ -237,6 +243,7 @@ export function threadsAt(app, key) {
   return (commentIndex(app).byKey.get(key) ?? []).map((t) => threadHtml(app, t)).join("");
 }
 function threadHtml(app, t) {
+  if (t.kind === "agent") return findingHtml(app, t);
   const open = itemOpen(app, t.id, t.path), first = t.items[0], n = t.items.length;
   if (!open) { // in place, one line: who, how many, and how it starts
     const faces = [...new Map(t.items.map((i) => [i.author, i])).values()].slice(0, 3).map(avatar).join("");
@@ -263,6 +270,20 @@ function threadHtml(app, t) {
         <div class="crow"><span class="chint">${MOD}↵ posts · esc closes</span><span class="cgrow"></span><button class="btn" data-rcancel="${esc(t.id)}">Cancel</button><button class="btn primary" data-rpost="${esc(t.id)}">Reply</button></div></div></div>`
     : `<div class="ctfoot"><button class="creplyb" data-rstart="${esc(t.id)}">Reply…</button>${resolve}</div>`;
   return `<div class="cthread${t.kind === "draft" ? " draft" : ""}${t.resolved ? " resolved" : ""}" data-thread="${esc(t.id)}">${items}${foot}</div>`;
+}
+
+const SEVERITY = { bug: "Bug", risk: "Risk", question: "Question", nit: "Nit" };
+/** One of Claude's findings: its problem, its comment as it would be posted, and the choice of adding it or not. */
+function findingHtml(app, t) {
+  const f = t.finding, id = esc(t.id), sev = `<span class="ctag sev-${esc(f.severity)}">${SEVERITY[f.severity] ?? esc(f.severity)}</span>`;
+  if (!itemOpen(app, t.id, t.path)) return `<div class="cthread slim agent" data-thread="${id}" data-tid="${id}" data-tpath="${esc(t.path)}" title="Show Claude's finding">
+    <span class="cfaces"><span class="cav agav">✦</span></span><b>Claude</b>${sev}<span class="cprev">${esc(f.title)}</span>${bubble(false)}</div>`;
+  return `<div class="cthread agent" data-thread="${id}"><div class="citem"><span class="cav agav" aria-hidden="true">✦</span><div class="cmain">
+      <div class="cwho" data-tid="${id}" data-tpath="${esc(t.path)}" title="Collapse"><b>Claude</b><span class="ctag">suggestion</span>${sev}${range(t)}<span class="cgrow"></span>
+        <button class="cfold" data-tid="${id}" data-tpath="${esc(t.path)}" title="Collapse">${bubble(true)}</button></div>
+      <div class="ftitle">${esc(f.title)}</div>
+      <div class="cbody" data-ck="${id}:0">${md(f.body)}</div></div></div>
+    <div class="ctfoot"><button class="cbtn primary" data-afind="${esc(f.id)}" data-aact="draft" title="Add it to your review as a draft comment: edit it there, and it's posted when you submit">Add to review</button><button class="cbtn" data-afind="${esc(f.id)}" data-aact="dismiss">Dismiss</button><span class="chint">only you see it</span></div></div>`;
 }
 
 // ---- notes: floating beside their line, over the code's right edge; collapsed to an icon

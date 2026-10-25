@@ -1,3 +1,4 @@
+import { agentPoll, nextFinding, startAgentReview } from "./agent.js";
 import { DONE, LOW, api, createApp, esc, reviewBase } from "./core.js";
 import { escapeCode, inspectorKey, inspectorOpen, expandAll, keepDraft, moveLine, renderFile, renderNode, renderPage, startComment, startFileNote } from "./code.js";
 import * as chrome from "./chrome.js";
@@ -222,8 +223,9 @@ async function poll() {
   // only when something changed: every view re-renders on it
   if (JSON.stringify([app.llm, app.claudeReady, app.servers]) !== before) app.emit("llm");
   await keepCurrent(s);
+  const reviewing = await agentPoll(app, s);
   // quickly while something's on its way, else slowly, to hear of new comments and new work (watch.ts)
-  pollTimer = setTimeout(poll, s.llm === "pending" || busy(app.servers) ? 3000 : 10_000);
+  pollTimer = setTimeout(poll, reviewing ? 1500 : s.llm === "pending" || busy(app.servers) ? 3000 : 10_000);
 }
 // ---- keeping the review current: new comments on a PR appear by themselves; new work is offered, never swapped in
 let seenDiscussion = null, announced = "";
@@ -370,6 +372,8 @@ function commands() {
     { id: "keys", title: "Customize keyboard shortcuts", sub: "bind any action to the keys you like", run: () => chrome.keysEditor() },
     { id: "tour", title: "Take the tour", sub: "how the walk, the views and the keys fit together", run: () => tour.start() },
     { id: "gh", title: "Set up GitHub CLI", sub: "install gh and sign in to GitHub, for PRs and posting reviews", run: () => offerGh({ force: true }) },
+    { id: "agent", title: "Review with Claude", sub: "Claude reads the code around the changes and suggests comments on their lines, for you to add or dismiss", run: () => startAgentReview(app) },
+    { id: "agent-next", title: "Next of Claude's findings", run: () => nextFinding(app) || chrome.toast("No open findings from Claude.", 4000) },
     { id: "claude", title: "Set up Claude Code", sub: "install it and sign in, for Claude's tree of the change", run: () => offerClaude({ force: true }) },
     ...views.filter((v) => v.id !== currentId).map((v) => ({ id: `view:${v.id}`, title: `${v.name} view`, sub: v.hint, run: () => app.switchView(v.id) })),
     { id: "set:tests", title: `${s.tests === "show" ? "Hide" : "Show"} tests`, run: () => flip("tests", "show", "hide") },

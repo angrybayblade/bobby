@@ -1,5 +1,6 @@
 // A node, laid out top to bottom: title, why it matters, the comments on it, then its code.
 // Views show it as the level-2 page, or as the body of the focused card (no title block).
+import { findingAct } from "./agent.js";
 import { BAND_TEXT, DONE, LOW, api, esc, live } from "./core.js";
 import { MOD } from "./palette.js";
 import { keyHtml, keyName } from "./keys.js";
@@ -880,6 +881,8 @@ function bind(app, el, rerender) {
     if (ev.target.closest("a")) return;
     const od = ev.target.closest("[data-outdated]");
     if (od) { app.convTarget = od.dataset.outdated; return app.switchView("conversation"); } // it opens on that thread
+    const af = ev.target.closest("[data-afind]");
+    if (af) { af.disabled = true; return findingAct(app, af.dataset.afind, af.dataset.aact); }
     const rs = ev.target.closest("[data-resolve]");
     if (rs) return resolveThread(app, rs.dataset.resolve, rs.dataset.to === "1", rs);
     const rp = ev.target.closest("[data-rstart],[data-rpost],[data-rcancel]");

@@ -1,4 +1,5 @@
 // Everything around the view: header, where-am-I bar, key hints, overlays, toasts, settings.
+import { agentPill, cancelAgentReview, nextFinding, startAgentReview } from "./agent.js";
 import { BAND_TEXT, DONE, LEVELS, LOW, api, esc, inline } from "./core.js";
 import { MOD } from "./palette.js";
 import * as tour from "./tour.js";
@@ -184,7 +185,7 @@ function renderTop() {
     <button class="pill tog" data-act="generated" aria-pressed="${app.settings.generated === "show"}" title="Generated files (openapi specs, __generated__/, @generated, DO NOT EDIT…), in every view: ${app.settings.generated === "show" ? "shown. Click to hide" : "hidden. Click to show"}">⚙ Generated</button>
     <button class="pill tog" data-act="untouched" aria-pressed="${app.settings.untouched !== "hide"}" title="Untouched code the changes rely on or affect, in every view: ${app.settings.untouched === "hide" ? "hidden. Click to show" : "shown. Click to hide"}">○ Untouched</button>
     <button class="pill" data-act="notes" title="Your private notes (${esc(keyName(app.settings, "notes"))}). Never posted to GitHub.">✎ Notes${app.state.notes.length ? ` · ${app.state.notes.length}` : ""}</button>
-    ${unresolvedButton()}${commentsButton()}
+    ${agentPill(app)}${unresolvedButton()}${commentsButton()}
     <button class="iconbtn" data-act="files" aria-pressed="${app.settings.fileTree !== "hide"}" title="File tree (${esc(keysOf(app.settings, "files").map(keyText)[0] ?? "")})" aria-label="File tree">▤</button>
     <button class="iconbtn" data-act="settings" title="Settings (${esc(keyName(app.settings, "settings"))})" aria-label="Settings">${GEAR}</button>`;
 }
@@ -629,6 +630,9 @@ function onClick(ev) {
     claude: () => { close(); offerClaude({ force: true }); },
     "pr-comments": () => togglePR(app),
     "next-unresolved": () => nextUnresolved(app),
+    "agent-review": () => { $("#toast").hidden = true; startAgentReview(app); },
+    "agent-cancel": () => cancelAgentReview(app),
+    "agent-next": () => { $("#toast").hidden = true; nextFinding(app); },
     "key-add": () => keyEdit("key-add", ds.id), "key-unbind": () => keyEdit("key-unbind", ds.id, ds.key), "key-reset": () => keyEdit("key-reset", ds.id),
     "key-reset-all": () => keyEdit("key-reset-all"),
     server: () => serverCard(ds.id),
