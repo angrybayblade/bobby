@@ -5,13 +5,13 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync,
 import type { ReviewGraph } from "./graph.ts";
 import type { ChangeTree, PrInfo, ReviewState } from "./types.ts";
 
-const ROOT = join(homedir(), ".bobby");
+const ROOT = process.env.BOBBY_HOME || join(homedir(), ".bobby"); // BOBBY_HOME: elsewhere, as for a test
 // Before the rename, everything lived in ~/.prfocus: move it over once, progress and clones included.
 // Lazily, on first use, so --help and --version never touch your files.
 const LEGACY = join(homedir(), ".prfocus");
 let migrated = false;
 export function home() {
-  if (!migrated && !existsSync(ROOT) && existsSync(LEGACY)) {
+  if (!migrated && !process.env.BOBBY_HOME && !existsSync(ROOT) && existsSync(LEGACY)) {
     try { renameSync(LEGACY, ROOT); console.error(`  moved ${LEGACY} to ${ROOT}`); } catch { /* keep going with a fresh ~/.bobby */ }
   }
   migrated = true;
