@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { place } from "../src/agent.ts";
+import { askPrompt } from "../src/ask.ts";
 import type { ReviewGraph } from "../src/graph.ts";
 
 // a.ts: line 10 unchanged, 11 added (old 11 removed), 12 unchanged
@@ -25,4 +26,16 @@ test("puts findings on the diff's lines", () => {
     ["RIGHT", 12, 10, "bug"], ["RIGHT", 12, undefined, "bug"], ["RIGHT", 11, undefined, "risk"],
   ]);
   expect(r.findings[0]).toMatchObject({ title: "t", body: "b", status: "open" });
+});
+
+test("asks about the selected lines, with the turns before", () => {
+  const ask = { id: "q", headSha: "h", path: "a.ts", side: "RIGHT" as const, line: 12, startLine: 11,
+    turns: [{ q: "why?", a: "because", at: "" }, { q: "and then?", at: "" }] };
+  const prompt = askPrompt({ ...g, pr: { title: "T" }, intent: "I" } as unknown as ReviewGraph, ask);
+  expect(prompt).toContain(">> R11\t+new");
+  expect(prompt).toContain(">> R12\t y");
+  expect(prompt).toContain("   R10\t x");
+  expect(prompt).toContain("   L11\t-old"); // removed: not on the new side
+  expect(prompt).toContain("Reviewer: why?\nYou: because");
+  expect(prompt.endsWith("# The reviewer asks\nand then?")).toBe(true);
 });

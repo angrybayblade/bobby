@@ -134,6 +134,13 @@ export interface Finding {
 /** A finished agent review, for one head commit. left: findings on files the diff doesn't have, left out. */
 export interface AgentReview { headSha: string; at: string; summary: string; findings: Finding[]; focus?: string; left?: number; cost?: number } // focus: what you asked it to look at
 
+/** A question you asked Claude about some lines (ask.ts), and its follow-ups: kept on those lines, for that head commit. */
+export interface Ask {
+  id: string; headSha: string;
+  path: string; side: "LEFT" | "RIGHT"; line: number; startLine?: number;
+  turns: Array<{ q: string; a?: string; error?: string; at: string }>; // the last one's answer is on its way while it has none
+}
+
 export interface ReviewState {
   version?: number; // the state file's format (STATE_VERSION in state.ts); absent before 1
   headSha: string;
@@ -145,6 +152,7 @@ export interface ReviewState {
   lastSeenAt?: string;
   note?: string; // "where my head was": parked thought shown on return
   agent?: AgentReview; // the last agent-assisted review (agent.ts)
+  asks?: Ask[]; // questions about lines, and Claude's answers (ask.ts)
 }
 
 /** A name used on a new-side line of the change, and where it's declared: in the repo (to), outside it (ext: a
