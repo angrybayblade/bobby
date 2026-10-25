@@ -6,7 +6,7 @@ import { git, reviewComments, run } from "./git.ts";
 import { ghStatus } from "./github.ts";
 import { GRAPH_SCHEMA, LEGACY_SCHEMAS, type ReviewGraph, setDiscussion } from "./graph.ts";
 import { clean, prune } from "./prune.ts";
-import { watchReleases } from "./updates.ts";
+import { selfUpdate, tidyUpdate, watchReleases } from "./updates.ts";
 import { hold, holder, home, legacyHolder, loadSettings, loadState } from "./state.ts";
 import { allow, SERVERS, serverById, startServers, stopServers } from "./servers.ts";
 import { resolve, reviewId, start, type ReviewOptions } from "./review.ts";
@@ -55,6 +55,7 @@ const USAGE = `bobby: review a PR one focused page at a time
   bobby open <graph.json>            open the UI on an existing graph file
   bobby lsp                          the language servers behind the inspector, by language
   bobby lsp install <language>       install one (typescript, python), or say how (go)
+  bobby update [version]             install the newest release (or that one) in place of this one
   bobby clean [--repos]              remove caches and exported trees (and with --repos, the clones
                                      in ~/.bobby/repos); your reviews' progress stays
 
@@ -74,7 +75,7 @@ const USAGE = `bobby: review a PR one focused page at a time
   --no-open      don't open the browser
   -v, --version  print the version`;
 
-const [cmd, arg] = ["extract", "open", "lsp", "clean", "home"].includes(positionals[0]) ? [positionals[0], positionals[1]] : ["review", positionals[0]];
+const [cmd, arg] = ["extract", "open", "lsp", "clean", "home", "update"].includes(positionals[0]) ? [positionals[0], positionals[1]] : ["review", positionals[0]];
 if (values.version) {
   console.log(pkg.version);
   process.exit(0);
@@ -86,6 +87,13 @@ if (values.help || (cmd === "open" && !arg)) {
 if (!/^\d{1,5}$/.test(values.port!) || Number(values.port) > 65535) fail(`--port takes a port number (0–65535), got "${values.port}"`);
 if (values.repo && !statSync(values.repo, { throwIfNoEntry: false })?.isDirectory()) fail(`--repo takes a folder with a git checkout, got "${values.repo}"`);
 if (cmd === "lsp") process.exit(await lspCommand(arg, positionals[2]));
+if (cmd === "update") {
+  await selfUpdate(arg, (m) => console.log(m));
+  const other = holder(); // it holds the old binary in memory
+  if (other) console.log(`  The Bobby running on port ${other.port} is still the old one: stop it (ctrl-c) and start it again.`);
+  process.exit(0);
+}
+tidyUpdate();
 if (cmd === "clean") {
   const freed = clean(SERVERS, !!values.repos);
   const mb = (b: number) => `${(b / 1e6).toFixed(b < 1e7 ? 1 : 0)} MB`;
@@ -272,7 +280,7 @@ async function serve(app: App, path: string) {
     else if (!allow.includes("*")) console.log(`  Opening it at this machine's IP or name? Add --allow-host <that name>.`);
   }
   hold(server.port!);
-  watchReleases((r) => { app.release = r; console.log(`  ▸ Bobby ${r.version} is out (you have ${pkg.version}): ${r.url}`); });
+  watchReleases((r) => { app.release = r; console.log(`  ▸ Bobby ${r.version} is out (you have ${pkg.version}). Update: ${r.how} (${r.url})`); });
   console.log(`\n  ▶ ${url}\n`);
   if (!values["no-open"]) await run(openCommand(url), { allowFail: true }).catch(() => console.log("  (open that link in your browser)"));
 }
