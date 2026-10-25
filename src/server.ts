@@ -2,6 +2,7 @@ import { join, normalize } from "node:path";
 import { embeddedAsset } from "./assets.ts";
 import { cancelLogin, claudeStatus, dismiss, INSTALL_TEXT, installClaude, startLogin, submitCode } from "./claude.ts";
 import { fileLines, forgetUnknownMe, parsePrArg, reviewComments, run, whoAmI } from "./git.ts";
+import { type AgentJob, draftOf, runAgentReview } from "./agent.ts";
 import { cancelGhLogin, dismissGh, ghStatus, installGh, startGhLogin } from "./github.ts";
 import { type ReviewGraph, setDiscussion } from "./graph.ts";
 import { home, loadSettings, saveSettings, saveState } from "./state.ts";
@@ -43,6 +44,7 @@ export interface Session {
   id?: string; // its address in the app (/r/<id>), and its key in recents
   seenAt?: number; // its page's last request: a review no page has asked about for a while is unloaded
   stopWatching?: () => void;
+  agentJob?: AgentJob; // an agent-assisted review running, or the last one's end (agent.ts)
 }
 
 const PUBLIC = join(import.meta.dir, "..", "public");
@@ -309,7 +311,7 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
         return json({ state: s.state, settings: loadSettings(), llm: s.llm, llmError: s.llmError, servers: Object.values(s.servers ?? {}), me: await whoAmI(join(home(), "cache", "me.json")), caps: { files: !!s.cwd, inspect: !!s.cwd } });
       // A GitHub avatar, fetched once and kept a week in ~/.bobby/cache/avatars. Only GitHub's own avatar hosts.
       if (p === "/api/avatar") return avatar(url.searchParams.get("u") ?? "");
-      if (p === "/api/status") return json({ llm: s.llm, llmError: s.llmError, claudeReady: !!s.claudeGraph, servers: Object.values(s.servers ?? {}), discussionAt: s.discussionAt ?? 0, release: app.release ?? null, update: s.rebuilding ? { ...s.update, rebuilding: true } : s.update ?? null });
+      if (p === "/api/status") return json({ agent: agentStatus(s), llm: s.llm, llmError: s.llmError, claudeReady: !!s.claudeGraph, servers: Object.values(s.servers ?? {}), discussionAt: s.discussionAt ?? 0, release: app.release ?? null, update: s.rebuilding ? { ...s.update, rebuilding: true } : s.update ?? null });
       if (p === "/api/discussion") return json({ comments: s.staticGraph.discussion ?? [], outdated: s.staticGraph.outdated ?? [] });
       if (p === "/api/conversation") {
         if (pr().provider === "local") return json({ error: "A local review has no PR, so no conversation." }, 404);
@@ -412,6 +414,34 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
         else return json({ error: "not found" }, 404);
         return json({ servers: Object.values(s.servers) });
       }
+      // Agent-assisted review: Claude's findings, on the diff's lines, until you draft or dismiss each one.
+      if (p === "/api/agent" && req.method === "GET") return json({ ...agentStatus(s), review: s.state.agent?.headSha === pr().headSha ? s.state.agent : null });
+      if (req.method === "POST" && p === "/api/agent/start") {
+        if (!s.cwd) return json({ ok: false, error: "There's no local clone to read the code from" }, 400);
+        if (s.agentJob && !s.agentJob.done) return json({ ok: true });
+        const job: AgentJob = (s.agentJob = { steps: [], startedAt: Date.now() });
+        void runAgentReview(s.cwd, s.claudeGraph ?? s.staticGraph, job, (r) => { s.state.agent = r; persist(); });
+        return json({ ok: true });
+      }
+      if (req.method === "POST" && p === "/api/agent/cancel") {
+        if (s.agentJob && !s.agentJob.done) { s.agentJob.error = "Stopped"; s.agentJob.proc?.kill(); }
+        return json({ ok: true });
+      }
+      if (req.method === "POST" && p === "/api/agent/finding") {
+        const { id, act } = (await req.json()) as { id: string; act: "draft" | "dismiss" | "restore" };
+        const f = s.state.agent?.findings.find((x) => x.id === id);
+        if (!f) return json({ ok: false, error: "no such finding" }, 404);
+        let comment: Comment | undefined;
+        if (act === "draft" && f.status === "open") {
+          comment = { ...draftOf(f), id: crypto.randomUUID().slice(0, 8) };
+          s.state.comments.push(comment);
+          Object.assign(f, { status: "drafted", draftId: comment.id });
+        } else if (act === "dismiss") f.status = "dismissed";
+        else if (act === "restore" && f.status === "dismissed") f.status = "open";
+        persist();
+        return json({ ok: true, review: s.state.agent, ...(comment ? { comment } : {}) });
+      }
+
       if (p === "/api/definitions") return json(s.definitions ?? s.staticGraph.definitions ?? {});
 
       // The inspector: where the name at path:line:col (head side) is declared. The language server once it's loaded;
@@ -570,4 +600,11 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
       return json({ error: "not found" }, 404);
     }
   }
+}
+
+/** Where an agent-assisted review stands, for the top bar: running (and what it's doing), or its open findings. */
+function agentStatus(s: Session) {
+  const job = s.agentJob, r = s.state.agent?.headSha === s.staticGraph.pr.headSha ? s.state.agent : undefined;
+  return { running: !!job && !job.done, step: job && !job.done ? job.steps.at(-1) ?? "Starting" : undefined, error: job?.done ? job.error : undefined,
+    at: r?.at, open: r?.findings.filter((f) => f.status === "open").length ?? 0 };
 }
