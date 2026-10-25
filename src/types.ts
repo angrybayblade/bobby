@@ -132,7 +132,7 @@ export interface Finding {
   draftId?: string; // the draft it became
 }
 /** A finished agent review, for one head commit. left: findings on files the diff doesn't have, left out. */
-export interface AgentReview { headSha: string; at: string; summary: string; findings: Finding[]; left?: number; cost?: number }
+export interface AgentReview { headSha: string; at: string; summary: string; findings: Finding[]; focus?: string; left?: number; cost?: number } // focus: what you asked it to look at
 
 export interface ReviewState {
   version?: number; // the state file's format (STATE_VERSION in state.ts); absent before 1

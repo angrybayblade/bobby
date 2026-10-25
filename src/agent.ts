@@ -14,7 +14,7 @@ import { home } from "./state.ts";
 import type { AgentReview, Finding } from "./types.ts";
 
 /** The review running now, in memory. */
-export interface AgentJob { proc?: Subprocess<"pipe", "pipe", "pipe">; steps: string[]; startedAt: number; error?: string; done?: boolean }
+export interface AgentJob { proc?: Subprocess<"pipe", "pipe", "pipe">; steps: string[]; startedAt: number; focus?: string; error?: string; done?: boolean }
 
 const SCHEMA = {
   type: "object",
@@ -64,8 +64,8 @@ summary: one or two sentences: your overall read of the PR, for the reviewer.`;
 
 const PER_HUNK = 400, BUDGET = 200_000;
 
-function buildPrompt(g: ReviewGraph): string {
-  const parts = [INSTRUCTIONS, "", `# PR: ${g.pr.title}`, g.pr.body.slice(0, 4000), "", `What it does: ${g.intent}`];
+function buildPrompt(g: ReviewGraph, focus?: string): string {
+  const parts = [INSTRUCTIONS, ...(focus ? ["", "# WHAT THE REVIEWER ASKED YOU TO FOCUS ON", focus, "Spend your investigation on this first, and say in the summary what you found about it. Still report a serious bug you come across elsewhere."] : []), "", `# PR: ${g.pr.title}`, g.pr.body.slice(0, 4000), "", `What it does: ${g.intent}`];
   if (g.generator.tree === "claude" && g.cores.length) parts.push("", "Its parts:", ...g.cores.map((c) => `- ${c.title}: ${c.summary}`));
   parts.push("", "# THE DIFF");
   let budget = BUDGET;
@@ -123,7 +123,7 @@ interface Event {
 }
 
 /** Runs the review; job says how it's going, and the result is handed to done. */
-export async function runAgentReview(cwd: string, g: ReviewGraph, job: AgentJob, done: (r: AgentReview) => void): Promise<void> {
+export async function runAgentReview(cwd: string, g: ReviewGraph, job: AgentJob, done: (r: AgentReview) => void, focus?: string): Promise<void> {
   const step = (m: string) => { job.steps.push(m); if (job.steps.length > 200) job.steps.splice(0, 100); };
   try {
     const st = await claudeStatus();
@@ -136,7 +136,7 @@ export async function runAgentReview(cwd: string, g: ReviewGraph, job: AgentJob,
     if (model) cmd.push("--model", model);
     const p = Bun.spawn(cmd, { cwd: root, stdin: "pipe", stdout: "pipe", stderr: "pipe" });
     job.proc = p;
-    p.stdin.write(buildPrompt(g));
+    p.stdin.write(buildPrompt(g, focus));
     p.stdin.end();
     const kill = setTimeout(() => { job.error = "Claude took over 20 minutes; stopped"; p.kill(); }, 20 * 60_000);
     let result: Event | null = null;
@@ -161,7 +161,7 @@ export async function runAgentReview(cwd: string, g: ReviewGraph, job: AgentJob,
     if (job.error) throw new Error(job.error);
     if (!result?.structured_output) throw new Error(result?.result?.slice(0, 300) || (await new Response(p.stderr).text()).trim().split("\n").at(-1) || `claude exited ${code}`);
     const r = place(g, result.structured_output);
-    done({ headSha: g.pr.headSha, at: new Date().toISOString(), ...r, ...(result.total_cost_usd ? { cost: result.total_cost_usd } : {}) });
+    done({ headSha: g.pr.headSha, at: new Date().toISOString(), ...r, ...(focus ? { focus } : {}), ...(result.total_cost_usd ? { cost: result.total_cost_usd } : {}) });
     step(`Done: ${r.findings.length} finding${r.findings.length === 1 ? "" : "s"}`);
   } catch (e) {
     job.error ??= (e as Error).message;

@@ -419,8 +419,9 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
       if (req.method === "POST" && p === "/api/agent/start") {
         if (!s.cwd) return json({ ok: false, error: "There's no local clone to read the code from" }, 400);
         if (s.agentJob && !s.agentJob.done) return json({ ok: true });
-        const job: AgentJob = (s.agentJob = { steps: [], startedAt: Date.now() });
-        void runAgentReview(s.cwd, s.claudeGraph ?? s.staticGraph, job, (r) => { s.state.agent = r; persist(); });
+        const { focus } = (await req.json().catch(() => ({}))) as { focus?: unknown }; // what you asked Claude to look at
+        const job: AgentJob = (s.agentJob = { steps: [], startedAt: Date.now(), ...(typeof focus === "string" && focus.trim() ? { focus: focus.trim().slice(0, 2000) } : {}) });
+        void runAgentReview(s.cwd, s.claudeGraph ?? s.staticGraph, job, (r) => { s.state.agent = r; persist(); }, job.focus);
         return json({ ok: true });
       }
       if (req.method === "POST" && p === "/api/agent/cancel") {
@@ -605,6 +606,7 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
 /** Where an agent-assisted review stands, for the top bar: running (and what it's doing), or its open findings. */
 function agentStatus(s: Session) {
   const job = s.agentJob, r = s.state.agent?.headSha === s.staticGraph.pr.headSha ? s.state.agent : undefined;
-  return { running: !!job && !job.done, step: job && !job.done ? job.steps.at(-1) ?? "Starting" : undefined, error: job?.done ? job.error : undefined,
+  return { running: !!job && !job.done, step: job && !job.done ? job.steps.at(-1) ?? "Starting" : undefined, steps: job && !job.done ? job.steps.slice(-6) : undefined, focus: job && !job.done ? job.focus : undefined,
+    error: job?.done ? job.error : undefined,
     at: r?.at, open: r?.findings.filter((f) => f.status === "open").length ?? 0 };
 }
