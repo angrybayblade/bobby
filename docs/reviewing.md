@@ -121,9 +121,9 @@ Comments on **untouched code** can't be inline on GitHub. They're kept as drafts
 
 ## Claude's review (preview)
 
-**✦ Review with Claude** in the top bar (or in the command palette) asks Claude Code to review the PR. It reads the diff, then checks the code around it at the PR's head: callers, definitions, tests. While it works, the pill says what it's reading; click it to stop. It usually takes a minute or two.
+Claude reviews only when you ask. **✦ Review with Claude** in the top bar (or **Review with Claude…** in the command palette) opens a prompt: say what it should focus on ("Could this break existing API clients?"), pick from the suggestions (bugs and edge cases, callers, security, errors, concurrency, tests), or leave it empty for a general review; `⌘↵` starts it. Claude reads the diff, then checks the code around it at the PR's head: callers, definitions, tests. The prompt then shows what it's doing; close it and keep reviewing, as it usually takes a minute or two (or **Stop it**). The pill says **Claude is reviewing…** meanwhile, and when it's done, how many findings it has: that's the only notice, nothing pops up.
 
-When it's done, the pill counts its findings: click it to go through them one at a time, worst first. Each shows its tag (Bug, Risk, Question or Nit), where it is, the code it's about with its lines marked, and Claude's comment as it would be posted. Then:
+Click the pill to go through the findings one at a time, worst first; **New review…** at the top asks again, about something else. Each shows its tag (Bug, Risk, Question or Nit), where it is, the code it's about with its lines marked, and Claude's comment as it would be posted. Then:
 
 | Key | |
 |---|---|

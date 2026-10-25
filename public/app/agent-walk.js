@@ -12,14 +12,14 @@ const ORDER = { bug: 0, risk: 1, question: 2, nit: 3 };
 let w = null; // { app, ids, i, editing, el, returnTo, added, dismissed }
 
 /** Opens the walkthrough on the open findings, worst first (then in walk order), at `at` if given. */
-export function openWalk(app, at = null) {
+export function openWalk(app, at = null, onNew = null) {
   const review = app.agentReview;
   if (!review) return false;
   const pos = (f) => app.index.walkPos.get(app.pidAt(f.path, f.line)) ?? Infinity;
   const open = review.findings.filter((f) => f.status === "open").sort((a, b) => ORDER[a.severity] - ORDER[b.severity] || pos(a) - pos(b) || a.line - b.line);
   if (!open.length) return false;
   close();
-  w = { app, ids: open.map((f) => f.id), i: Math.max(0, open.findIndex((f) => f.id === at)), editing: null, added: 0, dismissed: 0, returnTo: document.activeElement };
+  w = { app, onNew, ids: open.map((f) => f.id), i: Math.max(0, open.findIndex((f) => f.id === at)), editing: null, added: 0, dismissed: 0, returnTo: document.activeElement };
   w.el = Object.assign(document.createElement("div"), { className: "aw-overlay" });
   w.el.addEventListener("click", onClick);
   w.el.addEventListener("keydown", onKey);
@@ -41,7 +41,7 @@ function draw() {
   const f = w.i < w.ids.length ? finding(w.ids[w.i]) : null;
   const n = w.ids.length, review = w.app.agentReview;
   const dots = w.ids.map((id, k) => { const s = finding(id)?.status; return `<i class="${k === w.i ? "on" : ""} ${s === "drafted" ? "added" : s === "dismissed" ? "gone" : ""}"></i>`; }).join("");
-  const head = `<header><b>✦ Claude's review</b><span class="aw-n">${f ? `${w.i + 1} of ${n}` : "Done"}</span><span class="aw-dots" aria-hidden="true">${dots}</span><span class="cgrow"></span><button class="aw-x" data-aw="close" title="Close (esc)">✕</button></header>`;
+  const head = `<header><b>✦ Claude's review</b><span class="aw-n">${f ? `${w.i + 1} of ${n}` : "Done"}</span><span class="aw-dots" aria-hidden="true">${dots}</span><span class="cgrow"></span>${w.onNew ? `<button class="aw-new" data-aw="new" title="Ask Claude for a new review, about something in particular">New review…</button>` : ""}<button class="aw-x" data-aw="close" title="Close (esc)">✕</button></header>`;
   if (!f) {
     w.el.innerHTML = `<div class="aw" role="dialog" aria-modal="true" aria-label="Claude's review" tabindex="-1">${head}<div class="aw-done">
       <p>That's all ${n === 1 ? "of it" : `${n} of them`}${w.added || w.dismissed ? `: ${[w.added && `${w.added} added to your review`, w.dismissed && `${w.dismissed} dismissed`].filter(Boolean).join(", ")}` : ""}.</p>
@@ -58,7 +58,7 @@ function draw() {
     ? `<button class="btn primary" data-aw="add">Add to review <kbd>${MOD}↵</kbd></button><button class="btn" data-aw="unedit">Cancel edit</button>`
     : `<button class="btn primary" data-aw="add">Add to review <kbd>a</kbd></button><button class="btn" data-aw="edit">Edit first <kbd>e</kbd></button><button class="btn" data-aw="dismiss">Dismiss <kbd>d</kbd></button>`;
   w.el.innerHTML = `<div class="aw" role="dialog" aria-modal="true" aria-label="Claude's review" tabindex="-1">${head}
-    ${w.i === 0 && review.summary ? `<p class="aw-summary">${esc(review.summary)}</p>` : ""}
+    ${w.i === 0 && review.summary ? `<p class="aw-summary">${review.focus ? `<span class="aw-focus">You asked: ${esc(review.focus)}</span>` : ""}${esc(review.summary)}</p>` : ""}
     <div class="aw-meta"><span class="ctag sev-${esc(f.severity)}">${SEV[f.severity] ?? esc(f.severity)}</span><button class="aw-loc" data-aw="show" title="Show it in the diff (o)">${esc(f.path)}:${f.startLine ? `${f.startLine}–` : ""}${f.line}${f.side === "LEFT" ? " (removed)" : ""} ↗</button></div>
     <h3>${esc(f.title)}</h3>
     ${excerpt(w.app, f)}
@@ -127,6 +127,7 @@ function onClick(ev) {
   if (!t) return;
   const a = t.dataset.aw;
   if (a === "close") return close();
+  if (a === "new") { const next = w.onNew; close(); return next?.(); }
   if (a === "next") return go(1);
   if (a === "prev") return go(-1);
   if (a === "first") { w.i = Math.max(0, w.ids.findIndex((id) => finding(id)?.status === "open")); return draw(); }

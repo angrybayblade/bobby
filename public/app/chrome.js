@@ -1,5 +1,5 @@
 // Everything around the view: header, where-am-I bar, key hints, overlays, toasts, settings.
-import { agentPill, cancelAgentReview, nextFinding, startAgentReview } from "./agent.js";
+import { agentPill, agentPillClick } from "./agent.js";
 import { BAND_TEXT, DONE, LEVELS, LOW, api, esc, inline } from "./core.js";
 import { MOD } from "./palette.js";
 import * as tour from "./tour.js";
@@ -630,9 +630,7 @@ function onClick(ev) {
     claude: () => { close(); offerClaude({ force: true }); },
     "pr-comments": () => togglePR(app),
     "next-unresolved": () => nextUnresolved(app),
-    "agent-review": () => { $("#toast").hidden = true; startAgentReview(app); },
-    "agent-cancel": () => cancelAgentReview(app),
-    "agent-next": () => { $("#toast").hidden = true; nextFinding(app); },
+    agent: () => agentPillClick(app),
     "key-add": () => keyEdit("key-add", ds.id), "key-unbind": () => keyEdit("key-unbind", ds.id, ds.key), "key-reset": () => keyEdit("key-reset", ds.id),
     "key-reset-all": () => keyEdit("key-reset-all"),
     server: () => serverCard(ds.id),

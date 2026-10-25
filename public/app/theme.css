@@ -775,3 +775,21 @@ body.booting #where, body.booting #keys, body.booting #files { display: none; }
 .aw-done .row { display: flex; gap: 8px; margin-top: 16px; }
 .aw-done .btn { height: 34px; padding: 0 14px; }
 @media (max-width: 560px) { .aw footer kbd { display: none; } }
+.aw-new { border: 1px solid var(--line); border-radius: var(--radius); background: none; color: var(--muted); font: 12.5px var(--font-ui); padding: 4px 10px; cursor: pointer; }
+.aw-new:hover { color: var(--text); border-color: var(--muted); }
+.aw-focus { display: block; margin-bottom: 6px; color: var(--text); font-style: italic; }
+
+/* Review with Claude: what to focus on, then what it's doing */
+.agask { width: min(600px, calc(100vw - 32px)); }
+.agask .ag-label { display: flex; justify-content: space-between; margin: 4px 0 6px; font: 600 13px var(--font-ui); }
+.agask .ag-label span { font-weight: 400; color: var(--faint); }
+.agask .ag-text { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text); font: 14px/1.5 var(--font-ui); resize: vertical; }
+.agask .ag-ideas { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 14px; }
+.agask .ag-idea { border: 1px solid var(--line); border-radius: 14px; background: none; color: var(--muted); font: 12.5px var(--font-ui); padding: 3px 10px; cursor: pointer; }
+.agask .ag-idea:hover { color: var(--text); border-color: var(--muted); }
+.agask .ag-muted { font-size: 13px; color: var(--faint); }
+.agask .btn kbd { margin-left: 6px; padding: 2px 5px; background: transparent; color: inherit; border-color: color-mix(in srgb, currentColor 40%, transparent); }
+.agask .ag-steps { margin: 0 0 14px; padding: 10px 12px 10px 30px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); font: 12.5px/1.7 var(--font-code); color: var(--faint); }
+.agask .ag-steps li.now { color: var(--text); }
+.agask .ag-steps li.now::after { content: " …"; animation: cs-pulse 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .agask .ag-steps li.now::after { animation: none; } }
