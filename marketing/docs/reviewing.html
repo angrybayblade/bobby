@@ -163,7 +163,21 @@
 <p>Comments on <strong>untouched code</strong> can't be inline on GitHub. They're kept as drafts and go into the review summary under &quot;Notes on code this PR doesn't touch&quot;.</p>
 <h2 id="claudes-review-preview"><a class="anchor" href="#claudes-review-preview" aria-hidden="true">#</a>Claude's review (preview)</h2>
 <p><strong>✦ Review with Claude</strong> in the top bar (or in the command palette) asks Claude Code to review the PR. It reads the diff, then checks the code around it at the PR's head: callers, definitions, tests. While it works, the pill says what it's reading; click it to stop. It usually takes a minute or two.</p>
-<p>Its findings sit on their lines as dashed suggestions, each tagged Bug, Risk, Question or Nit. <strong>Add to review</strong> makes one a draft of yours, to edit and post with your review; <strong>Dismiss</strong> drops it (with undo). Nothing Claude writes is posted unless you add it and submit. The pill then counts what's left, and a click goes to the next one. Findings are kept with your review for that head commit; after new commits, <strong>Review again</strong>.</p>
+<p>When it's done, the pill counts its findings: click it to go through them one at a time, worst first. Each shows its tag (Bug, Risk, Question or Nit), where it is, the code it's about with its lines marked, and Claude's comment as it would be posted. Then:</p>
+<div class="table"><table>
+<thead>
+<tr><th>Key</th><th></th></tr>
+</thead>
+<tbody>
+<tr><td><code>a</code></td><td><strong>Add to review</strong>: it becomes a draft of yours, posted when you submit</td></tr>
+<tr><td><code>e</code></td><td><strong>Edit first</strong>, then <code>⌘↵</code> adds it as edited</td></tr>
+<tr><td><code>d</code></td><td><strong>Dismiss</strong> it (go back with <code>k</code> to bring it back)</td></tr>
+<tr><td><code>j</code> / <code>k</code></td><td>Skip it for now / back</td></tr>
+<tr><td><code>o</code></td><td>Show it in the diff</td></tr>
+<tr><td><code>esc</code></td><td>Close</td></tr>
+</tbody>
+</table></div>
+<p>Findings also sit on their lines in the diff as dashed suggestions, with the same Add to review and Dismiss. Nothing Claude writes is posted unless you add it and submit. Findings are kept with your review for that head commit; after new commits, <strong>Review again</strong>.</p>
 <p>Claude runs in a copy of the head commit with only its read-only file tools (Read, Grep, Glob), none of your Claude Code settings or MCP servers, and can't read outside that copy. <code>BOBBY_REVIEW_MODEL</code> (else <code>BOBBY_MODEL</code>) picks the model.</p>
 <h2 id="private-notes"><a class="anchor" href="#private-notes" aria-hidden="true">#</a>Private notes</h2>
 <p>Notes are for you: reminders, questions to come back to, half-formed thoughts. <strong>They're never posted to GitHub</strong>, and they're kept in your local state file for this PR.</p>

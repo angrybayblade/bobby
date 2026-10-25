@@ -4,7 +4,7 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
-- **Claude's review (preview).** **✦ Review with Claude** asks Claude Code to review the PR: it reads the diff and checks the code around it (callers, definitions, tests) in a read-only copy of the head commit, and the pill shows what it's reading. Its findings sit on their lines as suggestions (Bug, Risk, Question, Nit): **Add to review** makes one your draft, **Dismiss** drops it. Nothing is posted unless you add it and submit.
+- **Claude's review (preview).** **✦ Review with Claude** asks Claude Code to review the PR: it reads the diff and checks the code around it (callers, definitions, tests) in a read-only copy of the head commit, and the pill shows what it's reading. Go through its findings one at a time, worst first, each with the code it's about: **Add to review** (`a`) makes one your draft, as it is or edited first (`e`); **Dismiss** (`d`) drops it. They also sit on their lines in the diff as suggestions. Nothing is posted unless you add it and submit.
 
 - **`bobby update`** installs the newest release in place of the one you ran (or `bobby update <version>`, to go back), checked against the release's `SHA256SUMS`. The new-version notice says so instead of giving the install script.
 - `bobby <something that isn't a PR>` (a typo, or a command this version doesn't have) says so and stops, instead of starting Bobby and offering to set up GitHub's CLI.

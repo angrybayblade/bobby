@@ -373,7 +373,7 @@ function commands() {
     { id: "tour", title: "Take the tour", sub: "how the walk, the views and the keys fit together", run: () => tour.start() },
     { id: "gh", title: "Set up GitHub CLI", sub: "install gh and sign in to GitHub, for PRs and posting reviews", run: () => offerGh({ force: true }) },
     { id: "agent", title: "Review with Claude", sub: "Claude reads the code around the changes and suggests comments on their lines, for you to add or dismiss", run: () => startAgentReview(app) },
-    { id: "agent-next", title: "Next of Claude's findings", run: () => nextFinding(app) || chrome.toast("No open findings from Claude.", 4000) },
+    { id: "agent-next", title: "Go through Claude's findings", sub: "one at a time, with the code each is about", run: () => nextFinding(app) || chrome.toast("No open findings from Claude.", 4000) },
     { id: "claude", title: "Set up Claude Code", sub: "install it and sign in, for Claude's tree of the change", run: () => offerClaude({ force: true }) },
     ...views.filter((v) => v.id !== currentId).map((v) => ({ id: `view:${v.id}`, title: `${v.name} view`, sub: v.hint, run: () => app.switchView(v.id) })),
     { id: "set:tests", title: `${s.tests === "show" ? "Hide" : "Show"} tests`, run: () => flip("tests", "show", "hide") },

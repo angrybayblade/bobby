@@ -376,7 +376,7 @@ kbd {
 .cwho[data-tid], .fnhead[data-tid] { cursor: pointer; } /* the header folds its thread, as the bubble does */
 .cgrow { flex: 1; }
 .cwhen { color: var(--faint); font-size: 12px; }
-.crange { font: 11.5px var(--font-code); color: var(--faint); }
+.crange { font: 11.5px var(--font-code); color: var(--faint); white-space: nowrap; }
 .ctag { font: 11px/16px var(--font-ui); color: var(--muted); border: 1px solid var(--line); border-radius: 10px; padding: 0 7px; }
 .clink { color: var(--faint); text-decoration: none; }
 .clink:hover, .cact:hover, .cfold:hover { color: var(--text); }
@@ -731,3 +731,47 @@ body.booting #where, body.booting #keys, body.booting #files { display: none; }
 .boot .acts a.btn { text-decoration: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .boot li.now i { animation: none; border-top-color: var(--line); } }
+
+/* Claude's findings, one at a time (agent-walk.js) */
+.aw-overlay { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: color-mix(in srgb, var(--bg) 72%, transparent); backdrop-filter: blur(4px); }
+.aw { width: min(820px, 100%); max-height: calc(100vh - 32px); overflow: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; box-shadow: var(--shadow); font: 14px/1.55 var(--font-ui); outline: none; }
+.aw > header { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 12px; padding: 12px 20px; background: var(--surface); border-bottom: 1px solid var(--line-soft, var(--line)); }
+.aw > header b { color: var(--signal); font-weight: 600; }
+.aw-n { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.aw-dots { display: flex; gap: 4px; }
+.aw-dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+.aw-dots i.added { background: var(--signal); }
+.aw-dots i.gone { background: none; border: 1px solid var(--line); }
+.aw-dots i.on { outline: 2px solid color-mix(in srgb, var(--signal) 60%, transparent); outline-offset: 1px; }
+.aw-x { border: 0; background: none; color: var(--muted); font-size: 15px; padding: 2px 6px; cursor: pointer; }
+.aw-summary { margin: 14px 20px 0; padding: 10px 12px; border-left: 2px solid var(--signal); color: var(--muted); font: 13.5px/1.55 var(--font-prose, var(--font-ui)); }
+.aw-meta { display: flex; align-items: center; gap: 10px; margin: 16px 20px 0; }
+.aw-loc { border: 0; background: none; padding: 0; font: 12.5px var(--font-code); color: var(--muted); cursor: pointer; text-align: left; overflow-wrap: anywhere; }
+.aw-loc:hover { color: var(--text); text-decoration: underline; }
+.aw h3 { margin: 6px 20px 12px; font-size: 18px; line-height: 1.35; }
+.aw-code { margin: 0 20px; border: 1px solid var(--line); border-radius: 4px; overflow: auto; background: var(--bg); }
+.aw-code table { border-collapse: collapse; width: 100%; font: 12.5px/1.6 var(--font-code); }
+.aw-code td { padding: 0 8px; vertical-align: top; }
+.aw-code .ln { width: 1%; text-align: right; color: var(--faint); user-select: none; }
+.aw-code .sg { width: 1%; padding: 0 2px; color: var(--faint); user-select: none; }
+.aw-code .tx { white-space: pre-wrap; overflow-wrap: anywhere; }
+.aw-code tr.add { background: var(--add-tint); }
+.aw-code tr.del { background: var(--del-tint); }
+.aw-code tr.hit td:first-child { box-shadow: inset 3px 0 0 var(--signal); color: var(--text); }
+.aw-code tr.hit { background: color-mix(in srgb, var(--signal) 12%, transparent); }
+.aw-claude { display: flex; gap: 10px; margin: 16px 20px 0; }
+.aw-main { flex: 1; min-width: 0; }
+.aw-body { margin: 0; }
+.aw-edit { width: 100%; min-height: 140px; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text); font: 13.5px/1.55 var(--font-ui); resize: vertical; }
+.aw-hint, .aw-muted { color: var(--faint); font-size: 12px; margin-top: 4px; }
+.aw-state { margin: 12px 20px 0; color: var(--muted); font-size: 13px; display: flex; align-items: center; gap: 10px; }
+.aw-state.added { color: var(--signal); }
+.aw > footer { position: sticky; bottom: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 18px; padding: 12px 20px; background: var(--surface); border-top: 1px solid var(--line-soft, var(--line)); }
+.aw footer .btn { height: 34px; padding: 0 14px; box-sizing: border-box; white-space: nowrap; display: inline-flex; align-items: center; gap: 8px; }
+.aw footer .btn kbd { padding: 2px 5px; }
+.aw footer .btn.primary kbd { background: transparent; color: inherit; border-color: color-mix(in srgb, currentColor 40%, transparent); }
+.aw-done { padding: 22px 20px; }
+.aw-done p { margin: 0 0 6px; }
+.aw-done .row { display: flex; gap: 8px; margin-top: 16px; }
+.aw-done .btn { height: 34px; padding: 0 14px; }
+@media (max-width: 560px) { .aw footer kbd { display: none; } }
