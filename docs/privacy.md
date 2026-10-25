@@ -4,6 +4,7 @@ Bobby runs on your machine: the review UI is served by Bobby itself on `127.0.0.
 
 | What | Where it goes | When | To turn it off |
 |---|---|---|---|
+| **The PR, for Claude's review** | Anthropic, through your `claude` CLI and its login | Only when you press **Review with Claude**: the diff, the PR's title and description, and the files Claude chooses to read from a copy of the head commit (Read, Grep and Glob only, inside that copy) | Don't press it |
 | **The PR, to organise it** | Anthropic, through your `claude` CLI and its login | When `claude` is installed, in the background on each new head commit | `--no-llm`, or no `claude` |
 | **PR metadata, comments, the code** | GitHub, through `gh` and `git` | Reading the PR, fetching and cloning, posting your review when you submit; the Conversation view reads the PR's comments, reviews and CI checks while it's open, and posts a comment or reply when you send one; resolving or unresolving a thread, and editing or deleting your own comment, reach GitHub at once | Review a local branch (`bobby` with no PR) |
 | **Avatars** | `avatars.githubusercontent.com` / `github.com`, from Bobby's server | Showing who wrote a comment; cached a week in `~/.bobby/cache/avatars` | |

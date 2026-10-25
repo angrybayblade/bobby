@@ -119,6 +119,14 @@ For TypeScript, JavaScript, Python and Go, a language server answers: it places 
 
 Comments on **untouched code** can't be inline on GitHub. They're kept as drafts and go into the review summary under "Notes on code this PR doesn't touch".
 
+## Claude's review (preview)
+
+**✦ Review with Claude** in the top bar (or in the command palette) asks Claude Code to review the PR. It reads the diff, then checks the code around it at the PR's head: callers, definitions, tests. While it works, the pill says what it's reading; click it to stop. It usually takes a minute or two.
+
+Its findings sit on their lines as dashed suggestions, each tagged Bug, Risk, Question or Nit. **Add to review** makes one a draft of yours, to edit and post with your review; **Dismiss** drops it (with undo). Nothing Claude writes is posted unless you add it and submit. The pill then counts what's left, and a click goes to the next one. Findings are kept with your review for that head commit; after new commits, **Review again**.
+
+Claude runs in a copy of the head commit with only its read-only file tools (Read, Grep, Glob), none of your Claude Code settings or MCP servers, and can't read outside that copy. `BOBBY_REVIEW_MODEL` (else `BOBBY_MODEL`) picks the model.
+
 ## Private notes
 
 Notes are for you: reminders, questions to come back to, half-formed thoughts. **They're never posted to GitHub**, and they're kept in your local state file for this PR.

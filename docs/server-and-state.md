@@ -34,7 +34,7 @@ Paths are under `/r/<id>`.
 | `POST /api/conversation/reply` | `{ body, to }` → `{ ok, url }` | Replies in the review thread whose first comment is `to`, and re-reads the inline discussion. |
 | `POST /api/posted/edit`, `/api/posted/delete` | `{ kind, id, body? }` → `{ ok, comments, outdated }` | Edits (or deletes) a comment already on GitHub: `kind` `review` for one on a line, `issue` for one on the PR. A review comment's change re-reads the inline discussion. |
 | `POST /api/thread` | `{ thread, resolved }` → `{ ok, comments, outdated }` | Resolves (or unresolves) the review thread with that GraphQL node id, then re-reads the inline discussion and returns it. |
-| `GET /api/status` | → `{ llm, llmError, claudeReady, servers }` | Polled every 3 s while Claude works or a server installs or loads. |
+| `GET /api/status` | → `{ llm, llmError, claudeReady, servers, agent }` | Polled every 3 s while Claude works or a server installs or loads, every 1.5 s during Claude's review. `agent`: `{ running, step, error, at, open }`. |
 | `POST /api/servers/install`, `/check`, `/decline` | `{ id, never? }` → `{ servers }` | A language server: yes, install it (in the background); look again for what you installed yourself (gopls); not now, or never (saved). |
 | `GET /api/definitions` | → `{ [path]: Definition[] }` | The graph's, with each finished language server's answers for its files. |
 | `GET /api/references?path=&line=&col=` | → `{ name, refs: [{ path, line, col, text }], total, via, pending?, changed?, server? }` | Every use of the name at a head-side position, the declaration left out, up to 500, each with its line. The file's language server once it's loaded; without one, files git grep finds the name in, keeping the uses that resolve through imports to the same declaration. |
@@ -46,6 +46,10 @@ Paths are under `/r/<id>`.
 | `POST /api/note` | `{ note }` | The parked thought. |
 | `POST /api/comment` | `{ path, line, side, body, inDiff }` → comment with `id` | Adds a draft. |
 | `DELETE /api/comment/:id` | | Removes a draft. |
+| `GET /api/agent` | → `{ running, step, error, at, open, review }` | Claude's review (`src/agent.ts`): `review` is `{ headSha, at, summary, findings, left?, cost? }` for the current head, kept as `agent` in the state file. |
+| `POST /api/agent/start` | | Starts Claude's review in the background. |
+| `POST /api/agent/cancel` | | Stops it. |
+| `POST /api/agent/finding` | `{ id, act: "draft" \| "dismiss" \| "restore" }` → `{ review, comment? }` | `draft` adds the finding as a draft comment. |
 | `POST /api/notes` | `{ body, path?, line?, side? }` → note with `id`, `createdAt` | Adds a private note: on a line, a file (no `line`) or the PR (no `path`). |
 | `DELETE /api/notes/:id` | | Removes a private note. |
 | `POST /api/submit` | `{ event, body }` → `{ ok, url }` or `{ ok: false, error }` | Posts the review to GitHub. |

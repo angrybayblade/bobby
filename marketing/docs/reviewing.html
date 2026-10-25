@@ -161,6 +161,10 @@
 <p><strong>Collapsing</strong> leaves a comment where it is, as one slim line with its author, how it starts and how many replies. Three levels, each a speech-bubble button that's filled while comments show and an outline while they're collapsed: a thread's own (in its corner, or click its header to collapse it and the slim line to open it), a file's (in the file's header, with its count), and the whole PR's (in the top bar, with its count). A broader one sets everything under it; a thread can still be opened or collapsed on its own afterwards. The PR's is saved as the <strong>Comments</strong> setting (open by default), and the rest last while the page is open.</p>
 <p><strong>Unresolved threads</strong> are counted in the top bar, <strong>3 unresolved</strong>, as GitHub counts them, outdated ones included. Click it, or press <code>N</code>, to go to the next one in walk order, opened and in view (an outdated one opens in the Conversation view); it wraps around. To see only what's still open, set <strong>Resolved threads</strong> to <strong>Hidden</strong> in Settings: resolved threads then leave the code and the counts.</p>
 <p>Comments on <strong>untouched code</strong> can't be inline on GitHub. They're kept as drafts and go into the review summary under &quot;Notes on code this PR doesn't touch&quot;.</p>
+<h2 id="claudes-review-preview"><a class="anchor" href="#claudes-review-preview" aria-hidden="true">#</a>Claude's review (preview)</h2>
+<p><strong>✦ Review with Claude</strong> in the top bar (or in the command palette) asks Claude Code to review the PR. It reads the diff, then checks the code around it at the PR's head: callers, definitions, tests. While it works, the pill says what it's reading; click it to stop. It usually takes a minute or two.</p>
+<p>Its findings sit on their lines as dashed suggestions, each tagged Bug, Risk, Question or Nit. <strong>Add to review</strong> makes one a draft of yours, to edit and post with your review; <strong>Dismiss</strong> drops it (with undo). Nothing Claude writes is posted unless you add it and submit. The pill then counts what's left, and a click goes to the next one. Findings are kept with your review for that head commit; after new commits, <strong>Review again</strong>.</p>
+<p>Claude runs in a copy of the head commit with only its read-only file tools (Read, Grep, Glob), none of your Claude Code settings or MCP servers, and can't read outside that copy. <code>BOBBY_REVIEW_MODEL</code> (else <code>BOBBY_MODEL</code>) picks the model.</p>
 <h2 id="private-notes"><a class="anchor" href="#private-notes" aria-hidden="true">#</a>Private notes</h2>
 <p>Notes are for you: reminders, questions to come back to, half-formed thoughts. <strong>They're never posted to GitHub</strong>, and they're kept in your local state file for this PR.</p>
 <div class="table"><table>
@@ -225,6 +229,7 @@
       <a href="#reading-code">Reading code</a>
       <a href="#inspecting-a-name">Inspecting a name</a>
       <a href="#comments">Comments</a>
+      <a href="#claudes-review-preview">Claude's review (preview)</a>
       <a href="#private-notes">Private notes</a>
       <a href="#when-the-pr-moves-on">When the PR moves on</a>
       <a href="#submitting">Submitting</a>

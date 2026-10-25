@@ -143,7 +143,7 @@ bobby lsp install <language>          # install one (typescript, python), or say
 | `--no-open` | off | Don't open the browser. |
 | `-o, --out <file>` | stdout | Output file for `extract`. |
 
-Environment: `BOBBY_MODEL` picks the Claude model passed to `claude --model` (the old `PRFOCUS_MODEL` still works). `BOBBY_NO_UPDATE_CHECK=1` turns off the check for new versions. `BOBBY_HOME` keeps Bobby's files somewhere other than `~/.bobby` (a test, say). `BOBBY_HOST` and `BOBBY_ALLOW_HOSTS` (comma-separated) set `--host` and `--allow-host`.
+Environment: `BOBBY_MODEL` picks the Claude model passed to `claude --model` (the old `PRFOCUS_MODEL` still works); `BOBBY_REVIEW_MODEL`, the one for [Claude's review](reviewing.md#claudes-review-preview). `BOBBY_NO_UPDATE_CHECK=1` turns off the check for new versions. `BOBBY_HOME` keeps Bobby's files somewhere other than `~/.bobby` (a test, say). `BOBBY_HOST` and `BOBBY_ALLOW_HOSTS` (comma-separated) set `--host` and `--allow-host`.
 
 ## On a remote machine
 
