@@ -49,7 +49,7 @@ Paths are under `/r/<id>`.
 | `GET /api/agent` | → `{ running, step, error, at, open, review }` | Claude's review (`src/agent.ts`): `review` is `{ headSha, at, summary, findings, left?, cost? }` for the current head, kept as `agent` in the state file. |
 | `POST /api/agent/start` | | Starts Claude's review in the background. |
 | `POST /api/agent/cancel` | | Stops it. |
-| `POST /api/agent/finding` | `{ id, act: "draft" \| "dismiss" \| "restore" }` → `{ review, comment? }` | `draft` adds the finding as a draft comment. |
+| `POST /api/agent/finding` | `{ id, act: "draft" \| "dismiss" \| "restore", body? }` → `{ review, comment? }` | `draft` adds the finding as a draft comment (with `body`, as you edited it). |
 | `POST /api/notes` | `{ body, path?, line?, side? }` → note with `id`, `createdAt` | Adds a private note: on a line, a file (no `line`) or the PR (no `path`). |
 | `DELETE /api/notes/:id` | | Removes a private note. |
 | `POST /api/submit` | `{ event, body }` → `{ ok, url }` or `{ ok: false, error }` | Posts the review to GitHub. |

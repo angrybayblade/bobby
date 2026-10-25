@@ -100,7 +100,7 @@
 <tr><td><code>GET /api/agent</code></td><td>→ <code>{ running, step, error, at, open, review }</code></td><td>Claude's review (<code>src/agent.ts</code>): <code>review</code> is <code>{ headSha, at, summary, findings, left?, cost? }</code> for the current head, kept as <code>agent</code> in the state file.</td></tr>
 <tr><td><code>POST /api/agent/start</code></td><td></td><td>Starts Claude's review in the background.</td></tr>
 <tr><td><code>POST /api/agent/cancel</code></td><td></td><td>Stops it.</td></tr>
-<tr><td><code>POST /api/agent/finding</code></td><td><code>{ id, act: &quot;draft&quot; | &quot;dismiss&quot; | &quot;restore&quot; }</code> → <code>{ review, comment? }</code></td><td><code>draft</code> adds the finding as a draft comment.</td></tr>
+<tr><td><code>POST /api/agent/finding</code></td><td><code>{ id, act: &quot;draft&quot; | &quot;dismiss&quot; | &quot;restore&quot;, body? }</code> → <code>{ review, comment? }</code></td><td><code>draft</code> adds the finding as a draft comment (with <code>body</code>, as you edited it).</td></tr>
 <tr><td><code>POST /api/notes</code></td><td><code>{ body, path?, line?, side? }</code> → note with <code>id</code>, <code>createdAt</code></td><td>Adds a private note: on a line, a file (no <code>line</code>) or the PR (no <code>path</code>).</td></tr>
 <tr><td><code>DELETE /api/notes/:id</code></td><td></td><td>Removes a private note.</td></tr>
 <tr><td><code>POST /api/submit</code></td><td><code>{ event, body }</code> → <code>{ ok, url }</code> or <code>{ ok: false, error }</code></td><td>Posts the review to GitHub.</td></tr>

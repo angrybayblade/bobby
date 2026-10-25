@@ -428,12 +428,12 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
         return json({ ok: true });
       }
       if (req.method === "POST" && p === "/api/agent/finding") {
-        const { id, act } = (await req.json()) as { id: string; act: "draft" | "dismiss" | "restore" };
+        const { id, act, body } = (await req.json()) as { id: string; act: "draft" | "dismiss" | "restore"; body?: string }; // body: as you edited it
         const f = s.state.agent?.findings.find((x) => x.id === id);
         if (!f) return json({ ok: false, error: "no such finding" }, 404);
         let comment: Comment | undefined;
         if (act === "draft" && f.status === "open") {
-          comment = { ...draftOf(f), id: crypto.randomUUID().slice(0, 8) };
+          comment = { ...draftOf(f), ...(typeof body === "string" && body.trim() ? { body: body.trim() } : {}), id: crypto.randomUUID().slice(0, 8) };
           s.state.comments.push(comment);
           Object.assign(f, { status: "drafted", draftId: comment.id });
         } else if (act === "dismiss") f.status = "dismissed";
