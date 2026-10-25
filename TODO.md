@@ -37,3 +37,8 @@ The CLI is the public release: it needs `git`, `gh` (logged in) and SSH access t
 - Hosted Bobby as a GitHub App (per-repo install, scoped permissions, short-lived installation tokens, webhooks to
   extract ahead of time); its device flow could later sign the CLI in without gh.
 - Partial clones (`--filter=blob:none`) and clone progress in the UI, for large monorepos.
+- Agent-assisted review on more than Claude Code: one interface (run with a prompt and a schema, stream what it does,
+  status, install, sign in) behind Claude Code, Codex (`codex exec --output-schema`, `codex login --device-auth`) and Pi
+  (`pi -p --mode json`, signed in on its own); and an API backend on the Vercel AI SDK for any provider with a key
+  (Anthropic, OpenAI, Gemini, OpenRouter, OpenAI-compatible, Ollama), with Bobby's own tools in process. Chosen in
+  Settings. Never borrow a CLI's subscription sign-in for the API.
