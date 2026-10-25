@@ -119,29 +119,32 @@ type Raw = { summary: string; findings: Array<Omit<Finding, "id" | "status">> };
 interface Event {
   type?: string;
   message?: { content?: Array<{ type: string; name?: string; input?: Record<string, unknown> }> };
-  structured_output?: Raw; result?: string; total_cost_usd?: number; // the result's
+  event?: { type?: string; delta?: { type?: string; text?: string } }; // a stream_event's, with partial messages
+  structured_output?: unknown; result?: string; total_cost_usd?: number; // the result's
 }
 
-/** Runs the review; job says how it's going, and the result is handed to done. */
-export async function runAgentReview(cwd: string, g: ReviewGraph, job: AgentJob, done: (r: AgentReview) => void, focus?: string): Promise<void> {
+/** Runs Claude Code on a prompt, in the head commit's export with only Read, Grep and Glob, and nothing of your own
+ *  setup (settings, MCP servers, sessions). job.steps says what it's doing; onText gets its answer as it's written.
+ *  The result: its structured output (with a schema), else its text. */
+export async function runClaude(cwd: string, g: ReviewGraph, job: AgentJob, prompt: string, o: { schema?: object; onText?: (text: string) => void; minutes?: number } = {}): Promise<Event> {
   const step = (m: string) => { job.steps.push(m); if (job.steps.length > 200) job.steps.splice(0, 100); };
+  const st = await claudeStatus();
+  if (!st.installed || !st.loggedIn) throw new Error(st.installed ? "Claude Code isn't signed in" : "Claude Code isn't installed");
+  const root = await sourceTree(cwd, g, step);
+  step("Reading the diff");
+  const cmd = [claudeBin() ?? "claude", "-p", "--output-format", "stream-json", "--verbose", "--tools", "Read,Grep,Glob", "--no-session-persistence",
+    "--strict-mcp-config", "--setting-sources", "", "--disable-slash-commands", ...(o.schema ? ["--json-schema", JSON.stringify(o.schema)] : []), ...(o.onText ? ["--include-partial-messages"] : [])];
+  const model = process.env.BOBBY_REVIEW_MODEL ?? process.env.BOBBY_MODEL;
+  if (model) cmd.push("--model", model);
+  const p = Bun.spawn(cmd, { cwd: root, stdin: "pipe", stdout: "pipe", stderr: "pipe" });
+  job.proc = p;
+  p.stdin.write(prompt);
+  p.stdin.end();
+  const minutes = o.minutes ?? 20;
+  const kill = setTimeout(() => { job.error = `Claude took over ${minutes} minutes; stopped`; p.kill(); }, minutes * 60_000);
+  let result: Event | null = null, text = "", buf = "";
+  const dec = new TextDecoder();
   try {
-    const st = await claudeStatus();
-    if (!st.installed || !st.loggedIn) throw new Error(st.installed ? "Claude Code isn't signed in" : "Claude Code isn't installed");
-    const root = await sourceTree(cwd, g, step);
-    step("Reading the diff");
-    const cmd = [claudeBin() ?? "claude", "-p", "--output-format", "stream-json", "--verbose", "--tools", "Read,Grep,Glob", "--no-session-persistence",
-      "--strict-mcp-config", "--setting-sources", "", "--disable-slash-commands", "--json-schema", JSON.stringify(SCHEMA)];
-    const model = process.env.BOBBY_REVIEW_MODEL ?? process.env.BOBBY_MODEL;
-    if (model) cmd.push("--model", model);
-    const p = Bun.spawn(cmd, { cwd: root, stdin: "pipe", stdout: "pipe", stderr: "pipe" });
-    job.proc = p;
-    p.stdin.write(buildPrompt(g, focus));
-    p.stdin.end();
-    const kill = setTimeout(() => { job.error = "Claude took over 20 minutes; stopped"; p.kill(); }, 20 * 60_000);
-    let result: Event | null = null;
-    let buf = "";
-    const dec = new TextDecoder();
     for await (const chunk of p.stdout) {
       buf += dec.decode(chunk);
       let nl;
@@ -149,24 +152,35 @@ export async function runAgentReview(cwd: string, g: ReviewGraph, job: AgentJob,
         const line = buf.slice(0, nl); buf = buf.slice(nl + 1);
         let e: Event;
         try { e = JSON.parse(line); } catch { continue; }
-        if (e.type === "assistant") for (const c of e.message?.content ?? []) {
-          if (c.type === "tool_use") step(describe(c.name ?? "", c.input ?? {}, root));
-          else if (c.type === "thinking" && job.steps.at(-1) !== "Thinking") step("Thinking");
+        if (e.type === "assistant") {
+          for (const c of e.message?.content ?? []) {
+            if (c.type === "tool_use") step(describe(c.name ?? "", c.input ?? {}, root));
+            else if (c.type === "thinking" && job.steps.at(-1) !== "Thinking") step("Thinking");
+          }
+          text = ""; // a message ends: the answer is the last one's text
         }
+        if (e.type === "stream_event" && e.event?.type === "message_start") text = "";
+        if (e.type === "stream_event" && e.event?.delta?.type === "text_delta") { text += e.event.delta.text ?? ""; o.onText?.(text); }
         if (e.type === "result") result = e;
       }
     }
-    clearTimeout(kill);
-    const code = await p.exited;
-    if (job.error) throw new Error(job.error);
-    if (!result?.structured_output) throw new Error(result?.result?.slice(0, 300) || (await new Response(p.stderr).text()).trim().split("\n").at(-1) || `claude exited ${code}`);
-    const r = place(g, result.structured_output);
+  } finally { clearTimeout(kill); job.proc = undefined; }
+  const code = await p.exited;
+  if (job.error) throw new Error(job.error);
+  if (!result || (o.schema ? !result.structured_output : !result.result)) throw new Error(result?.result?.slice(0, 300) || (await new Response(p.stderr).text()).trim().split("\n").at(-1) || `claude exited ${code}`);
+  return result;
+}
+
+/** Runs the review; job says how it's going, and the result is handed to done. */
+export async function runAgentReview(cwd: string, g: ReviewGraph, job: AgentJob, done: (r: AgentReview) => void, focus?: string): Promise<void> {
+  try {
+    const result = await runClaude(cwd, g, job, buildPrompt(g, focus), { schema: SCHEMA });
+    const r = place(g, result.structured_output as Raw);
     done({ headSha: g.pr.headSha, at: new Date().toISOString(), ...r, ...(focus ? { focus } : {}), ...(result.total_cost_usd ? { cost: result.total_cost_usd } : {}) });
-    step(`Done: ${r.findings.length} finding${r.findings.length === 1 ? "" : "s"}`);
+    job.steps.push(`Done: ${r.findings.length} finding${r.findings.length === 1 ? "" : "s"}`);
   } catch (e) {
     job.error ??= (e as Error).message;
   } finally {
-    job.proc = undefined;
     job.done = true;
   }
 }
