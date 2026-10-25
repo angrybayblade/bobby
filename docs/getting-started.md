@@ -40,7 +40,9 @@ The install script picks the build for your OS and CPU, checks it against the re
 
 Binaries are built for macOS, Linux and Windows. Windows gets the least use, so expect rough edges there. Bobby isn't on npm yet: install it from a release or from GitHub.
 
-**Staying up to date.** Bobby checks GitHub for a newer release when it starts and every 6 hours while it runs. When there is one, it says so in the terminal and in the top bar, with the command to update: the install script for a release binary, `git pull` for a clone. On a release candidate it also tells you about newer release candidates. Turn it off in Settings, or with `BOBBY_NO_UPDATE_CHECK=1`.
+**Staying up to date.** Bobby checks GitHub for a newer release when it starts and every 6 hours while it runs. When there is one, it says so in the terminal and in the top bar, with the command to update: `bobby update` for a release binary, `git pull` for a clone. On a release candidate it also tells you about newer release candidates. Turn it off in Settings, or with `BOBBY_NO_UPDATE_CHECK=1`.
+
+`bobby update` installs the newest release in place of the binary you ran, wherever it lives: it downloads the build for your OS and CPU, checks it against the release's `SHA256SUMS` and that it runs, then swaps it in. `bobby update 0.1.0-rc11` installs that version instead, to go back. A Bobby already running keeps the old version until you restart it. If the binary's folder isn't yours to write (`/usr/local/bin`, say), run it with the rights to, or use the install script again.
 
 Release binaries aren't code-signed. On macOS, if Gatekeeper blocks a downloaded one, run `xattr -d com.apple.quarantine "$(which bobby)"`. Each release has a `SHA256SUMS` file to check downloads against.
 

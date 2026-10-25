@@ -10,7 +10,7 @@ Bobby runs on your machine: the review UI is served by Bobby itself on `127.0.0.
 | **Images in comments** | GitHub's image proxy (`camo.githubusercontent.com`) and GitHub's attachment hosts, from your browser | Showing images and badges in the Conversation view's comments, as github.com does | |
 | **Fonts** | Google Fonts, from your browser | Loading the UI | |
 | **Language servers** | The npm registry | Only after you say yes to installing one (or run `bobby lsp install`) | Say **Not now** or **Never** |
-| **The install script** | GitHub releases | Installing or updating Bobby | |
+| **The install script**, **`bobby update`** | GitHub releases | Installing or updating Bobby | |
 | **Setting up GitHub CLI** | GitHub (`api.github.com` for `gh`'s latest release, then its download, and GitHub's sign-in) | Only when you press **Install GitHub CLI** or **Get a sign-in code** in Bobby's [setup](getting-started.md#setting-up-github) | **Not now** or **Don't ask again** |
 | **Setting up Claude Code** | `claude.ai` (Anthropic's installer, then its sign-in) | Only when you press **Install Claude Code** or **Sign in** in Bobby's [setup](getting-started.md#setting-up-claude) | **Not now** or **Don't ask again** |
 | **New versions** | GitHub's releases API (no login, nothing about you or your code) | At start and every 6 hours, at most once in 6 hours across runs | Settings › Tell me about new versions, or `BOBBY_NO_UPDATE_CHECK=1` |

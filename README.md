@@ -10,6 +10,8 @@ Install
 curl -fsSL https://raw.githubusercontent.com/angrybayblade/bobby/main/install.sh | bash
 ```
 
+Update it with `bobby update`.
+
 ## Quick start
 
 ```sh

@@ -4,6 +4,8 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- **`bobby update`** installs the newest release in place of the one you ran (or `bobby update <version>`, to go back), checked against the release's `SHA256SUMS`. The new-version notice says so instead of giving the install script.
+
 ## 0.1.0-rc12 (2026-10-23)
 
 Fixes to rc11's home page and setup dialogs.
