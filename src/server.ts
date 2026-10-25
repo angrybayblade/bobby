@@ -1,7 +1,7 @@
 import { join, normalize } from "node:path";
 import { embeddedAsset } from "./assets.ts";
 import { cancelLogin, claudeStatus, dismiss, INSTALL_TEXT, installClaude, startLogin, submitCode } from "./claude.ts";
-import { fileLines, forgetUnknownMe, reviewComments, run, whoAmI } from "./git.ts";
+import { fileLines, forgetUnknownMe, parsePrArg, reviewComments, run, whoAmI } from "./git.ts";
 import { cancelGhLogin, dismissGh, ghStatus, installGh, startGhLogin } from "./github.ts";
 import { type ReviewGraph, setDiscussion } from "./graph.ts";
 import { home, loadSettings, saveSettings, saveState } from "./state.ts";
@@ -217,8 +217,9 @@ export function startServer(app: App, port: number, { hostname = "127.0.0.1", al
           if (a && app.waiting?.arg === a) app.waiting = undefined;
           return json({ id });
         } catch (e) { // without gh signed in, setting it up is the way on: the page offers it, then opens this
-          const gh = await ghStatus(), setup = !(gh.installed && gh.loggedIn);
-          if (setup && a) app.waiting = { arg: a, o };
+          const pr = !!a && (() => { try { return !!parsePrArg(a); } catch { return false; } })(); // not a PR: gh won't help
+          const setup = pr && (await ghStatus().then((gh) => !(gh.installed && gh.loggedIn)));
+          if (setup) app.waiting = { arg: a, o };
           return json({ error: String((e as Error).message ?? e), ...(setup ? { setup: "gh" } : {}) }, 400);
         }
       }

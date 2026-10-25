@@ -2,7 +2,7 @@
 import { parseArgs } from "node:util";
 import { readFileSync, statSync, writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
-import { git, reviewComments, run } from "./git.ts";
+import { git, parsePrArg, reviewComments, run } from "./git.ts";
 import { ghStatus } from "./github.ts";
 import { GRAPH_SCHEMA, LEGACY_SCHEMAS, type ReviewGraph, setDiscussion } from "./graph.ts";
 import { clean, prune } from "./prune.ts";
@@ -83,6 +83,11 @@ if (values.version) {
 if (values.help || (cmd === "open" && !arg)) {
   console.log(USAGE);
   process.exit(values.help ? 0 : 1);
+}
+// Not a PR (a typo, or a command this version doesn't have): say so now, not after starting, or offering to set gh up.
+if (cmd === "review" && arg) try { parsePrArg(arg); } catch (e) {
+  const m = (e as Error).message;
+  fail(m.startsWith("Expected") ? `${m} (bobby --help lists the commands)` : m);
 }
 if (!/^\d{1,5}$/.test(values.port!) || Number(values.port) > 65535) fail(`--port takes a port number (0–65535), got "${values.port}"`);
 if (values.repo && !statSync(values.repo, { throwIfNoEntry: false })?.isDirectory()) fail(`--repo takes a folder with a git checkout, got "${values.repo}"`);

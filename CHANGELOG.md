@@ -5,6 +5,7 @@ What changed in each release, newest first. Each release's full notes, with inst
 ## Unreleased
 
 - **`bobby update`** installs the newest release in place of the one you ran (or `bobby update <version>`, to go back), checked against the release's `SHA256SUMS`. The new-version notice says so instead of giving the install script.
+- `bobby <something that isn't a PR>` (a typo, or a command this version doesn't have) says so and stops, instead of starting Bobby and offering to set up GitHub's CLI.
 
 ## 0.1.0-rc12 (2026-10-23)
 
