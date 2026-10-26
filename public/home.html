@@ -48,12 +48,13 @@
     .home .wrap .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; padding: 9px 12px; border: 1px solid transparent; border-bottom-color: var(--line-soft, var(--line)); text-decoration: none; color: inherit; }
     .home .wrap .row:hover, .home .wrap .row.sel { background: var(--raised); }
     .home .wrap .row.sel { border-color: var(--line); border-radius: 3px; }
-    .home .wrap .row .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .home .wrap .row .t { min-width: 0; display: flex; align-items: baseline; white-space: nowrap; } /* the title gives way, not its tags */
+    .home .wrap .row .tt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
     .home .wrap .row .t b { font-weight: 600; }
     .home .wrap .row .where { color: var(--faint); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .home .wrap .row .side { display: flex; gap: 12px; align-items: center; justify-content: flex-end; color: var(--faint); font-size: 12px; white-space: nowrap; }
     .home .wrap .row .meta { grid-column: 2; grid-row: 2; }
-    .home .wrap .tag { font: 500 11px var(--font-ui); padding: 1px 6px; border: 1px solid var(--line); border-radius: 99px; color: var(--muted); margin-left: 6px; }
+    .home .wrap .tag { font: 500 11px var(--font-ui); padding: 1px 6px; border: 1px solid var(--line); border-radius: 99px; color: var(--muted); margin-left: 6px; flex: none; }
     .home .wrap .tag.live { border-color: var(--ok); color: var(--ok); }
     .home .wrap .tag.draft { border-style: dashed; }
     .home .wrap .sha { font: 12px var(--font-code); color: var(--muted); margin-right: 6px; }

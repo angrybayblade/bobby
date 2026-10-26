@@ -79,7 +79,7 @@ function recentRow(r, i) {
     : `<b>#${r.number}</b> ${r.commit ? `<span class="sha">@ ${esc(r.commit.sha.slice(0, 7))}</span>` : ""}${esc(r.title)}`;
   const p = r.progress, pct = p?.total ? Math.round((p.done / p.total) * 100) : 0;
   return `<a class="row" href="/r/${esc(r.id)}" data-recent="${i}">
-    <span class="t">${what}${r.open ? `<span class="tag live" title="Open in this Bobby">open</span>` : ""}</span>
+    <span class="t"><span class="tt">${what}</span>${r.open ? `<span class="tag live" title="Open in this Bobby">open</span>` : ""}</span>
     <span class="side">${p ? `<span title="${p.done} of ${p.total} pages reviewed"><span class="bar"><i style="width:${pct}%"></i></span>${p.done}/${p.total}</span>` : ""}${r.drafts ? `<span>${r.drafts} draft${r.drafts > 1 ? "s" : ""}</span>` : ""}<span title="Last opened">${ago(r.openedAt)}</span></span>
     <span class="where">${esc(r.kind === "local" ? `local · ${r.repo}` : `${r.owner}/${r.repo}`)}${r.author && r.kind !== "local" ? ` · ${esc(r.author)}` : ""}</span>
   </a>`;
@@ -88,7 +88,7 @@ function prRow(x, mine) {
   const seen = mine.get(`${x.owner}/${x.repo}/${x.number}`), p = seen?.progress;
   const id = `${x.owner}/${x.repo}/${x.number}`;
   return `<a class="row" href="/r/${esc(id)}" data-pr="${esc(x.url)}" data-id="${esc(id)}">
-    <span class="t"><b>#${x.number}</b> ${esc(x.title)}${x.draft ? `<span class="tag draft">draft</span>` : ""}${seen?.open ? `<span class="tag live">open</span>` : ""}</span>
+    <span class="t"><span class="tt"><b>#${x.number}</b> ${esc(x.title)}</span>${x.draft ? `<span class="tag draft">draft</span>` : ""}${seen?.open ? `<span class="tag live">open</span>` : ""}</span>
     <span class="side">${p ? `<span title="Your progress: ${p.done} of ${p.total} pages reviewed">${p.done}/${p.total}</span>` : ""}${x.comments ? `<span title="Comments">◂ ${x.comments}</span>` : ""}<span title="Updated">${ago(x.updatedAt)}</span></span>
     <span class="where">${esc(`${x.owner}/${x.repo}`)} · <img class="av" src="/api/avatar?u=${encodeURIComponent(x.author)}" alt="" loading="lazy" onerror="this.remove()">${esc(x.author)}</span>
   </a>`;
