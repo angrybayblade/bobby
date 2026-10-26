@@ -17,6 +17,7 @@ export interface Recent {
   openedAt: string;
   progress?: { done: number; total: number };
   drafts?: number;
+  approved?: boolean; // as of the last time its conversation was read
 }
 const KEEP = 100;
 const path = () => join(home(), "recents.json");
@@ -63,8 +64,15 @@ export function recentOf(id: string, pr: PrInfo, repoDir: string): Recent {
   };
 }
 
-export interface ListedPr { owner: string; repo: string; number: number; title: string; author: string; url: string; updatedAt: string; draft: boolean; comments: number }
+export interface ListedPr { owner: string; repo: string; number: number; title: string; author: string; url: string; updatedAt: string; draft: boolean; comments: number; approved: boolean }
 export interface PrLists { review: ListedPr[]; mine: ListedPr[]; all: ListedPr[]; error?: string }
+
+/** Approved: GitHub says so (its review rules are met), or, in a repo with no rules, someone approved and no one asked
+ *  for changes. An approval that still needs another (a code owner's, a second one) isn't. */
+export function approvedOf(decision: string | null | undefined, verdicts: string[]): boolean {
+  if (decision) return decision === "APPROVED";
+  return verdicts.includes("APPROVED") && !verdicts.includes("CHANGES_REQUESTED");
+}
 
 const lists = new Map<string, { at: number; value: Promise<PrLists> }>();
 /** Open PRs: waiting on your review, yours, and all that involve you; each narrowed by repo, author and text. Cached a minute. */
@@ -74,17 +82,21 @@ export function prLists(f: { repo?: string; author?: string; q?: string }, fresh
   const key = filters;
   const hit = lists.get(key);
   if (hit && !fresh && Date.now() - hit.at < 60_000) return hit.value;
-  const search = async (scope: string): Promise<ListedPr[]> => {
-    const q = `is:pr is:open archived:false ${scope} ${filters}`.trim();
-    const out = await run(["gh", "api", "-X", "GET", "search/issues", "-f", `q=${q}`, "-f", "per_page=50", "-f", "sort=updated",
-      "--jq", ".items[] | {url: .html_url, number, title, author: .user.login, updatedAt: .updated_at, draft: (.draft // false), comments}"]);
-    return out.split("\n").filter((l) => l.startsWith("{")).map((l) => {
-      const x = JSON.parse(l) as Omit<ListedPr, "owner" | "repo">, [, owner, repo] = x.url.match(/github\.com\/([^/]+)\/([^/]+)\/pull/) ?? [];
-      return { ...x, owner, repo };
-    });
+  const search = (scope: string) => `search(query: ${JSON.stringify(`is:pr is:open archived:false ${scope} ${filters} sort:updated-desc`.replace(/\s+/g, " "))}, type: ISSUE, first: 50) { nodes { ...pr } }`;
+  const query = `query { review: ${search("review-requested:@me")} mine: ${search("author:@me")} all: ${search("involves:@me")} }
+    fragment pr on PullRequest { url number title author { login } updatedAt isDraft comments { totalCount } reviewDecision latestOpinionatedReviews(first: 50) { nodes { state } } }`;
+  type Raw = { url: string; number: number; title: string; author: { login: string } | null; updatedAt: string; isDraft: boolean; comments: { totalCount: number }; reviewDecision: string | null; latestOpinionatedReviews: { nodes: Array<{ state: string }> } };
+  const listed = (x: Raw): ListedPr => {
+    const [, owner, repo] = x.url.match(/github\.com\/([^/]+)\/([^/]+)\/pull/) ?? [];
+    return { owner, repo, number: x.number, title: x.title, author: x.author?.login ?? "ghost", url: x.url, updatedAt: x.updatedAt, draft: x.isDraft,
+      comments: x.comments.totalCount, approved: approvedOf(x.reviewDecision, x.latestOpinionatedReviews.nodes.map((r) => r.state)) };
   };
-  const value = Promise.all([search("review-requested:@me"), search("author:@me"), search("involves:@me")])
-    .then(([review, mine, all]) => ({ review, mine, all }))
+  const value = run(["gh", "api", "graphql", "-f", `query=${query}`])
+    .then((out) => {
+      const d = (JSON.parse(out) as { data: Record<"review" | "mine" | "all", { nodes: Raw[] }> }).data;
+      const of = (k: "review" | "mine" | "all") => d[k].nodes.filter((x) => x?.url).map(listed); // an issue matches as {}
+      return { review: of("review"), mine: of("mine"), all: of("all") };
+    })
     .catch((e) => { lists.delete(key); return { review: [], mine: [], all: [], error: String((e as Error).message ?? e) }; });
   lists.set(key, { at: Date.now(), value });
   return value;

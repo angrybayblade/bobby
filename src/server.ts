@@ -15,7 +15,7 @@ import { type Inspector, insideRepo, inspectSyntax, referencesSyntax, type Uses 
 import { declineServer, inspectorFor, installServer, recheckServer, type ServerInfo, serverInfoFor } from "./servers.ts";
 import { Repo } from "./resolve.ts";
 import type { Update } from "./watch.ts";
-import { loadRecents, noteRecent, prLists } from "./recents.ts";
+import { approvedOf, loadRecents, noteRecent, prLists } from "./recents.ts";
 import { type Conversation, conversation } from "./conversation.ts";
 import pkg from "../package.json" with { type: "json" };
 import type { Release } from "./updates.ts";
@@ -326,6 +326,7 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
         if (!s.conversation || url.searchParams.has("fresh") || Date.now() - s.conversation.at > 15_000) {
           const value = conversation(pr());
           s.conversation = { at: Date.now(), value };
+          value.then((c) => { if (s.id) void noteRecent({ id: s.id, approved: approvedOf(c.decision, c.verdicts.map((v) => v.state)) }); }, () => {});
           value.catch(() => { if (s.conversation?.value === value) s.conversation = undefined; }); // a failure isn't kept
         }
         try { return json(await s.conversation.value); } catch (e) { return json({ error: String((e as Error).message) }, 502); }
