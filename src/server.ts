@@ -4,6 +4,7 @@ import { cancelLogin, claudeStatus, dismiss, INSTALL_TEXT, installClaude, startL
 import { fileLines, forgetUnknownMe, parsePrArg, reviewComments, run, whoAmI } from "./git.ts";
 import { type AgentJob, draftOf, runAgentReview } from "./agent.ts";
 import { runAsk } from "./ask.ts";
+import { handleMcp, mcpConfig, openMcp } from "./mcp.ts";
 import { refsForGitHub } from "./refs.ts";
 import { cancelGhLogin, dismissGh, ghStatus, installGh, startGhLogin } from "./github.ts";
 import { type ReviewGraph, setDiscussion } from "./graph.ts";
@@ -155,6 +156,7 @@ export interface App {
   /** A PR asked for before gh was set up, with what it was asked with (a PR number means one in that cwd's repo): the
    *  page sets gh up, then opens it. */
   waiting?: { arg: string; o: OpenOptions };
+  self?: string; // where this server answers on this machine (cli.ts), for Claude to reach Bobby's tools (mcp.ts)
 }
 export type OpenOptions = { repo?: string; cwd?: string; base?: string; refresh?: boolean; noLlm?: boolean; noLsp?: boolean };
 
@@ -178,6 +180,7 @@ export function startServer(app: App, port: number, { hostname = "127.0.0.1", al
       const p = url.pathname;
       const refused = guard(req, allow);
       if (refused) return refused;
+      if (p.startsWith("/mcp/")) return handleMcp(req, p.slice(5)); // Bobby's tools, for one run of Claude (mcp.ts)
 
       // A review: its page, or its API. An id is three segments (owner/repo/number, or local/repo/branch); after it,
       // /api/… is its API, and anything else is the page, at a view and what it's on (/diff/src/api/x.ts is a page).
@@ -424,7 +427,9 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
         if (s.agentJob && !s.agentJob.done) return json({ ok: true });
         const { focus } = (await req.json().catch(() => ({}))) as { focus?: unknown }; // what you asked Claude to look at
         const job: AgentJob = (s.agentJob = { steps: [], startedAt: Date.now(), ...(typeof focus === "string" && focus.trim() ? { focus: focus.trim().slice(0, 2000) } : {}) });
-        void runAgentReview(s.cwd, s.claudeGraph ?? s.staticGraph, job, (r) => { s.state.agent = r; persist(); }, job.focus);
+        const g = s.claudeGraph ?? s.staticGraph, found: Array<Record<string, unknown>> = [];
+        const tools = bobbyTools(s, app, g, (f) => found.push(f)); // each finding as Claude reports it
+        void runAgentReview(s.cwd, g, job, (r) => { s.state.agent = r; persist(); }, job.focus, tools.config ? { config: tools.config, found: found as never } : undefined).finally(tools.close);
         return json({ ok: true });
       }
       if (req.method === "POST" && p === "/api/agent/cancel") {
@@ -465,7 +470,8 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
         persist();
         const job = { steps: [], startedAt: Date.now() } as AgentJob & { text?: string };
         (s.askJobs ??= new Map()).set(ask.id, job);
-        void runAsk(s.cwd, s.claudeGraph ?? s.staticGraph, ask, job, persist);
+        const g = s.claudeGraph ?? s.staticGraph, tools = bobbyTools(s, app, g);
+        void runAsk(s.cwd, g, ask, job, persist, tools.config).finally(tools.close);
         return json({ ok: true, ask: askView(s, ask) });
       }
       if (req.method === "POST" && p === "/api/ask/stop") {
@@ -656,4 +662,16 @@ function agentStatus(s: Session) {
 function askView(s: Session, a: Ask) {
   const job = s.askJobs?.get(a.id);
   return job && !job.done ? { ...a, running: true, step: job.steps.at(-1) ?? "Starting", partial: job.text ?? "" } : a;
+}
+
+/** Bobby's tools for one run of Claude on this review (mcp.ts): the MCP config to hand it, and the end of its token.
+ *  The tools call this review's API in process, so they answer as the page's inspector and viewer do. */
+function bobbyTools(s: Session, app: App, g: ReviewGraph, report?: (f: Record<string, unknown>) => number): { config?: string; close: () => void } {
+  if (!app.self || !s.cwd) return { close: () => {} };
+  const api = async (path: string) => {
+    const url = new URL(path, "http://127.0.0.1");
+    return (await reviewApi(s, app, new Request(url), url, url.pathname)).json().catch(() => null);
+  };
+  const { token, close } = openMcp({ g, cwd: s.cwd, api, ...(report ? { report } : {}) });
+  return { config: mcpConfig(`${app.self}/mcp/${token}`), close };
 }

@@ -284,6 +284,7 @@ async function serve(app: App, path: string) {
     if (names.length) console.log(`  ▶ ${names.join("\n  ▶ ")}`);
     else if (!allow.includes("*")) console.log(`  Opening it at this machine's IP or name? Add --allow-host <that name>.`);
   }
+  app.self = `http://${here.includes(":") ? `[${here}]` : here}:${server.port}`; // for Claude to reach Bobby's tools
   hold(server.port!);
   watchReleases((r) => { app.release = r; console.log(`  ▸ Bobby ${r.version} is out (you have ${pkg.version}). Update: ${r.how} (${r.url})`); });
   console.log(`\n  ▶ ${url}\n`);
