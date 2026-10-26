@@ -42,3 +42,8 @@ The CLI is the public release: it needs `git`, `gh` (logged in) and SSH access t
   (`pi -p --mode json`, signed in on its own); and an API backend on the Vercel AI SDK for any provider with a key
   (Anthropic, OpenAI, Gemini, OpenRouter, OpenAI-compatible, Ollama), with Bobby's own tools in process. Chosen in
   Settings. Never borrow a CLI's subscription sign-in for the API.
+- Agent quality check: a few fixed questions and a review on a test PR, recording tool calls, whether every reference
+  resolves to a real line, the answer's length and cost; run it when the prompts or tools change.
+- Claude's review, streamed: each finding appears as it's found (a tool Claude calls per finding), not all at the end.
+- Claude's review of one part: the core you're on, or a selection of files, as well as the whole PR; and more than one
+  review at a time.
