@@ -1,3 +1,4 @@
+import { askPoll } from "./ask.js";
 import { agentPoll, nextFinding, openAsk } from "./agent.js";
 import { DONE, LOW, api, createApp, esc, reviewBase } from "./core.js";
 import { escapeCode, inspectorKey, inspectorOpen, expandAll, keepDraft, moveLine, renderFile, renderNode, renderPage, startComment, startFileNote } from "./code.js";
@@ -223,9 +224,9 @@ async function poll() {
   // only when something changed: every view re-renders on it
   if (JSON.stringify([app.llm, app.claudeReady, app.servers]) !== before) app.emit("llm");
   await keepCurrent(s);
-  const reviewing = await agentPoll(app, s);
+  const reviewing = await agentPoll(app, s), answering = await askPoll(app, s);
   // quickly while something's on its way, else slowly, to hear of new comments and new work (watch.ts)
-  pollTimer = setTimeout(poll, reviewing ? 1500 : s.llm === "pending" || busy(app.servers) ? 3000 : 10_000);
+  pollTimer = setTimeout(poll, answering ? 700 : reviewing ? 1500 : s.llm === "pending" || busy(app.servers) ? 3000 : 10_000);
 }
 // ---- keeping the review current: new comments on a PR appear by themselves; new work is offered, never swapped in
 let seenDiscussion = null, announced = "";
@@ -353,6 +354,7 @@ const ACTS = {
   flag: () => app.mark(app.focus, app.isFlagged(app.focus) ? null : "flagged"),
   comment: () => { if (page()) return startComment(app, app.pageEl); app.setLevel(2); setTimeout(() => page() && startComment(app, app.pageEl)); },
   note: () => { if (page()) return startComment(app, app.pageEl, "note"); app.setLevel(2); setTimeout(() => page() && startComment(app, app.pageEl, "note")); },
+  ask: () => { if (page()) return startComment(app, app.pageEl, "ask"); app.setLevel(2); setTimeout(() => page() && startComment(app, app.pageEl, "ask")); },
   expand: () => page() && expandAll(app, app.pageEl),
   lineDown: () => lines(1), lineUp: () => lines(-1), lineDownMore: () => lines(1, true), lineUpMore: () => lines(-1, true),
   zoomIn: () => app.setLevel(app.level + 1), zoomOut: () => app.setLevel(app.level - 1),

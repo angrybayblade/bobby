@@ -1,6 +1,7 @@
 // A node, laid out top to bottom: title, why it matters, the comments on it, then its code.
 // Views show it as the level-2 page, or as the body of the focused card (no title block).
 import { findingAct } from "./agent.js";
+import { STARTERS, askAbout, askById, askFollowUp, deleteAsk, stopAsk, typeFollowUp } from "./ask.js";
 import { BAND_TEXT, DONE, LOW, api, esc, live } from "./core.js";
 import { MOD } from "./palette.js";
 import { keyHtml, keyName } from "./keys.js";
@@ -194,16 +195,17 @@ function cmMore(app, h, dir, list, lines) {
 // A line can take a GitHub draft or a private note; c.file composes a note on a whole file (notes only). It looks like
 // the thread it becomes, and sits where that thread will.
 function composer(app, c) {
-  const note = c.kind === "note", me = app.me;
+  const note = c.kind === "note", ask = c.kind === "ask", me = app.me;
   const face = me ? `<img class="cav" src="/api/avatar?u=${encodeURIComponent(me.avatar ?? me.login)}" alt="" onerror="this.style.visibility='hidden'">` : "";
   const range = c.start && !c.file ? `<span class="crange">${rangeLabel({ side: c.side, line: c.line, startLine: Number(c.start.line), startSide: c.start.side })}</span>` : "";
-  const kinds = c.file ? `<span class="ccap">Private note on this file</span>` : `<div class="ckind" role="group" aria-label="Kind">${[["comment", "Comment"], ["note", "Private note"]].map(([k, t]) =>
+  const kinds = c.file ? `<span class="ccap">Private note on this file</span>` : `<div class="ckind" role="group" aria-label="Kind">${[["comment", "Comment"], ["note", "Private note"], ["ask", "✦ Ask"]].map(([k, t]) =>
     `<button data-ckind="${k}" aria-pressed="${c.kind === k}">${t}</button>`).join("")}</div>`;
-  const hint = note ? "A private note: only you see it, and it's never posted to GitHub" : "Leave a comment: saved as a draft for your review";
-  return `<div class="cthread ccompose${note ? " note" : ""}"><div class="citem">${face}<div class="cmain">
+  const hint = ask ? "What do you want to know about these lines? Claude checks the code around them; only you see it" : note ? "A private note: only you see it, and it's never posted to GitHub" : "Leave a comment: saved as a draft for your review";
+  const starters = ask ? `<div class="qchips">${STARTERS.map((s) => `<button class="ag-idea" data-qchip="${esc(s)}">${esc(s)}</button>`).join("")}</div>` : "";
+  return `<div class="cthread ccompose${note ? " note" : ""}${ask ? " asking" : ""}"><div class="citem">${face}<div class="cmain">
     <div class="cwho">${kinds}<span class="cgrow"></span>${range}</div>
-    <textarea data-composer placeholder="${hint}">${esc(c.text ?? "")}</textarea>
-    <div class="cfoot"><span class="chint">${MOD}↵ to save · esc keeps it for later</span><span class="cgrow"></span><button class="btn" data-ccancel>Cancel</button><button class="btn primary" data-csave>${note ? "Add note" : "Save draft"}</button></div>
+    <textarea data-composer placeholder="${hint}">${esc(c.text ?? "")}</textarea>${starters}
+    <div class="cfoot"><span class="chint">${ask ? `${MOD}↵ to ask · esc closes` : `${MOD}↵ to save · esc keeps it for later`}</span><span class="cgrow"></span><button class="btn" data-ccancel>Cancel</button><button class="btn primary" data-csave>${ask ? "Ask Claude" : note ? "Add note" : "Save draft"}</button></div>
   </div></div></div>`;
 }
 
@@ -237,7 +239,7 @@ function syncPop(app, el) {
   const pop = document.createElement("div");
   pop.className = "selpop";
   const lines = n > 1 ? ` on ${n} lines` : "";
-  pop.innerHTML = `<button data-compose="comment" aria-label="Comment${lines}" title="Comment${lines}: a draft for your GitHub review (${esc(keyName(app.settings, "comment"))})">${ICON_COMMENT}</button><button data-compose="note" aria-label="Private note${lines}" title="Private note${lines}: only you see it, never posted (${esc(keyName(app.settings, "note"))})">${ICON_NOTE}</button>`;
+  pop.innerHTML = `<button data-compose="comment" aria-label="Comment${lines}" title="Comment${lines}: a draft for your GitHub review (${esc(keyName(app.settings, "comment"))})">${ICON_COMMENT}</button><button data-compose="note" aria-label="Private note${lines}" title="Private note${lines}: only you see it, never posted (${esc(keyName(app.settings, "note"))})">${ICON_NOTE}</button><button data-compose="ask" class="selask" aria-label="Ask Claude about ${n > 1 ? `these ${n} lines` : "this line"}" title="Ask Claude about ${n > 1 ? `these ${n} lines` : "this line"} (${esc(keyName(app.settings, "ask"))})">✦</button>`;
   box.appendChild(pop);
   let top = 0; // in the code box's own layout: on-screen measures are scaled by the canvas's zoom
   for (let n = row; n && n !== box; n = n.offsetParent) top += n.offsetTop;
@@ -278,7 +280,7 @@ async function closeComposer(app, ta) {
 /** What's written in a composer, kept as an unfinished draft on its lines (a note on the whole file, which has no
  *  lines, is saved as the note). False if it couldn't be saved. */
 export async function keepDraft(app, c, text = c.text ?? "") {
-  if (!text.trim()) return true;
+  if (!text.trim() || c.kind === "ask") return true; // a question not asked isn't kept
   if (c.file) return app.addNote({ body: text.trim(), path: c.path }).then(() => true, (e) => (app.fail?.(e), false));
   const range = c.start ? { startLine: Number(c.start.line), startSide: c.start.side } : {};
   try {
@@ -881,6 +883,10 @@ function bind(app, el, rerender) {
     if (ev.target.closest("a")) return;
     const od = ev.target.closest("[data-outdated]");
     if (od) { app.convTarget = od.dataset.outdated; return app.switchView("conversation"); } // it opens on that thread
+    const chip = ev.target.closest("[data-qchip]");
+    if (chip) return saveComment(app, chip.dataset.qchip).then(() => bound.get(el)());
+    const qa = ev.target.closest("[data-qact]");
+    if (qa) return askAction(app, el, qa.dataset.qact, qa.dataset.qid, qa);
     const af = ev.target.closest("[data-afind]");
     if (af) { af.disabled = true; return findingAct(app, af.dataset.afind, af.dataset.aact); }
     const rs = ev.target.closest("[data-resolve]");
@@ -1010,6 +1016,13 @@ function bind(app, el, rerender) {
     if (ev.key === "Escape") { ev.preventDefault(); closeReply(app, ev.target.dataset.rbox, ev.target, false); }
     if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); postReply(app, ev.target.dataset.rbox, ev.target); }
   });
+  el.addEventListener("input", (ev) => { if (ev.target.matches("textarea[data-qbox]")) typeFollowUp(ev.target.dataset.qbox, ev.target.value); });
+  el.addEventListener("keydown", (ev) => {
+    if (!ev.target.matches("textarea[data-qbox]")) return;
+    ev.stopPropagation();
+    if (ev.key === "Escape") { ev.preventDefault(); ev.target.blur(); }
+    if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); askFollowUp(app, ev.target.dataset.qbox, ev.target.value); }
+  });
   el.addEventListener("keydown", (ev) => {
     if (!ev.target.matches("textarea[data-composer]")) return;
     ev.stopPropagation();
@@ -1018,12 +1031,38 @@ function bind(app, el, rerender) {
   });
 }
 
+/** A button on a question to Claude: ask the follow-up, stop the answer, start a comment from it, keep it as a note, or
+ *  delete it. */
+async function askAction(app, el, act, id, btn) {
+  const a = askById(app, id);
+  if (!a) return;
+  if (act === "follow") return askFollowUp(app, id, btn.closest(".qfollow")?.querySelector("textarea")?.value ?? "");
+  if (act === "stop") { btn.disabled = true; return stopAsk(app, id); }
+  if (act === "delete") return deleteAsk(app, id);
+  const answer = [...a.turns].reverse().find((t) => t.a)?.a ?? "";
+  if (act === "note") {
+    const body = a.turns.filter((t) => t.a).map((t) => `**Q:** ${t.q}\n\n**Claude:** ${t.a}`).join("\n\n---\n\n");
+    await app.addNote({ body, path: a.path, line: a.line, side: a.side, ...(a.startLine ? { startLine: a.startLine, startSide: a.side } : {}) }).catch((e) => app.fail?.(e));
+    app.toast?.("Kept as a private note on these lines.", 4000);
+    return bound.get(el)?.();
+  }
+  if (act === "comment") { // the composer, on the same lines, with the answer to edit into your comment
+    const key = `${a.path}|${a.side}|${a.line}`, row = el.querySelector(`.ln[data-key="${CSS.escape(key)}"]`);
+    const indiff = row?.dataset.indiff ?? "1";
+    app.page.sel = { ...(row?.dataset ?? { key, path: a.path, side: a.side, line: String(a.line), indiff }), ...(a.startLine ? { start: { line: String(a.startLine), side: a.side, key: `${a.path}|${a.side}|${a.startLine}`, indiff } } : {}) };
+    app.page.selKeys = null;
+    app.page.composing = { ...app.page.sel, kind: "comment", text: answer };
+    return bound.get(el)?.();
+  }
+}
+
 /** Saves the composer's text. Only once the server has it does the box close and a continued draft go; if it can't
  *  be saved, the box stays open with the text in it. */
 async function saveComment(app, text) {
   const t = app.page.composing;
   app.page.composing = null;
   if (!t || !text.trim()) return;
+  if (t.kind === "ask") { app.page.kind = "comment"; return askAbout(app, t, text.trim()); } // the next box is a comment again
   const range = t.start ? { startLine: Number(t.start.line), startSide: t.start.side } : {};
   try {
     if (t.kind === "note") await app.addNote({ body: text.trim(), path: t.path, ...(t.line ? { line: Number(t.line), side: t.side, ...range } : {}) });

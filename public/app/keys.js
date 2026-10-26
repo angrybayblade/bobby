@@ -39,6 +39,7 @@ export const ACTIONS = [
   { id: "lineUpMore", group: "Reviewing", title: "Grow the selection up", keys: ["{"] },
   { id: "comment", group: "Reviewing", title: "Comment on a line (the selected ones, else the likeliest)", keys: ["c"] },
   { id: "note", group: "Reviewing", title: "Private note on a line: only you see it", keys: ["m"] },
+  { id: "ask", group: "Reviewing", title: "Ask Claude about the selected lines (else the likeliest)", keys: ["q"] },
   { id: "notes", group: "Reviewing", title: "Your notes", keys: ["M"] },
   { id: "park", group: "Reviewing", title: "Park a thought, shown when you return", keys: ["p"] },
   { id: "submit", group: "Reviewing", title: "Submit review", keys: ["s"] },

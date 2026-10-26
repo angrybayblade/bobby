@@ -3,6 +3,7 @@
 // comment in a file, or every comment in the PR (settings.comments, the default for all of them).
 import { LOW, api, esc, live } from "./core.js";
 import { MOD } from "./palette.js";
+import { askHtml } from "./ask.js";
 
 // ---- the icon that says whether comments are showing: filled when they are, an outline when they're collapsed
 export const bubble = (filled) => `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path ${filled ? 'fill="currentColor"' : 'fill="none" stroke="currentColor" stroke-width="1.4"'} d="M2.5 2.5h11a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H8l-3 2.5V11.5H2.5a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1Z"/></svg>`;
@@ -14,7 +15,8 @@ let memo = null;
 export function commentIndex(app) {
   const disc = app.graph.discussion ?? [], mine = app.state.comments, notes = app.state.notes;
   const found = (app.agentReview?.findings ?? []).filter((f) => f.status === "open");
-  const sig = `${found.map((f) => f.id).join()}|${app.settings.resolved ?? "collapsed"}:${disc.length}:${disc.at(-1)?.id}:${disc.filter((c) => c.resolved).length}|${mine.map((c) => `${c.id}${c.wip ? "w" : ""}${c.kind ?? ""}${c.body.length}`).join()}|${notes.map((n) => `${n.id}${n.body.length}`).join()}`;
+  const asks = app.asks ?? [];
+  const sig = `${asks.map((a) => a.id).join()}|${found.map((f) => f.id).join()}|${app.settings.resolved ?? "collapsed"}:${disc.length}:${disc.at(-1)?.id}:${disc.filter((c) => c.resolved).length}|${mine.map((c) => `${c.id}${c.wip ? "w" : ""}${c.kind ?? ""}${c.body.length}`).join()}|${notes.map((n) => `${n.id}${n.body.length}`).join()}`;
   if (memo?.graph === app.graph && memo.disc === disc && memo.sig === sig) return memo.idx; // disc: a new list on every read, edits too
   const me = app.me ?? {}, threads = new Map(), byKey = new Map(), byPath = new Map();
   const add = (map, k, v) => (map.get(k) ?? map.set(k, []).get(k)).push(v);
@@ -37,6 +39,8 @@ export function commentIndex(app) {
     threads.set(`a:${f.id}`, { id: `a:${f.id}`, kind: "agent", path: f.path, side: f.side, line: f.line, startLine: f.startLine, finding: f,
       items: [{ author: "Claude", body: f.body, createdAt: app.agentReview.at }] });
   }
+  // your questions to Claude about lines (ask.js)
+  for (const a of asks) threads.set(`q:${a.id}`, { id: `q:${a.id}`, kind: "ask", path: a.path, side: a.side, line: a.line, startLine: a.startLine, ask: a, items: [] });
   if (app.settings.resolved === "hidden") for (const [id, t] of threads) if (t.resolved) threads.delete(id); // only what's still open
   for (const t of threads.values()) { add(byKey, keyOf(t), t); add(byPath, t.path, t); }
   // private notes, and unfinished ones from the composer
@@ -232,7 +236,7 @@ export function showFull(app, ck, clicked) { pageState(app).full = (pageState(ap
 export const fileStamp = (app, path) => `${fileState(app, path)}:${pageState(app).full?.size ?? 0}:${[...(pageState(app).edits?.keys() ?? [])].join()}:${pageState(app).confirm ?? ""}:${(commentIndex(app).byPath.get(path) ?? []).map((x) => (itemOpen(app, x.id, path) ? 1 : 0) + (pageState(app).replies?.has(x.id) ? "r" : "")).join("")}`;
 export const fileCount = (app, path) => (commentIndex(app).byPath.get(path) ?? []).reduce((n, x) => n + (x.items?.length ?? 1), 0);
 /** The PR's comments and notes in files on screen: one hidden by Tests or Untouched isn't counted, as its comments aren't shown. */
-export const prCount = (app) => [...commentIndex(app).byPath].filter(([path]) => !path || shown(app, path)).flatMap(([, xs]) => xs).filter((x) => x.kind !== "agent").reduce((n, x) => n + (x.items?.length ?? 1), 0);
+export const prCount = (app) => [...commentIndex(app).byPath].filter(([path]) => !path || shown(app, path)).flatMap(([, xs]) => xs).filter((x) => x.kind !== "agent" && x.kind !== "ask").reduce((n, x) => n + (x.items?.length ?? 1), 0);
 const shown = (app, path) => app.filePages(path).length > 0 || app.hunksOf(LOW).some((h) => h.file === path);
 
 // ---- threads
@@ -244,6 +248,7 @@ export function threadsAt(app, key) {
 }
 function threadHtml(app, t) {
   if (t.kind === "agent") return findingHtml(app, t);
+  if (t.kind === "ask") return askHtml(app, { ...t, ask: (app.asks ?? []).find((a) => `q:${a.id}` === t.id) ?? t.ask }, itemOpen(app, t.id, t.path));
   const open = itemOpen(app, t.id, t.path), first = t.items[0], n = t.items.length;
   if (!open) { // in place, one line: who, how many, and how it starts
     const faces = [...new Map(t.items.map((i) => [i.author, i])).values()].slice(0, 3).map(avatar).join("");
