@@ -37,9 +37,18 @@ let cached: { at: number; servers: Promise<Server[]> } | null = null;
 /** What your Claude Code setup has, cached ten minutes (fresh: ask again). */
 export function catalog(fresh = false): Promise<Server[]> {
   if (!fresh && cached && Date.now() - cached.at < 600_000) return cached.servers;
-  const servers = probe().catch((e) => { cached = null; throw e; });
+  const servers = settled().catch((e) => { cached = null; throw e; });
   cached = { at: Date.now(), servers };
   return servers;
+}
+/** A slow server is still connecting when Claude Code says what it has (no tools yet): ask again, up to three times. */
+async function settled(): Promise<Server[]> {
+  let best = await probe();
+  for (let i = 0; i < 2 && best.some((s) => s.status === "pending"); i++) {
+    const next = await probe();
+    best = next.map((s) => (s.status === "pending" ? best.find((b) => b.name === s.name && b.status !== "pending") ?? s : s));
+  }
+  return best;
 }
 async function probe(): Promise<Server[]> {
   const p = Bun.spawn([claudeBin() ?? "claude", "-p", "--output-format", "stream-json", "--verbose", "--no-session-persistence", "--setting-sources", "user", "--tools", "Read", "--settings", '{"disableAllHooks":true}'],
@@ -79,7 +88,9 @@ export interface Connected { args: string[]; disallowed: string[]; allowed: stri
 export function runWith(sel: Selection, servers: Server[]): Connected | null {
   const on = servers.filter((s) => sel[s.name]);
   if (!on.length) return null;
-  const blocked = servers.filter((s) => !sel[s.name]).map((s) => s.prefix.slice(0, -2)); // a whole server: mcp__<name>
+  // a whole server: mcp__<name>; one on "read" whose tools aren't known yet (still connecting) too, as its writes can't be told
+  const unknown = (s: Server) => sel[s.name] === "read" && !s.read.length && !s.write.length;
+  const blocked = servers.filter((s) => !sel[s.name] || unknown(s)).map((s) => s.prefix.slice(0, -2));
   const writes = on.filter((s) => sel[s.name] === "read").flatMap((s) => s.write);
   const allowed = on.flatMap((s) => (sel[s.name] === "all" ? [s.prefix.slice(0, -2)] : s.read));
   const args = ["--setting-sources", "user", "--settings", JSON.stringify({ disableAllHooks: true })];

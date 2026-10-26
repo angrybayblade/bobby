@@ -25,3 +25,7 @@ test("lets in only what's chosen: a server's reads, or all of it", () => {
   expect(c.allowed).toEqual(["mcp__claude_ai_Linear__get_issue", "mcp__claude_ai_Slack"]);
   expect(c.note).toContain("claude.ai Linear (read only), claude.ai Slack (full access)");
 });
+test("blocks a read-only server whose tools aren't known yet", () => {
+  const slow = catalogOf({ mcp_servers: [{ name: "claude.ai Datadog", status: "pending" }], tools: [] });
+  expect(runWith({ "claude.ai Datadog": "read" }, slow)!.disallowed).toEqual(["mcp__claude_ai_Datadog"]);
+});
