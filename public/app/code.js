@@ -225,6 +225,7 @@ function selectRange(app, el, anchor, end) {
   syncPop(app, el);
 }
 const ICON_COMMENT = `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M1.75 1h12.5c.97 0 1.75.78 1.75 1.75v8.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.57 2.57A1.46 1.46 0 0 1 3 14.54V13H1.75A1.75 1.75 0 0 1 0 11.25v-8.5C0 1.78.78 1 1.75 1ZM1.5 2.75v8.5c0 .14.11.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.75.75 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-8.5a.25.25 0 0 0-.25-.25H1.75a.25.25 0 0 0-.25.25Z"/></svg>`;
+const ICON_ASK = `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M8 0.5c.4 3.9 3.6 7.1 7.5 7.5-3.9.4-7.1 3.6-7.5 7.5C7.6 11.6 4.4 8.4.5 8 4.4 7.6 7.6 4.4 8 .5Z"/></svg>`;
 const ICON_NOTE = `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M11.01 1.01a1.75 1.75 0 0 1 2.47 0l1.51 1.51c.68.68.68 1.79 0 2.47l-8.4 8.4c-.2.2-.46.35-.74.42l-3.43.86a.75.75 0 0 1-.91-.91l.86-3.43c.07-.28.21-.53.42-.74Zm1.41 1.06a.25.25 0 0 0-.35 0l-1.1 1.1 1.86 1.86 1.1-1.1a.25.25 0 0 0 0-.35ZM11.77 6.59 9.91 4.73 3.34 11.3a.25.25 0 0 0-.06.11l-.55 2.2 2.2-.55a.25.25 0 0 0 .11-.06Z"/></svg>`;
 /** The popover on a selection: comment on it (a GitHub draft) or keep a private note. Sits on the selection's last
  *  line, at the right of its code box, and goes away while a composer is open. */
@@ -240,7 +241,7 @@ function syncPop(app, el) {
   pop.className = "selpop";
   const lines = n > 1 ? ` on ${n} lines` : "";
   const comment = `<button data-compose="comment" aria-label="Comment${lines}" title="Comment${lines}: a draft for your GitHub review (${esc(keyName(app.settings, "comment"))})">${ICON_COMMENT}</button>`;
-  const ask = `<button data-compose="ask" class="selask" aria-label="Ask Claude about ${n > 1 ? `these ${n} lines` : "this line"}" title="Ask Claude about ${n > 1 ? `these ${n} lines` : "this line"} (${esc(keyName(app.settings, "ask"))})">✦</button>`;
+  const ask = `<button data-compose="ask" class="selask" aria-label="Ask Claude about ${n > 1 ? `these ${n} lines` : "this line"}" title="Ask Claude about ${n > 1 ? `these ${n} lines` : "this line"} (${esc(keyName(app.settings, "ask"))})">${ICON_ASK}</button>`;
   const note = `<button data-compose="note" aria-label="Private note${lines}" title="Private note${lines}: only you see it, never posted (${esc(keyName(app.settings, "note"))})">${ICON_NOTE}</button>`;
   pop.innerHTML = comment + ask + note;
   box.appendChild(pop);

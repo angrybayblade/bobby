@@ -540,7 +540,8 @@ body.inspecting .ln[data-side="RIGHT"] code, body.inspecting .inspector .pl code
 .inspector ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
 .inspector ::-webkit-scrollbar-track, .inspector ::-webkit-scrollbar-corner { background: transparent; }
 .selpop { position: absolute; left: 4px; z-index: 6; display: flex; gap: 4px; } /* three buttons, each its own, in the selection's gutter (placed in code.js); a split side's narrow gutter has them run onto the code's start */
-.selpop button { display: grid; place-items: center; width: 22px; height: 22px; padding: 4px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 4px; color: var(--muted); background: var(--surface); }
+.selpop button { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; box-sizing: border-box; border: 1px solid var(--line); border-radius: 4px; color: var(--muted); background: var(--surface); }
+.selpop button svg { display: block; }
 .selpop button:hover { color: var(--text); background: var(--raised); }
 .selpop button[data-compose="comment"] { color: var(--signal); }
 .ln:hover .no { color: var(--muted); }
@@ -795,7 +796,7 @@ body.booting #where, body.booting #keys, body.booting #files { display: none; }
 @media (prefers-reduced-motion: reduce) { .agask .ag-steps li.now::after { animation: none; } }
 
 /* Asking Claude about lines (ask.js) */
-.selpop .selask { color: var(--signal); font-size: 14px; line-height: 1; }
+.selpop .selask { color: var(--signal); }
 .ccompose.asking { border-color: color-mix(in srgb, var(--signal) 45%, var(--line)); }
 .ccompose.asking .ckind button[aria-pressed="true"][data-ckind="ask"] { color: var(--signal); }
 .qchips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
