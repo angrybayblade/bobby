@@ -144,6 +144,12 @@ Select some lines (click one, shift-click another) and press **✦** in the popo
 
 Ask a follow-up under the answer: Claude has the conversation so far. **Comment from it** opens a draft comment on the same lines with the last answer in it, to edit before it's part of your review; **Save as note** keeps the questions and answers as a private note; **Delete** removes the conversation. Questions are kept with your review for that head commit, and only you see them.
 
+### Claude's references, and what it can look at
+
+When Claude cites code, in an answer, a finding or a review's summary, the reference is a link. Bobby checks each one against the commit's files and lines first, so every link opens real code; one that doesn't resolve stays text. A click opens it in the code viewer, the inspector's window: the cited lines marked, the lines the PR added highlighted (or, for code from before the PR, the ones it removed), more lines above and below on demand, ⌘-click a name to inspect it, and **Show in diff** (`o`) when the diff shows those lines. A finding you add to your review gets GitHub links instead, so they work once it's posted.
+
+Besides its own Read, Grep and Glob on the PR's head, Claude gets Bobby's tools: the PR's overview and each file's diff, any file before or after the PR with the PR's changes marked, where a name is defined and used (the language servers, as the inspector), the review threads, and a line's history. A review reads the PR file by file with them, and each finding is reported once Claude has checked it. They're read-only, and only that run of Claude can reach them.
+
 ## Private notes
 
 Notes are for you: reminders, questions to come back to, half-formed thoughts. **They're never posted to GitHub**, and they're kept in your local state file for this PR.

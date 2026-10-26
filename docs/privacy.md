@@ -4,8 +4,8 @@ Bobby runs on your machine: the review UI is served by Bobby itself on `127.0.0.
 
 | What | Where it goes | When | To turn it off |
 |---|---|---|---|
-| **Code you ask Claude about** | Anthropic, through your `claude` CLI and its login | Only when you ask about some lines: the PR's title, that file's diff, your question and the conversation so far, and the files Claude chooses to read from a copy of the head commit (Read, Grep and Glob only, inside that copy) | Don't ask |
-| **The PR, for Claude's review** | Anthropic, through your `claude` CLI and its login | Only when you press **Review with Claude**: the diff, the PR's title and description, and the files Claude chooses to read from a copy of the head commit (Read, Grep and Glob only, inside that copy) | Don't press it |
+| **Code you ask Claude about** | Anthropic, through your `claude` CLI and its login | Only when you ask about some lines: the PR's title, that file's diff, your question and the conversation so far, and what Claude chooses to look at: files in a copy of the head commit (Read, Grep and Glob, inside that copy) and [Bobby's tools](reviewing.md#claudes-references-and-what-it-can-look-at) (the PR's diff, files before and after it, definitions and uses, the review threads, git history) | Don't ask |
+| **The PR, for Claude's review** | Anthropic, through your `claude` CLI and its login | Only when you press **Review with Claude**: the PR's title, description and files, and what Claude chooses to look at, as above | Don't press it |
 | **The PR, to organise it** | Anthropic, through your `claude` CLI and its login | When `claude` is installed, in the background on each new head commit | `--no-llm`, or no `claude` |
 | **PR metadata, comments, the code** | GitHub, through `gh` and `git` | Reading the PR, fetching and cloning, posting your review when you submit; the Conversation view reads the PR's comments, reviews and CI checks while it's open, and posts a comment or reply when you send one; resolving or unresolving a thread, and editing or deleting your own comment, reach GitHub at once | Review a local branch (`bobby` with no PR) |
 | **Avatars** | `avatars.githubusercontent.com` / `github.com`, from Bobby's server | Showing who wrote a comment; cached a week in `~/.bobby/cache/avatars` | |
@@ -31,5 +31,6 @@ It runs `claude -p` with no tools and no saved session, from a temporary directo
 ## What stays local
 
 - **Language servers** read the PR's head commit exported to `~/.bobby/trees`, and never run the PR's code. Go's runs with module and toolchain downloads off (`GOPROXY=off`, `GOTOOLCHAIN=local`) and without cgo.
+- **Bobby's tools for Claude** are served by Bobby at `/mcp/<token>`, a fresh token for each run of Claude, gone when it ends; they only read.
 - **Bobby's server** only answers its own page: requests must name `127.0.0.1` or `localhost` (or a name you allowed with `--allow-host`), and writes must come from the page at that same name.
 - **Private notes** are never posted. Drafts are posted only when you submit.
