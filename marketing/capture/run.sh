@@ -16,7 +16,7 @@ python3 "$HERE/github-diff.py" "$TMP/payments" "$HERE/../index.html"
 
 # a Bobby of its own: fresh state, the look the mock uses, no tour
 mkdir -p "$TMP/home/.bobby" "$TMP/bin"
-echo '{"tour":"seen","theme":"light","palette":"github","motion":"off","drift":"off","diffLayout":"inline","hints":"always","news":["palette","tour","inspect","uses","keys"]}' > "$TMP/home/.bobby/settings.json"
+echo '{"tour":"seen","theme":"light","palette":"github","motion":"off","drift":"off","diffLayout":"inline","hints":"always","news":["palette","tour","inspect","uses","keys"],"claude":"never","gh":"never"}' > "$TMP/home/.bobby/settings.json"
 cp "$HERE/fake-claude" "$TMP/bin/claude"; cp "$HERE/tree.json" "$TMP/bin/tree.json"
 cd "$TMP/payments"
 PATH="$TMP/bin:$PATH" HOME="$TMP/home" bun run "$BOBBY/src/cli.ts" extract --refresh > "$TMP/local.json" 2> "$TMP/extract.log"
