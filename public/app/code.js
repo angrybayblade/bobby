@@ -251,10 +251,13 @@ function syncPop(app, el) {
   const code = row.querySelector("code");
   let left = 0;
   for (let n = code; n && n !== box; n = n.offsetParent) left += n.offsetLeft;
-  pop.style.top = `${top + (row.offsetHeight - pop.offsetHeight) / 2}px`;
   let start = 0; // the row's own left edge: in split view, its side's, so the buttons never spill onto the other side
   for (let n = row; n && n !== box; n = n.offsetParent) start += n.offsetLeft;
   const scrolled = row.closest(".lines")?.scrollLeft ?? 0;
+  // A gutter too narrow for the three side by side (a split side's) takes them stacked, ending on the last line.
+  if (pop.offsetWidth > left - start - 2) pop.classList.add("stack");
+  const stacked = pop.classList.contains("stack");
+  pop.style.top = `${stacked ? top + row.offsetHeight - pop.offsetHeight : top + (row.offsetHeight - pop.offsetHeight) / 2}px`;
   pop.style.left = `${Math.max(2, start + 1 - scrolled, left - scrolled - pop.offsetWidth - 2)}px`;
 }
 /** Esc on the code, innermost first: an open composer closes (its text kept as an unfinished draft), then a line

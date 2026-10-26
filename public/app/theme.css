@@ -539,8 +539,9 @@ body.inspecting .ln[data-side="RIGHT"] code, body.inspecting .inspector .pl code
 .inspector ::-webkit-scrollbar { width: 8px; height: 8px; }
 .inspector ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
 .inspector ::-webkit-scrollbar-track, .inspector ::-webkit-scrollbar-corner { background: transparent; }
-.selpop { position: absolute; left: 4px; z-index: 6; display: flex; gap: 1px; } /* flat: three icons in the selection's gutter (placed in code.js) */
-.selpop button { display: grid; place-items: center; width: 16px; height: 20px; border-radius: 3px; color: var(--muted); background: var(--surface); }
+.selpop { position: absolute; left: 4px; z-index: 6; display: flex; gap: 4px; } /* flat: three icons in the selection's gutter (placed in code.js) */
+.selpop.stack { flex-direction: column; padding: 2px; border-radius: 4px; background: var(--surface); box-shadow: 0 0 0 1px var(--line); } /* a split side's narrow gutter: one small toolbar over the line numbers */
+.selpop button { display: grid; place-items: center; width: 22px; height: 22px; padding: 4px; box-sizing: border-box; border-radius: 3px; color: var(--muted); background: var(--surface); }
 .selpop button:hover { color: var(--text); background: var(--raised); }
 .selpop button[data-compose="comment"] { color: var(--signal); }
 .ln:hover .no { color: var(--muted); }
