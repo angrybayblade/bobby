@@ -47,3 +47,9 @@ The CLI is the public release: it needs `git`, `gh` (logged in) and SSH access t
 - Claude's review, streamed: each finding appears as it's found (a tool Claude calls per finding), not all at the end.
 - Claude's review of one part: the core you're on, or a selection of files, as well as the whole PR; and more than one
   review at a time.
+- `bobby://` links (`bobby://github.com/<owner>/<repo>/pull/<n>`) that open a PR in Bobby from anywhere, running or
+  not, by handing it to `bobby <pr-url>`. Opt in with `bobby link` / `bobby unlink`: registry keys on Windows, a
+  `.desktop` file and `xdg-mime` on Linux, and a small generated `.app` (`CFBundleURLTypes`, registered with
+  `lsregister`) on macOS. Take only a PR URL (`parsePrArg`), never flags, since any page can fire the link; point at
+  the binary's real path so `bobby update` keeps it working. Plus an "Open in Bobby" bookmarklet on the landing page
+  for a Bobby that's already running (`/?open=<pr-url>`).
