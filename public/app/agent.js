@@ -54,12 +54,12 @@ export function agentPill(app) {
   const a = app.agent;
   if (!a) return "";
   const failed = !a.running && a.error && a.error !== "Stopped" && errorSeen !== a.error;
-  const [cls, text, title] = a.running ? ["pulse", `Claude is reviewing…`, `Claude is reviewing the PR: ${a.step ?? ""}. Click to see what it's doing, or stop it`]
+  const [cls, text, title] = a.running ? ["pulse", "Reviewing…", `Claude is reviewing the PR: ${a.step ?? ""}. Click to see what it's doing, or stop it`]
     : failed ? ["", "Claude's review failed", a.error]
     : a.open ? ["signal", `${a.open} finding${a.open > 1 ? "s" : ""}`, "Go through Claude's findings, one at a time"]
     : app.agentReview && !app.agentReview.findings.length ? ["", "Claude found nothing", "Claude's review found nothing to raise. Click to ask again, about something in particular"]
-    : ["", "Review with Claude", "Ask Claude to review the PR, about what you choose: it suggests comments for you to add or dismiss"];
-  return `<button class="pill agpill ${cls}" data-act="agent" title="${esc(title)}">✦ ${esc(text)}</button>`;
+    : ["", "<span class=\"agl\">Review with </span>Claude", "Review with Claude: ask Claude to review the PR, about what you choose; it suggests comments for you to add or dismiss"];
+  return `<button class="pill agpill ${cls}" data-act="agent" title="${esc(title)}">✦ ${text.startsWith("<span") ? text : esc(text)}</button>`;
 }
 let errorSeen = null;
 
