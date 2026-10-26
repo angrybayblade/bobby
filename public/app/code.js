@@ -198,7 +198,7 @@ function composer(app, c) {
   const note = c.kind === "note", ask = c.kind === "ask", me = app.me;
   const face = me ? `<img class="cav" src="/api/avatar?u=${encodeURIComponent(me.avatar ?? me.login)}" alt="" onerror="this.style.visibility='hidden'">` : "";
   const range = c.start && !c.file ? `<span class="crange">${rangeLabel({ side: c.side, line: c.line, startLine: Number(c.start.line), startSide: c.start.side })}</span>` : "";
-  const kinds = c.file ? `<span class="ccap">Private note on this file</span>` : `<div class="ckind" role="group" aria-label="Kind">${[["comment", "Comment"], ["note", "Private note"], ["ask", "✦ Ask"]].map(([k, t]) =>
+  const kinds = c.file ? `<span class="ccap">Private note on this file</span>` : `<div class="ckind" role="group" aria-label="Kind">${[["comment", "Comment"], ["ask", "✦ Ask"], ["note", "Private note"]].map(([k, t]) =>
     `<button data-ckind="${k}" aria-pressed="${c.kind === k}">${t}</button>`).join("")}</div>`;
   const hint = ask ? "What do you want to know about these lines? Claude checks the code around them; only you see it" : note ? "A private note: only you see it, and it's never posted to GitHub" : "Leave a comment: saved as a draft for your review";
   const starters = ask ? `<div class="qchips">${STARTERS.map((s) => `<button class="ag-idea" data-qchip="${esc(s)}">${esc(s)}</button>`).join("")}</div>` : "";
@@ -239,7 +239,10 @@ function syncPop(app, el) {
   const pop = document.createElement("div");
   pop.className = "selpop";
   const lines = n > 1 ? ` on ${n} lines` : "";
-  pop.innerHTML = `<button data-compose="comment" aria-label="Comment${lines}" title="Comment${lines}: a draft for your GitHub review (${esc(keyName(app.settings, "comment"))})">${ICON_COMMENT}</button><button data-compose="note" aria-label="Private note${lines}" title="Private note${lines}: only you see it, never posted (${esc(keyName(app.settings, "note"))})">${ICON_NOTE}</button><button data-compose="ask" class="selask" aria-label="Ask Claude about ${n > 1 ? `these ${n} lines` : "this line"}" title="Ask Claude about ${n > 1 ? `these ${n} lines` : "this line"} (${esc(keyName(app.settings, "ask"))})">✦</button>`;
+  const comment = `<button data-compose="comment" aria-label="Comment${lines}" title="Comment${lines}: a draft for your GitHub review (${esc(keyName(app.settings, "comment"))})">${ICON_COMMENT}</button>`;
+  const ask = `<button data-compose="ask" class="selask" aria-label="Ask Claude about ${n > 1 ? `these ${n} lines` : "this line"}" title="Ask Claude about ${n > 1 ? `these ${n} lines` : "this line"} (${esc(keyName(app.settings, "ask"))})">✦</button>`;
+  const note = `<button data-compose="note" aria-label="Private note${lines}" title="Private note${lines}: only you see it, never posted (${esc(keyName(app.settings, "note"))})">${ICON_NOTE}</button>`;
+  pop.innerHTML = comment + ask + note;
   box.appendChild(pop);
   let top = 0; // in the code box's own layout: on-screen measures are scaled by the canvas's zoom
   for (let n = row; n && n !== box; n = n.offsetParent) top += n.offsetTop;
@@ -249,7 +252,10 @@ function syncPop(app, el) {
   let left = 0;
   for (let n = code; n && n !== box; n = n.offsetParent) left += n.offsetLeft;
   pop.style.top = `${top + (row.offsetHeight - pop.offsetHeight) / 2}px`;
-  pop.style.left = `${Math.max(2, left - (row.closest(".lines")?.scrollLeft ?? 0) - pop.offsetWidth - 2)}px`;
+  let start = 0; // the row's own left edge: in split view, its side's, so the buttons never spill onto the other side
+  for (let n = row; n && n !== box; n = n.offsetParent) start += n.offsetLeft;
+  const scrolled = row.closest(".lines")?.scrollLeft ?? 0;
+  pop.style.left = `${Math.max(2, start + 1 - scrolled, left - scrolled - pop.offsetWidth - 2)}px`;
 }
 /** Esc on the code, innermost first: an open composer closes (its text kept as an unfinished draft), then a line
  *  selection clears. Returns whether it did either. */
