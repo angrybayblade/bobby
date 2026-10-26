@@ -73,13 +73,16 @@ const matches = (r, f) => (!f.repo || `${r.owner}/${r.repo}`.toLowerCase().inclu
   && (!f.author || (r.author ?? "").toLowerCase() === f.author.toLowerCase())
   && (!f.q || `${r.title} ${r.commit?.subject ?? ""} ${r.branch ?? ""}`.toLowerCase().includes(f.q.toLowerCase()));
 const recentById = () => new Map(recents.map((r) => [r.id, r]));
+const APPROVED = `<span class="tag approved" title="Approved on GitHub">approved</span>`;
 
-function recentRow(r, i) {
+function recentRow(r, i, listed) {
   const what = r.kind === "local" ? `<span class="sha">⎇ ${esc(r.branch)}</span>${esc(r.baseRef ? `vs ${r.baseRef}` : "")}`
     : `<b>#${r.number}</b> ${r.commit ? `<span class="sha">@ ${esc(r.commit.sha.slice(0, 7))}</span>` : ""}${esc(r.title)}`;
   const p = r.progress, pct = p?.total ? Math.round((p.done / p.total) * 100) : 0;
+  // GitHub's lists are the fresher word; else what its conversation last said
+  const approved = r.kind === "pr" && (listed.get(`${r.owner}/${r.repo}/${r.number}`)?.approved ?? r.approved);
   return `<a class="row" href="/r/${esc(r.id)}" data-recent="${i}">
-    <span class="t"><span class="tt">${what}</span>${r.open ? `<span class="tag live" title="Open in this Bobby">open</span>` : ""}</span>
+    <span class="t"><span class="tt">${what}</span>${approved ? APPROVED : ""}${r.open ? `<span class="tag live" title="Open in this Bobby">open</span>` : ""}</span>
     <span class="side">${p ? `<span title="${p.done} of ${p.total} pages reviewed"><span class="bar"><i style="width:${pct}%"></i></span>${p.done}/${p.total}</span>` : ""}${r.drafts ? `<span>${r.drafts} draft${r.drafts > 1 ? "s" : ""}</span>` : ""}<span title="Last opened">${ago(r.openedAt)}</span></span>
     <span class="where">${esc(r.kind === "local" ? `local · ${r.repo}` : `${r.owner}/${r.repo}`)}${r.author && r.kind !== "local" ? ` · ${esc(r.author)}` : ""}</span>
   </a>`;
@@ -88,18 +91,19 @@ function prRow(x, mine) {
   const seen = mine.get(`${x.owner}/${x.repo}/${x.number}`), p = seen?.progress;
   const id = `${x.owner}/${x.repo}/${x.number}`;
   return `<a class="row" href="/r/${esc(id)}" data-pr="${esc(x.url)}" data-id="${esc(id)}">
-    <span class="t"><span class="tt"><b>#${x.number}</b> ${esc(x.title)}</span>${x.draft ? `<span class="tag draft">draft</span>` : ""}${seen?.open ? `<span class="tag live">open</span>` : ""}</span>
+    <span class="t"><span class="tt"><b>#${x.number}</b> ${esc(x.title)}</span>${x.draft ? `<span class="tag draft">draft</span>` : ""}${x.approved ? APPROVED : ""}${seen?.open ? `<span class="tag live">open</span>` : ""}</span>
     <span class="side">${p ? `<span title="Your progress: ${p.done} of ${p.total} pages reviewed">${p.done}/${p.total}</span>` : ""}${x.comments ? `<span title="Comments">◂ ${x.comments}</span>` : ""}<span title="Updated">${ago(x.updatedAt)}</span></span>
     <span class="where">${esc(`${x.owner}/${x.repo}`)} · <img class="av" src="/api/avatar?u=${encodeURIComponent(x.author)}" alt="" loading="lazy" onerror="this.remove()">${esc(x.author)}</span>
   </a>`;
 }
 function render() {
   const f = filters(), mine = recentById();
+  const listed = new Map([...lists.review, ...lists.mine, ...lists.all].map((x) => [`${x.owner}/${x.repo}/${x.number}`, x]));
   const rs = recents.map((r, i) => [r, i]).filter(([r]) => matches(r, f));
   const section = (title, body, n) => `<section><h2>${title}${n != null ? `<span class="n">${n}</span>` : ""}</h2>${body}</section>`;
   const gh = (title, items, empty) => section(title, loadingLists ? `<div class="none">Asking GitHub…</div>` : listError ? `<div class="none">Couldn't list PRs: ${esc(listError)}</div>` : items.length ? items.map((x) => prRow(x, mine)).join("") : `<div class="none">${empty}</div>`, loadingLists || listError ? null : items.length);
   $(".lists").innerHTML = [
-    section("Recents", rs.length ? rs.map(([r, i]) => recentRow(r, i)).join("") : `<div class="none">${recents.length ? "None match the filters." : "Reviews you open show here, with how far you got."}</div>`, rs.length || null),
+    section("Recents", rs.length ? rs.map(([r, i]) => recentRow(r, i, listed)).join("") : `<div class="none">${recents.length ? "None match the filters." : "Reviews you open show here, with how far you got."}</div>`, rs.length || null),
     gh("Review requested", lists.review, "Nothing waiting on your review."),
     gh("My PRs", lists.mine, "No open PRs of yours."),
     gh("All", lists.all, "No open PRs involve you."),
