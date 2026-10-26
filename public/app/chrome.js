@@ -369,7 +369,23 @@ export function settings() {
     <div class="row"><button class="btn" data-act="keys">Keyboard shortcuts…</button><button class="btn" data-act="gh">GitHub CLI…</button><button class="btn" data-act="claude">Claude Code…</button><button class="btn primary" data-act="close" style="margin-left:auto">Done</button></div>`);
 }
 
-export function submit(msg) {
+const TRASH = `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3ZM11 3V1.75A1.75 1.75 0 0 0 9.25 0h-2.5A1.75 1.75 0 0 0 5 1.75V3H2.75a.75.75 0 0 0 0 1.5h.67l.83 9.95A1.75 1.75 0 0 0 6 16h4a1.75 1.75 0 0 0 1.75-1.55l.83-9.95h.67a.75.75 0 0 0 0-1.5Zm-6.08 1.5h6.16l-.82 9.82a.25.25 0 0 1-.25.18H6a.25.25 0 0 1-.25-.18Z"/></svg>`;
+/** Deletes a draft from the submit dialog, keeping what's written in the summary; undo puts it back. */
+async function deleteDraft(id) {
+  const gone = app.state.comments.find((c) => c.id === id), text = $("#rbody")?.value ?? "";
+  if (!gone) return;
+  try { await api(`/api/comment/${id}`, null, "DELETE"); } catch (e) { return toast(`<span>Couldn't delete it: ${esc(e.message)}</span>`, 6000); }
+  app.state.comments = app.state.comments.filter((c) => c.id !== id);
+  app.emit("comments");
+  submit(undefined, text);
+  const { id: _, ...fields } = gone;
+  app.offerUndo("Draft deleted", () => api("/api/comment", fields).then((c) => {
+    app.state.comments.push(c); app.emit("comments");
+    if ($("#rbody")) submit(undefined, $("#rbody").value); // still open: the draft is back in its list
+  }));
+}
+
+export function submit(msg, text = "") {
   const cs = app.state.comments.filter((c) => !c.wip && c.kind !== "note");
   const wip = app.state.comments.length - cs.length;
   if (app.graph.pr.provider === "local") return open(`<h2>Nothing to post to</h2>
@@ -382,8 +398,8 @@ export function submit(msg) {
   const inline = (c) => c.inDiff && lines.has(`${c.path}:${c.side}:${c.line}`) && (!c.startLine || lines.has(`${c.path}:${c.startSide ?? c.side}:${c.startLine}`));
   open(`<h2>Submit review</h2>
     <p>${cs.length ? `${cs.length} draft comment(s) will be posted together.` : "No draft comments."}${app.state.notes.length ? ` Your ${app.state.notes.length} private note(s) stay here and aren't posted.` : ""}${wip ? ` ${wip} unfinished draft${wip > 1 ? "s" : ""} stay${wip > 1 ? "" : "s"} behind: finish ${wip > 1 ? "them" : "it"} with <i>Continue</i> to include ${wip > 1 ? "them" : "it"}.` : ""}</p>
-    <textarea id="rbody" placeholder="Summary (optional for Approve)"></textarea>
-    <div class="rdrafts">${cs.map((c) => `<div class="rdraft"><code>${esc(c.path)}:${c.line}</code><span>${esc(c.body)}</span>${inline(c) ? "" : "<i>goes in summary</i>"}</div>`).join("")}</div>
+    <textarea id="rbody" placeholder="Summary (optional for Approve)">${esc(text)}</textarea>
+    <div class="rdrafts">${cs.map((c) => `<div class="rdraft"><code>${esc(c.path)}:${c.line}</code><span>${esc(c.body)}</span>${inline(c) ? "" : "<i>goes in summary</i>"}<button class="rdel" data-ddel="${esc(c.id)}" aria-label="Delete this draft" title="Delete this draft">${TRASH}</button></div>`).join("")}</div>
     <div class="row">
       <button class="btn primary" data-submit="COMMENT">Comment</button>
       <button class="btn" data-submit="APPROVE">Approve</button>
@@ -592,7 +608,7 @@ async function serverAction(act, id) {
 function onClick(ev) {
   const lay = ev.target.closest("[data-flayout]");
   if (lay) return app.toggleLayout(lay.dataset.flayout);
-  const t = ev.target.closest("[data-act],[data-view],[data-level],[data-set],[data-submit],[data-gdel],[data-gonote]");
+  const t = ev.target.closest("[data-act],[data-view],[data-level],[data-set],[data-submit],[data-gdel],[data-gonote],[data-ddel]");
   if (!t) { if (ev.target.id === "overlay" && downOnOverlay) close(); return; } // not the end of a text selection dragged out
   const ds = t.dataset;
   if (ds.view) app.switchView(ds.view);
@@ -600,6 +616,7 @@ function onClick(ev) {
   else if (ds.set) { const v = /^\d+$/.test(ds.val) ? Number(ds.val) : ds.val; app.saveSettings({ [ds.set]: v }); settings(); }
   else if (ds.submit) doSubmit(ds.submit);
   else if (ds.gdel) app.deleteNote(ds.gdel).then(notes);
+  else if (ds.ddel) { t.disabled = true; deleteDraft(ds.ddel); }
   else if (ds.gonote) {
     const n = app.state.notes.find((x) => x.id === ds.gonote), pid = n && app.pidAt(n.path, n.line);
     close();

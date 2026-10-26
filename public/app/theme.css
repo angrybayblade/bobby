@@ -635,6 +635,10 @@ mark.wd { background: var(--del-word); color: inherit; border-radius: 0; }
 .modal .rdraft code { flex: none; font: 12px var(--font-code); color: var(--text); }
 .modal .rdraft span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* one line each: the rest is in the draft */
 .modal .rdraft i { flex: none; color: var(--faint); }
+.modal .rdraft { align-items: center; }
+.modal .rdel { flex: none; display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 1px solid transparent; border-radius: 4px; background: none; color: var(--faint); cursor: pointer; }
+.modal .rdel:hover { color: var(--risk, #d1242f); border-color: var(--line); background: var(--raised); }
+.modal .rdel svg { display: block; }
 .btn { padding: 8px 14px; border-radius: 3px; border: 1px solid var(--line); background: var(--raised); font-size: 14px; }
 .btn.primary { background: var(--signal); border-color: var(--signal); color: var(--signal-ink); font-weight: 600; }
 .modal textarea { width: 100%; min-height: 90px; padding: 10px 12px; border-radius: 3px; border: 1px solid var(--line); background: var(--bg); color: inherit; font: inherit; }
