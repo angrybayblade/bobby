@@ -24,10 +24,11 @@ export const ACTIONS = [
   { id: "zoomOut", group: "Moving", title: "Zoom out (esc also closes what's open first)", keys: ["Escape", "-", "_"] },
   // reading
   { id: "focus", group: "Reading", title: "Focus mode: what you're on fills the screen; again to go back", keys: ["f"] },
-  { id: "fullScreen", group: "Reading", title: "Full screen page; again to go back", keys: ["g"] },
+  { id: "fit", group: "Reading", title: "Fit: the file you're on, as wide as it goes with its top at the top (as a double-click in the file tree); again to go back", keys: ["d"] },
+  { id: "fullScreen", group: "Reading", title: "Details: the page on its own, with what it relies on and affects; again to go back", keys: ["g"] },
   { id: "expand", group: "Reading", title: "Open collapsed code, then more context", keys: ["e"] },
   { id: "nextView", group: "Reading", title: "Switch view: Conversation, Flow, Outline, Lens, Diff", keys: ["v"] },
-  { id: "layout", group: "Reading", title: "Diff layout: inline or split", keys: ["d"] },
+  { id: "layout", group: "Reading", title: "Diff layout: inline or split", keys: ["l"] },
   { id: "files", group: "Reading", title: "Show or hide the file tree", keys: ["t"] },
   // reviewing
   { id: "reviewed", group: "Reviewing", title: "Looks good: mark reviewed and move on", keys: ["a"] },

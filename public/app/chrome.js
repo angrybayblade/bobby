@@ -240,7 +240,7 @@ function renderWhere() {
 const HINTS = [[["next", "prev"], "next / back"], [["zoomIn"], "zoom in"], [["nextView"], "switch view"]];
 const HINTS_BY_LEVEL = {
   0: [[["next", "prev"], "step"], [["zoomIn"], "open core"], [["nextView"], "switch view"]],
-  1: [[["next", "prev"], "step"], [["focus"], "focus"], [["fullScreen"], "full screen"], [["flag"], "flag for later"], [["reviewed"], "looks good →"], [["comment"], "comment"], [["expand"], "open / more"], [["zoomOut"], "overview"]],
+  1: [[["next", "prev"], "step"], [["focus"], "focus"], [["fit"], "fit"], [["fullScreen"], "details"], [["flag"], "flag for later"], [["reviewed"], "looks good →"], [["comment"], "comment"], [["expand"], "open / more"], [["zoomOut"], "overview"]],
   2: [[["next", "prev"], "next / back"], [["fullScreen"], "back"], [["reviewed"], "looks good →"], [["flag"], "flag"], [["comment"], "comment"], [["expand"], "open / more"], [["park"], "park a thought"], [["zoomOut"], "zoom out"]],
 };
 // Counts kept before keys were customizable were by key name: still honoured, so learned hints stay hidden.

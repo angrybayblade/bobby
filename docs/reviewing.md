@@ -58,9 +58,10 @@ The breadcrumb bar shows where you are (`repo #n › core › page`) and the cur
 | `m` / `M` | Private note on a line / your notes panel |
 | `v` | Switch view (Flow → Outline → Lens → Diff) |
 | `f` | Focus: what you're on fills the screen with its code (Flow, Lens and Diff: the card or file; Outline: the reading pane takes the full width). Again, or `esc`, to go back exactly as you were. |
-| `g` | Full screen page for what you're on; again, or `esc`, to go back exactly as you were |
+| `d` | Fit (Diff): the file you're on, as wide as it goes with its top at the top of the stage, as a double-click in the file tree shows it. Again, before you pan or zoom, to go back. |
+| `g` | Details: the page for what you're on, on its own with what it relies on and affects; again, or `esc`, to go back exactly as you were |
 | `t` | File tree on the right: show or hide |
-| `d` | Diff layout for every file: inline or split (old beside new). Also the **Inline / Split** switch under the header; a file's own button switches just that file. |
+| `l` | Diff layout for every file: inline or split (old beside new). Also the **Inline / Split** switch under the header; a file's own button switches just that file. |
 | `?` | All keys |
 | `⌘K` / `Ctrl+K` | Command palette: search every command, core, file and page by name, then `enter` to run or jump. Each command shows its key, so it's also a way to learn them. |
 
@@ -200,4 +201,4 @@ Next: [Views](views.md) · [Settings](settings.md).
 2. an open comment or note box: it closes, and anything you wrote is kept as an **unfinished draft** on the same lines. It's listed with the page's comments (dashed), with **Continue** to pick it up again and ✕ to discard it. Unfinished drafts aren't counted in the drafts pill or posted with your review until you finish them;
 3. a line selection: it clears;
 4. focus mode (`f`): back to the view as it was;
-5. full screen (`g`) or a page: back to where you were, and from there up a zoom level.
+5. details (`g`) or a page: back to where you were, and from there up a zoom level.

@@ -4,6 +4,8 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- Three ways to look at a file in Diff, besides panning and zooming: **`d` fit** (the file you're on, as wide as it goes with its top at the top, as a double-click in the file tree; `d` again goes back), **`f` focus**, and **`g` details** (what was "full screen"). The inline / split switch moves from `d` to `l`.
+
 - **Claude cites code you can open.** Every reference in an answer, a finding or a summary is checked against the commit and becomes a link; a click opens that code in the viewer, the cited lines marked and the PR's changes highlighted, with **Show in diff**. Posted, they're GitHub links.
 - **Claude sees what you see.** Bobby gives Claude its own read-only tools: each file's diff, files before and after the PR, definitions and uses from the language servers, the review threads and git history. A review now reads the PR file by file and reports each finding once it's checked.
 - **Ask Claude about code (preview).** Select some lines and press **✦** (or `q`): ask what they do, what could break, whether they're tested, or anything. Claude checks the code around them and answers on those lines as it writes; ask follow-ups, start a comment from the answer, or keep it as a private note.

@@ -129,7 +129,7 @@ let W = 840; // a viewer's width: wider in split layout, so each side keeps room
 const GX = 200, GY = 64, TOP = 34;
 
 /** A page shown in a file viewer like Diff's, for other views (wrap: .fvw): the file's header (path, band, +/−,
- *  ✓ viewed, inline/split, note, full screen), then a .nbody to renderFile the page into. */
+ *  ✓ viewed, inline/split, note, details), then a .nbody to renderFile the page into. */
 /** A renamed file's old path, after its name in a header. */
 function movedFrom(app, path) {
   const f = app.graph.files.find((x) => x.path === path);
@@ -143,7 +143,7 @@ export function fileViewer(app, pid) {
     + `<button class="frd" data-pfile="${esc(path)}" aria-label="Mark the whole file viewed" title="Every page of this file, at once · local only"><i class="cb"></i><span>Mark viewed</span></button>`
     + `<button class="max lay" data-flayout="${esc(path)}" aria-label="Inline or split" data-tip="${split ? "Show this file inline" : "Show this file split"} · ${esc(keyName(app.settings, "layout"))} for every file">${split ? "▤" : "◫"}</button>`
     + `<button class="max" data-pnote="${esc(path)}" aria-label="Note on this file" data-tip="Private note on this file · only you see it">✎</button>`
-    + `<button class="max" data-pmax="1" aria-label="Full screen" data-tip="Full screen · ${esc(keyName(app.settings, "fullScreen"))}">⤢</button></div><div class="fvb nbody"></div></div>`;
+    + `<button class="max" data-pmax="1" aria-label="Details" data-tip="Details · ${esc(keyName(app.settings, "fullScreen"))}">⤢</button></div><div class="fvb nbody"></div></div>`;
 }
 /** Handles a click on a fileViewer's header buttons; true if it was one. */
 export function viewerAction(app, ev) {
@@ -229,7 +229,7 @@ export default {
         + (fileCount(app, f.path) ? `<button class="max fcm" data-fcomments="${esc(f.path)}" aria-pressed="${fileState(app, f.path) === "open"}" data-tip="${fileState(app, f.path) === "open" ? "Collapse" : "Show"} the comments in this file">${bubble(fileState(app, f.path) === "open")}<span>${fileCount(app, f.path)}</span></button>` : "")
         + `<button class="max" data-fnote="${esc(f.path)}" aria-label="Note on this file" data-tip="Private note on this file · only you see it">✎</button>`
         + (exit ? `<button class="max" data-exit="1" aria-label="Back to all files" data-tip="Back to all files · esc">⤡</button>`
-          : `<button class="max" data-max="${esc(f.path)}" aria-label="Expand this file" data-tip="Expand to full screen · or double-click the header">⤢</button>`);
+          : `<button class="max" data-max="${esc(f.path)}" aria-label="Details" data-tip="Details: this file on its own · or double-click the header">⤢</button>`);
     }
 
     // ---- build: render every viewer, measure, then lay out as a graph.
@@ -674,6 +674,17 @@ export default {
       return true;
     }
     app.zoomToFile = (path) => app.viewId === "diff" && app.level < 2 && zoomTo(path);
+    // `d`, fit: the file you're on as a double-click in the file tree shows it; again (before you pan or zoom) goes
+    // back to the camera you had.
+    let fitted = null; // { path, at: the fitted camera, prev: the one before }
+    function fit() {
+      const act = activeFile();
+      if (!act) return;
+      const now = { s: cam.s, tx: cam.tx + pan.x, ty: cam.ty + pan.y }, same = (a, b) => a.s === b.s && Math.abs(a.tx - b.tx) < 1 && Math.abs(a.ty - b.ty) < 1;
+      if (fitted?.path === act.path && same(now, fitted.at)) { cam = fitted.prev; pan = { x: 0, y: 0 }; fitted = null; return apply(); }
+      if (!zoomTo(act.path)) return;
+      fitted = { path: act.path, at: { s: cam.s, tx: cam.tx, ty: cam.ty }, prev: now };
+    }
     // While filled, the viewer has the canvas's proportions, its contents are scaled to a reading size, and every scroll is its code's.
     function pin(v) {
       for (const o of views.values()) if (o !== v && o.el.classList.contains("pinned")) { o.el.classList.remove("pinned"); o.el.style.removeProperty("--fill"); o.el.style.height = `${o.h}px`; }
@@ -958,7 +969,8 @@ export default {
       treeLeft: () => moveFile(-1, 0), treeRight: () => moveFile(1, 0), treeUp: () => moveFile(0, -1), treeDown: () => moveFile(0, 1),
       focus: () => { if (app.level < 2) return fill(); app.setLevel(1); setTimeout(fill, 60); }, // from the page, back to the canvas, filled
       zoomOut: () => (filled && app.level < 2 ? fill() : app.setLevel(app.level - 1)), // focus mode: back to the canvas as it was
-      fullScreen: () => { if (app.level === 2) return app.setLevel(1); const act = activeFile(); if (act) openFocus(act.path); }, // full screen and back
+      fit: () => { if (app.level < 2) return fit(); app.setLevel(1); setTimeout(fit, 60); }, // from details, back to the canvas, fitted
+      fullScreen: () => { if (app.level === 2) return app.setLevel(1); const act = activeFile(); if (act) openFocus(act.path); }, // details, and back
     };
 
     return { update, keys, hide() { away = { focus: app.focus, level: app.level }; }, destroy() { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); } };
