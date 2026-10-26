@@ -815,7 +815,7 @@ body.booting #where, body.booting #keys, body.booting #files { display: none; }
 .qq > div { padding-top: 2px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .qans { display: flex; gap: 10px; margin-top: 8px; }
 .qans .cmain { min-width: 0; flex: 1; }
-.qans .qa { margin: 0; }
+.qans .qa { margin: 0; max-height: none; } /* Claude's answers show in full: the page scrolls past them */
 .qstep { color: var(--faint); font: 12.5px var(--font-code); padding-top: 3px; animation: cs-pulse 1.4s ease-in-out infinite; }
 .qcaret { display: inline-block; width: 7px; height: 14px; margin-left: 2px; vertical-align: -2px; background: var(--signal); animation: cs-pulse 1s steps(2) infinite; }
 .qstopped { color: var(--faint); font-size: 12px; margin: 4px 0 0; }
@@ -823,7 +823,7 @@ body.booting #where, body.booting #keys, body.booting #files { display: none; }
 .qfollow { display: flex; gap: 8px; align-items: flex-end; padding: 8px 12px 10px; border-top: 1px solid var(--line-soft, var(--line)); }
 .qfollow textarea { flex: 1; min-height: 30px; max-height: 160px; box-sizing: border-box; padding: 5px 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--text); font: 13px/1.45 var(--font-ui); resize: vertical; }
 @media (prefers-reduced-motion: reduce) { .qstep, .qcaret { animation: none; } }
-.qacts { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 12px 10px 46px; }
+.qacts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; padding: 8px 12px; border-top: 1px solid var(--line-soft, var(--line)); }
 .qacts .cbtn { white-space: nowrap; }
 .qacts .cbtn.quiet { border-color: transparent; background: none; color: var(--faint); }
 .qacts .cbtn.quiet:hover { color: var(--text); }
