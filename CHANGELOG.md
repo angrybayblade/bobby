@@ -4,6 +4,8 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- Built with Bun 1.4.4, for its security fixes: the bundled brotli decoder's out-of-bounds write (CVE-2026-111497), root certificates that still trusted compromised eMudhra intermediates, and HTTP/3 QPACK amplification. Running from source needs Bun 1.4.4 or later.
+
 - Three ways to look at a file in Diff, besides panning and zooming: **`d` fit** (the file you're on, as wide as it goes with its top at the top, as a double-click in the file tree; `d` again goes back), **`f` focus**, and **`g` details** (what was "full screen"). The inline / split switch moves from `d` to `l`.
 
 - **Claude can use your own tools.** Turn on your MCP servers and claude.ai connectors (Linear, Notion, Slack, Datadog…) for Claude, for every PR with `--agent-tools linear,notion` or for one PR in the Review with Claude dialog: each **Read** (only its tools that read) or **All**. Off unless you choose; your hooks, skills and commands stay off either way.
