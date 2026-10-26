@@ -353,6 +353,11 @@ export function md(src) {
     .replace(/`([^`\n]+)`/g, "<code>$1</code>")
     .replace(/\*\*([^*\n]+)\*\*/g, "<strong>$1</strong>")
     .replace(/(^|[\s(])\*([^*\n]+)\*(?=[\s).,!?]|$)/g, "$1<em>$2</em>")
+    // Claude's references to code (refs.ts): open in the code viewer
+    .replace(/\[([^\]\n]+)\]\(ref:\/\/(head|base)\/([^#)\s]+)#L(\d+)(?:-L(\d+))?\)/g, (_, label, side, enc, a, b) => {
+      const path = enc.split("/").map((x) => { try { return decodeURIComponent(x); } catch { return x; } }).join("/");
+      return `<a class="cref" href="#" data-rside="${side}" data-rpath="${esc(path)}" data-rline="${a}"${b ? ` data-rend="${b}"` : ""} title="${esc(path)}:${a}${b ? `–${b}` : ""}${side === "base" ? ", before the PR" : ""}">${label}</a>`;
+    })
     .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
     .replace(/(^|[\s(])(https?:\/\/[^\s<)]+)/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>');
   const out = [];

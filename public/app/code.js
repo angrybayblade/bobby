@@ -676,6 +676,17 @@ function openInDiff(app, u) {
   app.setFocus(pid);
   if (u.group === 0) setTimeout(() => selectLine(app, `${u.path}|RIGHT|${u.line}`), 350); // once the view has moved there
 }
+/** A reference's lines in the diff: the page that shows them, the first line selected. */
+function refInDiff(app, e) {
+  const pid = app.pidAt(e.path, e.line);
+  if (!pid) return;
+  app.page.peek = null;
+  drawPeek(app);
+  document.dispatchEvent(new CustomEvent("bobby:leave-overlays")); // the walkthrough, if it's open
+  if (app.settings.view !== "diff") app.switchView("diff");
+  app.setFocus(pid, { level: 2 });
+  setTimeout(() => selectLine(app, `${e.path}|RIGHT|${e.line}`), 350);
+}
 function toggleUse(app, e, i) {
   e.open = e.open === i ? null : i;
   e.sel = i;
@@ -685,6 +696,7 @@ function toggleUse(app, e, i) {
 /** Keys while a list of uses is showing: ↑ ↓ (or j k) move, enter opens or closes the code, o opens it in the diff. */
 export function inspectorKey(app, ev) {
   const e = app.page.peek?.stack.at(-1);
+  if (e?.kind === "ref" && ev.key === "o") { refInDiff(app, e); return true; } // a reference: show it in the diff
   if (e?.kind !== "uses" || !e.list?.length) return false;
   const order = [...(peekEl?.querySelectorAll(".uitem") ?? [])].map((n) => Number(n.dataset.use));
   const at = order.indexOf(e.sel ?? -1);
@@ -731,10 +743,63 @@ function scrollToRow(row, behavior) {
   if (behavior === "auto" && at > 0 && at < sc.clientHeight - row.offsetHeight * 2) return; // stepping: only once it's near the edge
   sc.scrollTo({ top: sc.scrollTop + at - sc.clientHeight / 3, behavior });
 }
+// ---- references in what Claude writes (refs.ts): a click opens that code here, its lines marked, and what the PR
+// changed in it highlighted: added lines at head, removed ones before the PR.
+/** Opens a reference: { path, side: "head" | "base", line, end? }. */
+export async function openRef(app, ref) {
+  const entry = { kind: "ref", name: `${ref.path.split("/").pop()}:${ref.line}${ref.end ? `–${ref.end}` : ""}`, path: ref.path, side: ref.side === "base" ? "base" : "head", line: ref.line, end: ref.end ?? ref.line, loading: true };
+  app.page.peek = { stack: [entry] };
+  drawPeek(app);
+  const r = app.caps.files ? await api(`/api/file?path=${encodeURIComponent(entry.path)}${entry.side === "base" ? "&side=base" : ""}`).catch(() => null) : null;
+  entry.all = r?.lines?.length ? r.lines : null;
+  entry.from = Math.max(1, entry.line - 8);
+  entry.to = Math.min(entry.all?.length ?? 0, entry.end + 8, entry.line + 300);
+  // what the PR changed in this file, on this side
+  const t = entry.side === "base" ? "-" : "+", n = entry.side === "base" ? "o" : "n";
+  entry.changed = new Set(app.graph.hunks.filter((h) => h.file === entry.path).flatMap((h) => h.lines.filter((l) => l.t === t).map((l) => l[n])));
+  entry.inPr = app.graph.files.some((f) => f.path === entry.path);
+  entry.loading = false;
+  if (app.page.peek?.stack.includes(entry)) drawPeek(app);
+}
+let refsWired = false;
+/** Clicks on Claude's references open them, wherever they are: threads, the walkthrough, a summary. */
+export function wireRefs(app) {
+  if (refsWired) return;
+  refsWired = true;
+  document.addEventListener("click", (ev) => {
+    const a = ev.target.closest?.("a.cref");
+    if (!a) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    openRef(app, { path: a.dataset.rpath, side: a.dataset.rside, line: Number(a.dataset.rline), ...(a.dataset.rend ? { end: Number(a.dataset.rend) } : {}) });
+  }, true);
+}
+export const closePeek = (app) => { app.page.peek = null; drawPeek(app); };
+function refHtml(app, e) {
+  const pr = app.graph.pr, sha = e.side === "base" ? pr.baseSha : pr.headSha;
+  const gh = pr.provider !== "local" ? `https://github.com/${pr.owner}/${pr.repo}/blob/${sha}/${e.path}#L${e.line}${e.end > e.line ? `-L${e.end}` : ""}` : "";
+  const lines = e.end > e.line ? `lines ${e.line}–${e.end}` : `line ${e.line}`;
+  const when = e.side === "base" ? "before the PR" : e.inPr ? "after the PR" : "at the PR's head";
+  const pid = e.side === "head" ? app.pidAt(e.path, e.line) : null;
+  const where = `${esc(e.path)} · ${lines} · ${when}${e.changed?.size ? ` · <span class="pkchg">${e.side === "base" ? "removed" : "added"} lines highlighted</span>` : ""}${gh ? ` <a href="${esc(gh)}" target="_blank" rel="noopener" title="Open on GitHub">GitHub ↗</a>` : ""}`;
+  const head = `<div class="pkh"><div class="pktrail"><code class="pkn">${esc(e.name)}</code><span class="pktag">${e.side === "base" ? "before" : "code"}</span></div>${pid ? `<button class="pkgo" data-refdiff title="Show it in the diff (o)">Show in diff</button>` : ""}<button class="pkx" data-peekclose title="Close · esc" aria-label="Close">✕</button></div>
+    <div class="pkw">${where}</div>`;
+  if (e.loading) return `<div class="pkwin" role="dialog" aria-label="${esc(e.name)}">${head}<div class="pkbody"><div class="pkw">loading…</div></div></div>`;
+  if (!e.all) return `<div class="pkwin" role="dialog" aria-label="${esc(e.name)}">${head}<div class="pkbody"><div class="pkw">This code can't be read here${app.caps.files ? "" : ": there's no local clone"}.</div></div></div>`;
+  const slice = e.all.slice(e.from - 1, e.to), html = hlBlock(slice, langOf(e.path));
+  const up = e.from > 1 ? `<button class="pkmore pkbtn" data-refmore="up">⋯ ${e.from - 1} lines above</button>` : "";
+  const down = e.to < e.all.length ? `<button class="pkmore pkbtn" data-refmore="down">⋯ ${e.all.length - e.to} lines below</button>` : "";
+  const code = `<div class="pkc">${up}${html.map((h, i) => { const k = e.from + i, chg = e.changed.has(k);
+    return `<div class="pl${k >= e.line && k <= e.end ? " at" : ""}${chg ? (e.side === "base" ? " del" : " add") : ""}"${e.side === "head" ? ` data-path="${esc(e.path)}" data-line="${k}"` : ""}><span class="no">${k}</span><span class="sg">${chg ? (e.side === "base" ? "−" : "+") : ""}</span><code>${h || " "}</code></div>`; }).join("")}${down}</div>`;
+  const hint = `<div class="pkhint">${e.side === "head" ? `${MOD}-click a name to inspect it · ` : ""}${pid ? "o to show it in the diff · " : ""}esc to close</div>`;
+  return `<div class="pkwin" role="dialog" aria-label="${esc(e.name)}">${head}<div class="pkbody">${code}</div>${hint}</div>`;
+}
+
 const VIA = { lsp: ["types", "Found by the language server"], syntax: ["imports", "Found through imports and the syntax tree, without types"] };
 /** The inspector's window: a trail of what you inspected, then where the last one is declared, its type and its code. */
 function peekHtml(app) {
   const pk = app.page.peek, e = pk.stack.at(-1), res = e.res, pr = app.graph.pr;
+  if (e.kind === "ref") return refHtml(app, e);
   const trail = pk.stack.map((x, i) => i === pk.stack.length - 1 ? `<code class="pkn">${esc(x.name)}</code>`
     : `<button class="pkcrumb" data-peekto="${i}" title="Back to ${esc(x.name)}">${esc(x.name)}${x.kind === "uses" ? " · uses" : ""}</button><span class="pksep">›</span>`).join("");
   const via = res && VIA[res.via] ? `<span class="pkv" title="${VIA[res.via][1]}">${VIA[res.via][0]}</span>` : "";
@@ -803,6 +868,9 @@ function onPeekClick(app, ev) {
   const to = ev.target.closest("[data-peekto]");
   if (to) { app.page.peek.stack.length = Number(to.dataset.peekto) + 1; return drawPeek(app); }
   const e = app.page.peek.stack.at(-1);
+  const grow = e.kind === "ref" && ev.target.closest("[data-refmore]");
+  if (grow) { grow.dataset.refmore === "up" ? (e.from = Math.max(1, e.from - 20)) : (e.to = Math.min(e.all.length, e.to + 20)); return drawPeek(app); }
+  if (e.kind === "ref" && ev.target.closest("[data-refdiff]")) return refInDiff(app, e);
   const filter = ev.target.closest("[data-ufilter]");
   if (filter) { e.filter = filter.dataset.ufilter === "all" ? null : Number(filter.dataset.ufilter); e.open = null; return drawPeek(app); }
   const kind = ev.target.closest("[data-ukind]");

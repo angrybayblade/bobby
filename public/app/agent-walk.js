@@ -2,7 +2,7 @@
 // choice of adding it to your review (as it is, or edited), dismissing it, or leaving it for later. The way through a
 // review's findings, as the walk is the way through the PR: no hunting for them in the diff.
 import { esc, live } from "./core.js";
-import { hlBlock, langOf } from "./code.js";
+import { closePeek, hlBlock, inspectorKey, inspectorOpen, langOf } from "./code.js";
 import { md } from "./comments.js";
 import { MOD } from "./palette.js";
 import { findingAct } from "./agent.js";
@@ -28,6 +28,7 @@ export function openWalk(app, at = null, onNew = null) {
   return true;
 }
 export const walkOpen = () => !!w;
+document.addEventListener("bobby:leave-overlays", () => close()); // a reference shown in the diff
 
 function close() {
   if (!w) return;
@@ -58,7 +59,7 @@ function draw() {
     ? `<button class="btn primary" data-aw="add">Add to review <kbd>${MOD}↵</kbd></button><button class="btn" data-aw="unedit">Cancel edit</button>`
     : `<button class="btn primary" data-aw="add">Add to review <kbd>a</kbd></button><button class="btn" data-aw="edit">Edit first <kbd>e</kbd></button><button class="btn" data-aw="dismiss">Dismiss <kbd>d</kbd></button>`;
   w.el.innerHTML = `<div class="aw" role="dialog" aria-modal="true" aria-label="Claude's review" tabindex="-1">${head}
-    ${w.i === 0 && review.summary ? `<p class="aw-summary">${review.focus ? `<span class="aw-focus">You asked: ${esc(review.focus)}</span>` : ""}${esc(review.summary)}</p>` : ""}
+    ${w.i === 0 && review.summary ? `<p class="aw-summary">${review.focus ? `<span class="aw-focus">You asked: ${esc(review.focus)}</span>` : ""}${md(review.summary)}</p>` : ""}
     <div class="aw-meta"><span class="ctag sev-${esc(f.severity)}">${SEV[f.severity] ?? esc(f.severity)}</span><button class="aw-loc" data-aw="show" title="Show it in the diff (o)">${esc(f.path)}:${f.startLine ? `${f.startLine}–` : ""}${f.line}${f.side === "LEFT" ? " (removed)" : ""} ↗</button></div>
     <h3>${esc(f.title)}</h3>
     ${excerpt(w.app, f)}
@@ -136,6 +137,11 @@ function onClick(ev) {
 }
 function onKey(ev) {
   ev.stopPropagation(); // the page's keys stay out of it
+  if (inspectorOpen()) { // a reference opened over it: its keys first
+    if (ev.key === "Escape") { ev.preventDefault(); closePeek(w.app); w.el.querySelector(".aw")?.focus(); }
+    else if (inspectorKey(w.app, ev)) ev.preventDefault();
+    return;
+  }
   const typing = ev.target.matches("textarea");
   if (typing) {
     if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); void act("add"); }

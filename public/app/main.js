@@ -1,7 +1,7 @@
 import { askPoll } from "./ask.js";
 import { agentPoll, nextFinding, openAsk } from "./agent.js";
 import { DONE, LOW, api, createApp, esc, reviewBase } from "./core.js";
-import { escapeCode, inspectorKey, inspectorOpen, expandAll, keepDraft, moveLine, renderFile, renderNode, renderPage, startComment, startFileNote } from "./code.js";
+import { escapeCode, inspectorKey, inspectorOpen, wireRefs, expandAll, keepDraft, moveLine, renderFile, renderNode, renderPage, startComment, startFileNote } from "./code.js";
 import * as chrome from "./chrome.js";
 import { nextUnresolved } from "./comments.js";
 import { offerClaude } from "./claude-setup.js";
@@ -282,6 +282,7 @@ app.on((why) => { if (why === "marks" || why === "comments") { clearTimeout(prog
 setTimeout(reportProgress, 2000);
 // A call that failed with no one to catch it (a save, a delete): say so rather than nothing.
 app.fail = (e) => chrome.toast(`Not saved: ${esc(e?.message ?? e)}`, 8000);
+wireRefs(app); // Claude's references to code open in the viewer, wherever they are
 app.toast = (html, ms) => chrome.toast(html, ms);
 app.toastUndo = (what) => chrome.toast(`<span>${esc(what)}.</span> <button class="btn" data-act="undo">Undo</button>`, 8000);
 window.addEventListener("unhandledrejection", (ev) => app.fail(ev.reason));

@@ -828,3 +828,18 @@ body.booting #where, body.booting #keys, body.booting #files { display: none; }
 .ccompose .cfoot .btn { white-space: nowrap; }
 .ccompose.asking .cfoot .chint { order: 2; flex-basis: 100%; }
 .ccompose.asking .cfoot .cgrow { display: none; }
+
+/* Claude's references to code (refs.ts), and the viewer they open in */
+a.cref { color: var(--signal); text-decoration: underline dotted; text-underline-offset: 2px; cursor: pointer; }
+a.cref:hover { text-decoration-style: solid; }
+a.cref code { color: inherit; }
+.inspector .pl .sg { flex: none; width: 14px; color: var(--faint); user-select: none; }
+.inspector .pl.add { background: var(--add-tint); } .inspector .pl.add .sg { color: var(--ok); }
+.inspector .pl.del { background: var(--del-tint); } .inspector .pl.del .sg { color: var(--risk); }
+.inspector .pl.at { box-shadow: inset 3px 0 0 var(--signal); }
+.inspector .pl.at:not(.add):not(.del) { background: var(--signal-soft); }
+.inspector .pkchg { color: var(--text); }
+.inspector .pkgo { border: 1px solid var(--line); border-radius: var(--radius); background: none; color: var(--muted); font: 12px var(--font-ui); padding: 2px 10px; cursor: pointer; }
+.inspector .pkgo:hover { color: var(--text); border-color: var(--muted); }
+.inspector .pkbtn { display: block; width: 100%; text-align: left; border: 0; background: none; cursor: pointer; font: inherit; }
+.inspector .pkbtn:hover { color: var(--text); }
