@@ -11,6 +11,7 @@ import type { ReviewGraph } from "./graph.ts";
 import { keepTree } from "./langserver.ts";
 import { home } from "./state.ts";
 
+import { refContext, refsForGitHub, resolveRefs } from "./refs.ts";
 import type { AgentReview, Finding } from "./types.ts";
 
 /** The review running now, in memory. */
@@ -59,8 +60,10 @@ Each finding:
 - path, side, line: where it goes, on a line of the diff below. Lines are numbered R<n> (the new file: added and unchanged lines) and L<n> (the old file: removed lines). Use side RIGHT with an R number, or LEFT with an L number. Pick the line the problem is on; if it's caused by code outside the diff, anchor it on the changed line that's affected and name the other place in the body.
 - startLine: the first line, when the finding covers several lines (same side); otherwise 0.
 - title: at most 10 words, stating the problem ("avg([]) returns NaN").
-- body: a review comment to the PR's author, in Markdown: what's wrong, why (cite the code you checked, as path:line), and what to do. Two to five sentences. A \`\`\`suggestion block only when it replaces exactly the lines from startLine (or line) to line.
-summary: one or two sentences: your overall read of the PR, for the reviewer.`;
+- body: a review comment to the PR's author, in Markdown: what's wrong, why (cite the code you checked), and what to do. Two to five sentences. A \`\`\`suggestion block only when it replaces exactly the lines from startLine (or line) to line.
+summary: one or two sentences: your overall read of the PR, for the reviewer.
+
+Cite code as Markdown links with its path from the repository's root: [what it is](path/to/file.ts#L12), or a range [what it is](path/to/file.ts#L12-L20); for the code as it was before the PR, path/to/file.ts#base-L12. Cite only lines you've read, so each link opens the right code.`;
 
 const PER_HUNK = 400, BUDGET = 200_000;
 
@@ -175,7 +178,9 @@ export async function runClaude(cwd: string, g: ReviewGraph, job: AgentJob, prom
 export async function runAgentReview(cwd: string, g: ReviewGraph, job: AgentJob, done: (r: AgentReview) => void, focus?: string): Promise<void> {
   try {
     const result = await runClaude(cwd, g, job, buildPrompt(g, focus), { schema: SCHEMA });
-    const r = place(g, result.structured_output as Raw);
+    const r = place(g, result.structured_output as Raw), refs = refContext(cwd, g);
+    r.summary = await resolveRefs(r.summary, refs);
+    for (const f of r.findings) f.body = await resolveRefs(f.body, refs);
     done({ headSha: g.pr.headSha, at: new Date().toISOString(), ...r, ...(focus ? { focus } : {}), ...(result.total_cost_usd ? { cost: result.total_cost_usd } : {}) });
     job.steps.push(`Done: ${r.findings.length} finding${r.findings.length === 1 ? "" : "s"}`);
   } catch (e) {
@@ -210,4 +215,4 @@ export function place(g: ReviewGraph, raw: Raw): { summary: string; findings: Fi
 }
 
 /** The draft a finding becomes: its body, as you'd post it. */
-export const draftOf = (f: Finding) => ({ path: f.path, line: f.line, side: f.side, ...(f.startLine ? { startLine: f.startLine, startSide: f.side } : {}), body: f.body, inDiff: true });
+export const draftOf = (f: Finding, pr: ReviewGraph["pr"]) => ({ path: f.path, line: f.line, side: f.side, ...(f.startLine ? { startLine: f.startLine, startSide: f.side } : {}), body: refsForGitHub(f.body, pr), inDiff: true });

@@ -3,11 +3,12 @@
 // far. The answer is for you, the reviewer: turn it into a comment or a note if you want to keep it.
 import { type AgentJob, runClaude } from "./agent.ts";
 import type { ReviewGraph } from "./graph.ts";
+import { refContext, resolveRefs } from "./refs.ts";
 import type { Ask } from "./types.ts";
 
 const INSTRUCTIONS = `A reviewer is reading this pull request and has selected some lines to ask you about. Answer their question directly, for them (not for the PR's author).
 
-Check the code before you answer: your working directory is the repository at the PR's head commit, and you have Read, Grep and Glob. Look up what the lines call and what calls them when the answer depends on it. Cite code as path:line.
+Check the code before you answer: your working directory is the repository at the PR's head commit, and you have Read, Grep and Glob. Look up what the lines call and what calls them when the answer depends on it. Cite code as Markdown links with its path from the repository's root: [what it is](path/to/file.ts#L12), or a range [what it is](path/to/file.ts#L12-L20); for the code as it was before the PR, path/to/file.ts#base-L12. Cite only lines you've read, so each link opens the right code.
 
 Be concise: usually under 200 words, in Markdown, with no preamble and no restating of the question. If they ask you to review the lines, list concrete problems, worst first, or say plainly there are none. If you're not sure, say what you checked and what's left open.`;
 
@@ -32,7 +33,7 @@ export async function runAsk(cwd: string, g: ReviewGraph, ask: Ask, job: AgentJo
   const turn = ask.turns.at(-1)!;
   try {
     const r = await runClaude(cwd, g, job, askPrompt(g, ask), { onText: (t) => { job.text = t; }, minutes: 10 });
-    turn.a = (r.result ?? job.text ?? "").trim();
+    turn.a = await resolveRefs((r.result ?? job.text ?? "").trim(), refContext(cwd, g));
   } catch (e) {
     turn.error = job.error ?? (e as Error).message;
     if (job.text) turn.a = job.text.trim(); // what it had written, stopped

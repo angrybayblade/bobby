@@ -4,6 +4,7 @@ import { cancelLogin, claudeStatus, dismiss, INSTALL_TEXT, installClaude, startL
 import { fileLines, forgetUnknownMe, parsePrArg, reviewComments, run, whoAmI } from "./git.ts";
 import { type AgentJob, draftOf, runAgentReview } from "./agent.ts";
 import { runAsk } from "./ask.ts";
+import { refsForGitHub } from "./refs.ts";
 import { cancelGhLogin, dismissGh, ghStatus, installGh, startGhLogin } from "./github.ts";
 import { type ReviewGraph, setDiscussion } from "./graph.ts";
 import { home, loadSettings, saveSettings, saveState } from "./state.ts";
@@ -436,7 +437,7 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
         if (!f) return json({ ok: false, error: "no such finding" }, 404);
         let comment: Comment | undefined;
         if (act === "draft" && f.status === "open") {
-          comment = { ...draftOf(f), ...(typeof body === "string" && body.trim() ? { body: body.trim() } : {}), id: crypto.randomUUID().slice(0, 8) };
+          comment = { ...draftOf(f, pr()), ...(typeof body === "string" && body.trim() ? { body: refsForGitHub(body.trim(), pr()) } : {}), id: crypto.randomUUID().slice(0, 8) };
           s.state.comments.push(comment);
           Object.assign(f, { status: "drafted", draftId: comment.id });
         } else if (act === "dismiss") f.status = "dismissed";
