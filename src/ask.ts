@@ -3,6 +3,7 @@
 // far. The answer is for you, the reviewer: turn it into a comment or a note if you want to keep it.
 import { type AgentJob, TOOLS_NOTE, runClaude } from "./agent.ts";
 import type { ReviewGraph } from "./graph.ts";
+import type { Connected } from "./connected.ts";
 import { refContext, resolveRefs } from "./refs.ts";
 import type { Ask } from "./types.ts";
 
@@ -29,10 +30,11 @@ export function askPrompt(g: ReviewGraph, ask: Ask, tools = false): string {
 }
 
 /** Answers the ask's last question; job.text is the answer so far, and done gets the whole of it, or the error. */
-export async function runAsk(cwd: string, g: ReviewGraph, ask: Ask, job: AgentJob & { text?: string }, done: () => void, tools?: string): Promise<void> {
+export async function runAsk(cwd: string, g: ReviewGraph, ask: Ask, job: AgentJob & { text?: string }, done: () => void, tools?: string, connected?: Connected | null): Promise<void> {
   const turn = ask.turns.at(-1)!;
   try {
-    const r = await runClaude(cwd, g, job, askPrompt(g, ask, !!tools), { onText: (t) => { job.text = t; }, minutes: 10, tools });
+    const prompt = askPrompt(g, ask, !!tools).replace(/\n# The reviewer asks\n/, (m) => (connected ? `\n${connected.note}\n${m}` : m));
+    const r = await runClaude(cwd, g, job, prompt, { onText: (t) => { job.text = t; }, minutes: 10, tools, connected });
     turn.a = await resolveRefs((r.result ?? job.text ?? "").trim(), refContext(cwd, g));
   } catch (e) {
     turn.error = job.error ?? (e as Error).message;

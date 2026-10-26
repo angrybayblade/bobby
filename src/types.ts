@@ -153,6 +153,7 @@ export interface ReviewState {
   note?: string; // "where my head was": parked thought shown on return
   agent?: AgentReview; // the last agent-assisted review (agent.ts)
   asks?: Ask[]; // questions about lines, and Claude's answers (ask.ts)
+  agentTools?: Record<string, "read" | "all">; // this PR's choice of your own tools for Claude (connected.ts); absent: the launch default
 }
 
 /** A name used on a new-side line of the change, and where it's declared: in the repo (to), outside it (ext: a

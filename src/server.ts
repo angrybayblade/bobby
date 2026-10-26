@@ -5,6 +5,7 @@ import { fileLines, forgetUnknownMe, parsePrArg, reviewComments, run, whoAmI } f
 import { type AgentJob, draftOf, runAgentReview } from "./agent.ts";
 import { runAsk } from "./ask.ts";
 import { handleMcp, mcpConfig, openMcp } from "./mcp.ts";
+import { catalog, parseSpec, resolveSpec, runWith, type Connected, type Selection } from "./connected.ts";
 import { refsForGitHub } from "./refs.ts";
 import { cancelGhLogin, dismissGh, ghStatus, installGh, startGhLogin } from "./github.ts";
 import { type ReviewGraph, setDiscussion } from "./graph.ts";
@@ -157,6 +158,7 @@ export interface App {
    *  page sets gh up, then opens it. */
   waiting?: { arg: string; o: OpenOptions };
   self?: string; // where this server answers on this machine (cli.ts), for Claude to reach Bobby's tools (mcp.ts)
+  agentTools?: string; // --agent-tools: your own tools Claude may use in every review, unless a PR says otherwise (connected.ts)
 }
 export type OpenOptions = { repo?: string; cwd?: string; base?: string; refresh?: boolean; noLlm?: boolean; noLsp?: boolean };
 
@@ -428,8 +430,8 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
         const { focus } = (await req.json().catch(() => ({}))) as { focus?: unknown }; // what you asked Claude to look at
         const job: AgentJob = (s.agentJob = { steps: [], startedAt: Date.now(), ...(typeof focus === "string" && focus.trim() ? { focus: focus.trim().slice(0, 2000) } : {}) });
         const g = s.claudeGraph ?? s.staticGraph, found: Array<Record<string, unknown>> = [];
-        const tools = bobbyTools(s, app, g, (f) => found.push(f)); // each finding as Claude reports it
-        void runAgentReview(s.cwd, g, job, (r) => { s.state.agent = r; persist(); }, job.focus, tools.config ? { config: tools.config, found: found as never } : undefined).finally(tools.close);
+        const tools = bobbyTools(s, app, g, (f) => found.push(f)), cwd = s.cwd; // each finding as Claude reports it
+        void connectedFor(s, app, job).then((connected) => runAgentReview(cwd, g, job, (r) => { s.state.agent = r; persist(); }, job.focus, tools.config ? { config: tools.config, found: found as never } : undefined, connected)).finally(tools.close);
         return json({ ok: true });
       }
       if (req.method === "POST" && p === "/api/agent/cancel") {
@@ -470,8 +472,8 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
         persist();
         const job = { steps: [], startedAt: Date.now() } as AgentJob & { text?: string };
         (s.askJobs ??= new Map()).set(ask.id, job);
-        const g = s.claudeGraph ?? s.staticGraph, tools = bobbyTools(s, app, g);
-        void runAsk(s.cwd, g, ask, job, persist, tools.config).finally(tools.close);
+        const g = s.claudeGraph ?? s.staticGraph, tools = bobbyTools(s, app, g), cwd = s.cwd, asked = ask;
+        void connectedFor(s, app, job).then((connected) => runAsk(cwd, g, asked, job, persist, tools.config, connected)).finally(tools.close);
         return json({ ok: true, ask: askView(s, ask) });
       }
       if (req.method === "POST" && p === "/api/ask/stop") {
@@ -486,6 +488,22 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
         if (job && !job.done) { job.error = "Stopped"; job.proc?.kill(); }
         s.askJobs?.delete(id);
         s.state.asks = (s.state.asks ?? []).filter((a) => a.id !== id);
+        persist();
+        return json({ ok: true });
+      }
+
+      // Your own tools for Claude (connected.ts): what you have, and what this PR lets it use.
+      if (p === "/api/agent/tools" && req.method === "GET") {
+        const servers = await catalog(url.searchParams.has("fresh")).catch((e) => ({ error: String((e as Error).message ?? e) }));
+        if ("error" in servers) return json({ ok: false, error: `Couldn't read your Claude Code setup: ${servers.error}` }, 500);
+        const launch = resolveSpec(parseSpec(app.agentTools), servers);
+        return json({ ok: true, servers: servers.map((v) => ({ name: v.name, status: v.status, read: v.read.length, write: v.write.length })),
+          selection: s.state.agentTools ?? launch, source: s.state.agentTools ? "pr" : "launch", launch, spec: app.agentTools ?? "" });
+      }
+      if (req.method === "POST" && p === "/api/agent/tools") {
+        const { selection } = (await req.json()) as { selection: Selection | null }; // null: back to the launch default
+        if (selection === null) delete s.state.agentTools;
+        else if (selection && typeof selection === "object") s.state.agentTools = Object.fromEntries(Object.entries(selection).filter(([, v]) => v === "read" || v === "all")) as Selection;
         persist();
         return json({ ok: true });
       }
@@ -674,4 +692,15 @@ function bobbyTools(s: Session, app: App, g: ReviewGraph, report?: (f: Record<st
   };
   const { token, close } = openMcp({ g, cwd: s.cwd, api, ...(report ? { report } : {}) });
   return { config: mcpConfig(`${app.self}/mcp/${token}`), close };
+}
+
+/** This PR's choice of your own tools for Claude (else the launch default), as Claude's flags: null when nothing's
+ *  on, without asking Claude Code what you have. */
+async function connectedFor(s: Session, app: App, job: AgentJob): Promise<Connected | null> {
+  const spec = parseSpec(app.agentTools);
+  if (s.state.agentTools ? !Object.keys(s.state.agentTools).length : !spec.length) return null;
+  job.steps.push("Connecting your tools");
+  const servers = await catalog().catch(() => null);
+  if (!servers) return null;
+  return runWith(s.state.agentTools ?? resolveSpec(spec, servers), servers);
 }

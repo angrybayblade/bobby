@@ -11,6 +11,7 @@ import type { ReviewGraph } from "./graph.ts";
 import { keepTree } from "./langserver.ts";
 import { home } from "./state.ts";
 
+import type { Connected } from "./connected.ts";
 import { refContext, refsForGitHub, resolveRefs } from "./refs.ts";
 import type { AgentReview, Finding } from "./types.ts";
 
@@ -139,6 +140,8 @@ function describe(name: string, input: Record<string, unknown>, root: string): s
   if (name === "Glob") return `Looking for ${String(input.pattern ?? "")}`;
   if (name === "StructuredOutput") return "Writing up its findings";
   const bobby = /^mcp__bobby__(\w+)$/.exec(name)?.[1], side = input.side === "base" ? " (before the PR)" : "";
+  const ext = !bobby && /^mcp__(.+?)__(.+)$/.exec(name);
+  if (ext) return `Using ${ext[1].replace(/^claude_ai_/, "").replace(/_/g, " ")}: ${ext[2].replace(/[_-]/g, " ")}`;
   if (bobby === "pr_overview") return "Reading the PR's overview";
   if (bobby === "report_finding") return `Found: ${input.title}`;
   if (bobby === "pr_diff") return `Reading the diff of ${input.path}`;
@@ -162,15 +165,19 @@ interface Event {
 /** Runs Claude Code on a prompt, in the head commit's export with only Read, Grep and Glob, and nothing of your own
  *  setup (settings, MCP servers, sessions). job.steps says what it's doing; onText gets its answer as it's written.
  *  The result: its structured output (with a schema), else its text. */
-export async function runClaude(cwd: string, g: ReviewGraph, job: AgentJob, prompt: string, o: { schema?: object; onText?: (text: string) => void; minutes?: number; tools?: string } = {}): Promise<Event> {
+export async function runClaude(cwd: string, g: ReviewGraph, job: AgentJob, prompt: string, o: { schema?: object; onText?: (text: string) => void; minutes?: number; tools?: string; connected?: Connected | null } = {}): Promise<Event> {
   const step = (m: string) => { job.steps.push(m); if (job.steps.length > 200) job.steps.splice(0, 100); };
   const st = await claudeStatus();
   if (!st.installed || !st.loggedIn) throw new Error(st.installed ? "Claude Code isn't signed in" : "Claude Code isn't installed");
   const root = await sourceTree(cwd, g, step);
   step("Reading the diff");
+  // None of your own setup, unless you've let some of it in (connected.ts): then your user settings, for its
+  // connections, with hooks off and only what you chose allowed.
+  const c = o.connected, allowed = [...(o.tools ? ["mcp__bobby"] : []), ...(c?.allowed ?? [])];
   const cmd = [claudeBin() ?? "claude", "-p", "--output-format", "stream-json", "--verbose", "--tools", "Read,Grep,Glob", "--no-session-persistence",
-    "--strict-mcp-config", "--setting-sources", "", "--disable-slash-commands", ...(o.schema ? ["--json-schema", JSON.stringify(o.schema)] : []), ...(o.onText ? ["--include-partial-messages"] : []),
-    ...(o.tools ? ["--mcp-config", o.tools, "--allowedTools", "mcp__bobby"] : [])]; // Bobby's own tools (mcp.ts), and only those
+    ...(c ? c.args : ["--strict-mcp-config", "--setting-sources", ""]), "--disable-slash-commands", ...(o.schema ? ["--json-schema", JSON.stringify(o.schema)] : []), ...(o.onText ? ["--include-partial-messages"] : []),
+    ...(o.tools ? ["--mcp-config", o.tools] : []), // Bobby's own tools (mcp.ts)
+    ...(c?.disallowed.length ? ["--disallowedTools", ...c.disallowed] : []), ...(allowed.length ? ["--allowedTools", ...allowed] : [])];
   const model = process.env.BOBBY_REVIEW_MODEL ?? process.env.BOBBY_MODEL;
   if (model) cmd.push("--model", model);
   const p = Bun.spawn(cmd, { cwd: root, stdin: "pipe", stdout: "pipe", stderr: "pipe" });
@@ -211,11 +218,12 @@ export async function runClaude(cwd: string, g: ReviewGraph, job: AgentJob, prom
 }
 
 /** Runs the review; job says how it's going, and the result is handed to done. */
-export async function runAgentReview(cwd: string, g: ReviewGraph, job: AgentJob, done: (r: AgentReview) => void, focus?: string, tools?: { config: string; found: Raw["findings"] }): Promise<void> {
+export async function runAgentReview(cwd: string, g: ReviewGraph, job: AgentJob, done: (r: AgentReview) => void, focus?: string, tools?: { config: string; found: Raw["findings"] }, connected?: Connected | null): Promise<void> {
   try {
     // With Bobby's tools, findings come one at a time through report_finding and the answer is the summary; without,
     // all at once in the schema's shape.
-    const result = await runClaude(cwd, g, job, buildPrompt(g, focus, !!tools), tools ? { tools: tools.config } : { schema: SCHEMA });
+    const prompt = buildPrompt(g, focus, !!tools) + (connected ? `\n\n${connected.note}` : "");
+    const result = await runClaude(cwd, g, job, prompt, { ...(tools ? { tools: tools.config } : { schema: SCHEMA }), connected });
     const raw: Raw = tools ? { summary: (result.result ?? "").trim().slice(0, 1500), findings: tools.found } : (result.structured_output as Raw);
     const r = place(g, raw), refs = refContext(cwd, g);
     r.summary = await resolveRefs(r.summary, refs);

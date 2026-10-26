@@ -38,6 +38,7 @@ const { values, positionals } = parseArgs({
     lsp: { type: "boolean", default: false },
     refresh: { type: "boolean", default: false },
     "no-open": { type: "boolean", default: false },
+    "agent-tools": { type: "string", default: process.env.BOBBY_AGENT_TOOLS },
     repos: { type: "boolean", default: false },
     help: { type: "boolean", short: "h", default: false },
     version: { type: "boolean", short: "v", default: false },
@@ -69,6 +70,9 @@ const USAGE = `bobby: review a PR one focused page at a time
                  (any port, or only that one; * for any name); repeat it or separate with commas.
                  Also $BOBBY_ALLOW_HOSTS. localhost at any port (an SSH tunnel) always works
   --no-llm       static analysis only; skip Claude
+  --agent-tools <names>   your own Claude Code tools Claude may use in every review: MCP servers and
+                 claude.ai connectors, by part of their name, read-only unless :all (e.g.
+                 linear,notion,datadog:all). Each PR can change it. Also $BOBBY_AGENT_TOOLS
   --no-lsp       don't start language servers (the inspector then answers from imports alone)
   --lsp          extract: ask the installed language servers too (slower: they load the project first)
   --refresh      rebuild everything for this commit (ignore cached graphs, Claude tree and language server answers)
@@ -185,7 +189,7 @@ if (running) {
   process.exit(0);
 }
 
-const app: App = { reviews: new Map(), loading: new Map() };
+const app: App = { reviews: new Map(), loading: new Map(), ...(values["agent-tools"] ? { agentTools: values["agent-tools"] } : {}) };
 // Opening a review: named at once (resolve), built in the background, so its page can show the progress.
 app.open = async (a, o) => {
   // what the build logs is also its page's progress
