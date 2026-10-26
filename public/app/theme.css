@@ -843,3 +843,24 @@ a.cref code { color: inherit; }
 .inspector .pkgo:hover { color: var(--text); border-color: var(--muted); }
 .inspector .pkbtn { display: block; width: 100%; text-align: left; border: 0; background: none; cursor: pointer; font: inherit; }
 .inspector .pkbtn:hover { color: var(--text); }
+.agask .ag-tools { margin: 0 0 14px; border: 1px solid var(--line); border-radius: 4px; }
+.agask .ag-tools-h { display: flex; width: 100%; align-items: center; gap: 8px; padding: 8px 12px; border: 0; background: none; color: var(--muted); font: 13px var(--font-ui); text-align: left; cursor: pointer; }
+.agask .ag-tools-h b { color: var(--text); font-weight: 500; }
+.agask .ag-tools-h > span:first-child { flex: 1; min-width: 0; }
+.agask .ag-src { margin-left: 8px; font-size: 11.5px; color: var(--faint); }
+.agask .ag-chev { color: var(--faint); }
+.agask .ag-tbody { padding: 0 12px 10px; border-top: 1px solid var(--line-soft, var(--line)); }
+.agask .ag-tbody > p { margin: 10px 0; font-size: 12.5px; }
+.agask .ag-tlist { display: flex; flex-direction: column; }
+.agask .ag-trow { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--line-soft, var(--line)); }
+.agask .ag-trow:first-child { border-top: 0; }
+.agask .ag-tname { flex: 1; min-width: 0; font-size: 13.5px; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.agask .ag-ttag { font-size: 11px; color: var(--faint); border: 1px solid var(--line); border-radius: 8px; padding: 0 6px; }
+.agask .ag-ttag.warn { color: var(--signal); border-color: currentColor; }
+.agask .ag-tn { font-size: 11.5px; color: var(--faint); }
+.agask .ag-seg { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; flex: none; }
+.agask .ag-seg button { height: 26px; padding: 0 10px; border: 0; border-left: 1px solid var(--line); background: none; color: var(--muted); font: 12px var(--font-ui); cursor: pointer; }
+.agask .ag-seg button:first-child { border-left: 0; }
+.agask .ag-seg button[aria-pressed="true"] { background: color-mix(in srgb, var(--signal) 18%, transparent); color: var(--text); }
+.agask .ag-tfoot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 8px; font-size: 12px; }
+.agask .ag-link { border: 0; background: none; padding: 0; color: var(--signal); font: 12px var(--font-ui); cursor: pointer; text-decoration: underline dotted; }

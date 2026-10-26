@@ -73,9 +73,10 @@ const IDEAS = [
   ["Tests", "Are the changes tested? What important case is missing a test?"],
 ];
 let ask = null; // { app, el, text, returnTo, starting }
-export function openAsk(app) {
-  if (ask) return;
-  ask = { app, text: "", returnTo: document.activeElement };
+export function openAsk(app, { tools = false } = {}) {
+  if (ask) { if (tools) { ask.tools.open = true; drawAsk(); } return; }
+  ask = { app, text: "", returnTo: document.activeElement, tools: { open: tools } };
+  void loadTools();
   ask.el = Object.assign(document.createElement("div"), { className: "cs-overlay" });
   ask.el.addEventListener("click", onAskClick);
   ask.el.addEventListener("keydown", onAskKey);
@@ -109,6 +110,7 @@ function drawAsk() {
       <label class="ag-label" for="ag-text">What should it focus on? <span>Optional</span></label>
       <textarea id="ag-text" class="ag-text" rows="3" placeholder="e.g. Could this break existing API clients? Is the retry logic safe under load?">${esc(ask.text)}</textarea>
       <div class="ag-ideas">${IDEAS.map(([t], k) => `<button class="ag-idea" data-idea="${k}">${esc(t)}</button>`).join("")}</div>
+      ${toolsHtml()}
       ${review ? `<p class="ag-muted">This replaces the last review${left ? `, and its ${left} finding${left > 1 ? "s" : ""} you haven't added or dismissed` : ""}. What you've added to your review stays.</p>` : ""}${err}
       <div class="row"><button class="btn primary" data-ag="start">Start review <kbd>${MOD}↵</kbd></button><button class="btn" data-ag="close">Cancel</button></div>`;
   }
@@ -117,6 +119,41 @@ function drawAsk() {
   const ta = ask.el.querySelector("textarea");
   if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
   else if (!had || !ask.el.contains(document.activeElement)) (ask.el.querySelector(".btn.primary") ?? ask.el.querySelector(".modal")).focus();
+}
+
+// ---- your own tools for Claude (connected.ts): what this PR lets it use, each Off, Read or All
+async function loadTools(fresh = false) {
+  ask.tools.loading = true;
+  const j = await api(`/api/agent/tools${fresh ? "?fresh=1" : ""}`).catch((e) => ({ ok: false, error: e.message }));
+  if (!ask) return;
+  Object.assign(ask.tools, { loading: false, data: j.ok ? j : null, error: j.ok ? null : j.error });
+  if (!ask.app.agent?.running && !ask.starting) drawAsk();
+}
+const short = (name) => name.replace(/^claude\.ai /, "");
+function toolsHtml() {
+  const t = ask.tools, d = t.data;
+  const on = d ? Object.entries(d.selection) : [];
+  const summary = t.loading && !d ? "checking your Claude Code setup…" : t.error ? "couldn't read your Claude Code setup" : on.length
+    ? on.map(([n, a]) => `${esc(short(n))}${a === "all" ? " (all)" : ""}`).join(", ") : "none";
+  const head = `<button class="ag-tools-h" data-ag="tools" aria-expanded="${!!t.open}"><span>Your tools for this PR: <b>${summary}</b>${d && on.length ? `<span class="ag-src">${d.source === "pr" ? "this PR" : "launch default"}</span>` : ""}</span><span class="ag-chev">${t.open ? "▴" : "▾"}</span></button>`;
+  if (!t.open) return `<div class="ag-tools">${head}</div>`;
+  const body = t.error ? `<p class="cs-err">${esc(t.error)}</p><button class="btn" data-ag="tools-retry">Try again</button>`
+    : !d ? `<p class="ag-muted">Asking Claude Code what you have connected…</p>`
+    : !d.servers.length ? `<p class="ag-muted">Your Claude Code has no MCP servers or connectors.</p>`
+    : `<p class="ag-muted">Your MCP servers and claude.ai connectors, for context the code doesn't have: the PR's ticket, docs, discussions, alerts. <b>Read</b> lets Claude use only the tools that read; <b>All</b> lets it post and change things too.</p>
+      <div class="ag-tlist">${d.servers.map((v) => { const cur = d.selection[v.name] ?? "off";
+        return `<div class="ag-trow"><span class="ag-tname">${esc(short(v.name))}${v.name.startsWith("claude.ai ") ? `<span class="ag-ttag">connector</span>` : ""}${v.status !== "connected" ? `<span class="ag-ttag warn">${esc(v.status)}</span>` : ""}<span class="ag-tn">${v.read} read · ${v.write} other</span></span>
+          <span class="ag-seg" role="group" aria-label="${esc(short(v.name))}">${["off", "read", "all"].map((x) => `<button data-tool="${esc(v.name)}" data-to="${x}" aria-pressed="${cur === x}">${x === "off" ? "Off" : x === "read" ? "Read" : "All"}</button>`).join("")}</span></div>`; }).join("")}</div>
+      <div class="ag-tfoot">${d.source === "pr" ? `<button class="ag-link" data-ag="tools-reset">Use the launch default${d.spec ? ` (${esc(d.spec)})` : " (none)"}</button>` : `<span class="ag-muted">${d.spec ? `From --agent-tools ${esc(d.spec)}; a change here is for this PR.` : "A change here is for this PR; --agent-tools sets it for every PR."}</span>`}<button class="ag-link" data-ag="tools-refresh">Refresh</button></div>`;
+  return `<div class="ag-tools open">${head}<div class="ag-tbody">${body}</div></div>`;
+}
+async function setTool(name, to) {
+  const d = ask.tools.data;
+  const sel = { ...d.selection };
+  if (to === "off") delete sel[name]; else sel[name] = to;
+  Object.assign(d, { selection: sel, source: "pr" });
+  drawAsk();
+  await api("/api/agent/tools", { selection: sel }).catch((e) => ask?.app.toast?.(`<span>Couldn't save that: ${esc(e.message)}</span>`, 6000));
 }
 
 async function start() {
@@ -142,9 +179,14 @@ function onAskClick(ev) {
     ask.text = ask.text.includes(t) ? ask.text : `${ask.text.trim()}${ask.text.trim() ? "\n" : ""}${t}`;
     return drawAsk();
   }
+  const tool = ev.target.closest("[data-tool]");
+  if (tool) return void setTool(tool.dataset.tool, tool.dataset.to);
   const b = ev.target.closest("[data-ag]");
   if (!b) return;
   const what = b.dataset.ag;
+  if (what === "tools") { ask.tools.open = !ask.tools.open; return drawAsk(); }
+  if (what === "tools-retry" || what === "tools-refresh") { ask.tools.data = what === "tools-retry" ? null : ask.tools.data; drawAsk(); return void loadTools(true); }
+  if (what === "tools-reset") { void api("/api/agent/tools", { selection: null }).then(() => loadTools()); return; }
   if (what === "close") return closeAsk();
   if (what === "start") return void start();
   if (what === "stop") { b.disabled = true; void api("/api/agent/cancel", {}).then(() => ask?.app.watchServers?.()); }
