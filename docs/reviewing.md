@@ -151,6 +151,15 @@ When Claude cites code, in an answer, a finding or a review's summary, the refer
 
 Besides its own Read, Grep and Glob on the PR's head, Claude gets Bobby's tools: the PR's overview and each file's diff, any file before or after the PR with the PR's changes marked, where a name is defined and used (the language servers, as the inspector), the review threads, and a line's history. A review reads the PR file by file with them, and each finding is reported once Claude has checked it. They're read-only, and only that run of Claude can reach them.
 
+### Your own tools: Linear, Notion, Slack, Datadog…
+
+Claude can also use your own Claude Code setup, for context the code doesn't have: the PR's ticket, a design doc, a Slack discussion, an alert. It's off until you choose, per MCP server or claude.ai connector (a plugin's MCP servers count as servers):
+
+- **For every PR in this Bobby:** start it with `--agent-tools linear,notion,datadog:all` (or `BOBBY_AGENT_TOOLS`), each a part of a server's name.
+- **For one PR:** **Your tools for this PR** in the **Review with Claude** dialog (or **Claude's tools for this PR…** in the command palette) lists what you have, each **Off**, **Read** or **All**. A change is kept with that PR; **Use the launch default** goes back. Questions about code use the same choice.
+
+**Read** lets Claude use only a server's tools whose names read (`get_`, `list_`, `search_`…); anything that creates, sends, updates or deletes is blocked, so a PR can't get Claude to post or change something through it. **All** lets it use every tool. Either way, Claude runs with your user settings only for these connections: your hooks, skills and commands stay off, and every server you didn't choose is blocked. While it works, the steps say when it uses one ("Using Linear: get issue").
+
 ## Private notes
 
 Notes are for you: reminders, questions to come back to, half-formed thoughts. **They're never posted to GitHub**, and they're kept in your local state file for this PR.
