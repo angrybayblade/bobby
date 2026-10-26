@@ -257,7 +257,8 @@ function syncPop(app, el) {
   const scrolled = row.closest(".lines")?.scrollLeft ?? 0;
   // A gutter narrower than the three (a split side's) has them run onto the start of the code: never onto the other side.
   pop.style.top = `${top + (row.offsetHeight - pop.offsetHeight) / 2}px`;
-  pop.style.left = `${Math.max(2, start + 1 - scrolled, left - scrolled - pop.offsetWidth - 2)}px`;
+  const inset = row.closest(".srow") ? 6 : 3; // split: clear of the border between the two sides, and the change bar
+  pop.style.left = `${Math.max(2, start + inset - scrolled, left - scrolled - pop.offsetWidth - 2)}px`;
 }
 /** Esc on the code, innermost first: an open composer closes (its text kept as an unfinished draft), then a line
  *  selection clears. Returns whether it did either. */
