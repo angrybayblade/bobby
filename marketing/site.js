@@ -28,9 +28,9 @@ const shadows = [];
     .root.root.root .dv .fv.w-focus { box-shadow: 0 1px 2px rgba(31, 35, 40, .06), 0 6px 18px rgba(31, 35, 40, .08); } /* a shade darker than the app's, to hold up when scaled down */
     .bl { --ease: cubic-bezier(.4, 0, .2, 1); --move: cubic-bezier(.65, 0, .35, 1); position: absolute; background: var(--bg); transition: opacity .7s var(--ease), transform .8s var(--move); }
     .bl > * { position: relative !important; inset: auto !important; width: 100% !important; height: 100% !important; margin: 0 !important; }
-    .bl.is-overlay, .bl.is-toast, .bl.is-inspector { background: none; }
+    .bl.is-overlay, .bl.is-toast, .bl.is-inspector, .bl.is-dialog, .bl.is-walk { background: none; }
     .bl:is(.is-top, .is-where, .is-files, .is-keys) { z-index: 1; } /* the frame stays over the view, as a zoom spills past it */
-    .bl.is-overlay > *, .bl.is-toast > *, .bl.is-inspector > * { position: absolute !important; inset: 0 !important; }
+    .bl.is-overlay > *, .bl.is-toast > *, .bl.is-inspector > *, .bl.is-dialog > *, .bl.is-walk > * { position: absolute !important; inset: 0 !important; }
     .bl[data-in]:not(.shown), .bl[data-at]:not(.shown) { opacity: 0; pointer-events: none; transform: translateY(8px) scale(.985); }
     .bl.gone { opacity: 0 !important; transform: scale(.985); }
     .bl.swap, .bl.swap.gone, .bl.swap:not(.shown) { transform: none; } /* one capture taking over from another: no move */

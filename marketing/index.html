@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="Bobby turns a GitHub pull request into a short walk of focused pages. Scroll to watch GitHub's PR page become a Bobby review, one piece at a time." />
+  <meta name="description" content="Bobby turns a GitHub pull request into a short walk of focused pages, with Claude to ask about any lines and to review alongside you. Scroll to watch GitHub's PR page become a Bobby review, one piece at a time." />
   <meta name="theme-color" content="#f6f2ea" />
   <title>Bobby · review a PR one focused page at a time</title>
   <!-- link previews (Slack, X, LinkedIn…): the card is marketing/capture/og.mjs's -->
@@ -25,16 +25,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css?v=43" />
-  <script src="./bobby.js?v=43" defer></script>
-  <script src="./site.js?v=43" defer></script>
-  <script src="./buddy.js?v=43" defer></script>
+  <link rel="stylesheet" href="./styles.css?v=44" />
+  <script src="./bobby.js?v=44" defer></script>
+  <script src="./site.js?v=44" defer></script>
+  <script src="./buddy.js?v=44" defer></script>
 </head>
 <body>
   <header class="site">
     <a class="logo" href="#top"><img src="./assets/bobby.svg" alt="" width="22" height="22" /><b>bobby</b></a>
     <nav>
-      <a class="cta" href="#install" data-goto="15">Install</a>
+      <a class="cta" href="#install" data-goto="19">Install</a>
       <a href="./docs/">Docs</a>
       <a href="https://github.com/angrybayblade/focus-bobby">GitHub ↗</a>
     </nav>
@@ -138,23 +138,47 @@
           <p class="out"><i>Out</i><span>Scrolling around for where you were.</span></p>
           <p class="in"><i>In</i><span>Where you were, how far you got, and the thought you parked. Progress survives restarts and force-pushes.</span></p>
         </div>
-        <div class="cap" data-cap="13" data-focus="700">
-          <small>13 · Submit</small>
+        <div class="cap" data-cap="13" data-focus="575">
+          <small>13 · Ask Claude</small>
+          <h2>Ask about any lines.</h2>
+          <p class="out"><i>Out</i><span>Pinging the author: "who else calls this?"</span></p>
+          <p class="in"><i>In</i><span>Select some lines, press <kbd>q</kbd>, and ask. Claude checks the code around them, and answers right there, on those lines. Ask a follow-up, or start a comment from the answer.</span></p>
+        </div>
+        <div class="cap" data-cap="14" data-focus="720">
+          <small>14 · Ask Claude</small>
+          <h2>Every claim, one click away.</h2>
+          <p class="out"><i>Out</i><span>Taking an answer on trust.</span></p>
+          <p class="in"><i>In</i><span>Each reference Claude makes is checked against the code and opens it: the lines it means, and what the PR changed in them, highlighted.</span></p>
+        </div>
+        <div class="cap" data-cap="15" data-focus="720">
+          <small>15 · Review with Claude</small>
+          <h2>A second pair of eyes, when you ask.</h2>
+          <p class="out"><i>Out</i><span>Hoping you caught everything.</span></p>
+          <p class="in"><i>In</i><span>Tell Claude what to look for, and which of your tools it may read: the ticket in Linear, the doc in Notion, the thread in Slack. It reads the PR file by file, the way you would.</span></p>
+        </div>
+        <div class="cap" data-cap="16" data-focus="720">
+          <small>16 · Review with Claude</small>
+          <h2>One finding at a time.</h2>
+          <p class="out"><i>Out</i><span>A wall of AI comments to wade through.</span></p>
+          <p class="in"><i>In</i><span>The worst first, each with its code. <kbd>a</kbd> adds it to your review, <kbd>e</kbd> edits it first, <kbd>d</kbd> dismisses it. Nothing is posted unless you add it and submit.</span></p>
+        </div>
+        <div class="cap" data-cap="17" data-focus="700">
+          <small>17 · Submit</small>
           <h2>One review, one key.</h2>
           <p class="out"><i>Out</i><span>"Review changes", at the end of a long page.</span></p>
           <p class="in"><i>In</i><span><kbd>s</kbd> posts every draft as one GitHub review: comment, approve or request changes. Private notes stay on your machine.</span></p>
         </div>
-        <div class="cap" data-cap="14" data-focus="590">
-          <small>14 · Conversation view</small>
+        <div class="cap" data-cap="18" data-focus="590">
+          <small>18 · Conversation view</small>
           <h2>Approved, on GitHub.</h2>
           <p class="out"><i>Out</i><span>Switching to the browser to check it landed.</span></p>
           <p class="in"><i>In</i><span>The <b>Conversation</b> view is GitHub's own timeline, read live: your approval is already in it, <b>LGTM!</b> and all, next to everyone else's.</span></p>
         </div>
-        <div class="cap final" data-cap="15" data-focus="590" id="install">
+        <div class="cap final" data-cap="19" data-focus="590" id="install">
           <small>Your next PR</small>
           <h2>Review it with Bobby.</h2>
           <div class="cmd"><span>$</span><code>curl -fsSL https://raw.githubusercontent.com/angrybayblade/focus-bobby/main/install.sh | bash</code><button type="button" data-copy="curl -fsSL https://raw.githubusercontent.com/angrybayblade/focus-bobby/main/install.sh | bash">Copy</button></div>
-          <p class="then">Then <code>bobby &lt;pr-url&gt;</code>, or just <code>bobby</code> to pick one. Needs <code>git</code> and <code>gh</code>, logged in. Claude Code is optional.</p>
+          <p class="then">Then <code>bobby &lt;pr-url&gt;</code>, or just <code>bobby</code> to pick one. Needs <code>git</code>; Bobby sets up <code>gh</code>. Claude Code is optional: it brings the questions and the reviews.</p>
         </div>
         <nav class="steps" aria-label="Steps">
           <button type="button" data-goto="prev" aria-label="Previous step"><span class="key">k</span><span class="arrow">↑</span></button>
@@ -199,7 +223,7 @@
               <span class="chip risk" data-out="9">2 unresolved</span>
               <span class="chip" data-out="9">💬 5 conversations</span>
               <span class="viewed" data-out="10">0 / 10 files viewed <i>⌄</i></span>
-              <span class="review" data-out="13">Review changes ▾</span>
+              <span class="review" data-out="17">Review changes ▾</span>
             </div>
             <aside class="gh gh-tree" data-out="2" data-fly>
               <div class="filter">⌕ Filter changed files</div>
@@ -256,18 +280,20 @@
               <div class="bl" data-state="lens-draft" data-region="files" data-in="9" data-out="10"></div>
               <div class="bl" data-state="lens-draft" data-region="view" data-in="9" data-out="10"></div>
 
-              <div class="bl" data-state="progress" data-region="top" data-in="10" data-out="14"></div>
+              <div class="bl" data-state="progress" data-region="top" data-in="10" data-out="18"></div>
               <div class="bl" data-state="progress" data-region="where" data-in="10" data-out="12"></div>
-              <div class="bl" data-state="progress" data-region="files" data-in="10" data-out="14"></div>
-              <div class="bl" data-state="progress" data-region="view" data-in="10" data-out="14"></div>
+              <div class="bl" data-state="progress" data-region="files" data-in="10" data-out="18"></div>
+              <div class="bl" data-state="progress" data-region="view" data-in="10" data-out="18"></div>
               <div class="bl" data-state="progress" data-region="keys" data-in="10"></div>
               <!-- the parked thought, in the bar from here on -->
-              <div class="bl" data-state="parked" data-region="where" data-in="12" data-out="14"></div>
+              <div class="bl" data-state="parked" data-region="where" data-in="12" data-out="18"></div>
+              <!-- Claude: the question answered on retryCharge's lines -->
+              <div class="bl" data-state="ask" data-region="view" data-in="13" data-out="17"></div>
 
-              <div class="bl" data-state="conversation" data-region="top" data-in="14"></div>
-              <div class="bl" data-state="conversation" data-region="where" data-in="14"></div>
-              <div class="bl" data-state="conversation" data-region="files" data-in="14"></div>
-              <div class="bl" data-state="conversation" data-region="view" data-in="14"></div>
+              <div class="bl" data-state="conversation" data-region="top" data-in="18"></div>
+              <div class="bl" data-state="conversation" data-region="where" data-in="18"></div>
+              <div class="bl" data-state="conversation" data-region="files" data-in="18"></div>
+              <div class="bl" data-state="conversation" data-region="view" data-in="18"></div>
             </div>
             <!-- Bobby's dialogs: a second layer, over the GitHub pieces docked in Bobby's bar -->
             <div class="bb-host top" data-bobby>
@@ -275,7 +301,10 @@
               <div class="bl" data-state="uses" data-region="inspector" data-at="6"></div>
               <div class="bl" data-state="park" data-region="overlay" data-at="11"></div>
               <div class="bl" data-state="welcome" data-region="overlay" data-at="12"></div>
-              <div class="bl" data-state="submit" data-region="overlay" data-at="13"></div>
+              <div class="bl" data-state="ref" data-region="inspector" data-at="14"></div>
+              <div class="bl" data-state="agent-ask" data-region="dialog" data-at="15"></div>
+              <div class="bl" data-state="agent-walk" data-region="walk" data-at="16"></div>
+              <div class="bl" data-state="submit" data-region="overlay" data-at="17"></div>
             </div>
 
             <!-- the ping that interrupts you: over everything -->

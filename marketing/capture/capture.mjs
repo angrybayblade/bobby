@@ -52,11 +52,32 @@ const conversation = {
   ],
   fetchedAt: at(0),
 };
+// ---- Claude's side, the story's too, so the mock doesn't depend on a login or on what a model says that day: an
+// answer on retryCharge's signature, a review's two findings, and the tools you'd let it use. References are as Bobby
+// writes them once they've resolved (refs.ts).
+const ref = (path, a, b) => `ref://head/${path}#L${a}${b ? `-L${b}` : ""}`;
+const story = {
+  ask: { id: "q1", headSha: "", path: "src/payments/retry.ts", side: "RIGHT", line: 9, startLine: 6, turns: [{ q: "Who calls this, and does every caller pass the same key?", at: at(2),
+    a: `Two callers:\n\n- [\`processPayment\`](${ref("src/payments/worker.ts", 5, 8)}) mints the key once, on \`payment.retryKey\`, and passes it on every attempt.\n- [\`handleChargeFailed\`](${ref("src/webhooks/charge.ts", 7)}) still calls \`retryCharge(payment)\` with no key. Now that the key is required, that won't type-check; built without the check, each webhook retry would get a new key, which is the double charge this PR fixes.\n\nThe PR doesn't touch \`src/webhooks/charge.ts\`, so its diff won't show you this one.` }] },
+  review: { headSha: "", at: at(1), focus: "Check every caller of retryCharge: can any still retry without the key?",
+    summary: `The worker's key handling is right: one key per payment, kept across attempts. One caller still retries without it, [the charge webhook](${ref("src/webhooks/charge.ts", 5, 8)}), which this PR never touched.`,
+    findings: [
+      { id: "f1", path: "src/payments/retry.ts", side: "RIGHT", line: 8, startLine: 6, severity: "bug", status: "open", title: "The charge webhook still retries without a key",
+        body: `[\`handleChargeFailed\`](${ref("src/webhooks/charge.ts", 7)}) calls \`retryCharge(payment)\` with no key. Now that the key is required this won't type-check, and built without the check, each webhook retry would get a fresh key and could charge twice. Pass \`payment.retryKey\`, minted once as [the worker does](${ref("src/payments/worker.ts", 6)}).` },
+      { id: "f2", path: "src/payments/worker.ts", side: "RIGHT", line: 6, severity: "question", status: "open", title: "Is the key saved before the first charge?",
+        body: `\`payment.retryKey ??= randomUUID()\` sets it in memory. If the worker stops after the processor has seen the key but before the payment is saved, the next run mints a new one. Is the payment stored with its key before [the charge](${ref("src/payments/worker.ts", 8)})?` },
+    ] },
+  tools: { ok: true, source: "launch", spec: "linear", selection: { "claude.ai Linear": "read" }, launch: { "claude.ai Linear": "read" },
+    servers: [["claude.ai Linear", 44, 39], ["claude.ai Notion", 33, 32], ["claude.ai Slack", 14, 13], ["claude.ai Datadog", 269, 212]].map(([name, read, write]) => ({ name, status: "connected", read, write })) },
+};
+let reviewed = false; // the review's findings, once the story has got to them
 await p.setRequestInterception(true);
 p.on("request", (r) => {
   const u = new URL(r.url());
   if (u.pathname.endsWith("/api/avatar")) return r.respond({ contentType: "image/svg+xml", body: avatar(u.searchParams.get("u") ?? "?") });
   if (u.pathname.endsWith("/api/conversation")) return r.respond({ contentType: "application/json", body: JSON.stringify(conversation) });
+  if (u.pathname.endsWith("/api/agent/tools") && r.method() === "GET") return r.respond({ contentType: "application/json", body: JSON.stringify(story.tools) });
+  if (u.pathname.endsWith("/api/agent") && reviewed) return r.respond({ contentType: "application/json", body: JSON.stringify({ running: false, open: 2, review: story.review }) });
   if (u.hostname !== "127.0.0.1") return r.respond({ status: 204, body: "" }); // fonts, GitHub
   r.continue();
 });
@@ -112,7 +133,7 @@ async function snap(name) {
       const blob = await (await fetch(img.src)).blob();
       data.set(src, await new Promise((r) => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(blob); }));
     }
-    for (const [region, sel] of Object.entries({ top: "#top", where: "#where", view: "#view", files: "#files", keys: "#keys", overlay: "#overlay", toast: "#toast", inspector: ".inspector" })) {
+    for (const [region, sel] of Object.entries({ top: "#top", where: "#where", view: "#view", files: "#files", keys: "#keys", overlay: "#overlay", toast: "#toast", inspector: ".inspector", dialog: ".cs-overlay", walk: ".aw-overlay" })) {
       const el = document.querySelector(sel);
       if (!el || el.hidden || getComputedStyle(el).display === "none" || !el.getBoundingClientRect().width) continue;
       const r = el.getBoundingClientRect();
@@ -235,6 +256,39 @@ await snap("parked");
 await p.evaluate(async () => (await import("/app/chrome.js")).reentry(bobby.focus, bobby.level)); await wait(600);
 await snap("welcome");
 await key("Escape", 500);
+// Claude: a question on retryCharge's signature, answered on those lines, its references links
+await p.evaluate((ask) => { bobby.me ??= { login: "you", avatar: "you" }; bobby.asks = [ask]; bobby.emit("comments"); }, story.ask); await wait(900); // you asked it
+console.log("ask scrolled", await p.evaluate(() => {
+  const nb = document.querySelector("#view .lens .focus .nbody"); if (!nb) return "no nbody";
+  const row = [...nb.querySelectorAll(".ln")].find((r) => r.dataset.line === "6" && r.dataset.side === "RIGHT");
+  if (!row) return "no row";
+  nb.scrollTop = row.getBoundingClientRect().top - nb.getBoundingClientRect().top + nb.scrollTop - 8;
+  return nb.scrollTop;
+}));
+await wait(400);
+await snap("ask");
+// one of them opened: the code viewer, the PR's changes highlighted. It and the walkthrough are drawn at 700px, as on
+// a smaller window, so that a phone's crop of the mock (about 720px of it) shows them whole.
+const narrow = await p.addStyleTag({ content: ".inspector .pkwin, .aw { width: 700px !important; }" });
+await p.evaluate(async (path) => (await import("/app/code.js")).openRef(bobby, { path, side: "head", line: 5, end: 8 }), "src/payments/worker.ts");
+await p.waitForFunction(() => document.querySelector(".inspector .pl"), { timeout: 8000 }); await wait(400);
+await snap("ref");
+await key("Escape", 500);
+// Review with Claude: what to focus on, and your own tools (Linear, read only)
+await p.evaluate(async () => (await import("/app/agent.js")).openAsk(bobby, { tools: true })); await wait(600);
+await p.focus("#ag-text"); await p.keyboard.type(story.review.focus);
+await p.waitForSelector(".ag-tlist", { timeout: 5000 }); await wait(300);
+await snap("agent-ask");
+await key("Escape", 500);
+// its findings, one at a time: the first, with its code
+reviewed = true;
+await p.evaluate(async (review) => { bobby.agentReview = review; bobby.agent = { running: false, open: 2, at: review.at }; bobby.emit("view"); (await import("/app/agent-walk.js")).openWalk(bobby, null, () => {}); }, story.review);
+await p.waitForSelector(".aw .aw-code", { timeout: 5000 }); await wait(500);
+await snap("agent-walk");
+await key("Escape", 500);
+await narrow.evaluate((s) => s.remove());
+await p.evaluate(() => { bobby.asks = []; bobby.agentReview = null; bobby.agent = { running: false, open: 0 }; bobby.emit("comments"); bobby.emit("view"); });
+reviewed = false; await wait(400);
 // submit
 await key("s", 800);
 await p.type("#rbody", "LGTM!");
