@@ -62,7 +62,7 @@ export const fileState = (app, path) => pageState(app).files.get(path) ?? prStat
 const itemOpen = (app, id, path) => (pageState(app).items.get(id) ?? (commentIndex(app).threads.get(id)?.resolved ? "collapsed" : fileState(app, path))) === "open";
 /** Re-renders after a comment change without moving what you're reading: each visible code scroller keeps the thread
  *  you clicked (if it's in it), else its first line on screen, where it was. */
-function keepPlace(app, clicked) {
+export function keepPlace(app, clicked) {
   const scrollerOf = (n) => { for (let e = n; e && e !== document.body; e = e.parentElement) if (e.scrollHeight > e.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(e).overflowY)) return e; return null; };
   const marks = [];
   for (const sc of new Set([...document.querySelectorAll("[data-bound]")].filter(live).map((b) => scrollerOf(b) ?? b))) {

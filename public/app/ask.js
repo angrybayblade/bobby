@@ -2,7 +2,7 @@
 // question and Claude's answer then sit on those lines as a thread of their own, the answer filling in as it's written.
 // Ask a follow-up under it; turn the answer into a comment (a draft, to edit), or keep the exchange as a private note.
 import { api, esc, live } from "./core.js";
-import { bubble, md } from "./comments.js";
+import { bubble, keepPlace, md } from "./comments.js";
 import { MOD } from "./palette.js";
 
 /** Starters for the box, as chips: a click asks it. */
@@ -20,7 +20,7 @@ export async function askPoll(app, s) {
   if (!r) return asking;
   const before = new Map((app.asks ?? []).map((a) => [a.id, sig(a)]));
   app.asks = r.asks;
-  if (!loaded) { loaded = true; app.emit("comments"); return asking; }
+  if (!loaded) { loaded = true; keepPlace(app); return asking; }
   for (const a of app.asks) if (before.get(a.id) !== sig(a)) redraw(app, a);
   return asking;
 }
@@ -28,7 +28,7 @@ const sig = (a) => `${a.turns.length}:${a.running ? 1 : 0}:${a.step ?? ""}:${a.p
 /** Redraws an ask's thread where it's showing, without redrawing its file (an answer streams in many small steps). */
 function redraw(app, a) {
   const els = [...document.querySelectorAll(`.cthread[data-thread="q:${CSS.escape(a.id)}"]`)].filter(live);
-  if (!els.length) return app.emit("comments");
+  if (!els.length) return keepPlace(app);
   const typing = document.activeElement?.matches?.(`textarea[data-qbox="${CSS.escape(a.id)}"]`);
   for (const el of els) el.outerHTML = askHtml(app, { id: `q:${a.id}`, path: a.path, ask: a }, !el.classList.contains("slim"));
   if (typing) [...document.querySelectorAll(`textarea[data-qbox="${CSS.escape(a.id)}"]`)].find(live)?.focus({ preventScroll: true });
@@ -41,7 +41,7 @@ export async function askAbout(app, sel, question) {
   if (!r.ok) return app.toast?.(`<span>Couldn't ask Claude: ${esc(r.error)}</span>`, 8000);
   (app.asks ??= []).push(r.ask);
   wasAsking = true;
-  app.emit("comments");
+  keepPlace(app);
   app.watchServers?.();
 }
 export async function askFollowUp(app, id, question) {
@@ -59,7 +59,7 @@ export const stopAsk = (app, id) => api("/api/ask/stop", { id }).then(() => app.
 export async function deleteAsk(app, id) {
   await api(`/api/ask/${id}`, null, "DELETE").catch(() => null);
   app.asks = (app.asks ?? []).filter((a) => a.id !== id);
-  app.emit("comments");
+  keepPlace(app);
 }
 export const askById = (app, id) => (app.asks ?? []).find((a) => a.id === id);
 

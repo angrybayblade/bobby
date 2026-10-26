@@ -7,6 +7,7 @@ import { api, esc } from "./core.js";
 import { offerClaude } from "./claude-setup.js";
 import { MOD } from "./palette.js";
 import { openWalk } from "./agent-walk.js";
+import { keepPlace } from "./comments.js";
 
 let seen = null; // the status last drawn from
 /** From each status poll: redraws the pill (and the prompt, if open) when it changed, and fetches the findings when a
@@ -25,7 +26,7 @@ export async function agentPoll(app, s) {
 async function loadFindings(app) {
   const r = await api("/api/agent").catch(() => null);
   app.agentReview = r?.review ?? null;
-  app.emit("comments");
+  keepPlace(app);
 }
 
 /** Adds a finding to your drafts, dismisses it, or brings a dismissed one back. */
@@ -36,7 +37,7 @@ export async function findingAct(app, id, act, body, undo = true) {
   if (r.comment) app.state.comments.push(r.comment);
   app.agent = { ...app.agent, open: r.review.findings.filter((f) => f.status === "open").length };
   if (act === "dismiss" && undo) app.offerUndo?.("Finding dismissed", () => findingAct(app, id, "restore"));
-  app.emit("comments");
+  keepPlace(app);
   app.emit("view");
 }
 
