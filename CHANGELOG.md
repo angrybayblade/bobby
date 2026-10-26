@@ -4,18 +4,20 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
-- Built with Bun 1.4.4, for its security fixes: the bundled brotli decoder's out-of-bounds write (CVE-2026-111497), root certificates that still trusted compromised eMudhra intermediates, and HTTP/3 QPACK amplification. Running from source needs Bun 1.4.4 or later.
+## 0.1.0-rc13 (2026-10-25)
 
-- Three ways to look at a file in Diff, besides panning and zooming: **`d` fit** (the file you're on, as wide as it goes with its top at the top, as a double-click in the file tree; `d` again goes back), **`f` focus**, and **`g` details** (what was "full screen"). The inline / split switch moves from `d` to `l`.
+Claude as a reviewing partner: a review you steer, questions about any lines, references that open the code, and your own tools if you let it. `bobby update`, and Bun 1.4.4's security fixes.
 
-- **Claude can use your own tools.** Turn on your MCP servers and claude.ai connectors (Linear, Notion, Slack, Datadog…) for Claude, for every PR with `--agent-tools linear,notion` or for one PR in the Review with Claude dialog: each **Read** (only its tools that read) or **All**. Off unless you choose; your hooks, skills and commands stay off either way.
-- **Claude cites code you can open.** Every reference in an answer, a finding or a summary is checked against the commit and becomes a link; a click opens that code in the viewer, the cited lines marked and the PR's changes highlighted, with **Show in diff**. Posted, they're GitHub links.
-- **Claude sees what you see.** Bobby gives Claude its own read-only tools: each file's diff, files before and after the PR, definitions and uses from the language servers, the review threads and git history. A review now reads the PR file by file and reports each finding once it's checked.
-- **Ask Claude about code (preview).** Select some lines and press **✦** (or `q`): ask what they do, what could break, whether they're tested, or anything. Claude checks the code around them and answers on those lines as it writes; ask follow-ups, start a comment from the answer, or keep it as a private note.
 - **Claude's review (preview).** **✦ Review with Claude** asks Claude Code to review the PR, about what you tell it to focus on (or anything): it reads the diff and checks the code around it (callers, definitions, tests) in a read-only copy of the head commit, and the pill shows it's at work, then how many findings it has. Go through its findings one at a time, worst first, each with the code it's about: **Add to review** (`a`) makes one your draft, as it is or edited first (`e`); **Dismiss** (`d`) drops it. They also sit on their lines in the diff as suggestions. Nothing is posted unless you add it and submit.
-
-- **`bobby update`** installs the newest release in place of the one you ran (or `bobby update <version>`, to go back), checked against the release's `SHA256SUMS`. The new-version notice says so instead of giving the install script.
+- **Ask Claude about code (preview).** Select some lines and press **✦** (or `q`): ask what they do, what could break, whether they're tested, or anything. Claude checks the code around them and answers on those lines as it writes; ask follow-ups, start a comment from the answer, or keep it as a private note.
+- **Claude sees what you see.** Bobby gives Claude its own read-only tools: each file's diff, files before and after the PR, definitions and uses from the language servers, the review threads and git history. A review now reads the PR file by file and reports each finding once it's checked.
+- **Claude cites code you can open.** Every reference in an answer, a finding or a summary is checked against the commit and becomes a link; a click opens that code in the viewer, the cited lines marked and the PR's changes highlighted, with **Show in diff**. Posted, they're GitHub links.
+- **Claude can use your own tools.** Turn on your MCP servers and claude.ai connectors (Linear, Notion, Slack, Datadog…) for Claude, for every PR with `--agent-tools linear,notion` or for one PR in the Review with Claude dialog: each **Read** (only its tools that read) or **All**. Off unless you choose; your hooks, skills and commands stay off either way.
+- **`bobby update`** installs the newest release in place of the one you ran (or `bobby update <version>`, to go back), checked against the release's `SHA256SUMS`. The new-version notice says so instead of giving the install script. From rc12 or earlier, update to this one with the install script once; `bobby update` works from here on.
+- Three ways to look at a file in Diff, besides panning and zooming: **`d` fit** (the file you're on, as wide as it goes with its top at the top, as a double-click in the file tree; `d` again goes back), **`f` focus**, and **`g` details** (what was "full screen"). The inline / split switch moves from `d` to `l`.
+- Delete a draft from **Submit review**: each draft in its list ends in a delete button, with Undo.
 - `bobby <something that isn't a PR>` (a typo, or a command this version doesn't have) says so and stops, instead of starting Bobby and offering to set up GitHub's CLI.
+- Built with Bun 1.4.4, for its security fixes: the bundled brotli decoder's out-of-bounds write (CVE-2026-111497), root certificates that still trusted compromised eMudhra intermediates, and HTTP/3 QPACK amplification. Running from source needs Bun 1.4.4 or later.
 
 ## 0.1.0-rc12 (2026-10-23)
 
