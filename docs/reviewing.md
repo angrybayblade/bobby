@@ -138,6 +138,12 @@ Findings also sit on their lines in the diff as dashed suggestions, with the sam
 
 Claude runs in a copy of the head commit with only its read-only file tools (Read, Grep, Glob), none of your Claude Code settings or MCP servers, and can't read outside that copy. `BOBBY_REVIEW_MODEL` (else `BOBBY_MODEL`) picks the model.
 
+## Asking Claude about code (preview)
+
+Select some lines (click one, shift-click another) and press **✦** in the popover beside them, or `q`: the comment box opens as **✦ Ask**. Type a question, or click a starter (Explain what this does, What could break here?, Is this tested?, Review these lines); `⌘↵` asks. Claude reads the file's diff with your lines marked, checks the code around them (what they call, what calls them) in a read-only copy of the head commit, and answers there, on those lines, as it writes. While it works you see what it's reading; **Stop** stops it.
+
+Ask a follow-up under the answer: Claude has the conversation so far. **Comment from it** opens a draft comment on the same lines with the last answer in it, to edit before it's part of your review; **Save as note** keeps the questions and answers as a private note; **Delete** removes the conversation. Questions are kept with your review for that head commit, and only you see them.
+
 ## Private notes
 
 Notes are for you: reminders, questions to come back to, half-formed thoughts. **They're never posted to GitHub**, and they're kept in your local state file for this PR.

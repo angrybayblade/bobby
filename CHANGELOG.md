@@ -4,6 +4,7 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- **Ask Claude about code (preview).** Select some lines and press **✦** (or `q`): ask what they do, what could break, whether they're tested, or anything. Claude checks the code around them and answers on those lines as it writes; ask follow-ups, start a comment from the answer, or keep it as a private note.
 - **Claude's review (preview).** **✦ Review with Claude** asks Claude Code to review the PR, about what you tell it to focus on (or anything): it reads the diff and checks the code around it (callers, definitions, tests) in a read-only copy of the head commit, and the pill shows it's at work, then how many findings it has. Go through its findings one at a time, worst first, each with the code it's about: **Add to review** (`a`) makes one your draft, as it is or edited first (`e`); **Dismiss** (`d`) drops it. They also sit on their lines in the diff as suggestions. Nothing is posted unless you add it and submit.
 
 - **`bobby update`** installs the newest release in place of the one you ran (or `bobby update <version>`, to go back), checked against the release's `SHA256SUMS`. The new-version notice says so instead of giving the install script.

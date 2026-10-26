@@ -179,6 +179,9 @@
 </table></div>
 <p>Findings also sit on their lines in the diff as dashed suggestions, with the same Add to review and Dismiss. Nothing Claude writes is posted unless you add it and submit. Findings are kept with your review for that head commit; after new commits, <strong>Review again</strong>.</p>
 <p>Claude runs in a copy of the head commit with only its read-only file tools (Read, Grep, Glob), none of your Claude Code settings or MCP servers, and can't read outside that copy. <code>BOBBY_REVIEW_MODEL</code> (else <code>BOBBY_MODEL</code>) picks the model.</p>
+<h2 id="asking-claude-about-code-preview"><a class="anchor" href="#asking-claude-about-code-preview" aria-hidden="true">#</a>Asking Claude about code (preview)</h2>
+<p>Select some lines (click one, shift-click another) and press <strong>✦</strong> in the popover beside them, or <code>q</code>: the comment box opens as <strong>✦ Ask</strong>. Type a question, or click a starter (Explain what this does, What could break here?, Is this tested?, Review these lines); <code>⌘↵</code> asks. Claude reads the file's diff with your lines marked, checks the code around them (what they call, what calls them) in a read-only copy of the head commit, and answers there, on those lines, as it writes. While it works you see what it's reading; <strong>Stop</strong> stops it.</p>
+<p>Ask a follow-up under the answer: Claude has the conversation so far. <strong>Comment from it</strong> opens a draft comment on the same lines with the last answer in it, to edit before it's part of your review; <strong>Save as note</strong> keeps the questions and answers as a private note; <strong>Delete</strong> removes the conversation. Questions are kept with your review for that head commit, and only you see them.</p>
 <h2 id="private-notes"><a class="anchor" href="#private-notes" aria-hidden="true">#</a>Private notes</h2>
 <p>Notes are for you: reminders, questions to come back to, half-formed thoughts. <strong>They're never posted to GitHub</strong>, and they're kept in your local state file for this PR.</p>
 <div class="table"><table>
@@ -244,6 +247,7 @@
       <a href="#inspecting-a-name">Inspecting a name</a>
       <a href="#comments">Comments</a>
       <a href="#claudes-review-preview">Claude's review (preview)</a>
+      <a href="#asking-claude-about-code-preview">Asking Claude about code (preview)</a>
       <a href="#private-notes">Private notes</a>
       <a href="#when-the-pr-moves-on">When the PR moves on</a>
       <a href="#submitting">Submitting</a>
