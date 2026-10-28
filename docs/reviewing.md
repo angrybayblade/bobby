@@ -143,6 +143,8 @@ Claude runs in a copy of the head commit with only its read-only file tools (Rea
 
 Select some lines (click one, shift-click another) and press **✦** in the popover beside them, or `q`: the comment box opens as **✦ Ask**. Type a question, or click a starter (Explain what this does, What could break here?, Is this tested?, Review these lines); `⌘↵` asks. Claude reads the file's diff with your lines marked, checks the code around them (what they call, what calls them) in a read-only copy of the head commit, and answers there, on those lines, as it writes. While it works you see what it's reading; **Stop** stops it.
 
+You can keep reviewing while Claude answers. If the answer arrives while it isn't on screen (you've moved to another page, collapsed it, or switched tabs), a notice in the bottom-right corner says so, with the question; **Show answer** takes you to it. The tab's title gets a ✦ while you're away.
+
 Ask a follow-up under the answer: Claude has the conversation so far. **Comment from it** opens a draft comment on the same lines with the last answer in it, to edit before it's part of your review; **Save as note** keeps the questions and answers as a private note; **Delete** removes the conversation. Questions are kept with your review for that head commit, and only you see them.
 
 ### Claude's references, and what it can look at

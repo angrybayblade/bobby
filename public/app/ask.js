@@ -19,9 +19,11 @@ export async function askPoll(app, s) {
   const r = await api("/api/asks").catch(() => null);
   if (!r) return asking;
   const before = new Map((app.asks ?? []).map((a) => [a.id, sig(a)]));
+  const running = new Set((app.asks ?? []).filter((a) => a.running).map((a) => a.id));
   app.asks = r.asks;
   if (!loaded) { loaded = true; keepPlace(app); return asking; }
   for (const a of app.asks) if (before.get(a.id) !== sig(a)) redraw(app, a);
+  for (const a of app.asks) if (running.has(a.id) && !a.running && a.turns.at(-1)?.error !== "Stopped" && !onScreen(a)) notify(app, a);
   return asking;
 }
 const sig = (a) => `${a.turns.length}:${a.running ? 1 : 0}:${a.step ?? ""}:${a.partial?.length ?? 0}:${a.turns.at(-1)?.a?.length ?? 0}:${a.turns.at(-1)?.error ?? ""}`;
@@ -60,6 +62,61 @@ export async function deleteAsk(app, id) {
   await api(`/api/ask/${id}`, null, "DELETE").catch(() => null);
   app.asks = (app.asks ?? []).filter((a) => a.id !== id);
   keepPlace(app);
+}
+// ---- answered while you were elsewhere: a notice in the bottom-right corner, until you look or dismiss it
+const threadEls = (a) => [...document.querySelectorAll(`.cthread[data-thread="q:${CSS.escape(a.id)}"]`)].filter(live);
+/** Whether you can see the answer now: the tab in front and the thread open, at least partly on screen. */
+function onScreen(a) {
+  if (document.hidden) return false;
+  return threadEls(a).some((el) => {
+    if (el.classList.contains("slim")) return false;
+    const r = el.getBoundingClientRect();
+    return r.bottom > 80 && r.top < innerHeight - 60;
+  });
+}
+const SHOWN_MS = 30_000; // counted only while the tab is in front
+function notify(app, a) {
+  const box = document.getElementById("notices");
+  if (!box) return;
+  box.querySelector(`[data-qnote="${CSS.escape(a.id)}"]`)?.remove();
+  const turn = a.turns.at(-1), failed = !!turn?.error;
+  const el = document.createElement("div");
+  el.className = `qnote${failed ? " err" : ""}`;
+  el.dataset.qnote = a.id;
+  el.setAttribute("role", "status");
+  el.innerHTML = `<span class="cav agav" aria-hidden="true">✦</span><b>${failed ? "Claude couldn't answer" : "Claude answered"}</b>
+    <button class="x" aria-label="Dismiss">✕</button><span class="qn-q" title="${esc(turn?.q ?? "")}">${esc(turn?.q ?? "")}</span>
+    <span class="qn-at">${esc(a.path.split("/").pop())}:${a.startLine ? `${a.startLine}–` : ""}${a.line}</span>
+    <div class="qn-acts"><button class="cbtn primary" data-show>Show answer</button></div>`;
+  el.querySelector(".x").onclick = () => el.remove();
+  el.querySelector("[data-show]").onclick = () => { el.remove(); showAsk(app, a.id); };
+  box.append(el);
+  while (box.children.length > 3) box.firstElementChild.remove(); // the three newest
+  const later = () => setTimeout(() => (document.hidden ? later() : el.remove()), SHOWN_MS);
+  later();
+  if (document.hidden && !document.title.startsWith("✦ ")) {
+    document.title = `✦ ${document.title}`;
+    document.addEventListener("visibilitychange", () => { document.title = document.title.replace(/^✦ /, ""); }, { once: true });
+  }
+}
+/** Goes to an ask's thread: its page, the thread open, centred and flashed. */
+export function showAsk(app, id) {
+  const a = askById(app, id);
+  if (!a) return;
+  document.querySelector(`#notices [data-qnote="${CSS.escape(id)}"]`)?.remove();
+  const pid = app.pidAt(a.path, a.line);
+  if (!pid) return app.toast?.("<span>Those lines are hidden by a filter (Tests, Generated or Untouched).</span>", 5000);
+  const mine = (els) => els.find((el) => el.closest(".dfocus")) ?? els[0]; // the focused page's, not the canvas behind it
+  const reveal = (tries = 0) => {
+    const els = threadEls(a), open = mine(els.filter((el) => !el.classList.contains("slim")));
+    if (!open && tries < 3) { mine(els)?.click(); return setTimeout(() => reveal(tries + 1), 80); } // collapsed, or not drawn yet
+    if (!open) return;
+    open.scrollIntoView({ block: "center", behavior: "smooth" });
+    open.classList.remove("cflash"); void open.offsetWidth; open.classList.add("cflash");
+  };
+  if (app.focus !== pid || app.level !== 2) app.setFocus(pid, { level: 2 });
+  app.emit("comments");
+  setTimeout(reveal, 80);
 }
 export const askById = (app, id) => (app.asks ?? []).find((a) => a.id === id);
 
