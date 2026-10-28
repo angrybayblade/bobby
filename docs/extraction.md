@@ -23,6 +23,9 @@ How a PR becomes a review graph. The code lives in `src/`; the output format is 
 `git diff --no-color --no-ext-diff -M -U3 <base> <head>` is parsed into `FileDiff[]`, each holding `Hunk[]`:
 
 - Status (added, deleted, modified, renamed) and binary files are detected from the extended headers.
+- Moves: `-M` counts a file as moved only when at least half of it is unchanged. A deleted and an added file of the
+  same name are diffed again with `-M20%` (just those paths), and a pair found there replaces the two with one renamed
+  file (`pairMoves`), so a file moved and largely rewritten shows once, against its old path.
 - Each line records its kind (`" "`, `+`, `-`) and its old and new line numbers.
 - Hunk ids are `h1…hN` in file order.
 - **`hunk.hash`** is a SHA-1 of the file path plus the hunk's lines. It's identical across force-pushes when the hunk didn't change, and review marks are keyed on it.

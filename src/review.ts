@@ -5,7 +5,7 @@
 import { basename } from "node:path";
 import { fetchPr, git, resolvePr, reviewComments } from "./git.ts";
 import { resolveLocal } from "./local.ts";
-import { parseDiff } from "./diff.ts";
+import { pairMoves, parseDiff } from "./diff.ts";
 import { analyze, heuristicTree, type Analysis } from "./analyze.ts";
 import { claudeTree } from "./llm.ts";
 import { buildGraph, type Discussion, VERSION, type ReviewGraph } from "./graph.ts";
@@ -14,6 +14,21 @@ import { startServers, stopServers } from "./servers.ts";
 import { watchLocal, watchPr } from "./watch.ts";
 import type { FileDiff, PrInfo } from "./types.ts";
 import type { Session } from "./server.ts";
+
+/** The changes from base to head. git counts a file as moved only when at least half of it is unchanged, so one moved
+ *  and then largely rewritten is a deletion and an addition: those of the same name are looked at again, down to a
+ *  fifth unchanged, and shown as the one file moved. */
+async function diffFiles(cwd: string, base: string, head: string): Promise<FileDiff[]> {
+  const diff = (moves: string, paths: string[] = []) =>
+    git(cwd, ["diff", "--no-color", "--no-ext-diff", "-U3", moves, base, head, ...(paths.length ? ["--", ...paths.map((p) => `:(literal)${p}`)] : [])]);
+  const files = parseDiff(await diff("-M"));
+  const name = (p: string) => p.slice(p.lastIndexOf("/") + 1);
+  const named = (st: string) => new Set(files.filter((f) => f.status === st).map((f) => name(f.path)));
+  const gone = named("deleted"), added = named("added");
+  const both = files.filter((f) => (f.status === "deleted" || f.status === "added") && gone.has(name(f.path)) && added.has(name(f.path)));
+  if (!both.length || both.length > 400) return files; // nothing to pair; or too many to name on the command line
+  return pairMoves(files, parseDiff(await diff("-M20%", both.map((f) => f.path))));
+}
 
 export interface ReviewOptions {
   repo?: string; // a local clone, or for a local review, the repo itself
@@ -97,7 +112,7 @@ async function build(arg: string | undefined, cwd: string, key: Key, getPr: () =
   const extract = () => (built ??= (async () => {
     const pr = await getPr();
     log("▸ diffing & tracing references…");
-    const files = parseDiff(await git(cwd, ["diff", "--no-color", "--no-ext-diff", "-M", "-U3", pr.baseSha, pr.headSha]));
+    const files = await diffFiles(cwd, pr.baseSha, pr.headSha);
     const analysis = await analyze(cwd, pr, files);
     const hunks = files.reduce((n, f) => n + f.hunks.length, 0);
     log(`  ${files.length} files · ${hunks} hunks · ${analysis.units.length} units · ${analysis.refs.length} untouched refs (${secs()})`);
@@ -177,7 +192,7 @@ export function start(p: Prepared, o: ReviewOptions): Session {
       session.builtHead = (await git(cwd, ["rev-parse", "HEAD"])).trim();
     }
     log(`▸ refreshing to ${next.headSha.slice(0, 7)}…`);
-    const files = parseDiff(await git(cwd, ["diff", "--no-color", "--no-ext-diff", "-M", "-U3", next.baseSha, next.headSha]));
+    const files = await diffFiles(cwd, next.baseSha, next.headSha);
     const analysis = await analyze(cwd, next, files);
     const g = await buildGraph(cwd, next, files, analysis, heuristicTree(next, analysis, files), disc);
     const nextKey = arg ? { ...key, headSha: next.headSha, baseRef: session.baseRef } : { ...next };

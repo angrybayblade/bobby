@@ -99,12 +99,27 @@ export function parseDiff(text: string): FileDiff[] {
     f.hunks.push({ id: "", file: f.path, oldFile: f.oldPath, header: "", ctx: "", oldStart: 0, newStart: 0, lines: [], hash: sha1(`${f.status}\n${f.oldPath}\n${f.path}`), noise: f.noise });
   }
 
-  // Simple ids in file order; the path is assigned here because rename headers come after "diff --git".
-  let i = 0;
-  for (const f of files) for (const h of f.hunks) { h.id = `h${++i}`; h.file = f.path; h.oldFile = f.oldPath; }
-
+  numberHunks(files);
   classifyNoise(files);
   return files;
+}
+/** Simple ids in file order; the path is assigned here because rename headers come after "diff --git". */
+function numberHunks(files: FileDiff[]) {
+  let i = 0;
+  for (const f of files) for (const h of f.hunks) { h.id = `h${++i}`; h.file = f.path; h.oldFile = f.oldPath; }
+}
+
+/** Moves among a diff's deletions and additions, from a looser rename search (`moved`): each pairs a deleted file
+ *  with an added one of the same name, replacing the two with one renamed file where the added one was. */
+export function pairMoves(files: FileDiff[], moved: FileDiff[]): FileDiff[] {
+  const name = (p: string) => p.slice(p.lastIndexOf("/") + 1);
+  const status = new Map(files.map((f) => [f.path, f.status]));
+  const pairs = moved.filter((m) => m.status === "renamed" && name(m.oldPath) === name(m.path) && status.get(m.oldPath) === "deleted" && status.get(m.path) === "added");
+  if (!pairs.length) return files;
+  const gone = new Set(pairs.map((m) => m.oldPath)), into = new Map(pairs.map((m) => [m.path, m]));
+  const out = files.filter((f) => !(f.status === "deleted" && gone.has(f.path))).map((f) => (f.status === "added" && into.get(f.path)) || f);
+  numberHunks(out);
+  return out;
 }
 
 function classifyNoise(files: FileDiff[]) {

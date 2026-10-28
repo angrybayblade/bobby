@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseDiff, unquote } from "../src/diff.ts";
+import { pairMoves, parseDiff, unquote } from "../src/diff.ts";
 import { parseGrep } from "../src/analyze.ts";
 
 const diff = (...files: string[]) => files.join("\n") + "\n";
@@ -144,6 +144,30 @@ describe("parseDiff", () => {
     const one = diff("diff --git a/a b/a", "--- a/a", "+++ b/a", "@@ -1 +1 @@", "-x", "+y");
     const moved = diff("diff --git a/a b/a", "--- a/a", "+++ b/a", "@@ -40 +41 @@", "-x", "+y");
     expect(parseDiff(one)[0].hunks[0].hash).toBe(parseDiff(moved)[0].hunks[0].hash);
+  });
+});
+
+describe("pairMoves", () => {
+  const files = parseDiff(diff(
+    "diff --git a/old/math.ts b/old/math.ts", "deleted file mode 100644", "--- a/old/math.ts", "+++ /dev/null", "@@ -1,2 +0,0 @@", "-a", "-b",
+    "diff --git a/main.ts b/main.ts", "--- a/main.ts", "+++ b/main.ts", "@@ -1 +1 @@", "-x", "+y",
+    "diff --git a/lib/math.ts b/lib/math.ts", "new file mode 100644", "--- /dev/null", "+++ b/lib/math.ts", "@@ -0,0 +1,2 @@", "+a", "+c",
+    "diff --git a/other.ts b/other.ts", "new file mode 100644", "--- /dev/null", "+++ b/other.ts", "@@ -0,0 +1 @@", "+z",
+  ));
+  const moved = parseDiff(diff(
+    "diff --git a/old/math.ts b/lib/math.ts", "similarity index 30%", "rename from old/math.ts", "rename to lib/math.ts",
+    "--- a/old/math.ts", "+++ b/lib/math.ts", "@@ -1,2 +1,2 @@", " a", "-b", "+c",
+  ));
+
+  test("makes a deletion and an addition of the same name one moved file, where the addition was", () => {
+    const out = pairMoves(files, moved);
+    expect(out.map((f) => [f.status, f.oldPath, f.path])).toEqual([["modified", "main.ts", "main.ts"], ["renamed", "old/math.ts", "lib/math.ts"], ["added", "other.ts", "other.ts"]]);
+    expect(out.flatMap((f) => f.hunks.map((h) => h.id))).toEqual(["h1", "h2", "h3"]);
+  });
+
+  test("leaves files of different names apart", () => {
+    const renamed = moved.map((f) => ({ ...f, path: "lib/maths.ts" }));
+    expect(pairMoves(files, renamed)).toBe(files);
   });
 });
 

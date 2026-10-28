@@ -73,6 +73,9 @@
 <p><code>git diff --no-color --no-ext-diff -M -U3 &lt;base&gt; &lt;head&gt;</code> is parsed into <code>FileDiff[]</code>, each holding <code>Hunk[]</code>:</p>
 <ul>
 <li>Status (added, deleted, modified, renamed) and binary files are detected from the extended headers.</li>
+<li>Moves: <code>-M</code> counts a file as moved only when at least half of it is unchanged. A deleted and an added file of the
+same name are diffed again with <code>-M20%</code> (just those paths), and a pair found there replaces the two with one renamed
+file (<code>pairMoves</code>), so a file moved and largely rewritten shows once, against its old path.</li>
 <li>Each line records its kind (<code>&quot; &quot;</code>, <code>+</code>, <code>-</code>) and its old and new line numbers.</li>
 <li>Hunk ids are <code>h1…hN</code> in file order.</li>
 <li><strong><code>hunk.hash</code></strong> is a SHA-1 of the file path plus the hunk's lines. It's identical across force-pushes when the hunk didn't change, and review marks are keyed on it.</li>
