@@ -54,6 +54,7 @@ const CSS = `
 /* The focused step's code: a viewer like Diff's, running the width of the story column. */
 .outline .step .fvw { grid-column: 1 / 3; margin-top: 8px; min-width: 0; cursor: auto; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
 .outline .step .fvw .fvh { cursor: default; }
+.outline .step .fvw .fvb { overscroll-behavior: auto; } /* it grows with its code: the wheel scrolls the story, not into a dead end */
 .outline .story .bandh { font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--faint); margin: 22px 0 4px 10px; }
 `;
 const MAX_KIDS = 6;
