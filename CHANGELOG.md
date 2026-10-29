@@ -4,6 +4,10 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+## 0.1.0-rc14 (2026-10-29)
+
+GitHub, more fully: submitting into a review you started on github.com, comments on whole files, suggested changes, reactions, viewed files in step with GitHub, and the changes since your last review. Clones over HTTPS with gh's sign-in, and a log for bug reports.
+
 - **Submitting works with a review you started on github.com.** GitHub allows one unsubmitted review per person, so Bobby's submit used to fail when you had one. Its comments now show on their lines, tagged **pending**, and submitting from Bobby adds your drafts to it and submits it, starting from its summary.
 - **Comments on whole files.** A draft on a line the diff doesn't show (in a file the PR changes) posts as a comment on that file, starting with a link to its lines, instead of going into the summary. GitHub's comments on whole files show at the top of their file.
 - **Suggest a change.** On new lines, **± Suggest change** in the comment box puts the selected lines in a GitHub suggestion, to edit; GitHub offers the author a button to commit it. Suggestions show as the lines as they are and as suggested, inline and in the Conversation view.
