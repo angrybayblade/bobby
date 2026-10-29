@@ -8,7 +8,7 @@
 //   Rust    crate::, super:: and self:: paths, to module files
 // Anything that resolves outside the repo (a library) resolves to nothing.
 import { dirname, join, normalize } from "node:path/posix";
-import { git } from "./git.ts";
+import { catFiles, git } from "./git.ts";
 import { family, type Lang, type Syntax, langOf, parseSyntax } from "./syntax.ts";
 
 const JS_EXT = ["", ".ts", ".tsx", ".d.ts", ".js", ".jsx", ".mjs", ".cjs", "/index.ts", "/index.tsx", "/index.js", "/index.jsx", "/index.mjs"];
@@ -56,25 +56,7 @@ export class Repo {
   }
   async readMany(paths: string[]) {
     const want = [...new Set(paths)].filter((p) => this.files.has(p) && !this.text.has(p));
-    for (let i = 0; i < want.length; i += 500) {
-      const chunk = want.slice(i, i + 500);
-      const proc = Bun.spawn(["git", "-c", "core.quotePath=false", "cat-file", "--batch"], { cwd: this.cwd, stdin: "pipe", stdout: "pipe", stderr: "ignore" });
-      proc.stdin.write(chunk.map((p) => `${this.sha}:${p}\n`).join(""));
-      proc.stdin.end();
-      const buf = new Uint8Array(await new Response(proc.stdout).arrayBuffer());
-      const dec = new TextDecoder();
-      let at = 0;
-      for (const path of chunk) {
-        const nl = buf.indexOf(10, at);
-        if (nl < 0) break;
-        const head = dec.decode(buf.subarray(at, nl)).split(" ");
-        at = nl + 1;
-        if (head[1] !== "blob") { keep(this.text, path, Promise.resolve(null)); continue; }
-        const size = Number(head[2]);
-        keep(this.text, path, Promise.resolve(dec.decode(buf.subarray(at, at + size))));
-        at += size + 1;
-      }
-    }
+    for (const [path, text] of await catFiles(this.cwd, this.sha, want)) keep(this.text, path, Promise.resolve(text));
   }
   /** The file's syntax, or null (unsupported language, missing file, or no tree-sitter). */
   syntax(path: string): Promise<Syntax | null> {

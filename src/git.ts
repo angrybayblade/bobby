@@ -208,6 +208,30 @@ export async function fileLines(cwd: string, sha: string, path: string): Promise
   if (fileCache.size > KEEP_FILES) fileCache.delete(fileCache.keys().next().value!);
   return lines;
 }
+/** Files at a commit, through one git cat-file per 500: each path's text, or null when it isn't a file there. */
+export async function catFiles(cwd: string, sha: string, paths: string[]): Promise<Map<string, string | null>> {
+  const out = new Map<string, string | null>();
+  for (let i = 0; i < paths.length; i += 500) {
+    const chunk = paths.slice(i, i + 500);
+    const proc = Bun.spawn(["git", "-c", "core.quotePath=false", "cat-file", "--batch"], { cwd, stdin: "pipe", stdout: "pipe", stderr: "ignore" });
+    proc.stdin.write(chunk.map((p) => `${sha}:${p}\n`).join(""));
+    proc.stdin.end();
+    const buf = new Uint8Array(await new Response(proc.stdout).arrayBuffer());
+    const dec = new TextDecoder();
+    let at = 0;
+    for (const path of chunk) {
+      const nl = buf.indexOf(10, at);
+      if (nl < 0) break;
+      const head = dec.decode(buf.subarray(at, nl)).split(" ");
+      at = nl + 1;
+      if (head[1] !== "blob") { out.set(path, null); continue; }
+      const size = Number(head[2]);
+      out.set(path, dec.decode(buf.subarray(at, at + size)));
+      at += size + 1;
+    }
+  }
+  return out;
+}
 
 /** What only GraphQL says of a PR's review threads: each thread's node id and whether it's resolved (by its first
  *  comment's id), each comment's node id and reactions, your review that isn't submitted yet, and its comments (REST
