@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { pairMoves, parseDiff, unquote } from "../src/diff.ts";
 import { parseGrep } from "../src/analyze.ts";
+import { parseRemote } from "../src/git.ts";
 
 const diff = (...files: string[]) => files.join("\n") + "\n";
 
@@ -197,5 +198,22 @@ describe("parsePrArg", () => {
     expect(parsePrArg("https://github.com/o/r/pull/12/commits/48c2f0b")).toEqual({ owner: "o", repo: "r", number: 12, commit: "48c2f0b" });
     expect(parsePrArg("https://github.com/o/r/pull/12/changes/45f9ced..48c2f0b")).toEqual({ owner: "o", repo: "r", number: 12, from: "45f9ced", commit: "48c2f0b" });
     expect(parsePrArg("12")).toEqual({ number: 12 });
+  });
+});
+
+describe("parseRemote", () => {
+  test("reads scp-like SSH remotes, aliases too", () => {
+    expect(parseRemote("git@github.com:DataDog/den.git")).toEqual({ host: "github.com", path: "DataDog/den", ssh: true });
+    expect(parseRemote("git@github-datadog:DataDog/den.git")).toEqual({ host: "github-datadog", path: "DataDog/den", ssh: true });
+    expect(parseRemote("dd-gh:DataDog/den")).toEqual({ host: "dd-gh", path: "DataDog/den", ssh: true });
+  });
+  test("reads URLs", () => {
+    expect(parseRemote("https://github.com/DataDog/den.git")).toEqual({ host: "github.com", path: "DataDog/den", ssh: false });
+    expect(parseRemote("https://x-access-token@github.com/DataDog/den/")).toEqual({ host: "github.com", path: "DataDog/den", ssh: false });
+    expect(parseRemote("ssh://git@github-work:22/DataDog/den.git")).toEqual({ host: "github-work", path: "DataDog/den", ssh: true });
+  });
+  test("refuses what isn't a remote", () => {
+    expect(parseRemote("/Users/me/den")).toBeNull();
+    expect(parseRemote("")).toBeNull();
   });
 });

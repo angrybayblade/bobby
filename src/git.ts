@@ -55,15 +55,43 @@ export function parsePrArg(arg: string): { owner?: string; repo?: string; number
   throw new Error(`Expected a PR URL or number, got "${arg}"`);
 }
 
+/** A remote's URL as host and path: scp-like (git@host:owner/repo.git) or a URL (https://, ssh://, git://). ssh: it goes
+ *  over SSH, so its host may be an alias in your SSH config. */
+export function parseRemote(url: string): { host: string; path: string; ssh: boolean } | null {
+  const tidy = (p: string) => p.replace(/^\/+|\/+$/g, "").replace(/\.git$/, "");
+  if (!url.includes("://")) {
+    const m = /^(?:[^@/\s]+@)?([^:/\s]+):(.+)$/.exec(url);
+    return m ? { host: m[1].toLowerCase(), path: tidy(m[2]), ssh: true } : null;
+  }
+  try {
+    const u = new URL(url);
+    return { host: u.hostname.toLowerCase(), path: tidy(decodeURIComponent(u.pathname)), ssh: u.protocol === "ssh:" || u.protocol === "git+ssh:" };
+  } catch { return null; }
+}
+const GITHUB = new Set(["github.com", "ssh.github.com", "www.github.com"]);
+const aliases = new Map<string, Promise<boolean>>();
+/** Whether an SSH host is GitHub by another name (Host github-work … HostName github.com in ~/.ssh/config), as ssh
+ *  itself resolves it (ssh -G reads the config; it doesn't connect). */
+function githubAlias(host: string): Promise<boolean> {
+  let known = aliases.get(host);
+  if (!known) aliases.set(host, (known = run(["ssh", "-G", host], { allowFail: true, timeoutMs: 5000 })
+    .then((out) => GITHUB.has(/^hostname\s+(\S+)/m.exec(out)?.[1]?.toLowerCase() ?? ""), () => false)));
+  return known;
+}
+/** The remote in cwd for owner/repo on GitHub: one whose URL's path is owner/repo, at github.com or at an SSH alias of
+ *  it. Any remote name: origin, upstream, a fork's. */
 async function remoteFor(cwd: string, owner: string, repo: string): Promise<string | null> {
   const out = await git(cwd, ["remote", "-v"], true);
   const want = `${owner}/${repo}`.toLowerCase();
+  const maybe: Array<[string, string]> = []; // the right path at another host: GitHub only if it's an alias of it
   for (const line of out.split("\n")) {
     const [name, url] = line.split(/\s+/);
-    if (!url) continue;
-    const slug = url.replace(/\.git$/, "").replace(/^.*github\.com[:/]/, "").toLowerCase();
-    if (slug === want) return name;
+    const r = url ? parseRemote(url) : null;
+    if (!r || r.path.toLowerCase() !== want) continue;
+    if (GITHUB.has(r.host)) return name;
+    if (r.ssh) maybe.push([name, r.host]);
   }
+  for (const [name, host] of maybe) if (await githubAlias(host)) return name;
   return null;
 }
 
