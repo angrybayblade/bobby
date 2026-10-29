@@ -165,11 +165,9 @@ function jsNode(n: N, depth: number, imp: boolean, c: Ctx): Res {
       else c.out.reexports.push({ name: "*", local: "*", source: src });
       return "skip";
     }
-    case "member_expression": { // a.b: b reached through a
-      const obj = n.childForFieldName("object"), prop = n.childForFieldName("property");
-      if (prop && obj) { if (obj.type === "identifier") c.ref(obj); else pushInner(obj, c); c.ref(prop, obj); }
+    case "member_expression": // a.b: b reached through a
+      pushInner(n, c);
       return "skip";
-    }
     case "nested_type_identifier": { // ns.Type
       const mod = n.childForFieldName("module"), name = n.childForFieldName("name");
       if (mod && name) { c.ref(mod); c.ref(name, mod); }
@@ -218,11 +216,9 @@ function pyNode(n: N, depth: number, imp: boolean, c: Ctx): Res {
       }
       return "skip";
     }
-    case "attribute": {
-      const obj = n.childForFieldName("object"), attr = n.childForFieldName("attribute");
-      if (obj && attr) { if (obj.type === "identifier") c.ref(obj); else pyInner(obj, c); c.ref(attr, obj); }
+    case "attribute":
+      pyInner(n, c);
       return "skip";
-    }
     case "identifier":
       if (!imp) c.ref(n);
       return;
@@ -248,11 +244,9 @@ function goNode(n: N, depth: number, imp: boolean, c: Ctx): Res {
       c.out.imports.push({ local: name ?? path.split("/").pop()!, name: "*", source: path });
       return "skip";
     }
-    case "selector_expression": {
-      const op = n.childForFieldName("operand"), f = n.childForFieldName("field");
-      if (op && f) { if (op.type === "identifier") c.ref(op); else goInner(op, c); c.ref(f, op); }
+    case "selector_expression":
+      goInner(n, c);
       return "skip";
-    }
     case "qualified_type": {
       const pkg = n.childForFieldName("package"), name = n.childForFieldName("name");
       if (pkg && name) c.ref(name, pkg);
