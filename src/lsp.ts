@@ -83,7 +83,6 @@ export class LspClient {
     const uri = pathToFileURL(path).href;
     if (this.open.delete(uri)) this.notify("textDocument/didClose", { textDocument: { uri } });
   }
-  get openCount() { return this.open.size; }
 
   /** The declaration(s) of the name at a position: Location or LocationLink, as the server prefers. */
   async definition(path: string, pos: LspPosition, timeoutMs?: number): Promise<LspTarget[]> {

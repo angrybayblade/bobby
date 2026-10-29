@@ -140,5 +140,3 @@ function isWhitespaceOnly(h: Hunk): boolean {
   const added = norm("+"), removed = norm("-");
   return added === removed && h.lines.some((l) => l.t !== " ");
 }
-
-export const changedLines = (h: Hunk) => h.lines.filter((l) => l.t !== " ");

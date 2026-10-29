@@ -210,6 +210,7 @@ export function startServer(app: App, port: number, { hostname = "127.0.0.1", al
         return json({ error: failed || `No review ${id} is open. Open it from the home page, or with bobby <PR URL>.` }, 404);
       }
       if (!p.startsWith("/api/")) return staticFile(p === "/" ? "/home.html" : p);
+      // A GitHub avatar, fetched once and kept a week in ~/.bobby/cache/avatars. Only GitHub's own avatar hosts.
       if (p === "/api/avatar") return avatar(url.searchParams.get("u") ?? "");
       // The home page: what you've opened (and which are open now), and the GitHub lists, filtered.
       if (p === "/api/home") {
@@ -349,8 +350,6 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
       }
       if (p === "/api/session")
         return json({ state: s.state, settings: loadSettings(), llm: s.llm, llmError: s.llmError, servers: Object.values(s.servers ?? {}), me: await whoAmI(join(home(), "cache", "me.json")), caps: { files: !!s.cwd, inspect: !!s.cwd } });
-      // A GitHub avatar, fetched once and kept a week in ~/.bobby/cache/avatars. Only GitHub's own avatar hosts.
-      if (p === "/api/avatar") return avatar(url.searchParams.get("u") ?? "");
       if (p === "/api/status") return json({ agent: agentStatus(s), asking: [...(s.askJobs?.values() ?? [])].filter((j) => !j.done).length, llm: s.llm, llmError: s.llmError, claudeReady: !!s.claudeGraph, servers: Object.values(s.servers ?? {}), discussionAt: s.discussionAt ?? 0, release: app.release ?? null, update: s.rebuilding ? { ...s.update, rebuilding: true } : s.update ?? null });
       if (p === "/api/discussion") return json({ comments: s.staticGraph.discussion ?? [], outdated: s.staticGraph.outdated ?? [] });
       if (p === "/api/conversation") {

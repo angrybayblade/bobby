@@ -9,7 +9,7 @@
 // Anything that resolves outside the repo (a library) resolves to nothing.
 import { dirname, join, normalize } from "node:path/posix";
 import { catFiles, git } from "./git.ts";
-import { family, type Lang, type Syntax, langOf, parseSyntax } from "./syntax.ts";
+import { family, type Lang, type Syntax, parseSyntax } from "./syntax.ts";
 
 const JS_EXT = ["", ".ts", ".tsx", ".d.ts", ".js", ".jsx", ".mjs", ".cjs", "/index.ts", "/index.tsx", "/index.js", "/index.jsx", "/index.mjs"];
 
@@ -282,7 +282,6 @@ export class Repo {
     }
     return false;
   }
-  langOf(path: string) { return langOf(path); }
 }
 
 interface TsPaths { base: string; baseUrl: string | null; paths: Array<[string, string[]]> }

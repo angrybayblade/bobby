@@ -27,7 +27,6 @@ export function openWalk(app, at = null, onNew = null) {
   draw();
   return true;
 }
-export const walkOpen = () => !!w;
 document.addEventListener("bobby:leave-overlays", () => close()); // a reference shown in the diff
 
 function close() {
