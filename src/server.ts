@@ -1,7 +1,7 @@
 import { join, normalize } from "node:path";
 import { embeddedAsset } from "./assets.ts";
 import { cancelLogin, claudeStatus, dismiss, INSTALL_TEXT, installClaude, startLogin, submitCode } from "./claude.ts";
-import { fileLines, forgetUnknownMe, git, parsePrArg, reactionsOf, reviewComments, run, whoAmI } from "./git.ts";
+import { fileLines, fileLinesMany, forgetUnknownMe, git, parsePrArg, reactionsOf, reviewComments, run, whoAmI } from "./git.ts";
 import { type AgentJob, draftOf, runAgentReview } from "./agent.ts";
 import { runAsk } from "./ask.ts";
 import { handleMcp, mcpConfig, openMcp } from "./mcp.ts";
@@ -629,6 +629,7 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
         }
         if (!uses) return json({ refs: [], total: 0, via: "none", ...state });
         const MAX = 500, refs = uses.refs.slice(0, MAX), lines = new Map<string, string[]>();
+        if (s.cwd) await fileLinesMany(s.cwd, pr().headSha, refs.map((r) => r.path)).catch(() => {}); // in one git process
         for (const r of refs) if (!lines.has(r.path)) lines.set(r.path, s.cwd ? await fileLines(s.cwd, pr().headSha, r.path).catch(() => []) : []);
         const out = refs.map((r) => ({ ...r, text: (lines.get(r.path)?.[r.line - 1] ?? "").slice(0, 400), scope: scopeAt(lines.get(r.path) ?? [], r.line) }));
         return json({ name: uses.name, refs: out, total: uses.refs.length, via: uses.via, ...state, ...(changed ? { changed } : {}) });
