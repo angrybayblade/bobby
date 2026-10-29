@@ -61,7 +61,9 @@ async function probe(): Promise<Server[]> {
       buf += new TextDecoder().decode(c);
       let nl;
       while ((nl = buf.indexOf("\n")) >= 0) {
-        const e = JSON.parse(buf.slice(0, nl)); buf = buf.slice(nl + 1);
+        const line = buf.slice(0, nl); buf = buf.slice(nl + 1);
+        let e;
+        try { e = JSON.parse(line); } catch { continue; } // not an event: a warning something printed
         if (e.type === "system" && e.subtype === "init") { p.kill(); return catalogOf(e); } // before it asks the model anything
       }
     }
