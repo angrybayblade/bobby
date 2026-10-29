@@ -4,8 +4,8 @@ The CLI is the public release: it needs `git`, `gh` (logged in) and SSH access t
 
 ## Setup and onboarding
 
-- [ ] Clone over SSH (`git@github.com:<owner>/<repo>.git`), not with `gh repo clone`, which follows gh's `git_protocol` and
-      leaves an HTTPS remote that `git fetch` then can't authenticate.
+- [x] Clone over HTTPS with gh's sign-in (as the fetch does), not with `gh repo clone`, which followed gh's `git_protocol`
+      into the user's SSH setup; SSH only if HTTPS fails and the user allows it.
 - [ ] Check the requirements up front, not halfway through a review: `git`, `gh` installed, `gh auth status`, and
       `ssh -T git@github.com`. Each failure names the one command that fixes it.
 - [ ] Home page: a setup card in place of the PR lists while something's missing (signed in as whom, what to run),

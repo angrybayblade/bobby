@@ -14,6 +14,10 @@ What changed in each release, newest first. Each release's full notes, with inst
 - A file moved and largely rewritten shows as one moved file, not a deletion and an addition.
 - **Claude answered** notices, in the bottom-right corner, when an answer arrives while it isn't on screen.
 - In Outline, the wheel scrolls the page over a step's code too.
+- **Clones go over HTTPS with gh's sign-in**, not through your SSH setup: several SSH identities or agents no longer get in the way. If HTTPS fails, Bobby asks before trying SSH (or `--ssh` allows it; **always** remembers it).
+- **Your clone is found when its remote uses an SSH host alias** (`git@github-work:owner/repo`), as long as `~/.ssh/config` points the alias at github.com.
+- **A log for bug reports.** Everything Bobby says, failed git and gh commands with their output, API errors and the page's errors go to `~/.bobby/logs/bobby.log` too, with times and levels and tokens blanked out; `bobby logs` shows its end and where it is.
+- No focus outlines on buttons; the selection's buttons appear when you release the mouse, not while you drag.
 
 ## 0.1.0-rc13 (2026-10-25)
 
