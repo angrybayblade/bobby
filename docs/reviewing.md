@@ -90,6 +90,8 @@ The header shows progress through the core you're in (`core 3 ▬ 2/5`) next to 
 
 Marks are stored by the **content** of each hunk, not its position. After a force-push, hunks that didn't change stay reviewed, and only new or changed code comes back.
 
+**Viewed files follow GitHub's Viewed checkboxes.** When a PR opens, files you ticked on GitHub are marked viewed here. After that, a file that becomes viewed in Bobby (its last page marked, or **Mark viewed**), or stops being, ticks or clears its box on GitHub at once, so the two agree whichever you review in. A file ticked on GitHub that has changed since counts as not viewed, as it does there. Reviewing one commit of a PR, or a local branch, has no boxes to follow.
+
 ## Reading code
 
 - Hunks that only add or only remove lines, and untouched code, start **collapsed**. Click one, or press `e`, to open it.
@@ -184,7 +186,7 @@ While a review is open, Bobby keeps it current, the way GitHub does:
 
 ## Submitting
 
-Press `s`. Add an optional summary, then choose **Comment**, **Approve** or **Request changes**. Only drafts are posted; private notes and viewed marks stay local. All drafts are posted together as one GitHub review on the PR's current head commit, and you get a link to it. Each draft leaves Bobby once it's on GitHub, so a submit that fails halfway can be tried again without posting anything twice.
+Press `s`. Add an optional summary, then choose **Comment**, **Approve** or **Request changes**. Only drafts are posted; private notes and review marks stay in Bobby (whole files viewed also tick GitHub's Viewed boxes). All drafts are posted together as one GitHub review on the PR's current head commit, and you get a link to it. Each draft leaves Bobby once it's on GitHub, so a submit that fails halfway can be tried again without posting anything twice.
 
 - **A review you started on github.com.** GitHub allows one unsubmitted review per person. Its comments show on their lines in Bobby, tagged **pending** (only you see them). Submitting from Bobby adds your drafts to it and submits it, starting from its summary.
 - **A draft on a line the diff doesn't show** (in a file the PR changes) posts as a comment on that whole file, starting with a link to its lines. GitHub comments on whole files show at the top of the file, under **On this file**. A draft in a file the PR doesn't change can't be a comment on GitHub, so it goes in the summary under "Notes on code this PR doesn't touch".

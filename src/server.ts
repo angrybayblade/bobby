@@ -51,6 +51,7 @@ export interface Session {
   stopWatching?: () => void;
   agentJob?: AgentJob; // an agent-assisted review running, or the last one's end (agent.ts)
   askJobs?: Map<string, AgentJob & { text?: string }>; // questions being answered, by ask id (ask.ts)
+  prNode?: string; // the PR's GraphQL node id, once asked (for its Viewed checkboxes)
 }
 
 const PUBLIC = join(import.meta.dir, "..", "public");
@@ -376,6 +377,35 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
           const msg = String((e as Error).message);
           if (/\b(403|404)\b|not accessible|forbidden/i.test(msg)) return json({ ok: false, error: `GitHub won't let you ${edit ? "edit" : "delete"} it: only its author (or a repo admin) can` }, 403);
           return json({ ok: false, error: msg }, 400);
+        }
+      }
+      // GitHub's Viewed checkboxes on the PR's files: read them (VIEWED, UNVIEWED, or DISMISSED: viewed, then changed),
+      // or tick or clear one, at once. The page keeps them in step with its own viewed files.
+      if (p === "/api/viewed") {
+        if (pr().provider === "local" || pr().commit) return json({ ok: false, error: "Only a whole PR has GitHub's Viewed checkboxes." }, 400);
+        const { owner, repo, number } = pr();
+        try {
+          if (req.method === "GET") {
+            const files: Record<string, string> = {};
+            for (let after = "", k = 0; k < 30; k++) {
+              const out = JSON.parse(await run(["gh", "api", "graphql", "-f", `query=query($owner: String!, $repo: String!, $n: Int!, $after: String) { repository(owner: $owner, name: $repo) { pullRequest(number: $n) { id files(first: 100, after: $after) { pageInfo { hasNextPage endCursor } nodes { path viewerViewedState } } } } }`,
+                "-F", `owner=${owner}`, "-F", `repo=${repo}`, "-F", `n=${number}`, ...(after ? ["-f", `after=${after}`] : [])]));
+              const pull = out.data.repository.pullRequest;
+              s.prNode = pull.id;
+              for (const f of pull.files.nodes) files[f.path] = f.viewerViewedState;
+              if (!pull.files.pageInfo.hasNextPage) break;
+              after = pull.files.pageInfo.endCursor;
+            }
+            return json({ ok: true, files });
+          }
+          const { path, viewed } = (await req.json().catch(() => ({}))) as { path?: unknown; viewed?: unknown };
+          if (typeof path !== "string" || !path || typeof viewed !== "boolean") return json({ ok: false, error: "path must be a file's path, and viewed true or false" }, 400);
+          s.prNode ??= (await run(["gh", "api", `repos/${owner}/${repo}/pulls/${number}`, "--jq", ".node_id"])).trim();
+          const op = viewed ? "markFileAsViewed" : "unmarkFileAsViewed";
+          await run(["gh", "api", "graphql", "-f", `query=mutation($id: ID!, $path: String!) { ${op}(input: { pullRequestId: $id, path: $path }) { clientMutationId } }`, "-f", `id=${s.prNode}`, "-f", `path=${path}`]);
+          return json({ ok: true });
+        } catch (e) {
+          return json({ ok: false, error: String((e as Error).message) }, 400);
         }
       }
       // React to a comment (or the description, or a review), or take your reaction back, at once, as on GitHub. Answers
