@@ -6,14 +6,26 @@ import type { Discussion, GDiscussion, GOutdated, PendingReview, Reaction } from
 import { home } from "./state.ts";
 import { ghBin } from "./github.ts";
 
+// Programs found on a PATH. Searching PATH on every spawn is most of a spawn's cost; one not found isn't kept, so it's
+// seen once it's installed.
+const found = new Set<string>();
+function onPath(bin: string, PATH: string): boolean {
+  const key = `${bin}\0${PATH}`;
+  if (found.has(key)) return true;
+  if (!Bun.which(bin, { PATH })) return false;
+  found.add(key);
+  return true;
+}
+
 export async function run(
   cmd: string[],
   opts: { cwd?: string; input?: string; allowFail?: boolean; env?: Record<string, string>; timeoutMs?: number } = {},
 ): Promise<string> {
   const said = cmd; // what errors name: gh, not where it is
-  if (cmd[0] === "gh" && !Bun.which("gh", { PATH: opts.env?.PATH ?? process.env.PATH ?? "" })) cmd = [ghBin() ?? "gh", ...cmd.slice(1)]; // gh Bobby installed in ~/.local/bin, not on PATH
+  const PATH = opts.env?.PATH ?? process.env.PATH ?? "";
+  if (cmd[0] === "gh" && !onPath("gh", PATH)) cmd = [ghBin() ?? "gh", ...cmd.slice(1)]; // gh Bobby installed in ~/.local/bin, not on PATH
   // A program that isn't installed throws here, not as an exit code: say which, or read it as a failure when allowed
-  const missing = !Bun.which(cmd[0], { PATH: opts.env?.PATH ?? process.env.PATH ?? "" }) && !cmd[0].includes("/");
+  const missing = !cmd[0].includes("/") && !onPath(cmd[0], PATH);
   if (missing) {
     if (opts.allowFail) return "";
     throw new Error(`${cmd[0]} isn't installed, or isn't on your PATH${{ gh: ": set it up from Bobby's page (it offers to), or see https://cli.github.com", git: ": https://git-scm.com", claude: ": set it up from Bobby's page (it offers to), or see https://claude.com/claude-code" }[cmd[0]] ?? ""}`);
