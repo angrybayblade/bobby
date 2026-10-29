@@ -106,8 +106,7 @@ async function build(arg: string | undefined, cwd: string, key: Key, getPr: () =
   // Same head commit as last time → reuse the built graphs. Comments still change, so they're always re-read.
   const hit = o.refresh ? null : loadCachedGraphs(key);
   const cached = hit?.static.generator.extraction === VERSION ? hit : null;
-  const discussion: Discussion = arg ? await reviewComments(key) : { comments: [], outdated: [] };
-  if (discussion.comments.length) log(`  ${discussion.comments.length} existing review comment(s)`);
+  const comments: Promise<Discussion> = arg ? reviewComments(key) : Promise.resolve({ comments: [], outdated: [] });
 
   // Fetch + diff + analysis, only when something needs it (a new head, or Claude's tree still missing).
   let built: Promise<{ pr: PrInfo; files: FileDiff[]; analysis: Analysis }> | null = null;
@@ -120,6 +119,9 @@ async function build(arg: string | undefined, cwd: string, key: Key, getPr: () =
     log(`  ${files.length} files · ${hunks} hunks · ${analysis.units.length} units · ${analysis.refs.length} untouched refs (${secs()})`);
     return { pr, files, analysis };
   })());
+  if (!cached) extract().catch(() => {}); // alongside reading the comments; its failure is met where it's awaited
+  const discussion = await comments;
+  if (discussion.comments.length) log(`  ${discussion.comments.length} existing review comment(s)`);
 
   // The clone may lack the cached graph's commits (a fresh clone, a fork's PR, refs/bobby deleted and collected): the
   // UI reads files at both, and the language server exports head. Fetch them as a miss would.
@@ -183,11 +185,12 @@ export function start(p: Prepared, o: ReviewOptions): Session {
   // carry over by content, so what the push didn't touch stays reviewed; drafts stay as they are.
   session.baseRef = key.baseRef;
   session.rebuild = async () => {
-    let next: PrInfo, disc: Discussion = { comments: session.staticGraph.discussion ?? [], outdated: session.staticGraph.outdated ?? [] };
+    const was: Discussion = { comments: session.staticGraph.discussion ?? [], outdated: session.staticGraph.outdated ?? [] };
+    let next: PrInfo, comments = Promise.resolve(was);
     if (arg) {
       const resolved = await resolvePr(arg, o.repo, o.cwd, o.ssh);
       next = await fetchPr(resolved);
-      disc = await reviewComments(next, true).catch(() => disc);
+      comments = reviewComments(next, true).catch(() => was); // alongside the diff and analysis
       session.baseRef = resolved.meta.baseRefName;
     } else {
       next = (await resolveLocal(cwd, session.staticGraph.pr.baseRef)).pr;
@@ -196,6 +199,7 @@ export function start(p: Prepared, o: ReviewOptions): Session {
     log(`▸ refreshing to ${next.headSha.slice(0, 7)}…`);
     const files = await diffFiles(cwd, next.baseSha, next.headSha);
     const analysis = await analyze(cwd, next, files);
+    const disc = await comments;
     const g = await buildGraph(cwd, next, files, analysis, heuristicTree(next, analysis, files), disc);
     const nextKey = arg ? { ...key, headSha: next.headSha, baseRef: session.baseRef } : { ...next };
     saveCachedGraphs(nextKey, { static: g });
