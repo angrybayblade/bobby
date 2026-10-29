@@ -3,6 +3,7 @@
 // nothing is posted: each one is added to your drafts, or dismissed, by you. Claude runs in an export of the head
 // commit (trees/<repo>/<sha>-src) with only Read, Grep and Glob, none of your settings, MCP servers or session, and
 // Claude Code doesn't let it read outside that folder. What it's doing streams to the page as it goes.
+import * as log from "./log.ts";
 import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Subprocess } from "bun";
@@ -197,7 +198,7 @@ export async function runClaude(cwd: string, g: ReviewGraph, job: AgentJob, prom
         let e: Event;
         try { e = JSON.parse(line); } catch { continue; }
         if (e.type === "system" && e.subtype === "init" && process.env.BOBBY_DEBUG) // what Claude started with
-          console.error(`  claude: tools ${e.tools?.join(", ")}; MCP ${e.mcp_servers?.map((m) => `${m.name} ${m.status}`).join(", ") || "none"}`);
+          log.debug(`  claude: tools ${e.tools?.join(", ")}; MCP ${e.mcp_servers?.map((m) => `${m.name} ${m.status}`).join(", ") || "none"}`);
         if (e.type === "assistant") {
           for (const c of e.message?.content ?? []) {
             if (c.type === "tool_use") step(describe(c.name ?? "", c.input ?? {}, root));

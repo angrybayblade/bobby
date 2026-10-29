@@ -2,6 +2,7 @@
 // Session: fetch, diff, analysis and the graph (cached per head commit), then Claude's tree, the language servers and
 // the watchers in the background. Two steps, so a caller can name the review (its id, its address) before the slow part:
 // resolve() asks GitHub or git what it is; build() makes it.
+import { warn } from "./log.ts";
 import { basename } from "node:path";
 import { fetchPr, git, resolvePr, reviewComments } from "./git.ts";
 import { resolveLocal } from "./local.ts";
@@ -172,7 +173,7 @@ export function start(p: Prepared, o: ReviewOptions): Session {
     log("▸ asking Claude to build the change tree (UI is usable meanwhile)…");
     p.claude()
       .then((g) => { session.claudeGraph = g; session.llm = "done"; log(`  ✓ Claude tree ready: ${g.cores.length} cores`); })
-      .catch((e) => { session.llm = "failed"; session.llmError = String(e.message ?? e); console.error(`  ✗ Claude tree failed, keeping static tree: ${session.llmError}`); })
+      .catch((e) => { session.llm = "failed"; session.llmError = String(e.message ?? e); warn(`  ✗ Claude tree failed, keeping static tree: ${session.llmError}`); })
       .finally(() => { asking = false; });
   };
   if (p.wantLlm) session.askClaude?.();

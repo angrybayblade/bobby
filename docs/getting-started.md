@@ -123,6 +123,7 @@ bobby extract [pr] [-o file.json]     # write the review graph and exit (stdout 
 bobby open <graph.json> [--repo dir]  # open the UI on an existing graph file
 bobby lsp                             # the language servers behind the inspector, by language
 bobby lsp install <language>          # install one (typescript, python), or say how (go)
+bobby logs [n]                        # the log's last n lines (default 80), and where the whole log is
 ```
 
 `extract` waits for Claude's tree (unless `--no-llm`) and writes it, falling back to the static tree if Claude fails. With `--lsp`, it also waits for the installed language servers' definitions. `open` views any `bobby.review-graph/v1` file, whoever produced it. With `--repo`, it can also load more context around hunks, and start the language server.
@@ -180,11 +181,16 @@ Everything lives under `~/.bobby/`. If you used Bobby when it was called prfocus
 | `servers/typescript-<versions>/`, `servers/pyright-<version>/` | The TypeScript and Python language servers, installed when you agree (about 24 MB and 35 MB from npm). |
 | `trees/<owner>_<repo>/<sha12>/` | A PR's head commit as plain files (the languages Bobby has servers for), for the language servers. The three most recent per repo are kept. |
 | `settings.json` | UI preferences, shared by every PR. |
+| `logs/bobby.log` | What Bobby did and what went wrong (failed git and gh commands with their output, API errors, the page's errors), with times and levels; the same lines as the terminal shows, and more. Rotated at 5 MB (`bobby.1.log`). Tokens are blanked out. |
 
 Deleting `cache/`, `servers/` or `trees/` is always safe. Deleting a `state/` file forgets your progress on that PR.
 
 Bobby tidies up once a day on its own: cached files for commits not opened in a month, avatars a month old, other versions of the language servers it installed, and what a stopped Bobby left half done. `bobby clean` removes `cache/` and `trees/` at once, and `bobby clean --repos` the clones in `repos/` too; neither touches `state/` or `settings.json`.
 
 The fetch also writes refs under `refs/bobby/<n>/` in the clone. They're harmless; remove them with `git for-each-ref --format='%(refname)' refs/bobby | xargs -n1 git update-ref -d`.
+
+## Reporting a problem
+
+`bobby logs` prints the end of Bobby's log and where the whole of it is (`~/.bobby/logs/bobby.log`). Attach it, or those lines, to a bug report: each run starts with Bobby's version, platform and command, and failures come with what git or gh said and a stack trace. GitHub and Anthropic tokens are blanked out before anything is written, but the log does name your repos, branches and PR titles, so read it before you share it. `BOBBY_DEBUG=1` adds detail (what Claude started with) to the terminal and the log.
 
 Next: [Reviewing a PR](reviewing.md).

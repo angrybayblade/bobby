@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import * as log from "./log.ts";
 import { existsSync } from "node:fs";
 import type { PrInfo } from "./types.ts";
 import type { Discussion, GDiscussion, GOutdated, PendingReview, Reaction } from "./graph.ts";
@@ -31,8 +32,9 @@ export async function run(
     new Response(proc.stderr).text(),
     proc.exited,
   ]).finally(() => clearTimeout(timer));
-  if (timedOut) { const s = Math.round(opts.timeoutMs! / 1000); throw new Error(`${said.slice(0, 2).join(" ")} gave no answer in ${s >= 120 ? `${Math.round(s / 60)} min` : `${s} s`}`); }
+  if (timedOut) { const s = Math.round(opts.timeoutMs! / 1000); log.toFile("warn", `${said.join(" ")}: no answer in ${s} s`); throw new Error(`${said.slice(0, 2).join(" ")} gave no answer in ${s >= 120 ? `${Math.round(s / 60)} min` : `${s} s`}`); }
   if (code !== 0 && !opts.allowFail) {
+    log.toFile("warn", `${said.join(" ").slice(0, 400)} failed (${code})${opts.cwd ? ` in ${opts.cwd}` : ""}`, (err.trim() || out.trim()).slice(-2000));
     throw new Error(`${said.slice(0, 3).join(" ")} failed (${code}): ${err.trim() || out.trim()}`);
   }
   return out;
@@ -89,7 +91,7 @@ export async function resolvePr(arg: string, repoDir?: string, from = process.cw
   if (!remote && !repoDir) {
     cwd = join(home(), "repos", owner, repo);
     if (!existsSync(cwd)) {
-      console.error(`  cloning ${owner}/${repo} into ${cwd} (first time only)…`); // stderr: extract may be writing the graph to stdout
+      log.info(`  cloning ${owner}/${repo} into ${cwd} (first time only)…`);
       await run(["gh", "repo", "clone", `${owner}/${repo}`, cwd, "--", "--no-tags"]);
     }
     remote = (await remoteFor(cwd, owner, repo)) ?? "origin";

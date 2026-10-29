@@ -1,5 +1,6 @@
 // Which language servers a review runs, and their lives: detected from the PR's files, asked about before anything is
 // installed, started in the background (the UI is usable meanwhile), and their answers merged into the definitions.
+import { warn } from "./log.ts";
 import type { ReviewGraph } from "./graph.ts";
 import { go } from "./go.ts";
 import { Inspector } from "./inspect.ts";
@@ -40,7 +41,7 @@ export async function startServers(s: Session, opts: { ask: boolean; off?: boole
   process.once("SIGINT", () => void stopServers(s).finally(() => process.exit(130)));
   await Promise.all(wanted.map((srv) => decide(s, srv, opts.ask).catch((e) => { // never takes the review down: that language just has no server
     Object.assign(s.servers![srv.id], { state: "failed", error: String((e as Error).message ?? e) });
-    console.error(`  ✗ ${srv.title} language server: ${s.servers![srv.id].error}`);
+    warn(`  ✗ ${srv.title} language server: ${s.servers![srv.id].error}`);
   })));
 }
 
@@ -115,7 +116,7 @@ async function run(s: Session, srv: LanguageServer) {
     const insp = (s.inspectors![srv.id] = await Inspector.start(srv, root, log));
     insp.onExit((why) => { // it stopped on its own: say so, and answer from imports from now on
       Object.assign(info, { state: "failed", error: `the language server stopped: ${why}` });
-      console.error(`  ✗ ${srv.title}: ${info.error}. Its names are found through imports from now on.`);
+      warn(`  ✗ ${srv.title}: ${info.error}. Its names are found through imports from now on.`);
     });
     const mine = Object.fromEntries(Object.entries(g.definitions ?? {}).filter(([p]) => srv.languageId(p)));
     if (cached) { // already placed: one name loads the project, so the inspector's first answer is quick
@@ -132,7 +133,7 @@ async function run(s: Session, srv: LanguageServer) {
     log(`  ✓ ${srv.title} language server ready: ${info.placed} of ${info.names} names placed by it (${((Date.now() - t0) / 1000).toFixed(1)}s)`);
   } catch (e) {
     Object.assign(info, { state: "failed", error: String((e as Error).message ?? e) });
-    console.error(`  ✗ ${srv.title} language server: ${info.error}. Its names are found through imports.`);
+    warn(`  ✗ ${srv.title} language server: ${info.error}. Its names are found through imports.`);
   }
 }
 

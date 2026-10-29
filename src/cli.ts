@@ -13,10 +13,12 @@ import { resolve, reviewId, start, type ReviewOptions } from "./review.ts";
 import { noteRecent, recentOf } from "./recents.ts";
 import { type App, startServer, type Session } from "./server.ts";
 import pkg from "../package.json" with { type: "json" };
+import * as log from "./log.ts";
 
-// A failure is one line (no such file, a git or gh error), not a stack trace; BOBBY_DEBUG=1 shows the trace too.
+// A failure is one line (no such file, a git or gh error), not a stack trace; BOBBY_DEBUG=1 shows the trace too. The
+// log file (bobby logs) always has the trace.
 const fail = (e: unknown) => {
-  console.error(`✗ ${(e as Error)?.message ?? e}`);
+  log.error(`✗ ${(e as Error)?.message ?? e}`, (e as Error)?.stack);
   if (process.env.BOBBY_DEBUG) console.error((e as Error)?.stack);
   process.exit(1);
 };
@@ -59,6 +61,7 @@ const USAGE = `bobby: review a PR one focused page at a time
   bobby update [version]             install the newest release (or that one) in place of this one
   bobby clean [--repos]              remove caches and exported trees (and with --repos, the clones
                                      in ~/.bobby/repos); your reviews' progress stays
+  bobby logs [n]                     the log's last n lines (default 80) and where it is: for a bug report
 
   --base <ref>   no PR: the branch to compare against (default: this branch's PR base,
                  origin's default branch, then main/master/develop/trunk; asks if none)
@@ -79,7 +82,16 @@ const USAGE = `bobby: review a PR one focused page at a time
   --no-open      don't open the browser
   -v, --version  print the version`;
 
-const [cmd, arg] = ["extract", "open", "lsp", "clean", "home", "update"].includes(positionals[0]) ? [positionals[0], positionals[1]] : ["review", positionals[0]];
+const [cmd, arg] = ["extract", "open", "lsp", "clean", "home", "update", "logs"].includes(positionals[0]) ? [positionals[0], positionals[1]] : ["review", positionals[0]];
+if (cmd !== "logs" && !values.version && !values.help) log.started(pkg.version, process.argv.slice(2));
+// bobby logs: where the log is, and its last lines, to paste into a bug report
+if (cmd === "logs") {
+  const f = Bun.file(log.logPath());
+  if (!(await f.exists())) { console.log(`No log yet: Bobby writes one to ${log.logPath()} as it runs.`); process.exit(0); }
+  const lines = (await f.text()).trimEnd().split("\n");
+  console.log(`${lines.slice(-Number(arg ?? 80) || -80).join("\n")}\n\n  The whole log: ${log.logPath()}\n  (attach it, or the lines above, to a bug report; tokens are blanked out)`);
+  process.exit(0);
+}
 if (values.version) {
   console.log(pkg.version);
   process.exit(0);
@@ -97,7 +109,7 @@ if (!/^\d{1,5}$/.test(values.port!) || Number(values.port) > 65535) fail(`--port
 if (values.repo && !statSync(values.repo, { throwIfNoEntry: false })?.isDirectory()) fail(`--repo takes a folder with a git checkout, got "${values.repo}"`);
 if (cmd === "lsp") process.exit(await lspCommand(arg, positionals[2]));
 if (cmd === "update") {
-  await selfUpdate(arg, (m) => console.log(m));
+  await selfUpdate(arg, (m) => log.info(m));
   const other = holder(); // it holds the old binary in memory
   if (other) console.log(`  The Bobby running on port ${other.port} is still the old one: stop it (ctrl-c) and start it again.`);
   process.exit(0);
@@ -123,7 +135,7 @@ async function lspCommand(sub?: string, id?: string): Promise<number> {
     if (await srv.installed()) { console.log(`✓ ${srv.title}: already installed (${await srv.version()})`); return 0; }
     const missing = await srv.missing();
     if (missing || !srv.install) { console.log(`${srv.title}: ${missing?.hint ?? "Bobby can't install this one."}${missing?.command ? `\n  ${missing.command}` : ""}`); return 1; }
-    await srv.install((m) => console.log(m));
+    await srv.install((m) => log.info(m));
     console.log(`✓ ${srv.title}: installed (${await srv.version()})`);
     return 0;
   }
@@ -136,24 +148,25 @@ async function lspCommand(sub?: string, id?: string): Promise<number> {
   }
   return 0;
 }
-const log = (m: string) => (cmd === "extract" && !values.out ? console.error(m) : console.log(m));
-const opts: ReviewOptions & { refresh?: boolean } = { repo: values.repo, base: values.base, refresh: values.refresh, noLlm: values["no-llm"], noLsp: values["no-lsp"], log };
+if (cmd === "extract" && !values.out) log.stdoutIsData(); // the graph goes to stdout: progress to stderr
+const say = (m: string) => log.info(m);
+const opts: ReviewOptions & { refresh?: boolean } = { repo: values.repo, base: values.base, refresh: values.refresh, noLlm: values["no-llm"], noLsp: values["no-lsp"], log: say };
 
 if (cmd === "extract") {
   const p = await (await resolve(arg, opts)).build();
   let graph = p.claudeGraph ?? p.staticGraph;
   if (p.wantLlm) {
-    log("▸ asking Claude to build the change tree…");
-    graph = await p.claude().catch((e) => (log(`  ✗ Claude failed, writing static graph: ${e.message}`), p.staticGraph));
+    say("▸ asking Claude to build the change tree…");
+    graph = await p.claude().catch((e) => (log.warn(`  ✗ Claude failed, writing static graph: ${e.message}`), p.staticGraph));
   }
   if (values.lsp) { // the servers that are installed; none is installed without asking
     const s: Session = { cwd: p.cwd, staticGraph: graph, state: { headSha: graph.pr.headSha, marks: {}, comments: [] }, llm: "off", refresh: values.refresh };
-    await startServers(s, { ask: false, log });
+    await startServers(s, { ask: false, log: say });
     await stopServers(s);
     if (s.definitions) graph = { ...graph, definitions: s.definitions };
   }
   const text = JSON.stringify(graph, null, 1);
-  if (values.out) { writeFileSync(values.out, text); log(`  ✓ wrote ${values.out}`); }
+  if (values.out) { writeFileSync(values.out, text); say(`  ✓ wrote ${values.out}`); }
   else console.log(text);
   process.exit(0);
 }
@@ -165,7 +178,7 @@ const toHome = cmd === "home" || (cmd === "review" && !arg && !(await git(values
 // one only points the browser at it.
 const running = await runningApp();
 if (running && toHome) {
-  console.log(`  Bobby is already running\n\n  ▶ ${running}/\n`);
+  log.info(`  Bobby is already running\n\n  ▶ ${running}/\n`);
   if (!values["no-open"]) await run(openCommand(`${running}/`), { allowFail: true }).catch(() => {});
   process.exit(0);
 }
@@ -176,14 +189,14 @@ if (running) {
   const out = (await r.json()) as { id?: string; error?: string; setup?: string };
   if (!out.id && arg && out.setup === "gh") { // its page sets gh up, then opens the PR
     const url = `${running}/?open=${encodeURIComponent(arg)}`;
-    console.log(`  ${out.error}\n  GitHub's CLI isn't set up: the page sets it up, then opens the PR\n\n  ▶ ${url}\n`);
+    log.warn(`  ${out.error}\n  GitHub's CLI isn't set up: the page sets it up, then opens the PR\n\n  ▶ ${url}\n`);
     if (!values["no-open"]) await run(openCommand(url), { allowFail: true }).catch(() => {});
     process.exit(0);
   }
   if (!out.id && arg) fail(out.error ?? `Bobby at ${running} couldn't open it`);
   // a bare `bobby` in a repo with nothing to review: the home page instead
   const url = out.id ? `${running}/r/${out.id}` : `${running}/`;
-  console.log(out.id ? `  opened in the Bobby already running (its terminal shows the progress)\n\n  ▶ ${url}\n`
+  log.info(out.id ? `  opened in the Bobby already running (its terminal shows the progress)\n\n  ▶ ${url}\n`
     : `  ${out.error ?? "Nothing to review here"}\n  opening the home page instead\n\n  ▶ ${url}\n`);
   if (!values["no-open"]) await run(openCommand(url), { allowFail: true }).catch(() => {});
   process.exit(0);
@@ -209,7 +222,7 @@ app.open = async (a, o) => {
       app.reviews.set(id, s); app.loading.delete(id);
       void noteRecent(recentOf(id, p.staticGraph.pr, p.cwd));
     },
-    (e) => { app.loading.set(id, { title: resolved.title, steps, startedAt: Date.now(), error: String(e?.message ?? e) }); console.error(`  ✗ ${resolved.title}: ${e?.message ?? e}`); },
+    (e) => { app.loading.set(id, { title: resolved.title, steps, startedAt: Date.now(), error: String(e?.message ?? e) }); log.error(`  ✗ ${resolved.title}: ${e?.message ?? e}`, e?.stack); },
   );
   return id;
 };
@@ -224,7 +237,7 @@ if (cmd === "open") {
     if (discussion) setDiscussion(graph, discussion);
   }
   const session: Session = { cwd: values.repo ?? null, staticGraph: graph, state: loadState({ ...graph.pr }), llm: "off", refresh: values.refresh };
-  void startServers(session, { ask: true, off: values["no-lsp"], log });
+  void startServers(session, { ask: true, off: values["no-lsp"], log: say });
   const id = reviewId(graph.pr);
   session.seenAt = Infinity; // a graph file can't be built again: it stays loaded
   app.reviews.set(id, session);
@@ -234,13 +247,13 @@ if (cmd === "open") {
   const id = await app.open(arg, { repo: values.repo, base: values.base }).catch(async (e) => {
     const gh = await ghStatus();
     if (arg && !(gh.installed && gh.loggedIn)) { // the page sets gh up, then opens the PR
-      console.log(`  ${e.message}\n  GitHub's CLI isn't set up: the page sets it up, then opens the PR`);
+      log.warn(`  ${e.message}\n  GitHub's CLI isn't set up: the page sets it up, then opens the PR`);
       app.waiting = { arg, o: { repo: values.repo, base: values.base } };
       path = `/?open=${encodeURIComponent(arg)}`;
       return null;
     }
     if (arg) throw e;
-    console.log(`  ${e.message}\n  opening the home page instead`);
+    log.warn(`  ${e.message}\n  opening the home page instead`);
     return null;
   });
   if (id) path = `/r/${id}`;
@@ -256,7 +269,7 @@ setInterval(() => {
     app.reviews.delete(id);
     s.stopWatching?.();
     void stopServers(s);
-    log(`  ▸ closed ${id}: no page open on it for 15 minutes (reopen it from the home page)`);
+    log.info(`  ▸ closed ${id}: no page open on it for 15 minutes (reopen it from the home page)`);
   }
 }, 60_000);
 
@@ -278,20 +291,20 @@ async function serve(app: App, path: string) {
   catch (e) {
     if (!/EADDRINUSE|in use/i.test(String((e as Error).message ?? e))) throw e;
     server = startServer(app, 0, { hostname, allow });
-    console.log(`  port ${values.port} is in use, using ${server.port}`);
+    log.warn(`  port ${values.port} is in use, using ${server.port}`);
   }
   const here = open && !hostname.includes(":") && hostname !== "0.0.0.0" ? hostname : "127.0.0.1"; // on one address only, loopback doesn't reach it
   const url = `http://${here}:${server.port}${path}`;
   if (open) { // reachable from elsewhere, with no sign-in: say so, every time
-    console.log(`\n  ⚠ Listening on ${hostname}:${server.port}. Anyone who can reach this port can read the code under review and post\n    on GitHub as you: keep it behind a firewall, a VPN or an SSH tunnel.`);
+    log.warn(`\n  ⚠ Listening on ${hostname}:${server.port}. Anyone who can reach this port can read the code under review and post\n    on GitHub as you: keep it behind a firewall, a VPN or an SSH tunnel.`);
     const names = allow.filter((h) => h !== "*").map((h) => (/:\d+$/.test(h) ? `http://${h}${path}` : `http://${h}:${server.port}${path}`));
     if (names.length) console.log(`  ▶ ${names.join("\n  ▶ ")}`);
     else if (!allow.includes("*")) console.log(`  Opening it at this machine's IP or name? Add --allow-host <that name>.`);
   }
   app.self = `http://${here.includes(":") ? `[${here}]` : here}:${server.port}`; // for Claude to reach Bobby's tools
   hold(server.port!);
-  watchReleases((r) => { app.release = r; console.log(`  ▸ Bobby ${r.version} is out (you have ${pkg.version}). Update: ${r.how} (${r.url})`); });
-  console.log(`\n  ▶ ${url}\n`);
+  watchReleases((r) => { app.release = r; log.info(`  ▸ Bobby ${r.version} is out (you have ${pkg.version}). Update: ${r.how} (${r.url})`); });
+  log.info(`\n  ▶ ${url}\n`);
   if (!values["no-open"]) await run(openCommand(url), { allowFail: true }).catch(() => console.log("  (open that link in your browser)"));
 }
 

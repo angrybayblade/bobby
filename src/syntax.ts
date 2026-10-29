@@ -4,6 +4,7 @@
 //
 // Supported: TypeScript, TSX, JavaScript, Python, Go, Java and Rust. Other files get null, and extraction falls back to
 // text search for them.
+import * as log from "./log.ts";
 import Parser from "web-tree-sitter";
 import runtime from "web-tree-sitter/tree-sitter.wasm" with { type: "file" };
 import wasmTs from "tree-sitter-wasms/out/tree-sitter-typescript.wasm" with { type: "file" };
@@ -51,7 +52,7 @@ export function syntaxReady(): Promise<boolean> {
       parser = new Parser();
       return true;
     } catch (e) {
-      console.warn(`  ! tree-sitter unavailable (${(e as Error).message}); falling back to text search`);
+      log.warn(`  ! tree-sitter unavailable (${(e as Error).message}); falling back to text search`);
       return false;
     }
   })();
