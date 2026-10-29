@@ -120,8 +120,20 @@ export async function analyze(cwd: string, pr: PrInfo, files: FileDiff[]): Promi
     }
   }
   if (treeSyms.length && repo) { // supported languages: uses in the syntax tree that resolve, through imports, to the owner
-    const cands = [...new Set(parseGrep(await grepWords(cwd, pr.headSha, treeSyms), pr.headSha).map((h) => h.path))];
-    await repo.readMany(cands.filter((p) => langOf(p)));
+    // Only files where a symbol of their own language family appears are parsed: a use in another family never binds
+    // (below), and on a polyglot repo most hits on a common name are in the other languages.
+    const famOf = new Map(treeSyms.map((s) => [s, family(langOf(symbolOwner.get(s)!.file)!)]));
+    const odd = treeSyms.filter((s) => !/^\w+$/.test(s)).map((s) => famOf.get(s)!); // not a \w word (a JS $name): kept
+    const fams = new Map<string, Set<string>>(); // file → the families of the symbols on its hit lines
+    for (const h of parseGrep(await grepWords(cwd, pr.headSha, treeSyms), pr.headSha)) {
+      const lang = langOf(h.path);
+      if (!lang) continue;
+      const f = fams.get(h.path) ?? fams.set(h.path, new Set(odd)).get(h.path)!;
+      if (h.text.length >= 300) f.add(family(lang)); // the line was cut short: more may be on it
+      else for (const w of h.text.match(/\w+/g) ?? []) { const s = famOf.get(w); if (s) f.add(s); }
+    }
+    const cands = [...fams].filter(([p, f]) => f.has(family(langOf(p)!))).map(([p]) => p);
+    await repo.readMany(cands);
     const wanted = new Set(treeSyms);
     for (const path of cands) {
       const lang = langOf(path);
