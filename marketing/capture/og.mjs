@@ -40,7 +40,7 @@ await page.setContent(`<!doctype html><html><head>
 </style></head><body>
   <div class="copy">
     <div class="brand">${head}<span>bobby</span></div>
-    <h1>Review a PR one focused page at a time.</h1>
+    <h1>Don’t chase the ball, review the PR.</h1>
     <p>Your GitHub pull request as a short walk of focused pages. Same diff, same threads, same review.</p>
     <small>bobby.viraj.computer</small>
   </div>
