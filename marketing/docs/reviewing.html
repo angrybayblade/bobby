@@ -215,7 +215,11 @@
 <li><strong>A local review</strong> has no comments, but notices your new commits and edits (every 10 seconds) and offers <strong>Files changed · Refresh</strong> the same way. Switching branches can't be followed: run <code>bobby</code> again to review the other branch.</li>
 </ul>
 <h2 id="submitting"><a class="anchor" href="#submitting" aria-hidden="true">#</a>Submitting</h2>
-<p>Press <code>s</code>. Add an optional summary, then choose <strong>Comment</strong>, <strong>Approve</strong> or <strong>Request changes</strong>. Only drafts are posted; private notes and viewed marks stay local. All drafts are posted together as one GitHub review on the PR's current head commit, and you get a link to it. Drafts are cleared only once GitHub accepts the review.</p>
+<p>Press <code>s</code>. Add an optional summary, then choose <strong>Comment</strong>, <strong>Approve</strong> or <strong>Request changes</strong>. Only drafts are posted; private notes and viewed marks stay local. All drafts are posted together as one GitHub review on the PR's current head commit, and you get a link to it. Each draft leaves Bobby once it's on GitHub, so a submit that fails halfway can be tried again without posting anything twice.</p>
+<ul>
+<li><strong>A review you started on github.com.</strong> GitHub allows one unsubmitted review per person. Its comments show on their lines in Bobby, tagged <strong>pending</strong> (only you see them). Submitting from Bobby adds your drafts to it and submits it, starting from its summary.</li>
+<li><strong>A draft on a line the diff doesn't show</strong> (in a file the PR changes) posts as a comment on that whole file, starting with a link to its lines. GitHub comments on whole files show at the top of the file, under <strong>On this file</strong>. A draft in a file the PR doesn't change can't be a comment on GitHub, so it goes in the summary under &quot;Notes on code this PR doesn't touch&quot;.</li>
+</ul>
 <h2 id="staying-focused"><a class="anchor" href="#staying-focused" aria-hidden="true">#</a>Staying focused</h2>
 <ul>
 <li><strong>Park a thought (<code>p</code>).</strong> Before you get pulled away, jot down what's in your head. It shows as a 📌 in the breadcrumb bar and on the welcome-back card.</li>

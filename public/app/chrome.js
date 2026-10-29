@@ -396,10 +396,16 @@ export function submit(msg, text = "") {
   const one = !!app.graph.pr.commit; // one commit of the PR: only its added lines (see the server's submit)
   const lines = new Set(app.graph.hunks.flatMap((h) => h.lines.flatMap((l) => one ? (l.t === "+" ? [`${h.file}:RIGHT:${l.n}`] : []) : [...(l.n != null && l.t !== "-" ? [`${h.file}:RIGHT:${l.n}`] : []), ...(l.o != null && l.t !== "+" ? [`${h.file}:LEFT:${l.o}`] : [])])));
   const inline = (c) => c.inDiff && lines.has(`${c.path}:${c.side}:${c.line}`) && (!c.startLine || lines.has(`${c.path}:${c.startSide ?? c.side}:${c.startLine}`));
+  const changed = new Set(app.graph.files.map((f) => f.path));
+  const where = (c) => (inline(c) ? "" : changed.has(c.path) ? `<i title="Its lines aren't in the diff, so it's a comment on the whole file, saying which lines">goes on its file</i>` : "<i>goes in summary</i>");
+  // your review on GitHub that isn't submitted yet: its comments go with this one, and its summary is the starting point
+  const pend = app.graph.pending, theirs = pend ? (app.graph.discussion ?? []).filter((c) => c.pending).length || pend.comments : 0;
+  if (pend && !text && msg === undefined) text = pend.body;
   open(`<h2>Submit review</h2>
+    ${pend ? `<p class="rpend">You started this review on GitHub${theirs ? `, with ${theirs} comment${theirs > 1 ? "s" : ""}` : ""}: ${theirs ? "they're" : "it's"} submitted with it${pend.body ? ", and its summary is below" : ""}.</p>` : ""}
     <p>${cs.length ? `${cs.length} draft comment(s) will be posted together.` : "No draft comments."}${app.state.notes.length ? ` Your ${app.state.notes.length} private note(s) stay here and aren't posted.` : ""}${wip ? ` ${wip} unfinished draft${wip > 1 ? "s" : ""} stay${wip > 1 ? "" : "s"} behind: finish ${wip > 1 ? "them" : "it"} with <i>Continue</i> to include ${wip > 1 ? "them" : "it"}.` : ""}</p>
     <textarea id="rbody" placeholder="Summary (optional for Approve)">${esc(text)}</textarea>
-    <div class="rdrafts">${cs.map((c) => `<div class="rdraft"><code>${esc(c.path)}:${c.line}</code><span>${esc(c.body)}</span>${inline(c) ? "" : "<i>goes in summary</i>"}<button class="rdel" data-ddel="${esc(c.id)}" aria-label="Delete this draft" title="Delete this draft">${TRASH}</button></div>`).join("")}</div>
+    <div class="rdrafts">${cs.map((c) => `<div class="rdraft"><code>${esc(c.path)}:${c.line}</code><span>${esc(c.body)}</span>${where(c)}<button class="rdel" data-ddel="${esc(c.id)}" aria-label="Delete this draft" title="Delete this draft">${TRASH}</button></div>`).join("")}</div>
     <div class="row">
       <button class="btn primary" data-submit="COMMENT">Comment</button>
       <button class="btn" data-submit="APPROVE">Approve</button>
@@ -414,9 +420,14 @@ async function doSubmit(event) {
   document.querySelectorAll("[data-submit]").forEach((b) => (b.disabled = true));
   const body = $("#rbody").value;
   const r = await api("/api/submit", { event, body }).catch((e) => ({ ok: false, error: e.message })).finally(() => (posting = false));
-  if (!r.ok) { submit(r.error); $("#rbody").value = body; return; } // the summary you wrote stays
+  // what's on GitHub now: what was just posted, or, after a failure halfway, the drafts that went into your pending review
+  const landed = () => { if (r.discussion) { app.graph.discussion = r.discussion; app.graph.outdated = r.outdated ?? []; if (r.pending) app.graph.pending = r.pending; else delete app.graph.pending; } };
+  if (!r.ok) {
+    if (r.comments) { app.state.comments = r.comments; landed(); app.emit("comments"); }
+    submit(r.error, body); return; // the summary you wrote stays
+  }
   app.state.comments = app.state.comments.filter((c) => c.wip || c.kind === "note"); // unfinished drafts remain
-  if (r.discussion) { app.graph.discussion = r.discussion; app.graph.outdated = r.outdated ?? []; } // what was just posted, now on GitHub
+  landed();
   app.emit("comments");
   open(`<h2>Review posted ✓</h2><p><a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.url)}</a></p><div class="row"><button class="btn primary" data-act="close">Close</button></div>`);
 }

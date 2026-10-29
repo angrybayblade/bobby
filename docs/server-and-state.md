@@ -65,13 +65,17 @@ Every state-changing call writes the state file straight away.
 
 ### Submitting a review
 
-`/api/submit` builds one GitHub review on the PR's head commit:
+`/api/submit` posts one GitHub review on the PR's head commit (`src/submit.ts`):
 
 - `event` is `COMMENT`, `APPROVE` or `REQUEST_CHANGES`.
-- Drafts with `inDiff: true` become inline comments (`path`, `line`, `side`).
-- Drafts on untouched code (`inDiff: false`) can't be inline on GitHub, so they're appended to the body under **"Notes on code this PR doesn't touch"**.
+- Drafts on lines of the diff become comments on those lines (`path`, `line`, `side`, and `start_line`/`start_side` for a range).
+- Drafts on lines the diff doesn't show, in a file the PR changes, become comments on the whole file (`subjectType: FILE`), their body starting with a link to the lines at the head (or base) commit.
+- Drafts in files the PR doesn't change can't be comments on GitHub, so they're appended to the body under **"Notes on code this PR doesn't touch"**.
 - Private notes and review marks are never read here, so they never reach GitHub.
-- It's posted with `gh api --method POST repos/<o>/<r>/pulls/<n>/reviews --input -`. Drafts are cleared only on success; on failure the error is returned and shown in the submit dialog.
+- With no unsubmitted review of yours on GitHub and no file comments, it's one call: `gh api --method POST repos/<o>/<r>/pulls/<n>/reviews --input -`. Otherwise GraphQL: the drafts are added to your pending review (`addPullRequestReviewThread`; one is started with `addPullRequestReview` if there's none), skipping any already in it, and it's submitted (`submitPullRequestReview`).
+- Each draft is removed once it's on GitHub, so a retry after a failure halfway posts nothing twice. The answer carries the discussion as read again (`discussion`, `outdated`, `pending`), and on failure the drafts left (`comments`).
+
+The discussion (`reviewComments` in `src/git.ts`) is REST's review comments plus one GraphQL read of the threads: each thread's node id and resolved state, each comment's node id and reactions, comments on whole files (`file: true`, line 0), and your unsubmitted review (`pending`) with its comments (`pending: true`), which REST leaves out.
 
 ## On-disk state (`src/state.ts`)
 

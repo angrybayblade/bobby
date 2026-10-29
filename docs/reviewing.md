@@ -184,7 +184,10 @@ While a review is open, Bobby keeps it current, the way GitHub does:
 
 ## Submitting
 
-Press `s`. Add an optional summary, then choose **Comment**, **Approve** or **Request changes**. Only drafts are posted; private notes and viewed marks stay local. All drafts are posted together as one GitHub review on the PR's current head commit, and you get a link to it. Drafts are cleared only once GitHub accepts the review.
+Press `s`. Add an optional summary, then choose **Comment**, **Approve** or **Request changes**. Only drafts are posted; private notes and viewed marks stay local. All drafts are posted together as one GitHub review on the PR's current head commit, and you get a link to it. Each draft leaves Bobby once it's on GitHub, so a submit that fails halfway can be tried again without posting anything twice.
+
+- **A review you started on github.com.** GitHub allows one unsubmitted review per person. Its comments show on their lines in Bobby, tagged **pending** (only you see them). Submitting from Bobby adds your drafts to it and submits it, starting from its summary.
+- **A draft on a line the diff doesn't show** (in a file the PR changes) posts as a comment on that whole file, starting with a link to its lines. GitHub comments on whole files show at the top of the file, under **On this file**. A draft in a file the PR doesn't change can't be a comment on GitHub, so it goes in the summary under "Notes on code this PR doesn't touch".
 
 ## Staying focused
 

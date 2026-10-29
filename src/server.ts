@@ -17,6 +17,7 @@ import { Repo } from "./resolve.ts";
 import type { Update } from "./watch.ts";
 import { approvedOf, loadRecents, noteRecent, prLists } from "./recents.ts";
 import { type Conversation, conversation } from "./conversation.ts";
+import { type ReviewEvent, submitReview } from "./submit.ts";
 import pkg from "../package.json" with { type: "json" };
 import type { Release } from "./updates.ts";
 
@@ -630,37 +631,20 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
           ...(l.n != null && l.t !== "-" ? [`${h.file}:RIGHT:${l.n}`] : []), ...(l.o != null && l.t !== "+" ? [`${h.file}:LEFT:${l.o}`] : []),
         ])));
         const inDiff = (c: Comment) => c.inDiff && lines.has(`${c.path}:${c.side}:${c.line}`) && (!c.startLine || lines.has(`${c.path}:${c.startSide ?? c.side}:${c.startLine}`));
-        const outside = ready.filter((c) => !inDiff(c));
-        const fullBody = [
-          body.trim(),
-          outside.length ? "**Notes on code this PR doesn't touch**\n" + outside.map((c) => `- \`${c.path}:${c.startLine ? `${c.startLine}-` : ""}${c.line}\`: ${c.body}`).join("\n") : "",
-        ].filter(Boolean).join("\n\n");
-        const payload = {
-          commit_id: pr().headSha,
-          event,
-          body: fullBody,
-          // A range goes as start_line/start_side to line/side, as GitHub's multi-line review comments do.
-          comments: ready.filter(inDiff).map(({ path, line, side, body, startLine, startSide }) => ({ path, line, side, body, ...(startLine ? { start_line: startLine, start_side: startSide ?? side } : {}) })),
+        const changed = new Set(s.staticGraph.files.map((f) => f.path));
+        const done = (ids: string[]) => { if (!ids.length) return; s.state.comments = s.state.comments.filter((c) => !ids.includes(c.id)); persist(); };
+        // Re-read the PR's comments so what was posted shows on its lines (and, if it failed halfway, what's now in your
+        // pending review on GitHub); if that fails they show next start.
+        const reread = async () => {
+          const discussion = await reviewComments(pr(), true).catch(() => null);
+          if (discussion) { for (const g of [s.staticGraph, s.claudeGraph]) if (g) setDiscussion(g, discussion); s.discussionAt = Date.now(); }
+          return discussion ? { discussion: discussion.comments, outdated: discussion.outdated, pending: discussion.pending ?? null } : {};
         };
         try {
-          const reviews = `repos/${pr().owner}/${pr().repo}/pulls/${pr().number}/reviews`;
-          const out = await run(["gh", "api", "--method", "POST", reviews, "--input", "-"], { input: JSON.stringify(payload) }).catch(async (e) => {
-            // The connection can fail after GitHub took the review: if it's there (yours, on this commit, the same summary,
-            // just now), that was a success, and posting again would post it twice.
-            const me = await whoAmI(join(home(), "cache", "me.json"));
-            const recent = await run(["gh", "api", `${reviews}?per_page=100`, "--jq", `[.[] | select(.user.login == "${me?.login ?? ""}" and .commit_id == "${payload.commit_id}")] | last`]).catch(() => "");
-            const r = recent.trim() && recent.trim() !== "null" ? JSON.parse(recent) : null;
-            if (r && r.body === payload.body && Date.now() - Date.parse(r.submitted_at) < 10 * 60_000) return JSON.stringify(r);
-            throw e;
-          });
-          s.state.comments = s.state.comments.filter((c) => c.wip); // what was posted is gone; unfinished drafts remain
-          persist();
-          // Re-read the PR's comments so what was just posted shows on its lines; if that fails they show next start.
-          const discussion = await reviewComments(pr(), true).catch(() => null);
-          if (discussion) for (const g of [s.staticGraph, s.claudeGraph]) if (g) setDiscussion(g, discussion);
-          return json({ ok: true, url: JSON.parse(out).html_url, ...(discussion ? { discussion: discussion.comments, outdated: discussion.outdated } : {}) });
+          const url = await submitReview({ pr: pr(), event: event as ReviewEvent, body, drafts: ready, inDiff, inPr: (path) => changed.has(path), done });
+          return json({ ok: true, url, ...(await reread()) });
         } catch (e) {
-          return json({ ok: false, error: String((e as Error).message) }, 400);
+          return json({ ok: false, error: String((e as Error).message), comments: s.state.comments, ...(await reread()) }, 400);
         }
       }
 

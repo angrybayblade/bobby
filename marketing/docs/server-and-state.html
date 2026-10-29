@@ -114,14 +114,17 @@
 </table></div>
 <p>Every state-changing call writes the state file straight away.</p>
 <h3 id="submitting-a-review"><a class="anchor" href="#submitting-a-review" aria-hidden="true">#</a>Submitting a review</h3>
-<p><code>/api/submit</code> builds one GitHub review on the PR's head commit:</p>
+<p><code>/api/submit</code> posts one GitHub review on the PR's head commit (<code>src/submit.ts</code>):</p>
 <ul>
 <li><code>event</code> is <code>COMMENT</code>, <code>APPROVE</code> or <code>REQUEST_CHANGES</code>.</li>
-<li>Drafts with <code>inDiff: true</code> become inline comments (<code>path</code>, <code>line</code>, <code>side</code>).</li>
-<li>Drafts on untouched code (<code>inDiff: false</code>) can't be inline on GitHub, so they're appended to the body under <strong>&quot;Notes on code this PR doesn't touch&quot;</strong>.</li>
+<li>Drafts on lines of the diff become comments on those lines (<code>path</code>, <code>line</code>, <code>side</code>, and <code>start_line</code>/<code>start_side</code> for a range).</li>
+<li>Drafts on lines the diff doesn't show, in a file the PR changes, become comments on the whole file (<code>subjectType: FILE</code>), their body starting with a link to the lines at the head (or base) commit.</li>
+<li>Drafts in files the PR doesn't change can't be comments on GitHub, so they're appended to the body under <strong>&quot;Notes on code this PR doesn't touch&quot;</strong>.</li>
 <li>Private notes and review marks are never read here, so they never reach GitHub.</li>
-<li>It's posted with <code>gh api --method POST repos/&lt;o&gt;/&lt;r&gt;/pulls/&lt;n&gt;/reviews --input -</code>. Drafts are cleared only on success; on failure the error is returned and shown in the submit dialog.</li>
+<li>With no unsubmitted review of yours on GitHub and no file comments, it's one call: <code>gh api --method POST repos/&lt;o&gt;/&lt;r&gt;/pulls/&lt;n&gt;/reviews --input -</code>. Otherwise GraphQL: the drafts are added to your pending review (<code>addPullRequestReviewThread</code>; one is started with <code>addPullRequestReview</code> if there's none), skipping any already in it, and it's submitted (<code>submitPullRequestReview</code>).</li>
+<li>Each draft is removed once it's on GitHub, so a retry after a failure halfway posts nothing twice. The answer carries the discussion as read again (<code>discussion</code>, <code>outdated</code>, <code>pending</code>), and on failure the drafts left (<code>comments</code>).</li>
 </ul>
+<p>The discussion (<code>reviewComments</code> in <code>src/git.ts</code>) is REST's review comments plus one GraphQL read of the threads: each thread's node id and resolved state, each comment's node id and reactions, comments on whole files (<code>file: true</code>, line 0), and your unsubmitted review (<code>pending</code>) with its comments (<code>pending: true</code>), which REST leaves out.</p>
 <h2 id="on-disk-state-srcstatets"><a class="anchor" href="#on-disk-state-srcstatets" aria-hidden="true">#</a>On-disk state (<code>src/state.ts</code>)</h2>
 <p>Everything is JSON under <code>~/.bobby/</code> (from <code>os.homedir()</code>):</p>
 <pre><code>~/.bobby/
