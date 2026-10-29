@@ -4,7 +4,7 @@
 import { reviewComments, run, git } from "./git.ts";
 import { snapshot } from "./local.ts";
 import type { Session } from "./server.ts";
-import { setDiscussion } from "./graph.ts";
+import { type Discussion, setDiscussion } from "./graph.ts";
 
 export interface Update {
   headSha: string; // what the review would move to: a commit, or for uncommitted work, a tree
@@ -16,6 +16,19 @@ export interface Update {
 // review built before Bobby kept them can't resolve its threads until then)
 const sig = (d: Array<{ id: string; body?: string; line?: number; resolved?: boolean; comments?: number; thread?: string }>) =>
   d.map((c) => `${c.id}:${c.line ?? "o"}:${c.body?.length ?? c.comments}:${c.resolved ? "r" : ""}${c.thread ? "t" : ""}`).sort().join("|");
+
+/** The review's comments as GitHub has them now; the page sees discussionAt move and reads them. */
+export function showDiscussion(s: Session, d: Discussion) {
+  for (const g of [s.staticGraph, s.claudeGraph]) if (g) setDiscussion(g, d);
+  s.discussionAt = Date.now();
+}
+/** After a change Bobby made on GitHub (a comment, a reply, a thread resolved): read the comments again. Null when
+ *  GitHub couldn't say. */
+export async function refreshDiscussion(s: Session): Promise<Discussion | null> {
+  const d = await reviewComments(s.staticGraph.pr, true).catch(() => null);
+  if (d) showDiscussion(s, d);
+  return d;
+}
 
 // No page has asked about the review lately (an open one polls every 10 s, a hidden one about once a minute): nobody would
 // see what a check finds, so it waits until a page is back, rather than spending git and the GitHub rate limit.
@@ -29,8 +42,7 @@ export function watchPr(s: Session, every = 60_000) {
     const pr = s.staticGraph.pr;
     const d = await reviewComments(pr, true).catch(() => null);
     if (d && sig([...d.comments, ...d.outdated]) !== sig([...s.staticGraph.discussion ?? [], ...s.staticGraph.outdated ?? []])) {
-      for (const g of [s.staticGraph, s.claudeGraph]) if (g) setDiscussion(g, d);
-      s.discussionAt = Date.now();
+      showDiscussion(s, d);
     }
     if (pr.commit) return; // one commit doesn't move on: only its comments are kept current
     const out = await run(["gh", "pr", "view", String(pr.number), "-R", `${pr.owner}/${pr.repo}`, "--json", "headRefOid,baseRefName"]).catch(() => "");

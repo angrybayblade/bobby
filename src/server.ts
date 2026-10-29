@@ -1,20 +1,20 @@
 import { join, normalize } from "node:path";
 import { embeddedAsset } from "./assets.ts";
 import { cancelLogin, claudeStatus, dismiss, INSTALL_TEXT, installClaude, startLogin, submitCode } from "./claude.ts";
-import { fileLines, fileLinesMany, forgetUnknownMe, git, parsePrArg, reactionsOf, reviewComments, run, whoAmI } from "./git.ts";
+import { fileLines, fileLinesMany, forgetUnknownMe, git, parsePrArg, reactionsOf, run, whoAmI } from "./git.ts";
 import { type AgentJob, draftOf, runAgentReview } from "./agent.ts";
 import { runAsk } from "./ask.ts";
 import { handleMcp, mcpConfig, openMcp } from "./mcp.ts";
 import { catalog, parseSpec, resolveSpec, runWith, type Connected, type Selection } from "./connected.ts";
 import { refsForGitHub } from "./refs.ts";
 import { cancelGhLogin, dismissGh, ghStatus, installGh, startGhLogin } from "./github.ts";
-import { REACTION_KINDS, type ReviewGraph, setDiscussion } from "./graph.ts";
+import { REACTION_KINDS, type ReviewGraph } from "./graph.ts";
 import { home, loadSettings, saveSettings, saveState } from "./state.ts";
 import type { Ask, Comment, Definition, PrivateNote, ReviewState } from "./types.ts";
 import { type Inspector, insideRepo, inspectSyntax, referencesSyntax, type Uses } from "./inspect.ts";
 import { declineServer, inspectorFor, installServer, recheckServer, type ServerInfo, serverInfoFor } from "./servers.ts";
 import { Repo } from "./resolve.ts";
-import type { Update } from "./watch.ts";
+import { refreshDiscussion, type Update } from "./watch.ts";
 import { approvedOf, loadRecents, noteRecent, prLists } from "./recents.ts";
 import { type Conversation, conversation } from "./conversation.ts";
 import { type ReviewEvent, submitReview } from "./submit.ts";
@@ -376,8 +376,7 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
           const posted = JSON.parse(await run(["gh", "api", "--method", "POST", where, "--input", "-"], { input: JSON.stringify({ body }) }));
           s.conversation = undefined;
           if (p.endsWith("/reply")) { // a reply is a review comment too: it shows on its line in the other views
-            const discussion = await reviewComments(pr(), true).catch(() => null);
-            if (discussion) { for (const g of [s.staticGraph, s.claudeGraph]) if (g) setDiscussion(g, discussion); s.discussionAt = Date.now(); }
+            await refreshDiscussion(s);
           }
           return json({ ok: true, url: posted.html_url });
         } catch (e) {
@@ -398,8 +397,7 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
           await run(["gh", "api", "--method", edit ? "PATCH" : "DELETE", where, ...(edit ? ["--input", "-"] : [])], edit ? { input: JSON.stringify({ body }) } : {});
           s.conversation = undefined;
           if (kind === "review") {
-            const discussion = await reviewComments(pr(), true).catch(() => null);
-            if (discussion) { for (const g of [s.staticGraph, s.claudeGraph]) if (g) setDiscussion(g, discussion); s.discussionAt = Date.now(); }
+            await refreshDiscussion(s);
           }
           return json({ ok: true, comments: s.staticGraph.discussion ?? [], outdated: s.staticGraph.outdated ?? [] });
         } catch (e) {
@@ -486,8 +484,7 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
         try {
           await run(["gh", "api", "graphql", "-f", `query=mutation($id: ID!) { ${op}(input: { threadId: $id }) { thread { isResolved } } }`, "-f", `id=${thread}`]);
           s.conversation = undefined;
-          const discussion = await reviewComments(pr(), true).catch(() => null);
-          if (discussion) { for (const g of [s.staticGraph, s.claudeGraph]) if (g) setDiscussion(g, discussion); s.discussionAt = Date.now(); }
+          await refreshDiscussion(s);
           return json({ ok: true, comments: s.staticGraph.discussion ?? [], outdated: s.staticGraph.outdated ?? [] });
         } catch (e) {
           const msg = String((e as Error).message);
@@ -736,8 +733,7 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
         // Re-read the PR's comments so what was posted shows on its lines (and, if it failed halfway, what's now in your
         // pending review on GitHub); if that fails they show next start.
         const reread = async () => {
-          const discussion = await reviewComments(pr(), true).catch(() => null);
-          if (discussion) { for (const g of [s.staticGraph, s.claudeGraph]) if (g) setDiscussion(g, discussion); s.discussionAt = Date.now(); }
+          const discussion = await refreshDiscussion(s);
           return discussion ? { discussion: discussion.comments, outdated: discussion.outdated, pending: discussion.pending ?? null } : {};
         };
         try {
