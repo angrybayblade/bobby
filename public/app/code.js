@@ -247,6 +247,7 @@ const ICON_NOTE = `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="
  *  line, at the right of its code box, and goes away while a composer is open. */
 function syncPop(app, el) {
   el.querySelectorAll(".selpop").forEach((p) => p.remove());
+  if (el._pressing) return; // not while you're still pressing (dragging a range, or selecting text): on release
   const sel = app.page.sel;
   if (!sel || app.page.composing) return;
   const rows = [...el.querySelectorAll(`.ln[data-key="${CSS.escape(sel.key)}"]`)].filter((r) => r.classList.contains("sel"));
@@ -1082,6 +1083,14 @@ function bind(app, el, rerender) {
   // ⌘/ctrl(+shift)-click on code inspects; the browser would act on the press first (shift extends the text selection
   // from wherever it was), before the click reaches the inspector, so that's cancelled here, on the press.
   el.addEventListener("mousedown", (ev) => { if ((ev.metaKey || ev.ctrlKey) && ev.button === 0 && ev.target.closest(".ln[data-key] code")) ev.preventDefault(); });
+  // While the button is down on the code, the selection's popover stays away (it would sit on what you're dragging
+  // over); it comes back on release, once the click that ends the press has made the selection.
+  el.addEventListener("mousedown", (ev) => {
+    if (ev.button !== 0 || !ev.target.closest(".ln[data-key]")) return;
+    el._pressing = true;
+    el.querySelectorAll(".selpop").forEach((p) => p.remove());
+    window.addEventListener("mouseup", () => setTimeout(() => { el._pressing = false; syncPop(app, el); }), { once: true });
+  });
   // Drag down the line numbers to select several lines (the code itself stays selectable as text).
   el.addEventListener("mousedown", (ev) => {
     const gutter = ev.target.closest(".ln .no, .ln .bar, .ln .sg"), row = gutter?.closest(".ln[data-key]");
