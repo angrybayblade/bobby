@@ -232,11 +232,6 @@ function findPlacement(cores: GCore[], id: string) {
   for (const c of cores) for (const b of BANDS) for (const pl of c.bands[b]) if (pl.id === id) return pl;
 }
 
-/**
- * Wires each band to its neighbour so the chain reads
- * untouched↑ → changed↑ → core → changed↓ → untouched↓.
- * Static analysis decides which specific node connects where; otherwise it falls back to the first core node.
- */
 type Hint = { attachNode?: string; relation?: string };
 
 /** The analysis's edges and refs by their ends, for coreEdges to look up per pair of placements. */
@@ -248,6 +243,11 @@ function relationIndex(a: Analysis, unitNode: Map<string, string>): RelationInde
   return ix;
 }
 
+/**
+ * Wires each band to its neighbour so the chain reads
+ * untouched↑ → changed↑ → core → changed↓ → untouched↓.
+ * Static analysis decides which specific node connects where; otherwise it falls back to the first core node.
+ */
 function coreEdges(c: GCore, nodes: Map<string, GNode>, ix: RelationIndex, hints: Map<string, Hint>): GEdge[] {
   const { nodeUnit } = ix;
   const edges: GEdge[] = [];

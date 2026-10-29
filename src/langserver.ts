@@ -80,8 +80,8 @@ const KEEP_TREES = 3; // per repo, most recently used first; beyond that, ones u
 const IN_USE = 24 * 3_600_000; // a running Bobby marks its tree hourly, so a tree marked within a day may still be in use
 
 /** A PR's head commit as plain files, only what the servers read (their pathspecs), exported once per commit and
- *  reused; again if the pathspecs changed (a language added). */
-/** servers: whose files are exported; prepare: those whose prepareTree runs on it (the review's languages: Go's module
+ *  reused; again if the pathspecs changed (a language added).
+ *  servers: whose files are exported; prepare: those whose prepareTree runs on it (the review's languages: Go's module
  *  stubbing has no business in a TypeScript review of a repo with Go in it). */
 export async function headTree(cwd: string, pr: { owner: string; repo: string; headSha: string }, servers: LanguageServer[], prepare = servers): Promise<string> {
   const specs = [...new Set(servers.flatMap((s) => s.treeFiles))].sort();

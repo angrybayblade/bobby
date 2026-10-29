@@ -128,13 +128,13 @@ const BAND_LABEL = { upUnchanged: "relies on · untouched", upChanged: "relies o
 let W = 840; // a viewer's width: wider in split layout, so each side keeps room
 const GX = 200, GY = 64, TOP = 34;
 
-/** A page shown in a file viewer like Diff's, for other views (wrap: .fvw): the file's header (path, band, +/−,
- *  ✓ viewed, inline/split, note, details), then a .nbody to renderFile the page into. */
 /** A renamed file's old path, after its name in a header. */
 function movedFrom(app, path) {
   const f = app.graph.files.find((x) => x.path === path);
   return f?.status === "renamed" && f.oldPath !== path ? ` <span class="moved" title="Renamed from ${esc(f.oldPath)}">← ${esc(f.oldPath)}</span>` : "";
 }
+/** A page shown in a file viewer like Diff's, for other views (wrap: .fvw): the file's header (path, band, +/−,
+ *  ✓ viewed, inline/split, note, details), then a .nbody to renderFile the page into. */
 export function fileViewer(app, pid) {
   const pl = app.get(pid).pl, n = app.nodeOf(pid), path = n.kind === "change" ? n.file : n.location.path, dir = path.includes("/") ? path.slice(0, path.lastIndexOf("/") + 1) : "";
   const { a, d } = app.stat(pid), split = app.layoutOf(path) === "split", done = app.isFileRead(path);

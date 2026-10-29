@@ -148,10 +148,10 @@ function guard(req: Request, allow: string[]): Response | null {
   return null;
 }
 
-/** The app: every review open in it, by id (review.ts), and the ones still being built. One server holds them all, each
- *  at /r/<id> with its API under /r/<id>/api/. */
 /** A review being built: what it is, the steps so far (what it logs), and when it started; or why it failed. */
 export interface Loading { title: string; steps: string[]; startedAt: number; error?: string }
+/** The app: every review open in it, by id (review.ts), and the ones still being built. One server holds them all, each
+ *  at /r/<id> with its API under /r/<id>/api/. */
 export interface App {
   reviews: Map<string, Session>;
   loading: Map<string, Loading>;
@@ -608,8 +608,6 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
 
       if (p === "/api/definitions") return json(s.definitions ?? s.staticGraph.definitions ?? {});
 
-      // The inspector: where the name at path:line:col (head side) is declared. The language server once it's loaded;
-      // until then, or without one, what extraction stored and the syntax tree at head.
       // Every use of the name at path:line:col (head side), each with its line, for the inspector's list. The file's
       // language server once it's loaded; until then, or without one, the syntax tree and imports.
       if (p === "/api/references") {
@@ -630,6 +628,8 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
         const out = refs.map((r) => ({ ...r, text: (lines.get(r.path)?.[r.line - 1] ?? "").slice(0, 400), scope: scopeAt(lines.get(r.path) ?? [], r.line) }));
         return json({ name: uses.name, refs: out, total: uses.refs.length, via: uses.via, ...state, ...(changed ? { changed } : {}) });
       }
+      // The inspector: where the name at path:line:col (head side) is declared. The language server once it's loaded;
+      // until then, or without one, what extraction stored and the syntax tree at head.
       if (p === "/api/inspect") {
         const path = url.searchParams.get("path") ?? "", line = Number(url.searchParams.get("line")), col = Number(url.searchParams.get("col"));
         if (!insideRepo(path) || !Number.isInteger(line) || !Number.isInteger(col)) return json({ error: "a repo-relative path, a line and a column" }, 400);

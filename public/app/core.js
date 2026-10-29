@@ -44,11 +44,11 @@ export const live = (el) => !!el?.offsetParent && !el.closest(".parked");
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 /** Escaped text with `backtick` spans as <code>, for model-written prose like hooks. */
 export const inline = (s) => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
-/** A call to Bobby's server. Rejects when it fails: the server can't be reached (stopped, or the laptop slept), or it
- *  answers an error. An answer that carries its own ok: false (submit) is the caller's to read. */
 /** This page's review, as the app addresses it: /r/<id>, an id being three segments; its API is under it, and so is
  *  where you are in it (/r/<id>/<view>/<file path>). */
 export const reviewBase = location.pathname.match(/^\/r\/[^/]+\/[^/]+\/[^/]+/)?.[0] ?? "";
+/** A call to Bobby's server. Rejects when it fails: the server can't be reached (stopped, or the laptop slept), or it
+ *  answers an error. An answer that carries its own ok: false (submit) is the caller's to read. */
 export async function api(url, body, method = body ? "POST" : "GET") {
   if (url.startsWith("/api/") && url !== "/api/avatar" && !url.startsWith("/api/avatar?")) url = reviewBase + url;
   let r;

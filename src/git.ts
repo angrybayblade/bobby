@@ -139,8 +139,8 @@ export async function cloneRepo(owner: string, repo: string, dest: string, ssh =
   await run(["git", "clone", "--quiet", "--no-tags", `git@github.com:${owner}/${repo}.git`, dest], { env });
 }
 
-/** Reads the PR's metadata and finds (or clones) a local checkout. Doesn't fetch, so it's cheap enough to run on every launch. */
-/** from: the folder to look in for a clone when repoDir isn't given (where you ran bobby; default this process's).
+/** Reads the PR's metadata and finds (or clones) a local checkout. Doesn't fetch, so it's cheap enough to run on every launch.
+ *  from: the folder to look in for a clone when repoDir isn't given (where you ran bobby; default this process's).
  *  ssh: cloning over SSH is allowed, if HTTPS fails. */
 export async function resolvePr(arg: string, repoDir?: string, from = process.cwd(), ssh = false): Promise<ResolvedPr> {
   const parsed = parsePrArg(arg);

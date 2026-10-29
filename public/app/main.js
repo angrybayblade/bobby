@@ -331,8 +331,8 @@ const typing = (t) => t.matches?.("input, textarea, [contenteditable]");
 // as Bobby's keys. One you clicked keeps focus too, but isn't :focus-visible, so space still turns the page.
 const control = (t) => t.matches?.("button, a[href], select, summary, [role=button]") && t.matches(":focus-visible");
 const page = () => app.pageEl?.isConnected; // the focused node's code is on screen (page or card)
-/** Does what key k does here: the view's own binding first, then the global one. Returns whether k does anything. */
-/** A key: the action it's bound to (keys.js, yours or the default), run by the view if it has its own way, else here. */
+/** A key: the action it's bound to (keys.js, yours or the default), run by the view if it has its own way, else here.
+ *  Returns whether k does anything. */
 function press(k, { learn = true } = {}) {
   // A shifted named key that isn't bound (shift+enter) does what the key alone does.
   const id = actionFor(app.settings, k) ?? (k.startsWith("Shift+") ? actionFor(app.settings, k.slice(6)) : undefined);

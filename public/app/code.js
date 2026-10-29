@@ -181,7 +181,7 @@ function diffRows(app, lines, html, target) {
   return out;
 }
 const cmLine = (html) => (html ? `<div class="cmline">${html}</div>` : "");
-/** The floating notes on a code box's lines, and "N comments above/below" for comments just outside what it shows. */
+/** The floating notes on a code box's lines. */
 function boxExtras(app, target) {
   const notes = notesFor(app, [...new Set(target.keys)]);
   return notes ? `<div class="nlayer">${notes}</div>` : "";

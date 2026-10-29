@@ -150,7 +150,6 @@ function renderFiles() {
   el.querySelector(".ffile.cur")?.scrollIntoView({ block: "nearest" });
 }
 
-/** New work on the PR or the branch (watch.ts), offered as GitHub does: a prompt to refresh, never a swap. */
 /** Opens a review of the commits since your last review of this PR (a range of it), in place of this one. */
 export async function openSince() {
   const s = app.since;
@@ -167,6 +166,7 @@ function updatePill() {
   const since = app.since ? `<button class="pill" data-act="since" title="Review only what changed since your review on ${esc(new Date(app.since.at).toLocaleString())}: a review of those commits">Since your review · ${app.since.commits} commit${app.since.commits > 1 ? "s" : ""}</button>` : "";
   return rel + reviewPill() + since;
 }
+/** New work on the PR or the branch (watch.ts), offered as GitHub does: a prompt to refresh, never a swap. */
 function reviewPill() {
   const u = app.update;
   if (!u) return "";
