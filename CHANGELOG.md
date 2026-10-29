@@ -4,6 +4,17 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- **Submitting works with a review you started on github.com.** GitHub allows one unsubmitted review per person, so Bobby's submit used to fail when you had one. Its comments now show on their lines, tagged **pending**, and submitting from Bobby adds your drafts to it and submits it, starting from its summary.
+- **Comments on whole files.** A draft on a line the diff doesn't show (in a file the PR changes) posts as a comment on that file, starting with a link to its lines, instead of going into the summary. GitHub's comments on whole files show at the top of their file.
+- **Suggest a change.** On new lines, **± Suggest change** in the comment box puts the selected lines in a GitHub suggestion, to edit; GitHub offers the author a button to commit it. Suggestions show as the lines as they are and as suggested, inline and in the Conversation view.
+- **Reactions.** React to comments, reviews and the description, or take your reaction back, as on GitHub.
+- **Viewed files follow GitHub's Viewed boxes**, both ways: files ticked on GitHub open as viewed, and a file you finish (or unmark) in Bobby ticks (or clears) its box there.
+- **Since your last review.** Back on a PR you've reviewed, with new commits, the top bar offers **Since your review · N commits**: a review of just what they changed.
+- The home page labels approved PRs, and a long title no longer clips the tags after it.
+- A file moved and largely rewritten shows as one moved file, not a deletion and an addition.
+- **Claude answered** notices, in the bottom-right corner, when an answer arrives while it isn't on screen.
+- In Outline, the wheel scrolls the page over a step's code too.
+
 ## 0.1.0-rc13 (2026-10-25)
 
 Claude as a reviewing partner: a review you steer, questions about any lines, references that open the code, and your own tools if you let it. `bobby update`, and Bun 1.4.4's security fixes.

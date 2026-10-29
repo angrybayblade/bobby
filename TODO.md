@@ -21,7 +21,7 @@ The CLI is the public release: it needs `git`, `gh` (logged in) and SSH access t
 ## Review UI
 
 - [x] Conversation view: description, timeline, threads with replies, reviewers, CI, mergeability.
-- [ ] Conversation: resolve and unresolve threads; reactions; edit or delete your own comments.
+- [x] Conversation: resolve and unresolve threads; reactions; edit or delete your own comments.
 - [ ] Generated files: one detector, so the Generated switch also covers `dist/`, `build/`, `vendor/`, `.min.js` and
       `.map` (now only on the Low-signal page, from `src/diff.ts`).
 - [ ] Highlighting a slice that starts inside a multi-line string, template literal or Python docstring (block
@@ -33,6 +33,9 @@ The CLI is the public release: it needs `git`, `gh` (logged in) and SSH access t
       [Releasing](docs/contributing.md#releasing).
 
 ## After 0.1.0
+
+- PR actions from Bobby: merge (once checks pass, with GitHub's merge methods), request reviewers, mark ready for review, labels.
+- GitHub Enterprise: the host (`GH_HOST`) threaded through `gh` and the clone URLs, in place of the github.com-only refusal.
 
 - Hosted Bobby as a GitHub App (per-repo install, scoped permissions, short-lived installation tokens, webhooks to
   extract ahead of time); its device flow could later sign the CLI in without gh.
