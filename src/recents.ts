@@ -98,6 +98,8 @@ export function prLists(f: { repo?: string; author?: string; q?: string }, fresh
       return { review: of("review"), mine: of("mine"), all: of("all") };
     })
     .catch((e) => { lists.delete(key); return { review: [], mine: [], all: [], error: String((e as Error).message ?? e) }; });
+  lists.delete(key); // to the back: the oldest is first
   lists.set(key, { at: Date.now(), value });
+  if (lists.size > 20) lists.delete(lists.keys().next().value!); // each search typed is a key
   return value;
 }
