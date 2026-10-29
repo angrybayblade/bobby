@@ -18,6 +18,7 @@ import type { Update } from "./watch.ts";
 import { approvedOf, loadRecents, noteRecent, prLists } from "./recents.ts";
 import { type Conversation, conversation } from "./conversation.ts";
 import { type ReviewEvent, submitReview } from "./submit.ts";
+import * as log from "./log.ts";
 import pkg from "../package.json" with { type: "json" };
 import type { Release } from "./updates.ts";
 
@@ -180,7 +181,7 @@ export function startServer(app: App, port: number, { hostname = "127.0.0.1", al
   return Bun.serve({
     port,
     hostname,
-    async fetch(req) {
+    fetch: (req) => logged(req, async () => {
       const url = new URL(req.url);
       const p = url.pathname;
       const refused = guard(req, allow);
@@ -240,9 +241,35 @@ export function startServer(app: App, port: number, { hostname = "127.0.0.1", al
       if (p === "/api/gh" || p.startsWith("/api/gh/")) return ghApi(req, p);
       // Setting up Claude Code (claude.ts): where it stands, install it, sign in by pasting the code from its sign-in page
       if (p === "/api/claude" || p.startsWith("/api/claude/")) return claudeApi(app, req, p);
+      // The page's own errors, for the log (bobby logs): a few a minute at most, so a loop can't fill the disk
+      if (p === "/api/log" && req.method === "POST") {
+        const b = (await req.json().catch(() => ({}))) as { level?: unknown; message?: unknown; detail?: unknown; where?: unknown };
+        if (pageLogs.push(Date.now()) > 30) pageLogs.splice(0, pageLogs.length - 30);
+        if (pageLogs.length < 30 || Date.now() - pageLogs[0] > 60_000)
+          log.toFile(b.level === "error" ? "error" : "warn", `page: ${String(b.message ?? "").slice(0, 500)}${b.where ? ` (${String(b.where).slice(0, 200)})` : ""}`, typeof b.detail === "string" ? b.detail.slice(0, 4000) : undefined);
+        return json({ ok: true });
+      }
       return json({ error: "not found" }, 404);
-    },
+    }),
   });
+}
+
+const pageLogs: number[] = []; // when the page last logged, for its limit
+/** Answers a request, and logs what went wrong: an error from the API (4xx, 5xx) with what it said, and anything thrown,
+ *  which answers 500 instead of dropping the connection. */
+async function logged(req: Request, answer: () => Promise<Response>): Promise<Response> {
+  const { pathname } = new URL(req.url);
+  try {
+    const res = await answer();
+    if (res.status >= 400 && pathname.includes("/api/") && pathname !== "/api/avatar") {
+      const said = await res.clone().json().then((j: { error?: string }) => j.error ?? "", () => "");
+      (res.status >= 500 ? log.error : log.warn)(`  ${req.method} ${pathname} → ${res.status}${said ? `: ${said}` : ""}`);
+    }
+    return res;
+  } catch (e) {
+    log.error(`  ${req.method} ${pathname} failed: ${(e as Error)?.message ?? e}`, (e as Error)?.stack);
+    return json({ ok: false, error: String((e as Error)?.message ?? e) }, 500);
+  }
 }
 
 /** Claude's setup, for the page. Once it's ready (just installed and signed in), the open reviews whose Claude tree
@@ -713,6 +740,7 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
         };
         try {
           const url = await submitReview({ pr: pr(), event: event as ReviewEvent, body, drafts: ready, inDiff, inPr: (path) => changed.has(path), done });
+          log.info(`  ✓ posted your review (${event}, ${ready.length} comment${ready.length === 1 ? "" : "s"}): ${url}`);
           return json({ ok: true, url, ...(await reread()) });
         } catch (e) {
           return json({ ok: false, error: String((e as Error).message), comments: s.state.comments, ...(await reread()) }, 400);
