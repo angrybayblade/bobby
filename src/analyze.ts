@@ -113,10 +113,11 @@ export async function analyze(cwd: string, pr: PrInfo, files: FileDiff[]): Promi
   const textSyms = syms.filter((s) => !parsed(symbolOwner.get(s)!) && !NOT_CODE.test(symbolOwner.get(s)!.file));
   const treeSyms = syms.filter((s) => parsed(symbolOwner.get(s)!));
   if (textSyms.length) { // unsupported languages: every whole-word match that isn't a declaration or an import line
+    const wanted = new Set(textSyms);
     for (const hit of parseGrep(await grepWords(cwd, pr.headSha, textSyms), pr.headSha)) {
-      if (NOT_CODE.test(hit.path)) continue;
-      const toks = new Set(hit.text.match(IDENT) ?? []);
-      for (const s of textSyms) if (toks.has(s) && !declsIn(hit.text).includes(s) && !IMPORT_LINE.test(hit.text)) add(s, hit);
+      if (NOT_CODE.test(hit.path) || IMPORT_LINE.test(hit.text)) continue;
+      const declared = declsIn(hit.text);
+      for (const s of new Set(hit.text.match(IDENT) ?? [])) if (wanted.has(s) && !declared.includes(s)) add(s, hit);
     }
   }
   if (treeSyms.length && repo) { // supported languages: uses in the syntax tree that resolve, through imports, to the owner
