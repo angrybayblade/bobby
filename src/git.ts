@@ -208,6 +208,15 @@ export async function fileLines(cwd: string, sha: string, path: string): Promise
   if (fileCache.size > KEEP_FILES) fileCache.delete(fileCache.keys().next().value!);
   return lines;
 }
+/** fileLines for many files at once, read with one git process; a missing file reads as no lines. */
+export async function fileLinesMany(cwd: string, sha: string, paths: string[]): Promise<void> {
+  const want = [...new Set(paths)].filter((p) => !fileCache.has(`${sha}:${p}`)).slice(-KEEP_FILES);
+  for (const [path, text] of await catFiles(cwd, sha, want)) {
+    fileCache.set(`${sha}:${path}`, text == null ? [""] : text.split("\n"));
+    if (fileCache.size > KEEP_FILES) fileCache.delete(fileCache.keys().next().value!);
+  }
+}
+
 /** Files at a commit, through one git cat-file per 500: each path's text, or null when it isn't a file there. */
 export async function catFiles(cwd: string, sha: string, paths: string[]): Promise<Map<string, string | null>> {
   const out = new Map<string, string | null>();

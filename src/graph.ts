@@ -3,7 +3,7 @@
  * Extractors (this repo's static + Claude pipeline, or anything else) emit a ReviewGraph;
  * views only ever read a ReviewGraph. See SPEC.md and schema/review-graph.v1.schema.json.
  */
-import { fileLines } from "./git.ts";
+import { fileLines, fileLinesMany } from "./git.ts";
 import type { Analysis } from "./analyze.ts";
 import type { Band, ChangeTree, Definition, DiffLine, FileDiff, PrInfo, TreeNode } from "./types.ts";
 import { BANDS } from "./types.ts";
@@ -134,11 +134,15 @@ export async function buildGraph(cwd: string | null, pr: PrInfo, files: FileDiff
     nodes.set(id, { id, kind: "change", name: u.symbols[0], file: u.file, symbols: u.symbols, hunkIds: u.hunkIds });
   }
 
+  // The files context snippets come from, read at once rather than one git process each as the bands are walked.
+  if (cwd) await fileLinesMany(cwd, pr.headSha, tree.cores.flatMap((c) => BANDS.flatMap((b) => c.bands[b].flatMap((n) => (n.ref ? [n.ref.path] : [])))));
+  const refAt = new Map<string, Analysis["refs"][number]>();
+  for (const r of a.refs) if (!refAt.has(`${r.path}:${r.line}`)) refAt.set(`${r.path}:${r.line}`, r);
   const ensureContext = async (n: TreeNode): Promise<string> => {
     const { path, line } = n.ref!;
     const id = contextId(path, line);
     if (!nodes.has(id)) {
-      const ref = a.refs.find((r) => r.path === path && r.line === line);
+      const ref = refAt.get(`${path}:${line}`);
       const all = cwd ? await fileLines(cwd, pr.headSha, path) : [];
       const start = Math.max(1, line - SNIPPET_RADIUS);
       nodes.set(id, {
