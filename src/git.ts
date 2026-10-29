@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { existsSync } from "node:fs";
 import type { PrInfo } from "./types.ts";
-import type { Discussion, GOutdated } from "./graph.ts";
+import type { Discussion, GDiscussion, GOutdated, PendingReview, Reaction } from "./graph.ts";
 import { home } from "./state.ts";
 import { ghBin } from "./github.ts";
 
@@ -144,49 +144,92 @@ export async function fileLines(cwd: string, sha: string, path: string): Promise
   return lines;
 }
 
-/** Each review thread, by its first comment's id: its GraphQL node id (to resolve it) and whether it's resolved. GraphQL
- *  only: the REST comments say neither. */
-async function reviewThreads(pr: Pick<PrInfo, "owner" | "repo" | "number">, strict: boolean): Promise<Map<string, { id: string; resolved: boolean }>> {
+/** What only GraphQL says of a PR's review threads: each thread's node id and whether it's resolved (by its first
+ *  comment's id), each comment's node id and reactions, your review that isn't submitted yet, and its comments (REST
+ *  leaves those out, and gives them no line). */
+interface ThreadInfo {
+  threads: Map<string, { id: string; resolved: boolean }>;
+  comments: Map<string, { node: string; reactions: Reaction[] }>;
+  pending?: PendingReview;
+  pendingComments: GDiscussion[];
+}
+const REACTIONS = "reactionGroups { content viewerHasReacted reactors { totalCount } }";
+export const reactionsOf = (groups: Array<{ content: string; viewerHasReacted: boolean; reactors: { totalCount: number } }> | undefined): Reaction[] =>
+  (groups ?? []).filter((g) => g.reactors.totalCount > 0).map((g) => ({ content: g.content, count: g.reactors.totalCount, mine: g.viewerHasReacted }));
+async function threadInfo(pr: Pick<PrInfo, "owner" | "repo" | "number">, strict: boolean): Promise<ThreadInfo> {
   const q = `query($owner: String!, $repo: String!, $n: Int!, $after: String) { repository(owner: $owner, name: $repo) { pullRequest(number: $n) {
-    reviewThreads(first: 100, after: $after) { pageInfo { hasNextPage endCursor } nodes { id isResolved comments(first: 1) { nodes { databaseId } } } } } } }`;
-  const out = new Map<string, { id: string; resolved: boolean }>();
-  for (let after = "", k = 0; k < 20; k++) {
+    reviews(states: PENDING, first: 1) { nodes { id databaseId body comments { totalCount } } }
+    reviewThreads(first: 50, after: $after) { pageInfo { hasNextPage endCursor } nodes { id isResolved path line startLine diffSide startDiffSide subjectType
+      comments(first: 100) { nodes { id databaseId state body bodyHTML createdAt url author { login avatarUrl } replyTo { databaseId } ${REACTIONS} } } } } } } }`;
+  type RawComment = { id: string; databaseId: number; state: string; body: string; bodyHTML: string; createdAt: string; url: string; author: { login: string; avatarUrl?: string } | null; replyTo: { databaseId: number } | null;
+    reactionGroups: Parameters<typeof reactionsOf>[0] };
+  type RawThread = { id: string; isResolved: boolean; path: string; line: number | null; startLine: number | null; diffSide: "LEFT" | "RIGHT"; startDiffSide: "LEFT" | "RIGHT" | null; subjectType: "LINE" | "FILE"; comments: { nodes: RawComment[] } };
+  const out: ThreadInfo = { threads: new Map(), comments: new Map(), pendingComments: [] };
+  for (let after = "", k = 0; k < 40; k++) {
     const r = await run(["gh", "api", "graphql", "-f", `query=${q}`, "-F", `owner=${pr.owner}`, "-F", `repo=${pr.repo}`, "-F", `n=${pr.number}`, ...(after ? ["-f", `after=${after}`] : [])], { allowFail: !strict });
-    const t = r.trim() ? JSON.parse(r).data?.repository?.pullRequest?.reviewThreads : null;
-    if (!t) break;
-    for (const n of t.nodes) if (n.comments.nodes[0]) out.set(String(n.comments.nodes[0].databaseId), { id: n.id, resolved: n.isResolved });
-    if (!t.pageInfo.hasNextPage) break;
-    after = t.pageInfo.endCursor;
+    const p = r.trim() ? JSON.parse(r).data?.repository?.pullRequest : null;
+    if (!p) break;
+    const mine = p.reviews?.nodes?.[0];
+    if (mine) out.pending = { id: mine.id, databaseId: String(mine.databaseId), body: mine.body ?? "", comments: mine.comments.totalCount };
+    for (const t of p.reviewThreads.nodes as RawThread[]) {
+      const first = t.comments.nodes[0];
+      if (first) out.threads.set(String(first.databaseId), { id: t.id, resolved: t.isResolved });
+      for (const c of t.comments.nodes) {
+        out.comments.set(String(c.databaseId), { node: c.id, reactions: reactionsOf(c.reactionGroups) });
+        if (c.state !== "PENDING") continue;
+        const file = t.subjectType === "FILE";
+        if (!file && t.line == null) continue; // its line has gone from the diff
+        out.pendingComments.push({
+          id: String(c.databaseId), path: t.path, line: file ? 0 : t.line!, side: t.diffSide ?? "RIGHT", author: c.author?.login ?? "ghost", body: c.body, url: c.url, createdAt: c.createdAt,
+          ...(c.author?.avatarUrl ? { avatar: c.author.avatarUrl } : {}), ...(c.bodyHTML ? { html: c.bodyHTML } : {}), ...(c.replyTo ? { replyTo: String(c.replyTo.databaseId) } : {}),
+          ...(!file && t.startLine && t.startLine !== t.line ? { startLine: t.startLine, startSide: t.startDiffSide ?? t.diffSide } : {}),
+          thread: t.id, node: c.id, pending: true, ...(file ? { file: true as const } : {}),
+        });
+      }
+    }
+    if (!p.reviewThreads.pageInfo.hasNextPage) break;
+    after = p.reviewThreads.pageInfo.endCursor;
   }
   return out;
 }
 
-/** Existing inline review comments: those still anchored to a line of the current diff, each marked if its thread is
- *  resolved, and the outdated threads, whose line is gone (kept off the lines, counted by file). For one commit of the
- *  PR, the comments written on that commit, where they were written (GitHub's original_line), and none outdated.
+/** Existing inline review comments: those still anchored to a line of the current diff, and those on a whole file,
+ *  each with its thread (resolved or not) and reactions; the outdated threads, whose line is gone (kept off the lines,
+ *  counted by file); and your review that isn't submitted yet, with its comments. For one commit of the PR, the
+ *  comments written on that commit, where they were written (GitHub's original_line), and none outdated.
  *  strict: a failed fetch throws instead of reading as no comments. */
 export async function reviewComments(pr: Pick<PrInfo, "owner" | "repo" | "number" | "commit">, strict = false): Promise<Discussion> {
   type Raw = { id: number; path: string; line: number | null; side: "LEFT" | "RIGHT"; in_reply_to_id?: number; start_line?: number | null; start_side?: "LEFT" | "RIGHT" | null; user: { login: string; avatar_url?: string } | null; body: string; body_html?: string; html_url: string; created_at: string;
-    original_commit_id?: string; original_line?: number | null; original_start_line?: number | null };
+    original_commit_id?: string; original_line?: number | null; original_start_line?: number | null; subject_type?: "line" | "file" };
   // --jq '.[]' prints one compact object per line, so paginated pages concatenate cleanly. full+json: body_html too.
-  const out = await run(["gh", "api", "--paginate", "-H", "Accept: application/vnd.github.full+json", "--jq", ".[]", `repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/comments?per_page=100`], { allowFail: !strict });
+  const [out, info] = await Promise.all([
+    run(["gh", "api", "--paginate", "-H", "Accept: application/vnd.github.full+json", "--jq", ".[]", `repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/comments?per_page=100`], { allowFail: !strict }),
+    threadInfo(pr, strict),
+  ]);
   let raw = out.split("\n").filter((l) => l.startsWith("{")).map((l) => JSON.parse(l) as Raw);
-  const threads = raw.length ? await reviewThreads(pr, strict) : new Map<string, { id: string; resolved: boolean }>();
   const root = (c: Raw) => String(c.in_reply_to_id ?? c.id);
-  const of = (first: string) => { const t = threads.get(first); return t ? { thread: t.id, ...(t.resolved ? { resolved: true as const } : {}) } : {}; };
+  const of = (first: string) => { const t = info.threads.get(first); return t ? { thread: t.id, ...(t.resolved ? { resolved: true as const } : {}) } : {}; };
+  const extra = (id: string) => { const c = info.comments.get(id); return c ? { node: c.node, ...(c.reactions.length ? { reactions: c.reactions } : {}) } : {}; };
   if (pr.commit) raw = raw.filter((c) => c.original_commit_id === pr.commit!.sha && c.original_line != null).map((c) => ({ ...c, line: c.original_line!, start_line: c.original_start_line ?? null }));
+  const onFile = new Set(raw.filter((c) => c.subject_type === "file" && !c.in_reply_to_id).map((c) => String(c.id)));
   const outdated: GOutdated[] = [];
   for (const c of raw) {
-    if (c.line != null || c.in_reply_to_id) continue;
+    if (c.line != null || c.in_reply_to_id || onFile.has(String(c.id))) continue;
     outdated.push({ id: String(c.id), path: c.path, author: c.user?.login ?? "ghost", url: c.html_url, createdAt: c.created_at,
       comments: raw.filter((r) => root(r) === String(c.id)).length, ...of(String(c.id)) });
   }
-  const comments = raw.filter((c) => c.line != null).map((c) => ({
-    id: String(c.id), path: c.path, line: c.line!, side: c.side, author: c.user?.login ?? "ghost",
-    body: c.body, url: c.html_url, createdAt: c.created_at, ...(c.user?.avatar_url ? { avatar: c.user.avatar_url } : {}), ...(c.body_html ? { html: c.body_html } : {}), ...(c.in_reply_to_id ? { replyTo: String(c.in_reply_to_id) } : {}), ...(c.start_line && c.start_line !== c.line ? { startLine: c.start_line, startSide: c.start_side ?? c.side } : {}),
-    ...of(root(c)),
-  }));
-  return { comments, outdated };
+  const comments: GDiscussion[] = raw.filter((c) => c.line != null || onFile.has(root(c))).map((c) => {
+    const file = onFile.has(root(c));
+    return {
+      id: String(c.id), path: c.path, line: file ? 0 : c.line!, side: c.side ?? "RIGHT", author: c.user?.login ?? "ghost",
+      body: c.body, url: c.html_url, createdAt: c.created_at, ...(c.user?.avatar_url ? { avatar: c.user.avatar_url } : {}), ...(c.body_html ? { html: c.body_html } : {}), ...(c.in_reply_to_id ? { replyTo: String(c.in_reply_to_id) } : {}),
+      ...(!file && c.start_line && c.start_line !== c.line ? { startLine: c.start_line, startSide: c.start_side ?? c.side } : {}),
+      ...of(root(c)), ...extra(String(c.id)), ...(file ? { file: true as const } : {}),
+    };
+  });
+  const seen = new Set(comments.map((c) => c.id));
+  if (!pr.commit) comments.push(...info.pendingComments.filter((c) => !seen.has(c.id)));
+  return { comments, outdated, ...(info.pending && !pr.commit ? { pending: info.pending } : {}) };
 }
 
 /** Who you are on GitHub (gh's login), for your own drafts and notes; asked once a day at most, null if gh can't say

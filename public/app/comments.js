@@ -25,8 +25,8 @@ export function commentIndex(app) {
   for (const c of [...disc].sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))) {
     const root = c.replyTo && ids.has(c.replyTo) ? c.replyTo : c.id;
     let t = threads.get(root);
-    if (!t) threads.set(root, (t = { id: root, kind: "gh", path: c.path, side: c.side, line: c.line, startLine: c.startLine, startSide: c.startSide, node: c.thread, items: [] }));
-    t.items.push({ gid: c.id, author: c.author, avatar: c.avatar, body: c.body, html: c.html, url: c.url, createdAt: c.createdAt });
+    if (!t) threads.set(root, (t = { id: root, kind: "gh", path: c.path, side: c.file ? "RIGHT" : c.side, line: c.file ? 0 : c.line, startLine: c.startLine, startSide: c.startSide, node: c.thread, file: !!c.file, pending: !!c.pending, items: [] }));
+    t.items.push({ gid: c.id, node: c.node, author: c.author, avatar: c.avatar, body: c.body, html: c.html, url: c.url, createdAt: c.createdAt, pending: !!c.pending, reactions: c.reactions });
     if (c.resolved) t.resolved = true;
   }
   // your drafts: comments to be, so threads of their own
@@ -155,7 +155,7 @@ export async function postReply(app, id, clicked) {
 /** The unresolved threads in files on screen: on a line (with the page that shows it), then the outdated ones. */
 export function unresolved(app) {
   const pos = (pid) => app.index.walkPos.get(pid) ?? Infinity;
-  const on = [...commentIndex(app).threads.values()].filter((t) => t.kind === "gh" && !t.resolved && shown(app, t.path))
+  const on = [...commentIndex(app).threads.values()].filter((t) => t.kind === "gh" && !t.resolved && !t.pending && !t.file && shown(app, t.path))
     .map((t) => ({ id: t.id, path: t.path, line: t.line, pid: app.pidAt(t.path, t.line) })).filter((x) => x.pid)
     .sort((a, b) => pos(a.pid) - pos(b.pid) || a.line - b.line);
   const gone = (app.graph.outdated ?? []).filter((t) => !t.resolved && shown(app, t.path)).map((t) => ({ id: t.id, path: t.path, outdated: true }));
@@ -242,6 +242,8 @@ const shown = (app, path) => app.filePages(path).length > 0 || app.hunksOf(LOW).
 // ---- threads
 const avatar = (a) => `<img class="cav" src="/api/avatar?u=${encodeURIComponent(a.avatar ?? a.author)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`;
 const range = (t) => t.startLine && t.startLine !== t.line ? `<span class="crange">L${t.startLine}–L${t.line}</span>` : "";
+/** A file's comments on the whole of it: on line 0, which no row has, so they're drawn at the top of the file. */
+export const fileKey = (path) => `${path}|RIGHT|0`;
 /** The threads anchored on a line, as HTML. */
 export function threadsAt(app, key) {
   return (commentIndex(app).byKey.get(key) ?? []).map((t) => threadHtml(app, t)).join("");
@@ -253,7 +255,7 @@ function threadHtml(app, t) {
   if (!open) { // in place, one line: who, how many, and how it starts
     const faces = [...new Map(t.items.map((i) => [i.author, i])).values()].slice(0, 3).map(avatar).join("");
     return `<div class="cthread slim${t.kind === "draft" ? " draft" : ""}${t.resolved ? " resolved" : ""}" data-thread="${esc(t.id)}" data-tid="${esc(t.id)}" data-tpath="${esc(t.path)}" title="Show ${n > 1 ? "this thread" : "this comment"}">
-      <span class="cfaces">${faces}</span><b>${esc(first.author)}</b>${t.kind === "draft" ? `<span class="ctag">${first.wip ? "unfinished" : "draft"}</span>` : ""}${t.resolved ? `<span class="ctag">resolved</span>` : ""}
+      <span class="cfaces">${faces}</span><b>${esc(first.author)}</b>${t.kind === "draft" ? `<span class="ctag">${first.wip ? "unfinished" : "draft"}</span>` : ""}${t.pending ? PENDING : ""}${t.resolved ? `<span class="ctag">resolved</span>` : ""}
       <span class="cprev">${esc(plain(first.body))}</span>${n > 1 ? `<span class="cn">${n} comments</span>` : ""}${bubble(false)}</div>`;
   }
   const s = pageState(app), mine = (i) => i.gid && app.me?.login && i.author === app.me.login;
@@ -262,7 +264,7 @@ function threadHtml(app, t) {
     ? `<div class="cedit"><textarea data-gedit="${esc(i.gid)}">${esc(s.edits.get(i.gid))}</textarea><div class="crow"><span class="chint">${MOD}↵ saves · esc cancels</span><span class="cgrow"></span><button class="btn" data-gecancel="${esc(i.gid)}">Cancel</button><button class="btn primary" data-gesave="${esc(i.gid)}">Save</button></div></div>`
     : `<div class="cbody${i.html ? " gh" : ""}" data-ck="${esc(t.id)}:${k}">${i.html ? ghHtml(i.html) : md(i.body)}</div>`;
   const items = t.items.map((i, k) => `<div class="citem">${avatar(i)}<div class="cmain">
-      <div class="cwho"${k === 0 ? ` data-tid="${esc(t.id)}" data-tpath="${esc(t.path)}" title="Collapse${n > 1 ? " this thread" : ""}"` : ""}><b>${esc(i.author)}</b>${i.draft ? `<span class="ctag">${i.wip ? "unfinished draft" : "draft"}</span>` : ""}<span class="cwhen" title="${esc(i.createdAt ?? "")}">${ago(i.createdAt)}</span>
+      <div class="cwho"${k === 0 ? ` data-tid="${esc(t.id)}" data-tpath="${esc(t.path)}" title="Collapse${n > 1 ? " this thread" : ""}"` : ""}><b>${esc(i.author)}</b>${i.draft ? `<span class="ctag">${i.wip ? "unfinished draft" : "draft"}</span>` : ""}${i.pending ? PENDING : ""}<span class="cwhen" title="${esc(i.createdAt ?? "")}">${ago(i.createdAt)}</span>
         ${k === 0 ? range(t) : ""}${k === 0 && t.resolved ? `<span class="ctag">resolved</span>` : ""}${i.url ? `<a class="clink" href="${esc(i.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a>` : ""}<span class="cgrow"></span>
         ${i.wip ? `<button class="cact" data-wip="${esc(i.cid)}" title="Open it again to finish">Continue</button>` : ""}${i.cid ? `<button class="cact" data-del="${esc(i.cid)}" title="Discard this draft">Delete</button>` : ""}${own(i)}
         ${k === 0 ? `<button class="cfold" data-tid="${esc(t.id)}" data-tpath="${esc(t.path)}" title="Collapse${n > 1 ? " this thread" : ""}">${bubble(true)}</button>` : ""}</div>
@@ -270,13 +272,14 @@ function threadHtml(app, t) {
   // GitHub's own footer: a reply, posted at once; and done with it (it collapses, for everyone), or not done after all
   const resolve = t.node ? `<button class="cbtn" data-resolve="${esc(t.node)}" data-to="${t.resolved ? "0" : "1"}">${t.resolved ? "Unresolve conversation" : "Resolve conversation"}</button>` : "";
   const text = replies(app).get(t.id);
-  const foot = t.kind !== "gh" ? "" : text != null
+  const foot = t.kind !== "gh" || t.pending ? "" : text != null
     ? `<div class="creply">${avatar({ author: app.me?.login ?? "", avatar: app.me?.avatar })}<div class="cmain"><textarea data-rbox="${esc(t.id)}" placeholder="Reply…">${esc(text)}</textarea>
         <div class="crow"><span class="chint">${MOD}↵ posts · esc closes</span><span class="cgrow"></span><button class="btn" data-rcancel="${esc(t.id)}">Cancel</button><button class="btn primary" data-rpost="${esc(t.id)}">Reply</button></div></div></div>`
     : `<div class="ctfoot"><button class="creplyb" data-rstart="${esc(t.id)}">Reply…</button>${resolve}</div>`;
   return `<div class="cthread${t.kind === "draft" ? " draft" : ""}${t.resolved ? " resolved" : ""}" data-thread="${esc(t.id)}">${items}${foot}</div>`;
 }
 
+const PENDING = `<span class="ctag pend" title="In your review on GitHub that isn't submitted yet: only you see it, until you submit (from here or GitHub)">pending</span>`;
 const SEVERITY = { bug: "Bug", risk: "Risk", question: "Question", nit: "Nit" };
 /** One of Claude's findings: its problem, its comment as it would be posted, and the choice of adding it or not. */
 function findingHtml(app, t) {

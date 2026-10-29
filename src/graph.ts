@@ -37,6 +37,7 @@ export interface ReviewGraph {
   lowSignal: string[];
   discussion?: GDiscussion[];
   outdated?: GOutdated[];
+  pending?: PendingReview;
   definitions?: Record<string, Definition[]>; // path → names on its new-side diff lines and where each is declared
 }
 
@@ -50,7 +51,16 @@ export interface GDiscussion {
   html?: string; // GitHub's rendering of body, for bots' HTML and the Markdown Bobby doesn't render itself
   resolved?: boolean; // its thread was resolved on GitHub
   thread?: string; // its thread's GraphQL node id, to resolve or unresolve it
+  node?: string; // the comment's own GraphQL node id, to react to it
+  reactions?: Reaction[]; // those with any, in GitHub's order
+  pending?: true; // in your review that isn't submitted yet (started on github.com): only you see it, until you submit
+  file?: true; // on the whole file, not a line (line is then 0)
 }
+/** A reaction on a comment, as GitHub groups them: its kind (THUMBS_UP, HEART…), how many, and whether you're one. */
+export interface Reaction { content: string; count: number; mine: boolean }
+/** Your review on GitHub that isn't submitted yet, if you started one there: its comments are in the discussion,
+ *  marked pending, and submitting from Bobby adds your drafts to it and submits it. */
+export interface PendingReview { id: string; databaseId: string; body: string; comments: number }
 
 /** A review thread whose line the diff no longer has (GitHub's "outdated"): kept off the lines, counted by file. */
 export interface GOutdated {
@@ -59,11 +69,12 @@ export interface GOutdated {
 }
 
 /** A PR's review comments as read from GitHub: those on a line of the diff, and the outdated threads. */
-export interface Discussion { comments: GDiscussion[]; outdated: GOutdated[] }
+export interface Discussion { comments: GDiscussion[]; outdated: GOutdated[]; pending?: PendingReview }
 /** Puts freshly read comments on a live graph. */
 export function setDiscussion(g: ReviewGraph, d: Discussion) {
   g.discussion = d.comments;
   g.outdated = d.outdated;
+  if (d.pending) g.pending = d.pending; else delete g.pending;
 }
 
 export interface GFile {
@@ -195,6 +206,7 @@ export async function buildGraph(cwd: string | null, pr: PrInfo, files: FileDiff
     lowSignal: tree.noiseHunkIds,
     ...(discussion.comments.length ? { discussion: discussion.comments } : {}),
     ...(discussion.outdated.length ? { outdated: discussion.outdated } : {}),
+    ...(discussion.pending ? { pending: discussion.pending } : {}),
     ...(Object.keys(a.defs ?? {}).length ? { definitions: a.defs } : {}),
   };
 }

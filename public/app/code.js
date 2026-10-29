@@ -5,7 +5,7 @@ import { STARTERS, askAbout, askById, askFollowUp, deleteAsk, stopAsk, typeFollo
 import { BAND_TEXT, DONE, LOW, api, esc, live } from "./core.js";
 import { MOD } from "./palette.js";
 import { keyHtml, keyName } from "./keys.js";
-import { bubble, cancelEdit, closeReply, deletePosted, notesFor, outside, placeNotes, postReply, resolveThread, saveEdit, showFull, startEdit, startReply, threadsAt, toggleItem, typeEdit, typeReply } from "./comments.js";
+import { bubble, cancelEdit, closeReply, deletePosted, fileKey, notesFor, outside, placeNotes, postReply, resolveThread, saveEdit, showFull, startEdit, startReply, threadsAt, toggleItem, typeEdit, typeReply } from "./comments.js";
 
 const EXT = {
   ts: "typescript", tsx: "typescript", mts: "typescript", cts: "typescript", js: "javascript", jsx: "javascript", mjs: "javascript", cjs: "javascript",
@@ -325,7 +325,12 @@ function outdatedHtml(app, path) {
   return `<button class="foutdated" data-outdated="${esc(list.find((t) => !t.resolved)?.id ?? list[0].id)}" title="Comments on lines this diff no longer has: read them in the Conversation view">◌ ${what} on this file <span>Open in Conversation →</span></button>`;
 }
 function fileNotesHtml(app, path) {
-  return outdatedHtml(app, path) + ownNotesHtml(app, path);
+  return outdatedHtml(app, path) + fileThreadsHtml(app, path) + ownNotesHtml(app, path);
+}
+/** GitHub comments on the whole file, threads like those on lines. */
+function fileThreadsHtml(app, path) {
+  const html = threadsAt(app, fileKey(path));
+  return html ? `<section class="fthreads"><h4>On this file</h4>${html}</section>` : "";
 }
 function ownNotesHtml(app, path) {
   const list = app.state.notes.filter((n) => n.path === path && !n.line);

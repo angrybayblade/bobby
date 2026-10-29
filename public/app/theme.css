@@ -385,6 +385,7 @@ kbd {
 .cwhen { color: var(--faint); font-size: 12px; }
 .crange { font: 11.5px var(--font-code); color: var(--faint); white-space: nowrap; }
 .ctag { font: 11px/16px var(--font-ui); color: var(--muted); border: 1px solid var(--line); border-radius: 10px; padding: 0 7px; }
+.ctag.pend { color: var(--signal); border-style: dashed; border-color: currentColor; }
 .clink { color: var(--faint); text-decoration: none; }
 .clink:hover, .cact:hover, .cfold:hover { color: var(--text); }
 .cact { font: 12px var(--font-ui); color: var(--muted); padding: 0 4px; }
@@ -596,6 +597,10 @@ mark.wd { background: var(--del-word); color: inherit; border-radius: 0; }
 .modal .nh { margin: 10px 0 0; font: 600 11px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
 .modal.notes .note code { font: 12px var(--font-code); color: var(--muted); }
 .node.file > .fnotes { margin: 0; padding: 10px 12px; border-bottom: 1px solid var(--line-soft); max-width: none; }
+/* GitHub comments on a whole file: threads, at the top of the file */
+.fthreads { padding: 10px 12px; border-bottom: 1px solid var(--line-soft); display: flex; flex-direction: column; gap: 8px; }
+.fthreads h4 { margin: 0; font: 600 11px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+.fthreads .cthread { margin: 0; }
 
 .hljs-keyword, .hljs-built_in, .hljs-literal { color: var(--hl-kw); }
 .hljs-string, .hljs-regexp { color: var(--hl-str); }
@@ -642,6 +647,7 @@ mark.wd { background: var(--del-word); color: inherit; border-radius: 0; }
 .modal .rdraft code { flex: none; font: 12px var(--font-code); color: var(--text); }
 .modal .rdraft span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* one line each: the rest is in the draft */
 .modal .rdraft i { flex: none; color: var(--faint); }
+.modal .rpend { padding: 8px 12px; border: 1px dashed var(--signal); border-radius: 3px; color: var(--text); font-size: 13.5px; }
 .modal .rdraft { align-items: center; }
 .modal .rdel { flex: none; display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 1px solid transparent; border-radius: 4px; background: none; color: var(--faint); cursor: pointer; }
 .modal .rdel:hover { color: var(--risk, #d1242f); border-color: var(--line); background: var(--raised); }
