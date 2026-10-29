@@ -385,6 +385,13 @@ kbd {
 .cwhen { color: var(--faint); font-size: 12px; }
 .crange { font: 11.5px var(--font-code); color: var(--faint); white-space: nowrap; }
 .ctag { font: 11px/16px var(--font-ui); color: var(--muted); border: 1px solid var(--line); border-radius: 10px; padding: 0 7px; }
+/* A suggested change: the lines as they are (−) and as suggested (+), like GitHub's */
+.csugd { margin: 2px 0 6px; border: 1px solid var(--line); border-radius: 3px; overflow: auto; font: 12.5px/1.5 var(--font-code); }
+.csugd > div { display: flex; white-space: pre; padding: 0 10px 0 0; }
+.csugd > div > span { flex: none; width: 22px; text-align: center; color: var(--faint); user-select: none; }
+.csugd .d { background: var(--del-word); }
+.csugd .a { background: var(--add-word); }
+.cfoot .csugb { padding: 3px 9px; font-size: 12px; }
 .ctag.pend { color: var(--signal); border-style: dashed; border-color: currentColor; }
 /* Reactions under a GitHub comment: what it has (yours tinted), and the button for GitHub's eight */
 .creacts { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 6px; }

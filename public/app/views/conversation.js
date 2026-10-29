@@ -3,7 +3,7 @@
 // and whether it can merge. Read live from GitHub (/api/conversation), so it keeps up while you review; a PR only, never
 // a local branch. A thread's "View code" opens that code in the Diff view.
 import { api, esc } from "../core.js";
-import { ago, ghHtml, md } from "../comments.js";
+import { ago, ghHtml, md, newLines } from "../comments.js";
 import { reactionClick, reactionsHtml } from "../reactions.js";
 import { hlBlock, langOf } from "../code.js";
 import { MOD } from "../palette.js";
@@ -145,8 +145,10 @@ export default {
     const editing = new Map(); let sure = null, sureTimer;
     const mine = (c) => app.me?.login && c.author?.login === app.me.login;
     const ownButtons = (key, c) => !mine(c) || editing.has(key) ? "" : `<button class="own" data-eopen="${esc(key)}">Edit</button><button class="own${sure === key ? " sure" : ""}" data-edel="${esc(key)}">${sure === key ? "Delete it? Click again" : "Delete"}</button>`;
-    const bodyOf = (key, c) => editing.has(key) ? `<div class="compose"><textarea data-ckey="e:${esc(key)}">${esc(editing.get(key))}</textarea>
-      <div class="row">${errors.get(`e:${key}`) ? `<span class="err">${esc(errors.get(`e:${key}`))}</span>` : `<span class="hint">${MOD === "⌘" ? "⌘" : "ctrl"}+enter saves</span>`}<span class="grow"></span><button class="btn" data-ecancel="${esc(key)}">Cancel</button><button class="btn primary" data-esave="${esc(key)}">Save</button></div></div>` : text(c) + reactionsHtml(c.node, c.reactions);
+    // a suggested change on a thread's new lines: before and after from the diff, as inline (GitHub's HTML loses which is which)
+    const sugOf = (c, t) => (t && t.side === "RIGHT" && t.line && /```suggestion\b/.test(c.body ?? "") && newLines(app, t.path, t.startLine ?? t.line, t.line)) || null;
+    const bodyOf = (key, c, t) => editing.has(key) ? `<div class="compose"><textarea data-ckey="e:${esc(key)}">${esc(editing.get(key))}</textarea>
+      <div class="row">${errors.get(`e:${key}`) ? `<span class="err">${esc(errors.get(`e:${key}`))}</span>` : `<span class="hint">${MOD === "⌘" ? "⌘" : "ctrl"}+enter saves</span>`}<span class="grow"></span><button class="btn" data-ecancel="${esc(key)}">Cancel</button><button class="btn primary" data-esave="${esc(key)}">Save</button></div></div>` : (sugOf(c, t) ? `<div class="cbody full">${md(c.body, { orig: sugOf(c, t) })}</div>` : text(c)) + reactionsHtml(c.node, c.reactions);
     const composer = (key, label, placeholder) => `<div class="compose" data-ck="${esc(key)}">
       <textarea placeholder="${esc(placeholder)}" data-ckey="${esc(key)}">${esc(drafts.get(key) ?? "")}</textarea>
       <div class="row">${errors.get(key) ? `<span class="err">${esc(errors.get(key))}</span>` : `<span class="hint">Markdown · ${MOD === "⌘" ? "⌘" : "ctrl"}+enter posts</span>`}<span class="grow"></span>
@@ -180,7 +182,7 @@ export default {
         ${isShut(t) ? `<span class="tag">${plural(t.comments.length, "comment")}</span>` : ""}
         ${canGo ? `<button class="go" data-go="${esc(t.id)}" title="Open this code in the Diff view">View code →</button>` : ""}</div>`;
       const items = t.comments.map((c) => `<div class="tc">${avatar(c.author)}<div><div class="who"><b>${esc(c.author.login)}</b> ${when(c.createdAt)}<a href="${esc(c.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a>${ownButtons(`review:${c.id}`, c)}</div>
-        ${bodyOf(`review:${c.id}`, c)}</div></div>`).join("");
+        ${bodyOf(`review:${c.id}`, c, t)}</div></div>`).join("");
       const key = `r:${t.comments[0]?.id}`;
       const resolve = `<button class="cbtn" data-resolve="${esc(t.id)}" data-to="${t.resolved ? "0" : "1"}">${t.resolved ? "Unresolve conversation" : "Resolve conversation"}</button>`;
       const reply = replying.has(t.id) ? composer(key, "Reply", "Reply…")

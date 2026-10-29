@@ -269,7 +269,9 @@ function threadHtml(app, t) {
   const own = (i) => !mine(i) || s.edits?.has(i.gid) ? "" : `<button class="cact" data-geopen="${esc(i.gid)}" title="Edit your comment on GitHub">Edit</button><button class="cact${s.confirm === i.gid ? " sure" : ""}" data-gedel="${esc(i.gid)}" title="Delete your comment from GitHub">${s.confirm === i.gid ? "Delete it? Click again" : "Delete"}</button>`;
   const body = (i, k) => s.edits?.has(i.gid)
     ? `<div class="cedit"><textarea data-gedit="${esc(i.gid)}">${esc(s.edits.get(i.gid))}</textarea><div class="crow"><span class="chint">${MOD}↵ saves · esc cancels</span><span class="cgrow"></span><button class="btn" data-gecancel="${esc(i.gid)}">Cancel</button><button class="btn primary" data-gesave="${esc(i.gid)}">Save</button></div></div>`
-    : `<div class="cbody${i.html ? " gh" : ""}" data-ck="${esc(t.id)}:${k}">${i.html ? ghHtml(i.html) : md(i.body)}</div>`;
+    : `<div class="cbody${i.html && !sug(i) ? " gh" : ""}" data-ck="${esc(t.id)}:${k}">${sug(i) ? md(i.body, { orig: sug(i) }) : i.html ? ghHtml(i.html) : md(i.body)}</div>`;
+  // a suggested change on new lines: drawn here as before and after, from the diff (GitHub's own rendering loses it)
+  const sug = (i) => (t.side === "RIGHT" && /```suggestion\b/.test(i.body ?? "") && newLines(app, t.path, t.startLine ?? t.line, t.line)) || null;
   const items = t.items.map((i, k) => `<div class="citem">${avatar(i)}<div class="cmain">
       <div class="cwho"${k === 0 ? ` data-tid="${esc(t.id)}" data-tpath="${esc(t.path)}" title="Collapse${n > 1 ? " this thread" : ""}"` : ""}><b>${esc(i.author)}</b>${i.draft ? `<span class="ctag">${i.wip ? "unfinished draft" : "draft"}</span>` : ""}${i.pending ? PENDING : ""}<span class="cwhen" title="${esc(i.createdAt ?? "")}">${ago(i.createdAt)}</span>
         ${k === 0 ? range(t) : ""}${k === 0 && t.resolved ? `<span class="ctag">resolved</span>` : ""}${i.url ? `<a class="clink" href="${esc(i.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a>` : ""}<span class="cgrow"></span>
@@ -346,9 +348,10 @@ export function outside(app, path, from, to, shift = 0) {
 
 // ---- a comment's text: GitHub-flavoured Markdown, the safe part of it. Everything is escaped first; a few plain tags
 // (details, summary, b, i, code, br…) come back without attributes, and links only to http(s).
-export function md(src) {
+export function md(src, ctx = null) {
   const blocks = [];
   let text = String(src ?? "").replace(/\r\n/g, "\n").replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
+    if (lang === "suggestion" && ctx?.orig) { blocks.push(suggestionHtml(ctx.orig, code)); return `\u0000${blocks.length - 1}\u0000`; }
     const hl = window.hljs && lang && window.hljs.getLanguage(lang === "suggestion" ? "plaintext" : lang)
       ? window.hljs.highlight(code.replace(/\n$/, ""), { language: lang === "suggestion" ? "plaintext" : lang, ignoreIllegals: true }).value : esc(code.replace(/\n$/, ""));
     blocks.push(`${lang === "suggestion" ? `<div class="csug">Suggested change</div>` : ""}<pre class="ccode"><code>${hl}</code></pre>`);
@@ -399,6 +402,26 @@ export function md(src) {
   flushTable();
   return out.join("").replace(/(<br>)+$/, "").replace(/(<br>){3,}/g, "<br><br>").replace(/\u0000(\d+)\u0000(<br>)?/g, (_, i) => blocks[Number(i)]);
 }
+/** A suggested change as GitHub shows it: the lines as they are, then as suggested (none: they'd be deleted). */
+function suggestionHtml(orig, code) {
+  const now = code.replace(/\n$/, ""), next = now === "" ? [] : now.split("\n");
+  const row = (k, l) => `<div class="${k}"><span>${k === "d" ? "−" : "+"}</span>${esc(l) || " "}</div>`;
+  return `<div class="csug">Suggested change</div><div class="csugd">${orig.map((l) => row("d", l)).join("")}${next.map((l) => row("a", l)).join("")}</div>`;
+}
+/** The new-side text of lines from..to of a file: from the diff's hunks, else from more (the whole file, if loaded);
+ *  null when any is unknown. For a suggestion's "as they are". */
+export function newLines(app, path, from, to, more = null) {
+  const at = new Map();
+  for (const h of app.graph.hunks) if (h.file === path) for (const l of h.lines) if (l.t !== "-" && l.n != null) at.set(l.n, l.s);
+  const out = [];
+  for (let n = from; n <= to; n++) {
+    const s = at.get(n) ?? (Array.isArray(more) ? more[n - 1] : undefined);
+    if (s == null) return null;
+    out.push(s);
+  }
+  return out;
+}
+
 // ---- a comment as GitHub rendered it (bodyHTML): already sanitized by GitHub, and cleaned again here, since it lands in
 // a page that can post as you. Nothing that runs (scripts, frames, forms, on* handlers, javascript: links) and no inline
 // styles; links open on GitHub's side, in a new tab; relative ones point at github.com.

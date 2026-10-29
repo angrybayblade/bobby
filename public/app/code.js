@@ -6,7 +6,7 @@ import { BAND_TEXT, DONE, LOW, api, esc, live } from "./core.js";
 import { MOD } from "./palette.js";
 import { keyHtml, keyName } from "./keys.js";
 import { reactionClick } from "./reactions.js";
-import { bubble, cancelEdit, closeReply, deletePosted, fileKey, notesFor, outside, setReactions, placeNotes, postReply, resolveThread, saveEdit, showFull, startEdit, startReply, threadsAt, toggleItem, typeEdit, typeReply } from "./comments.js";
+import { bubble, cancelEdit, closeReply, deletePosted, fileKey, newLines, notesFor, outside, setReactions, placeNotes, postReply, resolveThread, saveEdit, showFull, startEdit, startReply, threadsAt, toggleItem, typeEdit, typeReply } from "./comments.js";
 
 const EXT = {
   ts: "typescript", tsx: "typescript", mts: "typescript", cts: "typescript", js: "javascript", jsx: "javascript", mjs: "javascript", cjs: "javascript",
@@ -195,6 +195,21 @@ function cmMore(app, h, dir, list, lines) {
 
 // A line can take a GitHub draft or a private note; c.file composes a note on a whole file (notes only). It looks like
 // the thread it becomes, and sits where that thread will.
+/** A suggestion can only replace new lines (GitHub's rule): a comment on the new side, its range too. */
+const canSuggest = (c) => c.kind === "comment" && !c.file && c.side === "RIGHT" && (!c.start || c.start.side === "RIGHT");
+/** Puts a suggestion block, the lines as they are, where the cursor is in the composer, and the cursor at its end. */
+function insertSuggestion(app, el) {
+  const c = app.page.composing, ta = el.querySelector("textarea[data-composer]");
+  if (!c || !ta) return;
+  const lines = newLines(app, c.path, c.start ? Number(c.start.line) : Number(c.line), Number(c.line), files.get(c.path));
+  if (!lines) return app.toast?.("<span>Those lines aren't loaded: open more of the file around them, and try again.</span>", 5000);
+  const at = ta.selectionStart ?? ta.value.length, before = ta.value.slice(0, at), lead = before && !before.endsWith("\n") ? "\n" : "";
+  const block = `${lead}\`\`\`suggestion\n${lines.join("\n")}\n\`\`\`\n`;
+  ta.value = before + block + ta.value.slice(at);
+  c.text = ta.value;
+  const end = before.length + block.length - 5; // the end of the last line, inside the block
+  ta.focus(); ta.setSelectionRange(end, end);
+}
 function composer(app, c) {
   const note = c.kind === "note", ask = c.kind === "ask", me = app.me;
   const face = me ? `<img class="cav" src="/api/avatar?u=${encodeURIComponent(me.avatar ?? me.login)}" alt="" onerror="this.style.visibility='hidden'">` : "";
@@ -206,7 +221,7 @@ function composer(app, c) {
   return `<div class="cthread ccompose${note ? " note" : ""}${ask ? " asking" : ""}"><div class="citem">${face}<div class="cmain">
     <div class="cwho">${kinds}<span class="cgrow"></span>${range}</div>
     <textarea data-composer placeholder="${hint}">${esc(c.text ?? "")}</textarea>${starters}
-    <div class="cfoot"><span class="chint">${ask ? `${MOD}↵ to ask · esc closes` : `${MOD}↵ to save · esc keeps it for later`}</span><span class="cgrow"></span><button class="btn" data-ccancel>Cancel</button><button class="btn primary" data-csave>${ask ? "Ask Claude" : note ? "Add note" : "Save draft"}</button></div>
+    <div class="cfoot">${canSuggest(c) ? `<button class="btn quiet csugb" data-csuggest title="Suggest a change: these lines as they are, to edit. GitHub offers to commit it">± Suggest change</button>` : ""}<span class="chint">${ask ? `${MOD}↵ to ask · esc closes` : `${MOD}↵ to save · esc keeps it for later`}</span><span class="cgrow"></span><button class="btn" data-ccancel>Cancel</button><button class="btn primary" data-csave>${ask ? "Ask Claude" : note ? "Add note" : "Save draft"}</button></div>
   </div></div></div>`;
 }
 
@@ -994,7 +1009,7 @@ function bind(app, el, rerender) {
       }
       return (ev.shiftKey ? uses : inspect)(app, { ...w, path: line.dataset.path, line: Number(line.dataset.line) }, false);
     }
-    const t = ev.target.closest("[data-compose],[data-wip],[data-expto],[data-ckind],[data-csave],[data-ccancel],[data-delnote],[data-viewed],[data-exp],[data-del],[data-low],[data-go],[data-jump],[data-fold],.ln[data-key]");
+    const t = ev.target.closest("[data-compose],[data-wip],[data-expto],[data-ckind],[data-csave],[data-csuggest],[data-ccancel],[data-delnote],[data-viewed],[data-exp],[data-del],[data-low],[data-go],[data-jump],[data-fold],.ln[data-key]");
     if (!t || !el.contains(t)) return;
     const again = () => bound.get(el)();
     const ds = t.dataset;
@@ -1008,6 +1023,7 @@ function bind(app, el, rerender) {
       app.page.composing = { ...app.page.sel, kind: d.kind === "note" ? "note" : "comment", text: d.body, editing: d.id };
       return again();
     }
+    if (ds.csuggest !== undefined) return insertSuggestion(app, el);
     if (ds.csave !== undefined) return saveComment(app, el.querySelector("textarea[data-composer]")?.value ?? "").then(again);
     if (ds.ccancel !== undefined) { app.page.composing = null; return again(); } // Cancel discards; esc keeps it as an unfinished draft
     if (ds.ckind) { // switch the composer between a GitHub draft and a private note, keeping the text
