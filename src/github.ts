@@ -38,6 +38,15 @@ export async function ghStatus(): Promise<GhStatus> {
   const base = { step: job.step, ...(job.step === "login" && job.code ? { code: job.code, url: job.url } : {}), ...(job.error ? { error: job.error } : {}),
     ...(job.step === "installing" ? { log: job.log.slice(-6).join("\n") } : {}), ...(job.dismissed ? { dismissed: true } : {}) };
   if (!bin) return { installed: false, loggedIn: false, ...base };
+  if (ready?.bin === bin && Date.now() - ready.at < 60_000) return { ...ready.probe, ...base };
+  const probe = await probeGh(bin);
+  ready = probe.loggedIn ? { bin, at: Date.now(), probe } : null;
+  return { ...probe, ...base };
+}
+// A signed-in gh is taken as still signed in for a minute: the home page and every review's start ask, and auth status
+// checks the token with GitHub. One that isn't is asked afresh each time, so the setup page sees signing in land.
+let ready: { bin: string; at: number; probe: Awaited<ReturnType<typeof probeGh>> } | null = null;
+async function probeGh(bin: string) {
   const auth = Bun.spawn([bin, "auth", "status", "--hostname", "github.com"], { stdin: "ignore", stdout: "pipe", stderr: "pipe" });
   const slow = setTimeout(() => auth.kill(), 15_000); // it checks the token with GitHub: offline, it's not signed in
   const [version, out, err] = await Promise.all([
@@ -46,7 +55,7 @@ export async function ghStatus(): Promise<GhStatus> {
   ]).finally(() => clearTimeout(slow));
   // "Logged in to github.com account octocat", or an older gh's "… as octocat"; a GH_TOKEN counts too
   const login = /Logged in to \S+ (?:account|as) (\S+)/.exec(out + err)?.[1];
-  return { installed: true, version: /\d+\.\d+\.\d+/.exec(version)?.[0], loggedIn: auth.exitCode === 0, ...(login ? { login } : {}), ...base };
+  return { installed: true, version: /\d+\.\d+\.\d+/.exec(version)?.[0], loggedIn: auth.exitCode === 0, ...(login ? { login } : {}) };
 }
 
 /** Downloads gh's latest release for this machine into ~/.local/bin, in the background; ghStatus says how it's going. */

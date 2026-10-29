@@ -42,13 +42,22 @@ export async function claudeStatus(): Promise<ClaudeStatus> {
   const base = { step: job.step, ...(job.url && job.step === "login" ? { url: job.url } : {}), ...(job.error ? { error: job.error } : {}),
     ...(job.step === "installing" ? { log: job.log.slice(-6).join("\n") } : {}), ...(job.dismissed ? { dismissed: true } : {}) };
   if (!bin) return { installed: false, loggedIn: false, ...base };
+  if (ready?.bin === bin && Date.now() - ready.at < 60_000) return { ...ready.probe, ...base };
+  const probe = await probeClaude(bin);
+  ready = probe.loggedIn ? { bin, at: Date.now(), probe } : null;
+  return { ...probe, ...base };
+}
+// A signed-in claude is taken as still signed in for a minute: the home page and every agent run ask. One that isn't is
+// asked afresh each time, so the setup page sees signing in land.
+let ready: { bin: string; at: number; probe: Awaited<ReturnType<typeof probeClaude>> } | null = null;
+async function probeClaude(bin: string) {
   const [version, auth] = await Promise.all([
     run([bin, "--version"], { allowFail: true, timeoutMs: 15_000 }),
     run([bin, "auth", "status", "--json"], { allowFail: true, timeoutMs: 15_000 }),
   ]);
   let a: { loggedIn?: boolean; authMethod?: string; email?: string } = {};
   try { a = JSON.parse(auth); } catch { /* an older claude without auth status: say it isn't signed in, and signing in tells */ }
-  return { installed: true, version: version.trim().split(" ")[0] || undefined, loggedIn: !!a.loggedIn, ...(a.authMethod && a.authMethod !== "none" ? { method: a.authMethod } : {}), ...(a.email ? { email: a.email } : {}), ...base };
+  return { installed: true, version: version.trim().split(" ")[0] || undefined, loggedIn: !!a.loggedIn, ...(a.authMethod && a.authMethod !== "none" ? { method: a.authMethod } : {}), ...(a.email ? { email: a.email } : {}) };
 }
 
 /** Runs the installer in the background; claudeStatus says how it's going. */
