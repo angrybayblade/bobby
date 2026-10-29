@@ -17,11 +17,15 @@ export interface Update {
 const sig = (d: Array<{ id: string; body?: string; line?: number; resolved?: boolean; comments?: number; thread?: string }>) =>
   d.map((c) => `${c.id}:${c.line ?? "o"}:${c.body?.length ?? c.comments}:${c.resolved ? "r" : ""}${c.thread ? "t" : ""}`).sort().join("|");
 
+// No page has asked about the review lately (an open one polls every 10 s, a hidden one about once a minute): nobody would
+// see what a check finds, so it waits until a page is back, rather than spending git and the GitHub rate limit.
+const unseen = (s: Session) => Date.now() - (s.seenAt ?? 0) > 3 * 60_000;
+
 /** A PR: its comments, and whether its head or base moved on. Every minute; a failed check (offline) waits for the next.
  *  Returns what stops watching. */
 export function watchPr(s: Session, every = 60_000) {
   const tick = async () => {
-    if (s.rebuilding) return;
+    if (s.rebuilding || unseen(s)) return;
     const pr = s.staticGraph.pr;
     const d = await reviewComments(pr, true).catch(() => null);
     if (d && sig([...d.comments, ...d.outdated]) !== sig([...s.staticGraph.discussion ?? [], ...s.staticGraph.outdated ?? []])) {
@@ -46,7 +50,7 @@ export function watchLocal(s: Session, every = 10_000) {
   const cwd = s.cwd!;
   void git(cwd, ["rev-parse", "HEAD"]).then((h) => (s.builtHead ??= h.trim()));
   const tick = async () => {
-    if (s.rebuilding) return;
+    if (s.rebuilding || unseen(s)) return;
     const pr = s.staticGraph.pr;
     const branch = (await git(cwd, ["branch", "--show-current"], true)).trim();
     if (pr.branch && branch && branch !== pr.branch) return void (s.update = { headSha: "", detail: `you switched to ${branch}: run bobby again to review it`, refresh: false });
