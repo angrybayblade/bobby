@@ -183,7 +183,8 @@ export async function buildGraph(cwd: string | null, pr: PrInfo, files: FileDiff
           if (pl) pl.repeatOf = treeIdToPlacement.get(n.seenIn);
         }
 
-  const edges = cores.flatMap((c) => coreEdges(c, nodes, a, unitNode, hints));
+  const ix = relationIndex(a, unitNode);
+  const edges = cores.flatMap((c) => coreEdges(c, nodes, ix, hints));
   const walk = cores.flatMap((c) => BANDS.flatMap((b) => c.bands[b].filter((pl) => !pl.repeatOf).map((pl) => pl.id)));
 
   const hunkCount = (f: FileDiff, t: string) => f.hunks.reduce((s, h) => s + h.lines.filter((l) => l.t === t).length, 0);
@@ -238,8 +239,17 @@ function findPlacement(cores: GCore[], id: string) {
  */
 type Hint = { attachNode?: string; relation?: string };
 
-function coreEdges(c: GCore, nodes: Map<string, GNode>, a: Analysis, unitNode: Map<string, string>, hints: Map<string, Hint>): GEdge[] {
-  const nodeUnit = new Map([...unitNode].map(([u, n]) => [n, u]));
+/** The analysis's edges and refs by their ends, for coreEdges to look up per pair of placements. */
+type RelationIndex = { nodeUnit: Map<string, string>; edges: Map<string, string>; refs: Map<string, string> };
+function relationIndex(a: Analysis, unitNode: Map<string, string>): RelationIndex {
+  const ix: RelationIndex = { nodeUnit: new Map([...unitNode].map(([u, n]) => [n, u])), edges: new Map(), refs: new Map() };
+  for (const e of a.edges) if (!ix.edges.has(`${e.from}>${e.to}`)) ix.edges.set(`${e.from}>${e.to}`, e.symbol);
+  for (const r of a.refs) if (!ix.refs.has(`${r.dir}|${r.path}:${r.line}|${r.forUnit}`)) ix.refs.set(`${r.dir}|${r.path}:${r.line}|${r.forUnit}`, r.symbol);
+  return ix;
+}
+
+function coreEdges(c: GCore, nodes: Map<string, GNode>, ix: RelationIndex, hints: Map<string, Hint>): GEdge[] {
+  const { nodeUnit } = ix;
   const edges: GEdge[] = [];
   const firstCore = c.bands.core[0];
   if (!firstCore) return edges;
@@ -248,16 +258,16 @@ function coreEdges(c: GCore, nodes: Map<string, GNode>, a: Analysis, unitNode: M
   const relation = (upNode: string, downNode: string): string | undefined => {
     const up = nodes.get(upNode)!, down = nodes.get(downNode)!;
     if (up.kind === "change" && down.kind === "change") {
-      const e = a.edges.find((e) => e.from === nodeUnit.get(upNode) && e.to === nodeUnit.get(downNode));
-      return e && `uses \`${e.symbol}\``;
+      const s = ix.edges.get(`${nodeUnit.get(upNode)}>${nodeUnit.get(downNode)}`);
+      return s === undefined ? undefined : `uses \`${s}\``;
     }
     if (up.kind === "context" && down.kind === "change") {
-      const r = a.refs.find((r) => r.dir === "up" && r.path === up.location.path && r.line === up.location.line && r.forUnit === nodeUnit.get(downNode));
-      return r && `relies on \`${r.symbol}\``;
+      const s = ix.refs.get(`up|${up.location.path}:${up.location.line}|${nodeUnit.get(downNode)}`);
+      return s === undefined ? undefined : `relies on \`${s}\``;
     }
     if (up.kind === "change" && down.kind === "context") {
-      const r = a.refs.find((r) => r.dir === "down" && r.path === down.location.path && r.line === down.location.line && r.forUnit === nodeUnit.get(upNode));
-      return r && `uses \`${r.symbol}\``;
+      const s = ix.refs.get(`down|${down.location.path}:${down.location.line}|${nodeUnit.get(upNode)}`);
+      return s === undefined ? undefined : `uses \`${s}\``;
     }
   };
 
