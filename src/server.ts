@@ -1,7 +1,7 @@
 import { join, normalize } from "node:path";
 import { embeddedAsset } from "./assets.ts";
 import { cancelLogin, claudeStatus, dismiss, INSTALL_TEXT, installClaude, startLogin, submitCode } from "./claude.ts";
-import { fileLines, forgetUnknownMe, parsePrArg, reactionsOf, reviewComments, run, whoAmI } from "./git.ts";
+import { fileLines, forgetUnknownMe, git, parsePrArg, reactionsOf, reviewComments, run, whoAmI } from "./git.ts";
 import { type AgentJob, draftOf, runAgentReview } from "./agent.ts";
 import { runAsk } from "./ask.ts";
 import { handleMcp, mcpConfig, openMcp } from "./mcp.ts";
@@ -52,6 +52,7 @@ export interface Session {
   agentJob?: AgentJob; // an agent-assisted review running, or the last one's end (agent.ts)
   askJobs?: Map<string, AgentJob & { text?: string }>; // questions being answered, by ask id (ask.ts)
   prNode?: string; // the PR's GraphQL node id, once asked (for its Viewed checkboxes)
+  since?: { head: string; value: { sha: string; at: string; commits: number; arg: string } | null }; // your last review, for this head
 }
 
 const PUBLIC = join(import.meta.dir, "..", "public");
@@ -377,6 +378,28 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
           const msg = String((e as Error).message);
           if (/\b(403|404)\b|not accessible|forbidden/i.test(msg)) return json({ ok: false, error: `GitHub won't let you ${edit ? "edit" : "delete"} it: only its author (or a repo admin) can` }, 403);
           return json({ ok: false, error: msg }, 400);
+        }
+      }
+      // What changed since your last review of this PR: its commit, if the head has moved on from it and it's still in
+      // the PR's history (a force-push can drop it), how many commits since, and the review of just those to open.
+      if (p === "/api/since" && req.method === "GET") {
+        const { owner, repo, number, headSha, url: prUrl } = pr();
+        if (pr().provider === "local" || pr().commit || !s.cwd) return json({ ok: true, since: null });
+        if (s.since?.head === headSha) return json({ ok: true, since: s.since.value });
+        try {
+          const me = await whoAmI(join(home(), "cache", "me.json"));
+          if (!me) return json({ ok: true, since: null });
+          const out = await run(["gh", "api", "--paginate", `repos/${owner}/${repo}/pulls/${number}/reviews?per_page=100`, "--jq", `.[] | select(.user.login == "${me.login}" and .state != "PENDING") | {sha: .commit_id, at: .submitted_at}`]);
+          const last = out.split("\n").filter((l) => l.startsWith("{")).map((l) => JSON.parse(l) as { sha: string; at: string }).sort((a, b) => a.at.localeCompare(b.at)).at(-1);
+          let value: { sha: string; at: string; commits: number; arg: string } | null = null;
+          if (last && last.sha !== headSha && (await Bun.spawn(["git", "merge-base", "--is-ancestor", last.sha, headSha], { cwd: s.cwd, stderr: "ignore" }).exited) === 0) {
+            const commits = Number((await git(s.cwd, ["rev-list", "--count", `${last.sha}..${headSha}`], true)).trim()) || 0;
+            if (commits) value = { sha: last.sha, at: last.at, commits, arg: `${prUrl}/changes/${last.sha}..${headSha}` };
+          }
+          s.since = { head: headSha, value };
+          return json({ ok: true, since: value });
+        } catch (e) {
+          return json({ ok: false, error: String((e as Error).message) }, 400);
         }
       }
       // GitHub's Viewed checkboxes on the PR's files: read them (VIEWED, UNVIEWED, or DISMISSED: viewed, then changed),

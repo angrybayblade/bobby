@@ -285,6 +285,8 @@ setTimeout(reportProgress, 2000);
 app.fail = (e) => chrome.toast(`Not saved: ${esc(e?.message ?? e)}`, 8000);
 wireRefs(app); // Claude's references to code open in the viewer, wherever they are
 syncViewed(app); // GitHub's Viewed boxes, and Bobby's viewed files, in step
+// back to a PR you've reviewed, with commits since: the top bar offers just those (a review of that range)
+api("/api/since").then((r) => { if (r.ok && r.since) { app.since = r.since; app.emit("view"); } }).catch(() => {});
 app.toast = (html, ms) => chrome.toast(html, ms);
 app.toastUndo = (what) => chrome.toast(`<span>${esc(what)}.</span> <button class="btn" data-act="undo">Undo</button>`, 8000);
 window.addEventListener("unhandledrejection", (ev) => app.fail(ev.reason));
@@ -377,6 +379,7 @@ function commands() {
     { id: "keys", title: "Customize keyboard shortcuts", sub: "bind any action to the keys you like", run: () => chrome.keysEditor() },
     { id: "tour", title: "Take the tour", sub: "how the walk, the views and the keys fit together", run: () => tour.start() },
     { id: "gh", title: "Set up GitHub CLI", sub: "install gh and sign in to GitHub, for PRs and posting reviews", run: () => offerGh({ force: true }) },
+    ...(app.since ? [{ id: "since", title: "Review changes since your last review", sub: `${app.since.commits} commit${app.since.commits > 1 ? "s" : ""} since ${new Date(app.since.at).toLocaleDateString()}: just what they changed`, run: () => chrome.openSince() }] : []),
     { id: "agent", title: "Review with Claude…", sub: "say what to focus on; Claude suggests comments for you to add or dismiss", run: () => openAsk(app) },
     { id: "agent-tools", title: "Claude's tools for this PR…", sub: "which of your MCP servers and connectors (Linear, Notion, Slack…) Claude may use", run: () => openAsk(app, { tools: true }) },
     { id: "agent-next", title: "Go through Claude's findings", sub: "one at a time, with the code each is about", run: () => nextFinding(app) || chrome.toast("No open findings from Claude.", 4000) },

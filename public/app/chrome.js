@@ -151,9 +151,21 @@ function renderFiles() {
 }
 
 /** New work on the PR or the branch (watch.ts), offered as GitHub does: a prompt to refresh, never a swap. */
+/** Opens a review of the commits since your last review of this PR (a range of it), in place of this one. */
+export async function openSince() {
+  const s = app.since;
+  if (!s) return;
+  toast(`<span>Opening the ${s.commits} commit${s.commits > 1 ? "s" : ""} since your review…</span>`);
+  try {
+    const r = await fetch("/api/open", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ arg: s.arg }) }).then((x) => x.json());
+    if (!r.id) throw new Error(r.error ?? "Bobby couldn't open it");
+    location.href = `/r/${r.id}`;
+  } catch (e) { toast(`<span>Couldn't open them: ${esc(e.message)}</span>`, 8000); }
+}
 function updatePill() {
   const rel = app.release ? `<a class="pill" href="${esc(app.release.url)}" target="_blank" rel="noopener" title="Bobby ${esc(app.release.version)} is out. Update with: ${esc(app.release.how ?? "")}">Update · ${esc(app.release.version)}</a>` : "";
-  return rel + reviewPill();
+  const since = app.since ? `<button class="pill" data-act="since" title="Review only what changed since your review on ${esc(new Date(app.since.at).toLocaleString())}: a review of those commits">Since your review · ${app.since.commits} commit${app.since.commits > 1 ? "s" : ""}</button>` : "";
+  return rel + reviewPill() + since;
 }
 function reviewPill() {
   const u = app.update;
@@ -640,6 +652,7 @@ function onClick(ev) {
     overview: () => { close(); app.setLevel(0); },
     resume: () => { close(); if (resumeTo) app.setFocus(resumeTo.pid, { level: resumeTo.level }); },
     "switch-tree": () => app.switchTree(),
+    since: () => openSince(),
     refresh: () => { $("#toast").hidden = true; app.refreshReview(); },
     undo: () => { const put = app._undo; app._undo = null; $("#toast").hidden = true; put?.(); },
     tour: () => { close(); tour.start(); },

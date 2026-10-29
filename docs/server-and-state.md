@@ -58,6 +58,7 @@ Paths are under `/r/<id>`.
 | `DELETE /api/ask/:id` | | Deletes the conversation. |
 | `POST /api/notes` | `{ body, path?, line?, side? }` → note with `id`, `createdAt` | Adds a private note: on a line, a file (no `line`) or the PR (no `path`). |
 | `DELETE /api/notes/:id` | | Removes a private note. |
+| `GET /api/since` | → `{ ok, since: { sha, at, commits, arg } \| null }` | Your last submitted review of the PR: its commit, if the head has moved on from it and it's still an ancestor; how many commits since; and the PR argument for a review of just those (`…/changes/<sha>..<head>`). |
 | `GET /api/viewed`, `POST /api/viewed` | `{ path, viewed }` → `{ ok }` | GitHub's Viewed checkboxes on the PR's files: `GET` answers `{ files: { path: VIEWED \| UNVIEWED \| DISMISSED } }`; `POST` ticks or clears one (`markFileAsViewed`, `unmarkFileAsViewed`). A whole PR only. |
 | `POST /api/react` | `{ subject, content, on }` → `{ ok, reactions }` | Adds (`on: true`) or removes your reaction (`THUMBS_UP`, `HEART`…) on a comment, review or the description, by its GraphQL node id; answers its reactions now. |
 | `POST /api/submit` | `{ event, body }` → `{ ok, url }` or `{ ok: false, error }` | Posts the review to GitHub. |

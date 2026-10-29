@@ -181,6 +181,7 @@ A note on a line **floats beside it**, over the right edge of the code, like a s
 While a review is open, Bobby keeps it current, the way GitHub does:
 
 - **New comments** on the PR appear on their lines by themselves (checked every minute), with a note saying who wrote them.
+- **Since your last review.** Back on a PR you've reviewed, with commits since, the top bar offers **Since your review · N commits** (and the palette, **Review changes since your last review**): it opens a review of just what those commits changed, as GitHub's "changes since your last review" does. It's offered only while your review's commit is still in the PR's history; after a force-push that dropped it, there's no clean range to show.
 - **New commits** on the PR, or a new base branch, aren't swapped in under you. A **New commits · Refresh** prompt appears in the top bar instead. Refresh rebuilds the review on them, on the same node. What the push didn't change keeps its marks; what it changed shows as unreviewed.
 - **A local review** has no comments, but notices your new commits and edits (every 10 seconds) and offers **Files changed · Refresh** the same way. Switching branches can't be followed: run `bobby` again to review the other branch.
 
