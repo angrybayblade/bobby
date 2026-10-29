@@ -1,9 +1,9 @@
 // The home page: paste a PR to review it, or pick one: what you've opened before, what's waiting on your review, your
 // own, and everything GitHub lists as involving you. Filters narrow every list; ↑ ↓ and enter drive it.
 import { reportErrors } from "./report.js";
+import { esc } from "./core.js";
 reportErrors();
 const $ = (s) => document.querySelector(s);
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const ago = (iso) => {
   const s = (Date.now() - Date.parse(iso)) / 1000;
   return s < 60 ? "just now" : s < 3600 ? `${Math.floor(s / 60)}m ago` : s < 86400 ? `${Math.floor(s / 3600)}h ago` : `${Math.floor(s / 86400)}d ago`;

@@ -106,4 +106,5 @@ export function keyOfEvent(ev) {
   return ev.shiftKey && ev.key.length > 1 && ev.key !== "Shift" ? `Shift+${ev.key}` : ev.key;
 }
 
-const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+// core.js's, which this can't import: the tests load this outside a page
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
