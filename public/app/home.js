@@ -41,8 +41,23 @@ async function open(body, el) {
   catch (e) {
     el?.classList.remove("busy");
     if (e.data?.setup === "gh" && body.arg) return setupGh({ force: true, then: body.arg }); // set gh up, then open it
+    if (e.data?.ask === "ssh" && body.arg) return askSsh(body, el, e.message);
     $(".err").textContent = e.message;
   }
+}
+/** Cloning over HTTPS (with gh's sign-in) failed: try SSH, with your keys, only if you say so; Always remembers it. */
+function askSsh(body, el, why) {
+  const box = $(".err");
+  box.innerHTML = `<div class="askssh"><p>${esc(why).replace(/\n/g, "<br>")}</p><div class="acts">
+    <button class="btn primary" data-ssh="once">Try SSH</button><button class="btn" data-ssh="always" title="From now on, try SSH without asking when HTTPS fails">Always try SSH</button><button class="btn quiet" data-ssh="no">Not now</button></div></div>`;
+  box.onclick = (ev) => {
+    const b = ev.target.closest("[data-ssh]");
+    if (!b) return;
+    box.onclick = null;
+    if (b.dataset.ssh === "no") { box.textContent = ""; return; }
+    open({ ...body, ...(b.dataset.ssh === "always" ? { sshAlways: true } : { ssh: true }) }, el);
+  };
+  box.querySelector("[data-ssh=once]").focus();
 }
 // Enter in the box: a pasted PR opens; a search opens the first match.
 $("form.tools").addEventListener("submit", (ev) => {

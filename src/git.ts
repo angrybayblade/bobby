@@ -101,9 +101,36 @@ export interface ResolvedPr {
   meta: { number: number; title: string; body: string; url: string; author?: { login: string }; baseRefName: string; baseRefOid: string; headRefOid: string };
 }
 
+/** git, signed in to github.com with gh's login for this one command (as gh does for its own): a private repo on a
+ *  machine whose git was never given credentials. Your git config is left alone. */
+function ghCredentials(): string[] {
+  const gh = ghBin();
+  return gh ? ["-c", "credential.https://github.com.helper=", "-c", `credential.https://github.com.helper=!'${gh.replaceAll("'", "'\\''")}' auth git-credential`] : [];
+}
+
+/** Cloning over HTTPS failed, and SSH hasn't been allowed: the caller asks you (the terminal, or the page) first. */
+export class CloneError extends Error { readonly askSsh = true; }
+/** Clones owner/repo into dest. Over HTTPS with gh's login first: the one credential Bobby already relies on, checked
+ *  against GitHub's certificate, and none of your SSH keys or agents involved. If that fails, over SSH (your keys, your
+ *  ~/.ssh/config) only when ssh says you allowed it; otherwise a CloneError, to ask. */
+export async function cloneRepo(owner: string, repo: string, dest: string, ssh = false): Promise<void> {
+  const env = { GIT_TERMINAL_PROMPT: "0" }; // no username prompt in a terminal nobody's watching: fail, and say why
+  try {
+    await run(["git", ...ghCredentials(), "clone", "--quiet", "--no-tags", `https://github.com/${owner}/${repo}.git`, dest], { env });
+    return;
+  } catch (e) {
+    const why = String((e as Error).message).replace(/^git\b.*? failed \(\d+\): (fatal: )?/, "").trim();
+    log.warn(`  ✗ cloning ${owner}/${repo} over HTTPS with gh's sign-in failed: ${why}`);
+    if (!ssh) throw new CloneError(`Couldn't clone ${owner}/${repo} over HTTPS with gh's sign-in: ${why}\nBobby can try SSH instead, with your SSH keys and ~/.ssh/config.`);
+  }
+  log.info(`  trying SSH (git@github.com:${owner}/${repo}.git), as you allowed…`);
+  await run(["git", "clone", "--quiet", "--no-tags", `git@github.com:${owner}/${repo}.git`, dest], { env });
+}
+
 /** Reads the PR's metadata and finds (or clones) a local checkout. Doesn't fetch, so it's cheap enough to run on every launch. */
-/** from: the folder to look in for a clone when repoDir isn't given (where you ran bobby; default this process's). */
-export async function resolvePr(arg: string, repoDir?: string, from = process.cwd()): Promise<ResolvedPr> {
+/** from: the folder to look in for a clone when repoDir isn't given (where you ran bobby; default this process's).
+ *  ssh: cloning over SSH is allowed, if HTTPS fails. */
+export async function resolvePr(arg: string, repoDir?: string, from = process.cwd(), ssh = false): Promise<ResolvedPr> {
   const parsed = parsePrArg(arg);
   let cwd = repoDir ?? from;
 
@@ -120,7 +147,7 @@ export async function resolvePr(arg: string, repoDir?: string, from = process.cw
     cwd = join(home(), "repos", owner, repo);
     if (!existsSync(cwd)) {
       log.info(`  cloning ${owner}/${repo} into ${cwd} (first time only)…`);
-      await run(["gh", "repo", "clone", `${owner}/${repo}`, cwd, "--", "--no-tags"]);
+      await cloneRepo(owner, repo, cwd, ssh);
     }
     remote = (await remoteFor(cwd, owner, repo)) ?? "origin";
   }
@@ -132,12 +159,8 @@ export async function resolvePr(arg: string, repoDir?: string, from = process.cw
 export async function fetchPr(resolved: ResolvedPr): Promise<PrInfo> {
   const { cwd, remote, owner, repo, meta } = resolved;
   const ns = `refs/bobby/${meta.number}`;
-  // Signed in with gh: git asks it for github.com's credentials, as gh does for its own commands (a private repo on a
-  // machine whose git was never given them). Only for this fetch: your git config is left alone.
-  const gh = ghBin();
-  const viaGh = gh ? ["-c", "credential.https://github.com.helper=", "-c", `credential.https://github.com.helper=!'${gh.replaceAll("'", "'\\''")}' auth git-credential`] : [];
   await git(cwd, [
-    ...viaGh, "fetch", "--quiet", "--no-tags", remote,
+    ...ghCredentials(), "fetch", "--quiet", "--no-tags", remote,
     `+refs/pull/${meta.number}/head:${ns}/head`,
     `+refs/heads/${meta.baseRefName}:${ns}/base`,
   ]);

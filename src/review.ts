@@ -38,6 +38,7 @@ export interface ReviewOptions {
   refresh?: boolean; // rebuild rather than use the caches
   noLlm?: boolean; // no Claude tree
   noLsp?: boolean; // no language servers
+  ssh?: boolean; // cloning over SSH is allowed, if HTTPS (with gh's sign-in) fails
   log: (m: string) => void;
 }
 type Key = { owner: string; repo: string; number: number; branch?: string; headSha: string; baseSha?: string; baseRef?: string; commit?: PrInfo["commit"] };
@@ -74,7 +75,7 @@ export async function resolve(arg: string | undefined, o: ReviewOptions): Promis
   let cwd: string, key: Key, getPr: () => Promise<PrInfo>, title: string;
   if (arg) {
     log("▸ fetching PR…");
-    const resolved = await resolvePr(arg, o.repo, o.cwd);
+    const resolved = await resolvePr(arg, o.repo, o.cwd, o.ssh);
     cwd = resolved.cwd;
     key = { owner: resolved.owner, repo: resolved.repo, number: resolved.meta.number, headSha: resolved.meta.headRefOid, baseRef: resolved.meta.baseRefName };
     title = `#${key.number} ${resolved.meta.title}`;
@@ -184,7 +185,7 @@ export function start(p: Prepared, o: ReviewOptions): Session {
   session.rebuild = async () => {
     let next: PrInfo, disc: Discussion = { comments: session.staticGraph.discussion ?? [], outdated: session.staticGraph.outdated ?? [] };
     if (arg) {
-      const resolved = await resolvePr(arg, o.repo, o.cwd);
+      const resolved = await resolvePr(arg, o.repo, o.cwd, o.ssh);
       next = await fetchPr(resolved);
       disc = await reviewComments(next, true).catch(() => disc);
       session.baseRef = resolved.meta.baseRefName;

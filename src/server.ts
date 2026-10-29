@@ -164,7 +164,7 @@ export interface App {
   self?: string; // where this server answers on this machine (cli.ts), for Claude to reach Bobby's tools (mcp.ts)
   agentTools?: string; // --agent-tools: your own tools Claude may use in every review, unless a PR says otherwise (connected.ts)
 }
-export type OpenOptions = { repo?: string; cwd?: string; base?: string; refresh?: boolean; noLlm?: boolean; noLsp?: boolean };
+export type OpenOptions = { repo?: string; cwd?: string; base?: string; refresh?: boolean; noLlm?: boolean; noLsp?: boolean; ssh?: boolean };
 
 async function staticFile(p: string): Promise<Response> {
   const rel = normalize(p.slice(1));
@@ -221,9 +221,10 @@ export function startServer(app: App, port: number, { hostname = "127.0.0.1", al
         return json(await prLists({ repo: q("repo"), author: q("author"), q: q("q") }, url.searchParams.has("fresh")));
       }
       if (req.method === "POST" && p === "/api/open") {
-        const { arg, repo, cwd, base, refresh, noLlm, noLsp } = (await req.json().catch(() => ({}))) as { arg?: string; repo?: string; cwd?: string; base?: string; refresh?: boolean; noLlm?: boolean; noLsp?: boolean };
+        const { arg, repo, cwd, base, refresh, noLlm, noLsp, ssh, sshAlways } = (await req.json().catch(() => ({}))) as { arg?: string; repo?: string; cwd?: string; base?: string; refresh?: boolean; noLlm?: boolean; noLsp?: boolean; ssh?: boolean; sshAlways?: boolean };
         if (!app.open) return json({ error: "this Bobby can't open reviews" }, 400);
-        const flags = Object.fromEntries(Object.entries({ refresh, noLlm, noLsp }).filter(([, v]) => v !== undefined));
+        if (sshAlways) saveSettings({ ...loadSettings(), cloneSsh: "always" }); // the page's "Always": from now on, without asking
+        const flags = Object.fromEntries(Object.entries({ refresh, noLlm, noLsp, ssh: ssh || sshAlways || undefined }).filter(([, v]) => v !== undefined));
         const a = arg?.trim() || undefined, waited = a && !cwd && !repo && app.waiting?.arg === a; // the page, once gh is set up
         const o: OpenOptions = waited ? app.waiting!.o : { repo, base, ...(cwd ? { cwd } : {}), ...flags };
         try {
@@ -234,7 +235,8 @@ export function startServer(app: App, port: number, { hostname = "127.0.0.1", al
           const pr = !!a && (() => { try { return !!parsePrArg(a); } catch { return false; } })(); // not a PR: gh won't help
           const setup = pr && (await ghStatus().then((gh) => !(gh.installed && gh.loggedIn)));
           if (setup) app.waiting = { arg: a, o };
-          return json({ error: String((e as Error).message ?? e), ...(setup ? { setup: "gh" } : {}) }, 400);
+          // cloning over HTTPS failed: the page asks whether to try SSH, then opens it again with ssh (or sshAlways)
+          return json({ error: String((e as Error).message ?? e), ...(setup ? { setup: "gh" } : (e as { askSsh?: boolean }).askSsh ? { ask: "ssh" } : {}) }, 400);
         }
       }
       // Setting up GitHub's CLI (github.ts): where it stands, install it, sign in with a one-time code on github.com

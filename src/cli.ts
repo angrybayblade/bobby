@@ -7,7 +7,7 @@ import { ghStatus } from "./github.ts";
 import { GRAPH_SCHEMA, LEGACY_SCHEMAS, type ReviewGraph, setDiscussion } from "./graph.ts";
 import { clean, prune } from "./prune.ts";
 import { selfUpdate, tidyUpdate, watchReleases } from "./updates.ts";
-import { hold, holder, home, legacyHolder, loadSettings, loadState } from "./state.ts";
+import { hold, holder, home, legacyHolder, loadSettings, loadState, saveSettings } from "./state.ts";
 import { allow, SERVERS, serverById, startServers, stopServers } from "./servers.ts";
 import { resolve, reviewId, start, type ReviewOptions } from "./review.ts";
 import { noteRecent, recentOf } from "./recents.ts";
@@ -40,6 +40,7 @@ const { values, positionals } = parseArgs({
     lsp: { type: "boolean", default: false },
     refresh: { type: "boolean", default: false },
     "no-open": { type: "boolean", default: false },
+    ssh: { type: "boolean", default: false },
     "agent-tools": { type: "string", default: process.env.BOBBY_AGENT_TOOLS },
     repos: { type: "boolean", default: false },
     help: { type: "boolean", short: "h", default: false },
@@ -80,6 +81,7 @@ const USAGE = `bobby: review a PR one focused page at a time
   --lsp          extract: ask the installed language servers too (slower: they load the project first)
   --refresh      rebuild everything for this commit (ignore cached graphs, Claude tree and language server answers)
   --no-open      don't open the browser
+  --ssh          if cloning over HTTPS (with gh's sign-in) fails, try SSH without asking
   -v, --version  print the version`;
 
 const [cmd, arg] = ["extract", "open", "lsp", "clean", "home", "update", "logs"].includes(positionals[0]) ? [positionals[0], positionals[1]] : ["review", positionals[0]];
@@ -150,7 +152,7 @@ async function lspCommand(sub?: string, id?: string): Promise<number> {
 }
 if (cmd === "extract" && !values.out) log.stdoutIsData(); // the graph goes to stdout: progress to stderr
 const say = (m: string) => log.info(m);
-const opts: ReviewOptions & { refresh?: boolean } = { repo: values.repo, base: values.base, refresh: values.refresh, noLlm: values["no-llm"], noLsp: values["no-lsp"], log: say };
+const opts: ReviewOptions & { refresh?: boolean } = { repo: values.repo, base: values.base, refresh: values.refresh, noLlm: values["no-llm"], noLsp: values["no-lsp"], ssh: values.ssh || loadSettings().cloneSsh === "always", log: say };
 
 if (cmd === "extract") {
   const p = await (await resolve(arg, opts)).build();
@@ -207,7 +209,7 @@ const app: App = { reviews: new Map(), loading: new Map(), ...(values["agent-too
 app.open = async (a, o) => {
   // what the build logs is also its page's progress
   const steps: string[] = [];
-  const ro: ReviewOptions = { ...opts, ...o, log: (m) => { opts.log(m); steps.push(m.trim()); } };
+  const ro: ReviewOptions = { ...opts, ...o, ssh: o.ssh || values.ssh || loadSettings().cloneSsh === "always", log: (m) => { opts.log(m); steps.push(m.trim()); } };
   const resolved = await resolve(a, ro);
   const id = resolved.id;
   // TODO(0.1.0): remove with legacyHolder (state.ts): an rc Bobby still serving this review can't be handed it
@@ -245,6 +247,11 @@ if (cmd === "open") {
 } else if (!toHome) {
   // a bare `bobby` in a repo with nothing to review (on main, say) still starts: on the home page
   const id = await app.open(arg, { repo: values.repo, base: values.base }).catch(async (e) => {
+    if (e?.askSsh && arg) { // cloning over HTTPS failed: SSH only if you say so
+      const yes = await askSsh(e.message);
+      if (yes) return app.open!(arg, { repo: values.repo, base: values.base, ssh: true });
+      throw new Error(`${e.message}\nNot trying SSH. Run again with --ssh to try it, or clone the repo yourself and run bobby there.`);
+    }
     const gh = await ghStatus();
     if (arg && !(gh.installed && gh.loggedIn)) { // the page sets gh up, then opens the PR
       log.warn(`  ${e.message}\n  GitHub's CLI isn't set up: the page sets it up, then opens the PR`);
@@ -272,6 +279,18 @@ setInterval(() => {
     log.info(`  ▸ closed ${id}: no page open on it for 15 minutes (reopen it from the home page)`);
   }
 }, 60_000);
+
+/** Asks, in the terminal, whether to clone over SSH after HTTPS failed: yes (this time), always (remembered), or no.
+ *  No terminal to ask in: no. */
+async function askSsh(why: string): Promise<boolean> {
+  if (!process.stdin.isTTY) return false;
+  log.warn(`\n  ${why.replace(/\n/g, "\n  ")}`);
+  process.stdout.write("  Try SSH? [y]es, [a]lways (remember it), [N]o: ");
+  const answer = await new Promise<string>((done) => process.stdin.once("data", (d) => { process.stdin.pause(); done(String(d).trim().toLowerCase()); }));
+  if (answer.startsWith("a")) saveSettings({ ...loadSettings(), cloneSsh: "always" });
+  log.toFile("info", `clone over SSH? ${answer || "no"}`);
+  return answer.startsWith("y") || answer.startsWith("a");
+}
 
 /** The Bobby app already running, by its lock, if it answers. */
 async function runningApp(): Promise<string | null> {

@@ -84,7 +84,7 @@ bobby https://github.com/owner/repo/pull/123/changes/45f9ced..48c2f0b
 What happens:
 
 1. The PR's metadata is read with `gh pr view`.
-2. A local clone is found: `--repo` if you passed it, otherwise the current directory if one of its remotes points at the PR's repo, otherwise `~/.bobby/repos/<owner>/<repo>`, cloned the first time.
+2. A local clone is found: `--repo` if you passed it, otherwise the current directory if one of its remotes points at the PR's repo (on github.com, or at a host alias for it in your `~/.ssh/config`, as `git@github-work:owner/repo`), otherwise `~/.bobby/repos/<owner>/<repo>`, cloned the first time. That clone goes over HTTPS with gh's sign-in, the credential Bobby already uses, so none of your SSH keys or agents are involved. If it fails, Bobby asks before trying SSH (your keys and `~/.ssh/config`): in the terminal (**yes**, **always**, or **no**), or on the page (**Try SSH**, **Always try SSH**). `--ssh` allows it without asking; **always** is kept in `settings.json` (`cloneSsh`).
 3. The PR's head and base are fetched and the diff is built. If the PR's head commit hasn't changed since you last opened it, this step is skipped and the cached graph is reused.
 4. The UI opens at `http://127.0.0.1:4173` with the **static tree**, which is usable straight away.
 5. If `claude` is available, it organises the PR in the background. When it's done, a **"Smarter tree ready · R"** pill appears. Press `R` to switch; you stay on the same code.
@@ -142,6 +142,7 @@ bobby logs [n]                        # the log's last n lines (default 80), and
 | `--lsp` | off | `extract` only: ask the installed language servers too, and write their definitions. Nothing is installed. |
 | `--refresh` | off | Rebuild everything for this commit, ignoring the cached graphs, Claude tree and language-server answers. |
 | `--no-open` | off | Don't open the browser. |
+| `--ssh` | off | If cloning over HTTPS (with gh's sign-in) fails, try SSH without asking. |
 | `-o, --out <file>` | stdout | Output file for `extract`. |
 
 Environment: `BOBBY_MODEL` picks the Claude model passed to `claude --model` (the old `PRFOCUS_MODEL` still works); `BOBBY_REVIEW_MODEL`, the one for [Claude's review](reviewing.md#claudes-review-preview). `BOBBY_NO_UPDATE_CHECK=1` turns off the check for new versions. `BOBBY_AGENT_TOOLS` is `--agent-tools` (your own MCP servers and connectors Claude may use, as in [Reviewing](reviewing.md#your-own-tools-linear-notion-slack-datadog)). `BOBBY_HOME` keeps Bobby's files somewhere other than `~/.bobby` (a test, say). `BOBBY_HOST` and `BOBBY_ALLOW_HOSTS` (comma-separated) set `--host` and `--allow-host`.

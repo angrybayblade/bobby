@@ -124,7 +124,7 @@ bobby https://github.com/owner/repo/pull/123/changes/45f9ced..48c2f0b
 <p>What happens:</p>
 <ol>
 <li>The PR's metadata is read with <code>gh pr view</code>.</li>
-<li>A local clone is found: <code>--repo</code> if you passed it, otherwise the current directory if one of its remotes points at the PR's repo, otherwise <code>~/.bobby/repos/&lt;owner&gt;/&lt;repo&gt;</code>, cloned the first time.</li>
+<li>A local clone is found: <code>--repo</code> if you passed it, otherwise the current directory if one of its remotes points at the PR's repo (on github.com, or at a host alias for it in your <code>~/.ssh/config</code>, as <code>git@github-work:owner/repo</code>), otherwise <code>~/.bobby/repos/&lt;owner&gt;/&lt;repo&gt;</code>, cloned the first time. That clone goes over HTTPS with gh's sign-in, the credential Bobby already uses, so none of your SSH keys or agents are involved. If it fails, Bobby asks before trying SSH (your keys and <code>~/.ssh/config</code>): in the terminal (<strong>yes</strong>, <strong>always</strong>, or <strong>no</strong>), or on the page (<strong>Try SSH</strong>, <strong>Always try SSH</strong>). <code>--ssh</code> allows it without asking; <strong>always</strong> is kept in <code>settings.json</code> (<code>cloneSsh</code>).</li>
 <li>The PR's head and base are fetched and the diff is built. If the PR's head commit hasn't changed since you last opened it, this step is skipped and the cached graph is reused.</li>
 <li>The UI opens at <code>http://127.0.0.1:4173</code> with the <strong>static tree</strong>, which is usable straight away.</li>
 <li>If <code>claude</code> is available, it organises the PR in the background. When it's done, a <strong>&quot;Smarter tree ready · R&quot;</strong> pill appears. Press <code>R</code> to switch; you stay on the same code.</li>
@@ -172,6 +172,7 @@ bobby logs [n]                        # the log's last n lines (default 80), and
 <tr><td><code>--lsp</code></td><td>off</td><td><code>extract</code> only: ask the installed language servers too, and write their definitions. Nothing is installed.</td></tr>
 <tr><td><code>--refresh</code></td><td>off</td><td>Rebuild everything for this commit, ignoring the cached graphs, Claude tree and language-server answers.</td></tr>
 <tr><td><code>--no-open</code></td><td>off</td><td>Don't open the browser.</td></tr>
+<tr><td><code>--ssh</code></td><td>off</td><td>If cloning over HTTPS (with gh's sign-in) fails, try SSH without asking.</td></tr>
 <tr><td><code>-o, --out &lt;file&gt;</code></td><td>stdout</td><td>Output file for <code>extract</code>.</td></tr>
 </tbody>
 </table></div>
