@@ -5,7 +5,8 @@ import { STARTERS, askAbout, askById, askFollowUp, deleteAsk, stopAsk, typeFollo
 import { BAND_TEXT, DONE, LOW, api, esc, live } from "./core.js";
 import { MOD } from "./palette.js";
 import { keyHtml, keyName } from "./keys.js";
-import { bubble, cancelEdit, closeReply, deletePosted, fileKey, notesFor, outside, placeNotes, postReply, resolveThread, saveEdit, showFull, startEdit, startReply, threadsAt, toggleItem, typeEdit, typeReply } from "./comments.js";
+import { reactionClick } from "./reactions.js";
+import { bubble, cancelEdit, closeReply, deletePosted, fileKey, notesFor, outside, setReactions, placeNotes, postReply, resolveThread, saveEdit, showFull, startEdit, startReply, threadsAt, toggleItem, typeEdit, typeReply } from "./comments.js";
 
 const EXT = {
   ts: "typescript", tsx: "typescript", mts: "typescript", cts: "typescript", js: "javascript", jsx: "javascript", mjs: "javascript", cjs: "javascript",
@@ -971,6 +972,7 @@ function bind(app, el, rerender) {
     if (qa) return askAction(app, el, qa.dataset.qact, qa.dataset.qid, qa);
     const af = ev.target.closest("[data-afind]");
     if (af) { af.disabled = true; return findingAct(app, af.dataset.afind, af.dataset.aact); }
+    if (reactionClick(ev, (node, reactions) => setReactions(app, node, reactions))) return;
     const rs = ev.target.closest("[data-resolve]");
     if (rs) return resolveThread(app, rs.dataset.resolve, rs.dataset.to === "1", rs);
     const rp = ev.target.closest("[data-rstart],[data-rpost],[data-rcancel]");

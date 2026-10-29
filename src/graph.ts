@@ -58,6 +58,7 @@ export interface GDiscussion {
 }
 /** A reaction on a comment, as GitHub groups them: its kind (THUMBS_UP, HEART…), how many, and whether you're one. */
 export interface Reaction { content: string; count: number; mine: boolean }
+export const REACTION_KINDS = ["THUMBS_UP", "THUMBS_DOWN", "LAUGH", "HOORAY", "CONFUSED", "HEART", "ROCKET", "EYES"];
 /** Your review on GitHub that isn't submitted yet, if you started one there: its comments are in the discussion,
  *  marked pending, and submitting from Bobby adds your drafts to it and submits it. */
 export interface PendingReview { id: string; databaseId: string; body: string; comments: number }

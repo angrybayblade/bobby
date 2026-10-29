@@ -4,6 +4,7 @@
 // a local branch. A thread's "View code" opens that code in the Diff view.
 import { api, esc } from "../core.js";
 import { ago, ghHtml, md } from "../comments.js";
+import { reactionClick, reactionsHtml } from "../reactions.js";
 import { hlBlock, langOf } from "../code.js";
 import { MOD } from "../palette.js";
 import { injectCss } from "./flow.js";
@@ -145,7 +146,7 @@ export default {
     const mine = (c) => app.me?.login && c.author?.login === app.me.login;
     const ownButtons = (key, c) => !mine(c) || editing.has(key) ? "" : `<button class="own" data-eopen="${esc(key)}">Edit</button><button class="own${sure === key ? " sure" : ""}" data-edel="${esc(key)}">${sure === key ? "Delete it? Click again" : "Delete"}</button>`;
     const bodyOf = (key, c) => editing.has(key) ? `<div class="compose"><textarea data-ckey="e:${esc(key)}">${esc(editing.get(key))}</textarea>
-      <div class="row">${errors.get(`e:${key}`) ? `<span class="err">${esc(errors.get(`e:${key}`))}</span>` : `<span class="hint">${MOD === "⌘" ? "⌘" : "ctrl"}+enter saves</span>`}<span class="grow"></span><button class="btn" data-ecancel="${esc(key)}">Cancel</button><button class="btn primary" data-esave="${esc(key)}">Save</button></div></div>` : text(c);
+      <div class="row">${errors.get(`e:${key}`) ? `<span class="err">${esc(errors.get(`e:${key}`))}</span>` : `<span class="hint">${MOD === "⌘" ? "⌘" : "ctrl"}+enter saves</span>`}<span class="grow"></span><button class="btn" data-ecancel="${esc(key)}">Cancel</button><button class="btn primary" data-esave="${esc(key)}">Save</button></div></div>` : text(c) + reactionsHtml(c.node, c.reactions);
     const composer = (key, label, placeholder) => `<div class="compose" data-ck="${esc(key)}">
       <textarea placeholder="${esc(placeholder)}" data-ckey="${esc(key)}">${esc(drafts.get(key) ?? "")}</textarea>
       <div class="row">${errors.get(key) ? `<span class="err">${esc(errors.get(key))}</span>` : `<span class="hint">Markdown · ${MOD === "⌘" ? "⌘" : "ctrl"}+enter posts</span>`}<span class="grow"></span>
@@ -210,7 +211,7 @@ export default {
           if (it.state === "COMMENTED" && !it.body.trim() && !threads.length) continue;
           const [cls, ico] = ICON[it.state] ?? ["", "◉"];
           out.push(`<div class="item review" data-item><div class="event"><span class="ico ${cls}">${ico}</span>${avatar(it.author)}<span><b>${esc(it.author.login)}</b> ${VERB[it.state] ?? "reviewed"}</span>${when(it.createdAt)}<a href="${esc(it.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a></div>
-            ${it.body.trim() || threads.length ? `<div class="body">${it.body.trim() ? `<div class="box"><div class="bd">${text(it)}</div></div>` : ""}${threads.map(threadHtml).join("")}</div>` : ""}</div>`);
+            ${it.body.trim() || threads.length ? `<div class="body">${it.body.trim() ? `<div class="box"><div class="bd">${text(it)}${reactionsHtml(it.node, it.reactions)}</div></div>` : ""}${threads.map(threadHtml).join("")}</div>` : ""}</div>`);
         }
       }
       const rest = data.threads.filter((t) => !shown.has(t.id)); // in a review not in the timeline: your pending one
@@ -257,7 +258,7 @@ export default {
         <div class="meta">${state}${avatar(author)}<b>${esc(author.login)}</b>${data ? ` wants to merge <code>${esc(data.head)}</code> into <code>${esc(data.base)}</code> · opened ${when(data.createdAt)}` : ""}<span style="flex:1"></span><a href="${esc(pr.url)}" target="_blank" rel="noopener">Open on GitHub ↗</a></div>`;
       const body = data?.body ?? pr.body ?? "";
       const desc = `<div class="item card" data-item>${avatar(author)}<div class="box"><div class="hd"><b>${esc(author.login)}</b> ${data ? `opened this ${when(data.createdAt)}` : "opened this"}</div>
-        <div class="bd${body.trim() ? "" : " empty"}">${body.trim() ? text(data?.html ? data : { body }) : "No description provided."}</div></div></div>`;
+        <div class="bd${body.trim() ? "" : " empty"}">${body.trim() ? text(data?.html ? data : { body }) : "No description provided."}${reactionsHtml(data?.node, data?.reactions)}</div></div></div>`;
       const rest = data ? `${timelineHtml()}
           <div class="item card newc" data-item>${avatar(app.me ?? {})}<div class="box"><div class="hd"><b>Add a comment</b><span class="grow"></span><button class="btn" data-act="submit" title="Your drafts on lines, with approve or request changes">Review changes…</button></div>${composer("new", "Comment", "Leave a comment on this PR")}</div></div>
         </div>${statusHtml()}`
@@ -330,6 +331,11 @@ export default {
     });
     const cancel = (key) => { drafts.delete(key); errors.delete(key); for (const t of data.threads) if (`r:${t.comments[0]?.id}` === key) replying.delete(t.id); document.activeElement?.blur(); render(); };
     root.addEventListener("click", (ev) => {
+      // a reaction: the answer replaces that comment's (or review's, or the description's) reactions here
+      if (data && reactionClick(ev, (node, reactions) => {
+        for (const x of [data, ...data.timeline, ...data.threads.flatMap((t) => t.comments)]) if (x.node === node) x.reactions = reactions;
+        render();
+      })) return;
       const t = ev.target.closest("[data-go],[data-tog],[data-reply],[data-post],[data-cancel],[data-resolve],[data-eopen],[data-esave],[data-ecancel],[data-edel]");
       if (!t) return;
       const ds = t.dataset, thread = (id) => data.threads.find((x) => x.id === id);

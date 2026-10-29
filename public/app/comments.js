@@ -4,6 +4,7 @@
 import { LOW, api, esc, live } from "./core.js";
 import { MOD } from "./palette.js";
 import { askHtml } from "./ask.js";
+import { reactionsHtml } from "./reactions.js";
 
 // ---- the icon that says whether comments are showing: filled when they are, an outline when they're collapsed
 export const bubble = (filled) => `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path ${filled ? 'fill="currentColor"' : 'fill="none" stroke="currentColor" stroke-width="1.4"'} d="M2.5 2.5h11a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H8l-3 2.5V11.5H2.5a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1Z"/></svg>`;
@@ -233,7 +234,13 @@ export async function deletePosted(app, gid, clicked) {
 /** Shows a long comment in full, and remembers it while the page is open. */
 export function showFull(app, ck, clicked) { pageState(app).full = (pageState(app).full ?? new Set()).add(ck); keepPlace(app, clicked); }
 /** What the comment state of a file is, for knowing when to redraw it. */
-export const fileStamp = (app, path) => `${fileState(app, path)}:${pageState(app).full?.size ?? 0}:${[...(pageState(app).edits?.keys() ?? [])].join()}:${pageState(app).confirm ?? ""}:${(commentIndex(app).byPath.get(path) ?? []).map((x) => (itemOpen(app, x.id, path) ? 1 : 0) + (pageState(app).replies?.has(x.id) ? "r" : "")).join("")}`;
+export const fileStamp = (app, path) => `${fileState(app, path)}:${pageState(app).full?.size ?? 0}:${[...(pageState(app).edits?.keys() ?? [])].join()}:${pageState(app).confirm ?? ""}:${(commentIndex(app).byPath.get(path) ?? []).map((x) => (itemOpen(app, x.id, path) ? 1 : 0) + (pageState(app).replies?.has(x.id) ? "r" : "") + reacted(x)).join("")}`;
+const reacted = (t) => (t.items ?? []).map((i) => (i.reactions ?? []).map((r) => `${r.content}${r.count}${r.mine ? "!" : ""}`).join()).join("/");
+/** A comment's reactions changed (reactions.js): kept in the discussion, and its file redrawn where it is. */
+export function setReactions(app, node, reactions, clicked) {
+  app.graph.discussion = (app.graph.discussion ?? []).map((c) => (c.node === node ? { ...c, reactions } : c));
+  keepPlace(app, clicked);
+}
 export const fileCount = (app, path) => (commentIndex(app).byPath.get(path) ?? []).reduce((n, x) => n + (x.items?.length ?? 1), 0);
 /** The PR's comments and notes in files on screen: one hidden by Tests or Untouched isn't counted, as its comments aren't shown. */
 export const prCount = (app) => [...commentIndex(app).byPath].filter(([path]) => !path || shown(app, path)).flatMap(([, xs]) => xs).filter((x) => x.kind !== "agent" && x.kind !== "ask").reduce((n, x) => n + (x.items?.length ?? 1), 0);
@@ -268,7 +275,7 @@ function threadHtml(app, t) {
         ${k === 0 ? range(t) : ""}${k === 0 && t.resolved ? `<span class="ctag">resolved</span>` : ""}${i.url ? `<a class="clink" href="${esc(i.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a>` : ""}<span class="cgrow"></span>
         ${i.wip ? `<button class="cact" data-wip="${esc(i.cid)}" title="Open it again to finish">Continue</button>` : ""}${i.cid ? `<button class="cact" data-del="${esc(i.cid)}" title="Discard this draft">Delete</button>` : ""}${own(i)}
         ${k === 0 ? `<button class="cfold" data-tid="${esc(t.id)}" data-tpath="${esc(t.path)}" title="Collapse${n > 1 ? " this thread" : ""}">${bubble(true)}</button>` : ""}</div>
-      ${body(i, k)}</div></div>`).join("");
+      ${body(i, k)}${i.gid && !i.pending && !s.edits?.has(i.gid) ? reactionsHtml(i.node, i.reactions) : ""}</div></div>`).join("");
   // GitHub's own footer: a reply, posted at once; and done with it (it collapses, for everyone), or not done after all
   const resolve = t.node ? `<button class="cbtn" data-resolve="${esc(t.node)}" data-to="${t.resolved ? "0" : "1"}">${t.resolved ? "Unresolve conversation" : "Resolve conversation"}</button>` : "";
   const text = replies(app).get(t.id);

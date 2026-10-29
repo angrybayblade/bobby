@@ -153,14 +153,14 @@ interface ThreadInfo {
   pending?: PendingReview;
   pendingComments: GDiscussion[];
 }
-const REACTIONS = "reactionGroups { content viewerHasReacted reactors { totalCount } }";
+const REACTION_GROUPS = "reactionGroups { content viewerHasReacted reactors { totalCount } }";
 export const reactionsOf = (groups: Array<{ content: string; viewerHasReacted: boolean; reactors: { totalCount: number } }> | undefined): Reaction[] =>
   (groups ?? []).filter((g) => g.reactors.totalCount > 0).map((g) => ({ content: g.content, count: g.reactors.totalCount, mine: g.viewerHasReacted }));
 async function threadInfo(pr: Pick<PrInfo, "owner" | "repo" | "number">, strict: boolean): Promise<ThreadInfo> {
   const q = `query($owner: String!, $repo: String!, $n: Int!, $after: String) { repository(owner: $owner, name: $repo) { pullRequest(number: $n) {
     reviews(states: PENDING, first: 1) { nodes { id databaseId body comments { totalCount } } }
     reviewThreads(first: 50, after: $after) { pageInfo { hasNextPage endCursor } nodes { id isResolved path line startLine diffSide startDiffSide subjectType
-      comments(first: 100) { nodes { id databaseId state body bodyHTML createdAt url author { login avatarUrl } replyTo { databaseId } ${REACTIONS} } } } } } } }`;
+      comments(first: 100) { nodes { id databaseId state body bodyHTML createdAt url author { login avatarUrl } replyTo { databaseId } ${REACTION_GROUPS} } } } } } } }`;
   type RawComment = { id: string; databaseId: number; state: string; body: string; bodyHTML: string; createdAt: string; url: string; author: { login: string; avatarUrl?: string } | null; replyTo: { databaseId: number } | null;
     reactionGroups: Parameters<typeof reactionsOf>[0] };
   type RawThread = { id: string; isResolved: boolean; path: string; line: number | null; startLine: number | null; diffSide: "LEFT" | "RIGHT"; startDiffSide: "LEFT" | "RIGHT" | null; subjectType: "LINE" | "FILE"; comments: { nodes: RawComment[] } };

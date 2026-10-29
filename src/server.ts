@@ -1,14 +1,14 @@
 import { join, normalize } from "node:path";
 import { embeddedAsset } from "./assets.ts";
 import { cancelLogin, claudeStatus, dismiss, INSTALL_TEXT, installClaude, startLogin, submitCode } from "./claude.ts";
-import { fileLines, forgetUnknownMe, parsePrArg, reviewComments, run, whoAmI } from "./git.ts";
+import { fileLines, forgetUnknownMe, parsePrArg, reactionsOf, reviewComments, run, whoAmI } from "./git.ts";
 import { type AgentJob, draftOf, runAgentReview } from "./agent.ts";
 import { runAsk } from "./ask.ts";
 import { handleMcp, mcpConfig, openMcp } from "./mcp.ts";
 import { catalog, parseSpec, resolveSpec, runWith, type Connected, type Selection } from "./connected.ts";
 import { refsForGitHub } from "./refs.ts";
 import { cancelGhLogin, dismissGh, ghStatus, installGh, startGhLogin } from "./github.ts";
-import { type ReviewGraph, setDiscussion } from "./graph.ts";
+import { REACTION_KINDS, type ReviewGraph, setDiscussion } from "./graph.ts";
 import { home, loadSettings, saveSettings, saveState } from "./state.ts";
 import type { Ask, Comment, Definition, PrivateNote, ReviewState } from "./types.ts";
 import { type Inspector, insideRepo, inspectSyntax, referencesSyntax, type Uses } from "./inspect.ts";
@@ -376,6 +376,24 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
           const msg = String((e as Error).message);
           if (/\b(403|404)\b|not accessible|forbidden/i.test(msg)) return json({ ok: false, error: `GitHub won't let you ${edit ? "edit" : "delete"} it: only its author (or a repo admin) can` }, 403);
           return json({ ok: false, error: msg }, 400);
+        }
+      }
+      // React to a comment (or the description, or a review), or take your reaction back, at once, as on GitHub. Answers
+      // that thing's reactions now; an inline comment's are updated in the discussion too, so every view agrees.
+      if (req.method === "POST" && p === "/api/react") {
+        const { subject, content, on } = (await req.json().catch(() => ({}))) as { subject?: unknown; content?: unknown; on?: unknown };
+        if (typeof subject !== "string" || !/^[\w-]+$/.test(subject) || typeof content !== "string" || !REACTION_KINDS.includes(content) || typeof on !== "boolean")
+          return json({ ok: false, error: `subject must be a node id, content one of ${REACTION_KINDS.join(", ")}, and on true or false` }, 400);
+        if (pr().provider === "local") return json({ ok: false, error: "This is a local review with no PR." }, 400);
+        const op = on ? "addReaction" : "removeReaction";
+        try {
+          const out = JSON.parse(await run(["gh", "api", "graphql", "-f", `query=mutation($id: ID!, $c: ReactionContent!) { ${op}(input: { subjectId: $id, content: $c }) { subject { reactionGroups { content viewerHasReacted reactors { totalCount } } } } }`, "-f", `id=${subject}`, "-f", `c=${content}`]));
+          const reactions = reactionsOf(out.data?.[op]?.subject?.reactionGroups);
+          for (const g of [s.staticGraph, s.claudeGraph]) for (const c of g?.discussion ?? []) if (c.node === subject) { if (reactions.length) c.reactions = reactions; else delete c.reactions; }
+          s.conversation = undefined;
+          return json({ ok: true, reactions });
+        } catch (e) {
+          return json({ ok: false, error: String((e as Error).message) }, 400);
         }
       }
       // Resolve or unresolve a review thread, at once, as GitHub's button does; every view then reads it from the graph

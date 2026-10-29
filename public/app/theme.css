@@ -386,6 +386,19 @@ kbd {
 .crange { font: 11.5px var(--font-code); color: var(--faint); white-space: nowrap; }
 .ctag { font: 11px/16px var(--font-ui); color: var(--muted); border: 1px solid var(--line); border-radius: 10px; padding: 0 7px; }
 .ctag.pend { color: var(--signal); border-style: dashed; border-color: currentColor; }
+/* Reactions under a GitHub comment: what it has (yours tinted), and the button for GitHub's eight */
+.creacts { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 6px; }
+.crx { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 0 7px; border: 1px solid var(--line); border-radius: 11px; font: 12px var(--font-ui); color: var(--muted); background: transparent; }
+.crx:hover { border-color: var(--muted); }
+.crx.on { border-color: color-mix(in srgb, var(--signal) 55%, transparent); background: var(--signal-soft); color: var(--text); }
+.crwrap { position: relative; display: inline-flex; }
+.crpick { display: inline-grid; place-items: center; width: 24px; height: 22px; border: 1px solid transparent; border-radius: 11px; color: var(--faint); }
+.crpick:hover, .crwrap.open .crpick { color: var(--text); border-color: var(--line); }
+.crmenu { display: none; position: absolute; bottom: calc(100% + 6px); left: 0; z-index: 8; padding: 4px; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; box-shadow: var(--shadow); }
+.crwrap.open .crmenu { display: flex; }
+.crp { width: 30px; height: 30px; border-radius: 4px; font-size: 16px; line-height: 1; }
+.crp:hover { background: var(--raised); }
+.crp.on { background: var(--signal-soft); }
 .clink { color: var(--faint); text-decoration: none; }
 .clink:hover, .cact:hover, .cfold:hover { color: var(--text); }
 .cact { font: 12px var(--font-ui); color: var(--muted); padding: 0 4px; }

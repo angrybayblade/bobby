@@ -2,11 +2,14 @@
 // threads on code) and commits in time order, then where it stands: approvals, requested reviewers and CI checks.
 // Read live from GitHub in one GraphQL query, not kept in the review graph: it moves while you review. Text comes with
 // GitHub's own rendering (html), so bots' HTML, tables, images and reference links read as they do on github.com.
-import { run } from "./git.ts";
+import { reactionsOf, run } from "./git.ts";
+import type { Reaction } from "./graph.ts";
 import type { PrInfo } from "./types.ts";
 
 export interface Person { login: string; avatar?: string }
-export interface ThreadComment { id: string; author: Person; body: string; html: string; createdAt: string; url: string }
+/** What can be reacted to: its GraphQL node id, and its reactions so far. */
+export interface Reactable { node?: string; reactions?: Reaction[] }
+export interface ThreadComment extends Reactable { id: string; author: Person; body: string; html: string; createdAt: string; url: string }
 export interface Thread {
   id: string; // GitHub's node id, for resolving
   path: string; line: number | null; startLine: number | null; side: "LEFT" | "RIGHT";
@@ -16,15 +19,15 @@ export interface Thread {
   comments: ThreadComment[];
 }
 export type TimelineItem =
-  | { kind: "comment"; id: string; author: Person; body: string; html: string; createdAt: string; url: string }
-  | { kind: "review"; id: string; author: Person; state: "APPROVED" | "CHANGES_REQUESTED" | "COMMENTED" | "DISMISSED" | "PENDING"; body: string; html: string; createdAt: string; url: string }
+  | ({ kind: "comment"; id: string; author: Person; body: string; html: string; createdAt: string; url: string } & Reactable)
+  | ({ kind: "review"; id: string; author: Person; state: "APPROVED" | "CHANGES_REQUESTED" | "COMMENTED" | "DISMISSED" | "PENDING"; body: string; html: string; createdAt: string; url: string } & Reactable)
   | { kind: "commit"; sha: string; subject: string; author: Person; createdAt: string; url: string };
 export interface Check {
   name: string; workflow?: string;
   status: "queued" | "running" | "success" | "failure" | "neutral" | "skipped" | "cancelled";
   url?: string; description?: string; startedAt?: string; completedAt?: string;
 }
-export interface Conversation {
+export interface Conversation extends Reactable { // the description's
   author: Person; body: string; html: string; createdAt: string; url: string; base: string; head: string; // branch names
   state: "OPEN" | "CLOSED" | "MERGED"; draft: boolean;
   mergeable: "MERGEABLE" | "CONFLICTING" | "UNKNOWN";
@@ -38,19 +41,20 @@ export interface Conversation {
 }
 
 const WHO = "author { login avatarUrl }";
+const REACT = "id reactionGroups { content viewerHasReacted reactors { totalCount } }";
 const TIMELINE = `timelineItems(first: 100, after: $after, itemTypes: [ISSUE_COMMENT, PULL_REQUEST_REVIEW, PULL_REQUEST_COMMIT]) {
     pageInfo { hasNextPage endCursor } nodes { __typename
-    ... on IssueComment { databaseId body bodyHTML createdAt url ${WHO} }
-    ... on PullRequestReview { databaseId state body bodyHTML submittedAt createdAt url ${WHO} }
+    ... on IssueComment { databaseId body bodyHTML createdAt url ${WHO} ${REACT} }
+    ... on PullRequestReview { databaseId state body bodyHTML submittedAt createdAt url ${WHO} ${REACT} }
     ... on PullRequestCommit { url commit { oid messageHeadline committedDate author { name user { login avatarUrl } } } } } }`;
 const PR = (fields: string) => `query($owner: String!, $repo: String!, $n: Int!, $after: String) { repository(owner: $owner, name: $repo) { pullRequest(number: $n) { ${fields} } } }`;
 // The rest of the timeline, a page at a time, for a long-running PR.
 const MORE = PR(TIMELINE);
 const QUERY = PR(`
-  body bodyHTML createdAt url baseRefName headRefName state isDraft mergeable reviewDecision ${WHO}
+  body bodyHTML createdAt url baseRefName headRefName state isDraft mergeable reviewDecision ${WHO} ${REACT}
   ${TIMELINE}
   reviewThreads(first: 100) { nodes { id isResolved isOutdated path line startLine diffSide
-    comments(first: 100) { nodes { databaseId body bodyHTML diffHunk createdAt url ${WHO} pullRequestReview { databaseId } } } } }
+    comments(first: 100) { nodes { databaseId body bodyHTML diffHunk createdAt url ${WHO} ${REACT} pullRequestReview { databaseId } } } } }
   latestOpinionatedReviews(first: 50) { nodes { state ${WHO} } }
   reviewRequests(first: 50) { nodes { requestedReviewer { ... on User { login avatarUrl } ... on Team { slug } } } }
   commits(last: 1) { nodes { commit { statusCheckRollup { contexts(first: 100) { nodes { __typename
@@ -58,6 +62,8 @@ const QUERY = PR(`
     ... on StatusContext { context state targetUrl description createdAt } } } } } } }`);
 
 type Raw = any;
+/** A node's id and its reactions, those with any. */
+const reactable = (n: Raw): Reactable => { const r = reactionsOf(n.reactionGroups); return { ...(n.id ? { node: n.id } : {}), ...(r.length ? { reactions: r } : {}) }; };
 const person = (a: Raw): Person => a ? { login: a.login ?? a.slug ?? "ghost", ...(a.avatarUrl ? { avatar: a.avatarUrl } : {}) } : { login: "ghost" };
 
 function check(c: Raw): Check {
@@ -83,8 +89,8 @@ export async function conversation(pr: Pick<PrInfo, "owner" | "repo" | "number">
     page = next.pageInfo;
   }
   const timeline: TimelineItem[] = nodes.flatMap((n: Raw): TimelineItem[] => {
-    if (n.__typename === "IssueComment") return [{ kind: "comment", id: String(n.databaseId), author: person(n.author), body: n.body, html: n.bodyHTML ?? "", createdAt: n.createdAt, url: n.url }];
-    if (n.__typename === "PullRequestReview") return n.state === "PENDING" ? [] : [{ kind: "review", id: String(n.databaseId), author: person(n.author), state: n.state, body: n.body, html: n.bodyHTML ?? "", createdAt: n.submittedAt ?? n.createdAt, url: n.url }];
+    if (n.__typename === "IssueComment") return [{ kind: "comment", id: String(n.databaseId), author: person(n.author), body: n.body, html: n.bodyHTML ?? "", createdAt: n.createdAt, url: n.url, ...reactable(n) }];
+    if (n.__typename === "PullRequestReview") return n.state === "PENDING" ? [] : [{ kind: "review", id: String(n.databaseId), author: person(n.author), state: n.state, body: n.body, html: n.bodyHTML ?? "", createdAt: n.submittedAt ?? n.createdAt, url: n.url, ...reactable(n) }];
     if (n.__typename === "PullRequestCommit") {
       const c = n.commit, u = c.author?.user;
       return [{ kind: "commit", sha: c.oid, subject: c.messageHeadline, author: u ? person(u) : { login: c.author?.name ?? "unknown" }, createdAt: c.committedDate, url: n.url }];
@@ -96,11 +102,11 @@ export async function conversation(pr: Pick<PrInfo, "owner" | "repo" | "number">
     resolved: t.isResolved, outdated: t.isOutdated,
     reviewId: t.comments.nodes[0]?.pullRequestReview?.databaseId != null ? String(t.comments.nodes[0].pullRequestReview.databaseId) : null,
     hunk: t.comments.nodes[0]?.diffHunk ?? "",
-    comments: t.comments.nodes.map((c: Raw) => ({ id: String(c.databaseId), author: person(c.author), body: c.body, html: c.bodyHTML ?? "", createdAt: c.createdAt, url: c.url })),
+    comments: t.comments.nodes.map((c: Raw) => ({ id: String(c.databaseId), author: person(c.author), body: c.body, html: c.bodyHTML ?? "", createdAt: c.createdAt, url: c.url, ...reactable(c) })),
   }));
   return {
     author: person(p.author), body: p.body ?? "", html: p.bodyHTML ?? "", createdAt: p.createdAt, url: p.url, base: p.baseRefName, head: p.headRefName,
-    state: p.state, draft: p.isDraft, mergeable: p.mergeable, decision: p.reviewDecision ?? null,
+    state: p.state, draft: p.isDraft, mergeable: p.mergeable, decision: p.reviewDecision ?? null, ...reactable(p),
     timeline, threads,
     verdicts: p.latestOpinionatedReviews.nodes.map((r: Raw) => ({ author: person(r.author), state: r.state })),
     requested: p.reviewRequests.nodes.map((r: Raw) => person(r.requestedReviewer)).filter((x: Person) => x.login !== "ghost"),
