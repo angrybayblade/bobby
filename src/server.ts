@@ -215,7 +215,7 @@ export function startServer(app: App, port: number, { hostname = "127.0.0.1", al
       // The home page: what you've opened (and which are open now), and the GitHub lists, filtered.
       if (p === "/api/home") {
         const recents = (await loadRecents()).map((r) => ({ ...r, open: app.reviews.has(r.id), loading: app.loading.has(r.id) && !app.loading.get(r.id)!.error }));
-        return json({ settings: loadSettings(), me: await whoAmI(join(home(), "cache", "me.json")), release: app.release ?? null, version: pkg.version, recents, ...(app.waiting ? { waiting: app.waiting.arg } : {}) });
+        return json({ settings: loadSettings(), me: await whoAmI(), release: app.release ?? null, version: pkg.version, recents, ...(app.waiting ? { waiting: app.waiting.arg } : {}) });
       }
       if (p === "/api/home/prs") {
         const q = (k: string) => url.searchParams.get(k) ?? undefined;
@@ -349,7 +349,7 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
         return json(s.definitions ? { ...g, definitions: s.definitions } : g); // the language server's, once it has answered
       }
       if (p === "/api/session")
-        return json({ state: s.state, settings: loadSettings(), llm: s.llm, llmError: s.llmError, servers: Object.values(s.servers ?? {}), me: await whoAmI(join(home(), "cache", "me.json")), caps: { files: !!s.cwd, inspect: !!s.cwd } });
+        return json({ state: s.state, settings: loadSettings(), llm: s.llm, llmError: s.llmError, servers: Object.values(s.servers ?? {}), me: await whoAmI(), caps: { files: !!s.cwd, inspect: !!s.cwd } });
       if (p === "/api/status") return json({ agent: agentStatus(s), asking: [...(s.askJobs?.values() ?? [])].filter((j) => !j.done).length, llm: s.llm, llmError: s.llmError, claudeReady: !!s.claudeGraph, servers: Object.values(s.servers ?? {}), discussionAt: s.discussionAt ?? 0, release: app.release ?? null, update: s.rebuilding ? { ...s.update, rebuilding: true } : s.update ?? null });
       if (p === "/api/discussion") return json({ comments: s.staticGraph.discussion ?? [], outdated: s.staticGraph.outdated ?? [] });
       if (p === "/api/conversation") {
@@ -413,7 +413,7 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
         if (pr().provider === "local" || pr().commit || !s.cwd) return json({ ok: true, since: null });
         if (s.since?.head === headSha) return json({ ok: true, since: s.since.value });
         try {
-          const me = await whoAmI(join(home(), "cache", "me.json"));
+          const me = await whoAmI();
           if (!me) return json({ ok: true, since: null });
           const out = await run(["gh", "api", "--paginate", `repos/${owner}/${repo}/pulls/${number}/reviews?per_page=100`, "--jq", `.[] | select(.user.login == "${me.login}" and .state != "PENDING") | {sha: .commit_id, at: .submitted_at}`]);
           const last = out.split("\n").filter((l) => l.startsWith("{")).map((l) => JSON.parse(l) as { sha: string; at: string }).sort((a, b) => a.at.localeCompare(b.at)).at(-1);

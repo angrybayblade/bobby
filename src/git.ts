@@ -335,7 +335,7 @@ export async function reviewComments(pr: Pick<PrInfo, "owner" | "repo" | "number
 let unknownSince = 0;
 /** Ask GitHub again, now: gh was just set up. */
 export const forgetUnknownMe = () => { unknownSince = 0; };
-export async function whoAmI(cache: string): Promise<{ login: string; avatar: string } | null> {
+export async function whoAmI(cache = join(home(), "cache", "me.json")): Promise<{ login: string; avatar: string } | null> {
   try {
     const f = Bun.file(cache);
     if ((await f.exists()) && Date.now() - f.lastModified < 86_400_000) return await f.json();

@@ -4,9 +4,7 @@
 // comment on the whole file (only GraphQL adds those to a review). Then each draft is added to that review (one is
 // started if there's none), and the review is submitted. A draft leaves Bobby once it's on GitHub (done), so a submit
 // that fails halfway can be tried again without posting anything twice: what landed is then in the pending review.
-import { join } from "node:path";
 import { run, whoAmI } from "./git.ts";
-import { home } from "./state.ts";
 import type { Comment, PrInfo } from "./types.ts";
 
 export type ReviewEvent = "COMMENT" | "APPROVE" | "REQUEST_CHANGES";
@@ -100,7 +98,7 @@ async function restReview(pr: PrInfo, event: ReviewEvent, body: string, lines: C
   };
   const reviews = `repos/${pr.owner}/${pr.repo}/pulls/${pr.number}/reviews`;
   const out = await run(["gh", "api", "--method", "POST", reviews, "--input", "-"], { input: JSON.stringify(payload) }).catch(async (e) => {
-    const me = await whoAmI(join(home(), "cache", "me.json"));
+    const me = await whoAmI();
     const recent = await run(["gh", "api", `${reviews}?per_page=100`, "--jq", `[.[] | select(.user.login == "${me?.login ?? ""}" and .commit_id == "${payload.commit_id}")] | last`]).catch(() => "");
     const r = recent.trim() && recent.trim() !== "null" ? JSON.parse(recent) : null;
     if (r && r.body === payload.body && Date.now() - Date.parse(r.submitted_at) < 10 * 60_000) return JSON.stringify(r);
