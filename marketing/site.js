@@ -306,6 +306,7 @@ function show(n) {
   placeDock(n);
   pan(n, !reduceMotion);
   caps.forEach((c, i) => c.classList.toggle("on", i === n));
+  if (urlFollows) history.replaceState(history.state, "", caps[n].dataset.slug ? `#${caps[n].dataset.slug}` : location.pathname + location.search);
   document.dispatchEvent(new CustomEvent("story:step", { detail: n }));
   dots.forEach((d, i) => { d.classList.toggle("on", i === n); d.classList.toggle("done", i < n); });
 }
@@ -354,12 +355,21 @@ document.addEventListener("keydown", (ev) => {
   else if (ev.key === "k" || ev.key === "ArrowUp") { ev.preventDefault(); go(step - 1); }
 });
 
+// ---- the address follows the step (#lens, #install…), so each one can be shared; the first is the bare page
+/** The step a hash names, or -1. */
+const stepOf = (hash) => caps.findIndex((c) => c.dataset.slug && `#${c.dataset.slug}` === decodeURIComponent(hash));
+let urlFollows = false; // not until a shared link has been read
+history.scrollRestoration = "manual"; // a reload goes back to the step in the address
+addEventListener("hashchange", () => { const n = stepOf(location.hash); if (n >= 0) go(n); }); // an edited address
+
 addEventListener("scroll", onScroll, { passive: true });
 addEventListener("resize", () => { layout(); onScroll(); });
 layout();
 fit();
+const asked = stepOf(location.hash);
+if (asked > 0) scrollTo({ top: stepTop(asked), behavior: "instant" }); // a shared step: straight there
 onScroll();
-if (location.hash === "#install") go(STEPS - 1);
+urlFollows = true;
 
 // ---- copy the install command
 const toast = document.querySelector(".toast");

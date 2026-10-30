@@ -22,6 +22,9 @@ Then open `http://127.0.0.1:8080/`. `j` / `k` (or the arrows) step through it. B
     capture, like the bar from Diff to Lens, cross-fades in place);
   - `data-at="n"`: a moment (a ping, a dialog), there only at step `n`.
 - The app also carries `s1` … `sN`, every step reached, so the layout can move with it (`.app.s2 .gh-diffs { … }`).
+- Each step's caption names it in the address (`data-slug`: `#lens`, `#install`…; the first step is the bare page). The
+  address follows the step as you scroll (replaced, not pushed, so Back leaves the page), a link to one opens on it,
+  and editing the hash moves there.
 - Scrolling moves one step at a time: a wheel or trackpad gesture is one step (its momentum is ignored, so a flick
   never skips), touch and keys snap to each step, and the footer is one more stop after the last. The transitions are
   time-based, so a step plays the same however fast you scroll.
@@ -31,7 +34,7 @@ and Conversation (18), to show it keeps the GitHub review you know. Steps 13 to 
 the PR: a question answered on its lines (13), one of its references opened in the code viewer (14), Review with
 Claude's prompt with your own tools (15), and its findings one at a time (16). Claude's side is the story's too
 (`capture.mjs`'s `story`: the answer, the findings, the tools), so the capture needs no login and says the same every
-time. To add a step: add a caption with the next `data-cap`, then tag what leaves and what arrives with that
+time. To add a step: add a caption with the next `data-cap` and a `data-slug` of its own, then tag what leaves and what arrives with that
 number. Keep each step to one GitHub piece out and one Bobby piece in, and name both in the caption's **Out** / **In**
 lines.
 
