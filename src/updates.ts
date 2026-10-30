@@ -47,7 +47,7 @@ export async function newerRelease(maxAge = EVERY): Promise<Release | null> {
 }
 
 /** A compiled release binary, as opposed to `bun run src/cli.ts` in a checkout. */
-const isBinary = () => /\$bunfs|~BUN/.test(Bun.main);
+export const isBinary = () => /\$bunfs|~BUN/.test(Bun.main);
 const howToUpdate = () => (isBinary() ? "bobby update" : "git pull && bun install");
 
 /** The release archive for a platform: bobby-<tag>-<os>-<arch>.tar.gz, or .zip on Windows. */

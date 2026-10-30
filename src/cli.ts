@@ -12,6 +12,7 @@ import { allow, SERVERS, serverById, startServers, stopServers } from "./servers
 import { resolve, reviewId, start, type ReviewOptions } from "./review.ts";
 import { noteRecent, recentOf } from "./recents.ts";
 import { openCommand, runningApp } from "./running.ts";
+import { serveStdio } from "./bridge.ts";
 import { type App, startServer, type Session } from "./server.ts";
 import pkg from "../package.json" with { type: "json" };
 import * as log from "./log.ts";
@@ -64,6 +65,8 @@ const USAGE = `bobby: review a PR one focused page at a time
   bobby clean [--repos]              remove caches and exported trees (and with --repos, the clones
                                      in ~/.bobby/repos); your reviews' progress stays
   bobby logs [n]                     the log's last n lines (default 80) and where it is: for a bug report
+  bobby mcp                          an MCP server (stdio) for your agents, to open reviews in the Bobby
+                                     running here, or one it starts: claude mcp add bobby -- bobby mcp
 
   --base <ref>   no PR: the branch to compare against (default: this branch's PR base,
                  origin's default branch, then main/master/develop/trunk; asks if none)
@@ -85,7 +88,7 @@ const USAGE = `bobby: review a PR one focused page at a time
   --ssh          if cloning over HTTPS (with gh's sign-in) fails, try SSH without asking
   -v, --version  print the version`;
 
-const [cmd, arg] = ["extract", "open", "lsp", "clean", "home", "update", "logs"].includes(positionals[0]) ? [positionals[0], positionals[1]] : ["review", positionals[0]];
+const [cmd, arg] = ["extract", "open", "lsp", "clean", "home", "update", "logs", "mcp"].includes(positionals[0]) ? [positionals[0], positionals[1]] : ["review", positionals[0]];
 if (cmd !== "logs" && !values.version && !values.help) log.started(pkg.version, process.argv.slice(2));
 // bobby logs: where the log is, and its last lines, to paste into a bug report
 if (cmd === "logs") {
@@ -93,6 +96,12 @@ if (cmd === "logs") {
   if (!(await f.exists())) { console.log(`No log yet: Bobby writes one to ${log.logPath()} as it runs.`); process.exit(0); }
   const lines = (await f.text()).trimEnd().split("\n");
   console.log(`${lines.slice(-Number(arg ?? 80) || -80).join("\n")}\n\n  The whole log: ${log.logPath()}\n  (attach it, or the lines above, to a bug report; tokens are blanked out)`);
+  process.exit(0);
+}
+// bobby mcp: an MCP server over stdio for your own agents, which carries only JSON-RPC on stdout
+if (cmd === "mcp") {
+  log.stdoutIsData();
+  await serveStdio();
   process.exit(0);
 }
 if (values.version) {
