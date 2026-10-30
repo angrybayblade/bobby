@@ -11,6 +11,7 @@ import { hold, holder, home, legacyHolder, loadSettings, loadState, saveSettings
 import { allow, SERVERS, serverById, startServers, stopServers } from "./servers.ts";
 import { resolve, reviewId, start, type ReviewOptions } from "./review.ts";
 import { noteRecent, recentOf } from "./recents.ts";
+import { openCommand, runningApp } from "./running.ts";
 import { type App, startServer, type Session } from "./server.ts";
 import pkg from "../package.json" with { type: "json" };
 import * as log from "./log.ts";
@@ -292,14 +293,6 @@ async function askSsh(why: string): Promise<boolean> {
   return answer.startsWith("y") || answer.startsWith("a");
 }
 
-/** The Bobby app already running, by its lock, if it answers. */
-async function runningApp(): Promise<string | null> {
-  const other = holder();
-  if (!other) return null;
-  const url = `http://127.0.0.1:${other.port}`;
-  return (await fetch(`${url}/api/avatar?u=`, { signal: AbortSignal.timeout(1500) }).then((r) => r.status === 400, () => false)) ? url : null;
-}
-
 async function serve(app: App, path: string) {
   // The default port may be taken (a dev server): fall back to any free one.
   let server;
@@ -325,10 +318,4 @@ async function serve(app: App, path: string) {
   watchReleases((r) => { app.release = r; log.info(`  ▸ Bobby ${r.version} is out (you have ${pkg.version}). Update: ${r.how} (${r.url})`); });
   log.info(`\n  ▶ ${url}\n`);
   if (!values["no-open"]) await run(openCommand(url), { allowFail: true }).catch(() => console.log("  (open that link in your browser)"));
-}
-
-function openCommand(url: string) {
-  if (process.platform === "darwin") return ["open", url];
-  if (process.platform === "win32") return ["cmd", "/c", "start", "", url];
-  return ["xdg-open", url];
 }
