@@ -132,6 +132,7 @@ export default {
   name: "Conversation",
   hint: "The PR's description, comments, reviews and checks, as on GitHub",
   available: (graph) => graph.pr.provider !== "local",
+  apart: true, // its own page: it doesn't show the walk's focus, and its address names no step
   mount(el, app) {
     injectCss("conversation", STYLE);
     const root = el.appendChild(Object.assign(document.createElement("div"), { className: "conv" }));

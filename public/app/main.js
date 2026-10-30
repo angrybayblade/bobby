@@ -108,6 +108,7 @@ for (const q of ["(prefers-color-scheme: light)", "(prefers-reduced-motion: redu
 // ---- views
 // Only those that apply to this review: a local branch has no PR, so no Conversation.
 const views = allViews.filter((v) => v.available?.(graph) ?? true);
+const apart = (id) => !!views.find((v) => v.id === id)?.apart; // a view of its own (Conversation, Map): it doesn't show the walk's focus
 // Each view mounts into its own slot. Diff is costly to build, so it's kept alive when you switch away: its slot is
 // parked (content-visibility: hidden keeps its layout, so showing it again is a repaint, not a rebuild) and it catches
 // up on return ("resume"). The others are cheap and are rebuilt each time.
@@ -157,7 +158,7 @@ function placeOf(pid) {
   return { path: n.file, line: h ? h.newStart || h.oldStart : 0 };
 }
 function routeUrl() {
-  const at = app.level > 0 && currentId !== "conversation" ? placeOf(app.focus) : null;
+  const at = app.level > 0 && !apart(currentId) ? placeOf(app.focus) : null;
   const path = at ? `/${at.path.split("/").map(encodeURIComponent).join("/")}` : "";
   const zoom = at && app.level !== usualLevel(currentId) ? `?zoom=${app.level === 1 ? "core" : "page"}` : "";
   return `${reviewBase}/${currentId}${path}${zoom}${at?.line ? `#L${at.line}` : ""}`;
@@ -184,7 +185,7 @@ addEventListener("popstate", () => {
   const r = readRoute();
   if (!r) return;
   if (r.pid) app.setFocus(r.pid, { level: r.level });
-  else if (r.view !== "conversation") app.setLevel(0);
+  else if (!apart(r.view)) app.setLevel(0);
   app.switchView(r.view, { push: false });
 });
 app.on((why) => why !== "settings" && why !== "view" && current?.update?.(why));
@@ -310,7 +311,7 @@ if (hash.has("p")) app.focus = app.index.walk[Number(hash.get("p")) - 1] ?? app.
 // the address (/r/<id>/<view>/<file path>#L<line>): that view, at that step; just a view, its overview
 const route = hash.has("view") || hash.has("p") ? null : readRoute();
 if (route?.pid) { app.focus = app.canonical(route.pid); app.level = route.level; }
-else if (route && route.view !== "conversation") app.level = 0;
+else if (route && !apart(route.view)) app.level = 0;
 const linked = hash.has("p") || !!route?.pid || !!route?.missing; // sent somewhere: no welcome-back or start-here card over it
 mount(route?.view ?? hash.get("view") ?? app.settings.view);
 writeRoute(); // the address says where you are from the start (and drops a step the review no longer has)

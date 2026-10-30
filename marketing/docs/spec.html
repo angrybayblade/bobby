@@ -139,6 +139,7 @@ bobby open pr.json                # view any graph, wherever it came from
   name: &quot;Flow&quot;,               // shown in the switcher
   hint: &quot;Node-link canvas&quot;,   // tooltip
   available(graph) {},        // optional: false hides the view for this review (Conversation, for a local branch)
+  apart: true,                // optional: a view of its own that doesn't show the walk's focus (Conversation); its address names no step
   mount(el, app) {            // el: the view's container; app: shared runtime (below)
     return {
       update(reason) {},      // &quot;focus&quot; | &quot;level&quot; | &quot;marks&quot; | &quot;comments&quot; | &quot;graph&quot; | &quot;settings&quot; | &quot;resize&quot; | &quot;resume&quot;

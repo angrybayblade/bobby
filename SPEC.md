@@ -104,6 +104,7 @@ export default {
   name: "Flow",               // shown in the switcher
   hint: "Node-link canvas",   // tooltip
   available(graph) {},        // optional: false hides the view for this review (Conversation, for a local branch)
+  apart: true,                // optional: a view of its own that doesn't show the walk's focus (Conversation); its address names no step
   mount(el, app) {            // el: the view's container; app: shared runtime (below)
     return {
       update(reason) {},      // "focus" | "level" | "marks" | "comments" | "graph" | "settings" | "resize" | "resume"
