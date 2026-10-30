@@ -1,0 +1,19 @@
+#!/bin/sh
+# Enforces the release-tag rule (docs/contributing.md › Releasing): a version tag is exactly package.json's version at
+# the commit it tags, with no leading v. The release's download URLs are built from the tag, and every `bobby update`
+# already installed looks for them by the bare version, so a tag like v0.2.0 publishes a release they can't find.
+zero=0000000000000000000000000000000000000000
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in refs/tags/*) ;; *) continue ;; esac
+  [ "$local_sha" = "$zero" ] && continue # deleting a tag
+  tag="${remote_ref#refs/tags/}"
+  case "$tag" in v[0-9]* | [0-9]*) ;; *) continue ;; esac # not a version tag
+  version=$(git show "$local_sha:package.json" 2>/dev/null | sed -n 's/^  "version": *"\([^"]*\)".*/\1/p')
+  if [ "$tag" != "$version" ]; then
+    echo "✗ tag $tag: a release tag must be exactly package.json's version at that commit ($version), with no leading v" >&2
+    if [ "${tag#v}" = "$version" ]; then echo "  git tag -d $tag && git tag $version && git push origin $version" >&2
+    else echo "  bump \"version\" in package.json (and CHANGELOG.md) to ${tag#v}, commit, and tag that commit" >&2; fi
+    exit 1
+  fi
+done
+exit 0

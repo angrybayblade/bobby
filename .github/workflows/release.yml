@@ -1,9 +1,10 @@
-# Release: pushing a version tag (v1.2.3 or 1.2.3; a hyphen, as in 1.2.3-rc0, makes a pre-release) builds standalone bobby
+# Release: pushing a version tag (1.2.3; a hyphen, as in 1.2.3-rc0, makes a pre-release) builds standalone bobby
 # binaries for every platform and publishes them, with checksums, as a GitHub release.
 #
-#   git tag v0.2.0 && git push origin v0.2.0
+#   git tag 0.2.0 && git push origin 0.2.0
 #
-# The tag, without any leading v, must match "version" in package.json. Bun cross-compiles every target, so one Linux runner
+# The tag must be exactly "version" in package.json, with no leading v: the assets are named after the tag, and every
+# `bobby update` already installed looks for them by the bare version. A v tag still runs this, to fail loudly. Bun cross-compiles every target, so one Linux runner
 # builds them all.
 name: release
 
@@ -33,10 +34,9 @@ jobs:
 
       - name: Check the tag matches package.json
         run: |
-          tag="${GITHUB_REF_NAME#v}"
           version="$(bun -e 'console.log(require("./package.json").version)')"
-          if [ "$tag" != "$version" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME doesn't match package.json version $version"
+          if [ "$GITHUB_REF_NAME" != "$version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME isn't package.json's version, $version: tag it exactly $version, with no leading v"
             exit 1
           fi
 
