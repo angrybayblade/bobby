@@ -227,7 +227,7 @@ if (running) {
   if (!out.id && arg) fail(out.error ?? `Bobby at ${running} couldn't open it`);
   // a bare `bobby` in a repo with nothing to review: the home page instead
   const url = out.id ? `${running}/r/${out.id}` : `${running}/`;
-  log.info(out.id ? `  opened in the Bobby already running (its terminal shows the progress)\n\n  ▶ ${url}\n`
+  log.info(out.id ? `  opened in the Bobby already running (its page shows the progress)\n\n  ▶ ${url}\n`
     : `  ${out.error ?? "Nothing to review here"}\n  opening the home page instead\n\n  ▶ ${url}\n`);
   if (!values["no-open"]) await run(openCommand(url), { allowFail: true }).catch(() => {});
   process.exit(0);
