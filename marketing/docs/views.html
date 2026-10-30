@@ -60,13 +60,14 @@
     <main class="doc">
       <article>
 <h1>Views</h1>
-<p>There are four views of the same review, plus the PR's conversation. Switch with <code>v</code> or the toggle in the header. Your focus, progress and comments are shared between them. A review opens in Diff the first time; after that, in the last view you used. The address bar follows you: <code>…/diff/src/app.ts#L42</code> is that file's viewer in Diff, <code>…/flow/src/app.ts#L42</code> that step in Flow, <code>…/conversation</code> the conversation. Reload, bookmark or share it to come back to the same place, and use back and forward to move between views.</p>
+<p>There are four views of the same review, plus the PR's conversation and a map of how it changes behaviour. Switch with <code>v</code> or the toggle in the header. Your focus, progress and comments are shared between them. A review opens in Diff the first time; after that, in the last view you used. The address bar follows you: <code>…/diff/src/app.ts#L42</code> is that file's viewer in Diff, <code>…/flow/src/app.ts#L42</code> that step in Flow, <code>…/conversation</code> the conversation. Reload, bookmark or share it to come back to the same place, and use back and forward to move between views.</p>
 <div class="table"><table>
 <thead>
 <tr><th>View</th><th>Shape</th><th>Good for</th></tr>
 </thead>
 <tbody>
 <tr><td><a href="#conversation">Conversation</a></td><td>The PR as GitHub's Conversation tab shows it</td><td>The intent and the discussion, before or after the code; replying</td></tr>
+<tr><td><a href="#map">Map</a></td><td>A diagram of what the system does, before and after</td><td>Understanding what the change does, before reading its code</td></tr>
 <tr><td><a href="#flow">Flow</a></td><td>Node-link canvas, left to right</td><td>Seeing the shape of the change</td></tr>
 <tr><td><a href="#outline">Outline</a></td><td>Document rail and a reading pane</td><td>Big PRs, reading first</td></tr>
 <tr><td><a href="#lens">Lens</a></td><td>The focus in the centre, its neighbours either side</td><td>Maximum focus</td></tr>
@@ -81,6 +82,14 @@
 <li><strong>Replying.</strong> <em>Reply…</em> under a thread and <em>Comment</em> at the end post at once, as GitHub's buttons do (<code>⌘</code>/<code>ctrl</code>+<code>enter</code> too). <em>Review changes…</em> opens the usual submit, for your drafts on lines and approving or requesting changes.</li>
 <li><strong>Status</strong>, at the end: each reviewer's latest verdict and who's still asked; the head commit's CI checks, failing and running first, the rest folded, each with its time and a link to its run; and whether it can merge.</li>
 <li>It's read from GitHub when you open it and every 30 seconds after, and never redrawn under a box you're typing in. <code>j</code>/<code>k</code> step from item to item.</li>
+</ul>
+<h2 id="map"><a class="anchor" href="#map" aria-hidden="true">#</a>Map</h2>
+<p>How the PR changes what the system does, as a diagram you read before the code: who does what, what calls what, what's read and written, before the change and after it. Claude draws it on request (<strong>Draw the map</strong>), from the PR and the code around it, read-only, as it does for a review; it's kept for the PR's head commit, and offers a redraw once the PR has new commits.</p>
+<ul>
+<li><strong>At the level the change lives at.</strong> Claude picks one, and says why: <strong>Local</strong> (one function calling another), <strong>Module</strong> (one module or package to another), <strong>Service</strong> (between services, or the parts of one: a handler, a worker, a database), <strong>End user</strong> (what users do and see, step by step) or <strong>Infra</strong> (containers, jobs, queues, databases, deploys). Pick a level yourself before drawing, or redraw at another one from the header.</li>
+<li><strong>Before, Changes, After.</strong> It's one graph whose parts are marked <strong>same</strong>, <strong>added</strong>, <strong>removed</strong> or <strong>changed</strong>: <em>Before</em> draws the system without what the PR adds, <em>After</em> without what it removes, and <em>Changes</em> (the default) both, with what's added, removed and changed marked, and a changed interaction showing what it did before beneath what it does now. <code>←</code> / <code>→</code> switch between them.</li>
+<li><strong>What changes</strong>, in the rail: the behavioural changes, most important first, each saying what happened before, what happens now and what it means, with links to the code. Click one (or <code>↑</code> / <code>↓</code>) to light up its part of the diagram; again, or <code>esc</code>, to see it all.</li>
+<li>A part's code opens in the code viewer when you click it, as do the links in a change.</li>
 </ul>
 <h2 id="flow"><a class="anchor" href="#flow" aria-hidden="true">#</a>Flow</h2>
 <p>The whole PR as one free-flowing tree on a canvas, reading left to right: <strong>this PR</strong> → its <strong>concerns</strong> → a concern's <strong>core changes</strong> → what each affects → what that affects → ….</p>
@@ -208,6 +217,7 @@
     <aside class="toc" aria-label="On this page">
       <h4>On this page</h4>
       <a href="#conversation">Conversation</a>
+      <a href="#map">Map</a>
       <a href="#flow">Flow</a>
       <a href="#outline">Outline</a>
       <a href="#lens">Lens</a>

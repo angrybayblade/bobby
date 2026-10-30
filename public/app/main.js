@@ -312,7 +312,7 @@ if (hash.has("p")) app.focus = app.index.walk[Number(hash.get("p")) - 1] ?? app.
 const route = hash.has("view") || hash.has("p") ? null : readRoute();
 if (route?.pid) { app.focus = app.canonical(route.pid); app.level = route.level; }
 else if (route && !apart(route.view)) app.level = 0;
-const linked = hash.has("p") || !!route?.pid || !!route?.missing; // sent somewhere: no welcome-back or start-here card over it
+const linked = hash.has("p") || !!route?.pid || !!route?.missing || apart(route?.view); // sent somewhere: no welcome-back or start-here card over it
 mount(route?.view ?? hash.get("view") ?? app.settings.view);
 writeRoute(); // the address says where you are from the start (and drops a step the review no longer has)
 tour.init(app, { fresh });

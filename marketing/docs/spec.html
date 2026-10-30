@@ -63,7 +63,7 @@
 <p><code>bobby.review-graph/v1</code> is the contract between <strong>extracting</strong> a PR and <strong>viewing</strong> it. Graphs written under the tool's old name, <code>prfocus.review-graph/v1</code>, are the same format and still open.</p>
 <ul>
 <li>Extractors turn a PR into a graph. This repo ships one: git and static analysis, refined by Claude.</li>
-<li>Views render a graph. This repo ships four: Flow, Outline, Lens and Diff.</li>
+<li>Views render a graph. This repo ships four: Flow, Outline, Lens and Diff. (Conversation and Map read the PR's conversation and Claude's behaviour map from the server instead.)</li>
 <li>Neither side knows about the other, so any extractor works with any view.</li>
 </ul>
 <p>The machine-readable schema is in <a href="https://github.com/angrybayblade/focus-bobby/blob/main/schema/review-graph.v1.schema.json"><code>schema/review-graph.v1.schema.json</code></a>.</p>

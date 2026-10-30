@@ -1,10 +1,11 @@
 # Views
 
-There are four views of the same review, plus the PR's conversation. Switch with `v` or the toggle in the header. Your focus, progress and comments are shared between them. A review opens in Diff the first time; after that, in the last view you used. The address bar follows you: `…/diff/src/app.ts#L42` is that file's viewer in Diff, `…/flow/src/app.ts#L42` that step in Flow, `…/conversation` the conversation. Reload, bookmark or share it to come back to the same place, and use back and forward to move between views.
+There are four views of the same review, plus the PR's conversation and a map of how it changes behaviour. Switch with `v` or the toggle in the header. Your focus, progress and comments are shared between them. A review opens in Diff the first time; after that, in the last view you used. The address bar follows you: `…/diff/src/app.ts#L42` is that file's viewer in Diff, `…/flow/src/app.ts#L42` that step in Flow, `…/conversation` the conversation. Reload, bookmark or share it to come back to the same place, and use back and forward to move between views.
 
 | View | Shape | Good for |
 |---|---|---|
 | [Conversation](#conversation) | The PR as GitHub's Conversation tab shows it | The intent and the discussion, before or after the code; replying |
+| [Map](#map) | A diagram of what the system does, before and after | Understanding what the change does, before reading its code |
 | [Flow](#flow) | Node-link canvas, left to right | Seeing the shape of the change |
 | [Outline](#outline) | Document rail and a reading pane | Big PRs, reading first |
 | [Lens](#lens) | The focus in the centre, its neighbours either side | Maximum focus |
@@ -20,6 +21,15 @@ The PR as it reads on GitHub, top to bottom: its description, then comments, rev
 - **Replying.** *Reply…* under a thread and *Comment* at the end post at once, as GitHub's buttons do (`⌘`/`ctrl`+`enter` too). *Review changes…* opens the usual submit, for your drafts on lines and approving or requesting changes.
 - **Status**, at the end: each reviewer's latest verdict and who's still asked; the head commit's CI checks, failing and running first, the rest folded, each with its time and a link to its run; and whether it can merge.
 - It's read from GitHub when you open it and every 30 seconds after, and never redrawn under a box you're typing in. `j`/`k` step from item to item.
+
+## Map
+
+How the PR changes what the system does, as a diagram you read before the code: who does what, what calls what, what's read and written, before the change and after it. Claude draws it on request (**Draw the map**), from the PR and the code around it, read-only, as it does for a review; it's kept for the PR's head commit, and offers a redraw once the PR has new commits.
+
+- **At the level the change lives at.** Claude picks one, and says why: **Local** (one function calling another), **Module** (one module or package to another), **Service** (between services, or the parts of one: a handler, a worker, a database), **End user** (what users do and see, step by step) or **Infra** (containers, jobs, queues, databases, deploys). Pick a level yourself before drawing, or redraw at another one from the header.
+- **Before, Changes, After.** It's one graph whose parts are marked **same**, **added**, **removed** or **changed**: *Before* draws the system without what the PR adds, *After* without what it removes, and *Changes* (the default) both, with what's added, removed and changed marked, and a changed interaction showing what it did before beneath what it does now. `←` / `→` switch between them.
+- **What changes**, in the rail: the behavioural changes, most important first, each saying what happened before, what happens now and what it means, with links to the code. Click one (or `↑` / `↓`) to light up its part of the diagram; again, or `esc`, to see it all.
+- A part's code opens in the code viewer when you click it, as do the links in a change.
 
 ## Flow
 
