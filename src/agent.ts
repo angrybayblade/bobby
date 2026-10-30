@@ -87,12 +87,19 @@ const REVIEW_WITH_TOOLS = `1. Read the diff of each file that matters (pr_diff),
 Check at least the PR's two or three most important changes this way before you report. A finding you haven't checked against the code doesn't belong in the list; say in the summary what you didn't get to.`;
 
 function buildPrompt(g: ReviewGraph, focus?: string, tools = false): string {
-  const parts = [instructions(tools ? AS_REPORTS : AS_SCHEMA), ...(tools ? ["", TOOLS_NOTE] : []), ...(focus ? ["", "# WHAT THE REVIEWER ASKED YOU TO FOCUS ON", focus, "Spend your investigation on this first, and say in the summary what you found about it. Still report a serious bug you come across elsewhere."] : []), "", `# PR: ${g.pr.title}`, g.pr.body.slice(0, 4000), "", `What it does: ${g.intent}`];
+  const parts = [instructions(tools ? AS_REPORTS : AS_SCHEMA), ...(tools ? ["", TOOLS_NOTE] : []), ...(focus ? ["", "# WHAT THE REVIEWER ASKED YOU TO FOCUS ON", focus, "Spend your investigation on this first, and say in the summary what you found about it. Still report a serious bug you come across elsewhere."] : []), "", prContext(g, tools)];
+  if (tools) parts.push("", "# HOW TO WORK", REVIEW_WITH_TOOLS);
+  return parts.join("\n");
+}
+
+/** The PR for Claude: its title, description and parts, then its files (with Bobby's tools, to read with pr_diff) or
+ *  its diff. */
+export function prContext(g: ReviewGraph, tools = false): string {
+  const parts = [`# PR: ${g.pr.title}`, g.pr.body.slice(0, 4000), "", `What it does: ${g.intent}`];
   if (g.generator.tree === "claude" && g.cores.length) parts.push("", "Its parts:", ...g.cores.map((c) => `- ${c.title}: ${c.summary}`));
   if (tools) { // the files, not their diffs: Claude reads each with pr_diff, and investigates from there
     parts.push("", `# ITS FILES (${g.files.length}): read each one that matters with mcp__bobby__pr_diff`,
-      ...g.files.map((f) => `- ${f.path} (${f.status}, +${f.additions} −${f.deletions})${f.lowSignal ? ` [low signal: ${f.lowSignal}]` : ""}`),
-      "", "# HOW TO WORK", REVIEW_WITH_TOOLS);
+      ...g.files.map((f) => `- ${f.path} (${f.status}, +${f.additions} −${f.deletions})${f.lowSignal ? ` [low signal: ${f.lowSignal}]` : ""}`));
     return parts.join("\n");
   }
   parts.push("", "# THE DIFF");
