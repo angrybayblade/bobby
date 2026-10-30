@@ -124,7 +124,8 @@ bobby open <graph.json> [--repo dir]  # open the UI on an existing graph file
 bobby lsp                             # the language servers behind the inspector, by language
 bobby lsp install <language>          # install one (typescript, python), or say how (go)
 bobby logs [n]                        # the log's last n lines (default 80), and where the whole log is
-bobby stop                            # stop the Bobby running here (as one bobby mcp started in the background)
+bobby start                           # start Bobby in the background, if it isn't running, for bobby <pr> to hand reviews to
+bobby stop                            # stop the Bobby running here (as one bobby start or bobby mcp started)
 bobby mcp                             # an MCP server for your agents: see below
 ```
 
@@ -160,6 +161,12 @@ claude mcp add --scope user bobby -- bobby mcp
 It has one tool, `open_review`: a PR (its URL, `owner/repo#number`, or its number in the repo you're in), or with none, the branch in the folder the agent works in, as a bare `bobby` there would. It opens it in the Bobby already running on this machine, with your other reviews, or starts one in the background (on the home page, without opening the browser), then shows the review. If `gh` isn't set up, it shows the page that sets it up, then opens the PR. If cloning over HTTPS fails, the agent asks you before trying SSH.
 
 A Bobby started this way has no terminal: `bobby stop` stops it.
+
+To teach an agent all of it, the tool and the CLI's way when it doesn't have the tool (`bobby start`, then `bobby <pr>`), give it Bobby's skill, [`skills/bobby/SKILL.md`](../skills/bobby/SKILL.md). For Claude Code:
+
+```sh
+mkdir -p ~/.claude/skills/bobby && curl -fsSL https://raw.githubusercontent.com/angrybayblade/bobby/main/skills/bobby/SKILL.md -o ~/.claude/skills/bobby/SKILL.md
+```
 
 ## On a remote machine
 
