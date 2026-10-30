@@ -14,6 +14,31 @@
   --move: cubic-bezier(.65, 0, .35, 1); /* for things that travel: start and land gently */
   --dur: .8s;
   --head: 56px;
+  --edge: rgba(60, 40, 10, .16); --drop: rgba(60, 40, 10, .28); /* the frame's hairline and shadow */
+  --cmd-bg: #1f1c18; --cmd-fg: #ece5d8;
+  /* GitHub's light theme, for its page in the mock */
+  --gh-bg: #fff; --gh-canvas: #f6f8fa; --gh-fg: #1f2328; --gh-muted: #59636e; --gh-faint: #818b98;
+  --gh-green: #1f883d; --gh-green-edge: #1a7f37; --gh-add-fg: #1a7f37; --gh-del-fg: #d1242f; --gh-mod: #9a6700;
+  --gh-tab: #fd8c73; --gh-chip-bg: #ddf4ff; --gh-accent: #0969da; --gh-sel: #818b9826; --gh-counter: #818b981f; --gh-risk-edge: #ff818266;
+  --gh-add-bg: #dafbe1; --gh-add-no: #aceebb; --gh-del-bg: #ffebe9; --gh-del-no: #ffcecb; --gh-hunk: #ddf4ff; --gh-hunk-no: #b6e3ff;
+  --gh-k: #cf222e; --gh-s: #0a3069; --gh-f: #8250df; --gh-n: #0550ae; --gh-slack: #611f69;
+}
+/* dark: the app's warm dark around GitHub's dark theme (theme.js sets data-theme before the page paints) */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #1a1815; --surface: #211f1b; --raised: #2a2722; --line: #3a352e; --line-soft: #2d2a25;
+  --text: #ece5d8; --muted: #a89f91; --faint: #756d61;
+  --signal: #e0a54e; --signal-soft: rgba(224, 165, 78, .13); --risk: #d98466; --ok: #93b48d;
+  --add-tint: rgba(147, 180, 141, .075); --del-tint: rgba(217, 132, 102, .075);
+  --edge: rgba(255, 245, 225, .1); --drop: rgba(0, 0, 0, .5);
+  --cmd-bg: #2a2722; --cmd-fg: #ece5d8;
+  --gh-line: #3d444d;
+  --gh-bg: #0d1117; --gh-canvas: #151b23; --gh-fg: #f0f6fc; --gh-muted: #9198a1; --gh-faint: #6e7681;
+  --gh-green: #238636; --gh-green-edge: #2ea043; --gh-add-fg: #3fb950; --gh-del-fg: #f85149; --gh-mod: #9e6a03;
+  --gh-tab: #f78166; --gh-chip-bg: rgba(56, 139, 253, .15); --gh-accent: #4493f8; --gh-sel: #656c7633; --gh-counter: #656c7633; --gh-risk-edge: rgba(248, 81, 73, .4);
+  --gh-add-bg: rgba(46, 160, 67, .15); --gh-add-no: rgba(63, 185, 80, .3); --gh-del-bg: rgba(248, 81, 73, .1); --gh-del-no: rgba(248, 81, 73, .3);
+  --gh-hunk: rgba(56, 139, 253, .1); --gh-hunk-no: rgba(56, 139, 253, .25);
+  --gh-k: #ff7b72; --gh-s: #a5d6ff; --gh-f: #d2a8ff; --gh-n: #79c0ff; --gh-slack: #e3b5f0;
 }
 * { box-sizing: border-box; }
 html { background: var(--bg); }
@@ -30,6 +55,10 @@ code { font-family: var(--code); font-size: .9em; }
 .site nav a { text-decoration: none; color: var(--muted); transition: color .2s var(--ease); }
 .site nav a:hover { color: var(--text); }
 .site nav .cta { color: var(--text); font-weight: 600; }
+.site nav .theme { display: grid; place-items: center; width: 28px; height: 28px; margin: 0 -6px; color: var(--muted); transition: color .2s var(--ease); }
+.site nav .theme:hover { color: var(--text); }
+.site nav .theme .sun, :root[data-theme="dark"] .site nav .theme .moon { display: none; }
+:root[data-theme="dark"] .site nav .theme .sun { display: block; }
 .site-foot { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; justify-content: center; padding: 28px 16px 40px; color: var(--muted); font-size: 13px; }
 .site-foot span { display: flex; align-items: center; gap: 6px; }
 .site-foot a { text-decoration: none; }
@@ -43,7 +72,7 @@ html.snapping .site-foot { scroll-snap-align: end; }
 .stage { touch-action: pan-y pinch-zoom; position: sticky; top: 0; height: 100vh; height: 100svh; padding: calc(var(--head) + 12px) clamp(16px, 3vw, 32px) 16px; display: grid; grid-template-rows: minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); gap: 16px; }
 .viewport { grid-row: 1; min-height: 0; min-width: 0; display: grid; place-items: center; position: relative; } /* its size, not the frame's, sets the scale */
 /* the scroll hint: under the mock, once you've lingered on the first step */
-.scroll-hint { position: absolute; z-index: 2; left: 50%; bottom: 4px; display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 12px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); box-shadow: 0 6px 20px -8px rgba(60, 40, 10, .25); color: var(--muted); font-size: 13px; white-space: nowrap; opacity: 0; transform: translate(-50%, 8px); transition: opacity .5s var(--ease), transform .5s var(--ease); pointer-events: none; }
+.scroll-hint { position: absolute; z-index: 2; left: 50%; bottom: 4px; display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 12px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); box-shadow: 0 6px 20px -8px var(--drop); color: var(--muted); font-size: 13px; white-space: nowrap; opacity: 0; transform: translate(-50%, 8px); transition: opacity .5s var(--ease), transform .5s var(--ease); pointer-events: none; }
 .scroll-hint.on { opacity: 1; transform: translate(-50%, 0); animation: hint-bob 2.4s var(--ease) .5s infinite; }
 .scroll-hint .mouse { position: relative; flex: none; width: 14px; height: 21px; border: 1.5px solid var(--muted); border-radius: 7px; }
 .scroll-hint .mouse i { position: absolute; left: 50%; top: 4px; width: 2px; height: 5px; margin-left: -1px; border-radius: 1px; background: var(--signal); animation: hint-wheel 1.6s var(--ease) infinite; }
@@ -52,7 +81,7 @@ html.snapping .site-foot { scroll-snap-align: end; }
 @keyframes hint-wheel { 0% { opacity: 0; transform: translateY(-2px); } 30% { opacity: 1; } 80% { opacity: 0; transform: translateY(6px); } 100% { opacity: 0; } }
 @keyframes hint-bob { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 4px); } }
 @media (prefers-reduced-motion: reduce) { .scroll-hint.on, .scroll-hint .mouse i { animation: none; } }
-.frame { width: var(--frame-w, calc(1440px * var(--scale, .5))); height: calc(900px * var(--scale, .5)); position: relative; border-radius: calc(4px * var(--scale, .5)); box-shadow: 0 0 0 1px rgba(60, 40, 10, .16), 0 24px 60px -20px rgba(60, 40, 10, .28); overflow: hidden; contain: paint; } /* paint: on a phone the app runs past it (cropped), and nothing of that may reach the page */ /* a hairline all round: the white page stands off the cream */
+.frame { width: var(--frame-w, calc(1440px * var(--scale, .5))); height: calc(900px * var(--scale, .5)); position: relative; border-radius: calc(4px * var(--scale, .5)); box-shadow: 0 0 0 1px var(--edge), 0 24px 60px -20px var(--drop); overflow: hidden; contain: paint; } /* paint: on a phone the app runs past it (cropped), and nothing of that may reach the page */ /* a hairline all round: the white page stands off the cream */
 .captions { grid-row: 2; display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; position: relative; max-width: 760px; width: 100%; justify-self: center; }
 .cap { grid-area: 1 / 1; min-width: 0; opacity: 0; transform: translateY(8px); transition: opacity .35s var(--ease), transform .45s var(--ease); pointer-events: none; padding-bottom: 44px; }
 .cap.on { opacity: 1; transform: none; pointer-events: auto; }
@@ -68,7 +97,7 @@ html.snapping .site-foot { scroll-snap-align: end; }
 .cap .out i { color: var(--risk); background: rgba(176, 84, 58, .1); }
 .cap .in i { color: var(--signal); background: var(--signal-soft); }
 .cap .in code { color: var(--signal); }
-.cap .cmd { display: flex; align-items: center; gap: 10px; margin: 10px 0; padding: 8px 8px 8px 14px; background: #1f1c18; color: #ece5d8; border-radius: 3px; font-size: 13px; }
+.cap .cmd { display: flex; align-items: center; gap: 10px; margin: 10px 0; padding: 8px 8px 8px 14px; background: var(--cmd-bg); color: var(--cmd-fg); border-radius: 3px; font-size: 13px; }
 .cap .cmd span { color: #e0a54e; }
 .cap .cmd code { flex: 1; min-width: 0; white-space: nowrap; overflow-x: auto; scrollbar-width: none; line-height: 1.5; mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); } /* one line: scrolls, and Copy takes it all */
 .cap .cmd code::-webkit-scrollbar { display: none; }
@@ -89,7 +118,7 @@ html.snapping .site-foot { scroll-snap-align: end; }
 .buddy { display: none; position: absolute; left: 50%; bottom: calc(100% + clamp(24px, 6vh, 64px)); width: clamp(96px, 11vw, 150px); margin-left: calc(clamp(96px, 11vw, 150px) / -2); pointer-events: none; }
 .buddy { will-change: transform; }
 .buddy svg { display: block; width: 100%; overflow: visible; pointer-events: auto; cursor: pointer; transform-origin: 50% 90%; filter: drop-shadow(0 1px 0 rgba(60, 40, 10, .08)); }
-.buddy .b-shadow { display: block; width: 56%; height: 10px; margin: 14px auto 0; border-radius: 50%; background: radial-gradient(closest-side, rgba(60, 40, 10, .22), transparent); }
+.buddy .b-shadow { display: block; width: 56%; height: 10px; margin: 14px auto 0; border-radius: 50%; background: radial-gradient(closest-side, var(--drop), transparent); }
 
 /* Wide screens: the captions beside the app */
 @media (min-width: 1000px) and (min-aspect-ratio: 13/10), (min-width: 640px) and (max-height: 540px) and (min-aspect-ratio: 13/10) {
@@ -103,7 +132,7 @@ html.snapping .site-foot { scroll-snap-align: end; }
 }
 
 /* ── the app: design pixels from here on (1440 × 900, as Bobby was captured) ── */
-.app { position: absolute; left: 0; top: 0; width: 1440px; height: 900px; transform: translateX(var(--pan, 0px)) scale(var(--scale, .5)); transform-origin: 0 0; transition: transform .9s var(--move); /* --pan: cropped on a phone, it moves to what the step is about (site.js) */ background: #fff; overflow: hidden; font: 14px/1.5 var(--gh-ui); color: #1f2328; }
+.app { position: absolute; left: 0; top: 0; width: 1440px; height: 900px; transform: translateX(var(--pan, 0px)) scale(var(--scale, .5)); transform-origin: 0 0; transition: transform .9s var(--move); /* --pan: cropped on a phone, it moves to what the step is about (site.js) */ background: var(--gh-bg); overflow: hidden; font: 14px/1.5 var(--gh-ui); color: var(--gh-fg); }
 .app > * { position: absolute; transition: opacity .7s var(--ease), transform var(--dur) var(--move), left var(--dur) var(--move), top var(--dur) var(--move), width var(--dur) var(--move), right var(--dur) var(--move); }
 .app .gone { opacity: 0 !important; transform: scale(.985); pointer-events: none; }
 .app [data-at]:not(.shown) { opacity: 0; pointer-events: none; }
@@ -113,48 +142,48 @@ html.snapping .site-foot { scroll-snap-align: end; }
 
 /* GitHub: the PR's Files changed tab, light theme ---------------------------- */
 .gh code { font: 12px var(--gh-code); }
-.gh .btn { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 12px; border: 1px solid var(--gh-line); border-radius: 6px; background: #f6f8fa; font-weight: 500; font-size: 14px; color: #25292e; white-space: nowrap; }
-.gh-head { left: 0; top: 0; width: 1440px; height: 64px; display: flex; align-items: center; gap: 12px; padding: 0 16px; background: #f6f8fa; }
-.gh-head .ibtn { display: grid; place-items: center; min-width: 32px; height: 32px; padding: 0 8px; border: 1px solid var(--gh-line); border-radius: 6px; color: #59636e; font-size: 13px; background: #fff; }
-.gh-head .crumb { font-size: 14px; } .gh-head .crumb i { color: #59636e; font-style: normal; margin: 0 2px; } .gh-head .crumb b { font-weight: 600; }
-.gh-head .search { margin-left: auto; width: 340px; height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--gh-line); border-radius: 6px; background: #fff; color: #59636e; font-size: 14px; }
+.gh .btn { display: inline-flex; align-items: center; gap: 4px; height: 32px; padding: 0 12px; border: 1px solid var(--gh-line); border-radius: 6px; background: var(--gh-canvas); font-weight: 500; font-size: 14px; color: var(--gh-fg); white-space: nowrap; }
+.gh-head { left: 0; top: 0; width: 1440px; height: 64px; display: flex; align-items: center; gap: 12px; padding: 0 16px; background: var(--gh-canvas); }
+.gh-head .ibtn { display: grid; place-items: center; min-width: 32px; height: 32px; padding: 0 8px; border: 1px solid var(--gh-line); border-radius: 6px; color: var(--gh-muted); font-size: 13px; background: var(--gh-bg); }
+.gh-head .crumb { font-size: 14px; } .gh-head .crumb i { color: var(--gh-muted); font-style: normal; margin: 0 2px; } .gh-head .crumb b { font-weight: 600; }
+.gh-head .search { margin-left: auto; width: 340px; height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--gh-line); border-radius: 6px; background: var(--gh-bg); color: var(--gh-muted); font-size: 14px; }
 .gh-head .search kbd { font: 11px var(--gh-code); padding: 0 5px; border: 1px solid var(--gh-line); border-radius: 4px; background: none; }
 .gh-head .av { width: 32px; height: 32px; font-size: 11px; }
-.gh-repo { left: 0; top: 64px; width: 1440px; height: 48px; display: flex; align-items: flex-end; gap: 4px; padding: 0 16px; background: #f6f8fa; border-bottom: 1px solid var(--gh-line); }
-.gh-repo span { padding: 0 8px 12px; color: #1f2328; white-space: nowrap; }
-.gh-repo span.on { font-weight: 600; box-shadow: inset 0 -2px #fd8c73; }
-.gh-repo b, .gh-pr .tabs b { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 4px; border-radius: 2em; background: #818b981f; font: 500 12px/18px var(--gh-ui); text-align: center; }
+.gh-repo { left: 0; top: 64px; width: 1440px; height: 48px; display: flex; align-items: flex-end; gap: 4px; padding: 0 16px; background: var(--gh-canvas); border-bottom: 1px solid var(--gh-line); }
+.gh-repo span { padding: 0 8px 12px; color: var(--gh-fg); white-space: nowrap; }
+.gh-repo span.on { font-weight: 600; box-shadow: inset 0 -2px var(--gh-tab); }
+.gh-repo b, .gh-pr .tabs b { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 4px; border-radius: 2em; background: var(--gh-counter); font: 500 12px/18px var(--gh-ui); text-align: center; }
 .gh-pr { left: 0; top: 112px; width: 1440px; height: 150px; padding: 24px 24px 0; }
 .gh-pr h1 { margin: 0 0 8px; font-size: 32px; font-weight: 400; line-height: 1.25; }
-.gh-pr h1 span { color: #59636e; font-weight: 300; }
+.gh-pr h1 span { color: var(--gh-muted); font-weight: 300; }
 .gh-pr .btn { position: absolute; top: 26px; height: 28px; font-size: 12px; }
-.gh-pr .edit { right: 120px; } .gh-pr .code { right: 24px; background: #1f883d; border-color: #1a7f37; color: #fff; }
-.gh-pr p { display: flex; align-items: center; gap: 6px; margin: 0; color: #59636e; }
-.gh-pr p b { color: #1f2328; font-weight: 600; }
-.gh-pr p code { padding: 2px 6px; border-radius: 6px; background: #ddf4ff; color: #0969da; }
-.gh-pr .state { padding: 5px 12px; border-radius: 2em; background: #1f883d; color: #fff !important; font-weight: 500 !important; margin-right: 4px; }
+.gh-pr .edit { right: 120px; } .gh-pr .code { right: 24px; background: var(--gh-green); border-color: var(--gh-green-edge); color: #fff; }
+.gh-pr p { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--gh-muted); }
+.gh-pr p b { color: var(--gh-fg); font-weight: 600; }
+.gh-pr p code { padding: 2px 6px; border-radius: 6px; background: var(--gh-chip-bg); color: var(--gh-accent); }
+.gh-pr .state { padding: 5px 12px; border-radius: 2em; background: var(--gh-green); color: #fff !important; font-weight: 500 !important; margin-right: 4px; }
 .gh-pr .tabs { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; display: flex; align-items: flex-end; gap: 4px; padding: 0 24px; border-bottom: 1px solid var(--gh-line); }
 .gh-pr .tabs span { padding: 0 12px 12px; white-space: nowrap; }
-.gh-pr .tabs span.on { font-weight: 600; box-shadow: inset 0 -2px #fd8c73; }
+.gh-pr .tabs span.on { font-weight: 600; box-shadow: inset 0 -2px var(--gh-tab); }
 .gh-pr .tabs em { margin-left: auto; padding-bottom: 14px; font: 600 12px var(--gh-ui); display: flex; gap: 4px; align-items: center; }
-.add { color: #1a7f37; font-style: normal; } .del { color: #d1242f; font-style: normal; }
-.blocks { display: inline-flex; gap: 1px; } .blocks i { width: 8px; height: 8px; border-radius: 1px; background: var(--gh-line); } .blocks .a { background: #1f883d; } .blocks .d { background: #d1242f; }
+.add { color: var(--gh-add-fg); font-style: normal; } .del { color: var(--gh-del-fg); font-style: normal; }
+.blocks { display: inline-flex; gap: 1px; } .blocks i { width: 8px; height: 8px; border-radius: 1px; background: var(--gh-line); } .blocks .a { background: var(--gh-green); } .blocks .d { background: var(--gh-del-fg); }
 .gh-bar { left: 0; top: 262px; width: 1440px; height: 56px; display: flex; align-items: center; gap: 8px; padding: 0 16px; }
 .gh-bar .btn { height: 28px; font-size: 12px; padding: 0 10px; }
 .gh-dock { right: 16px; top: 274px; height: 32px; display: flex; align-items: center; gap: 10px; z-index: 6; font-size: 12px; }
 .gh-dock > * { transition: opacity .7s var(--ease), transform var(--dur) var(--move); white-space: nowrap; }
-.gh-dock .chip { padding: 2px 10px; border: 1px solid var(--gh-line); border-radius: 2em; background: #fff; font-weight: 600; box-shadow: 0 1px 0 #1f23280a; }
-.gh-dock .chip.risk { color: #d1242f; border-color: #ff818266; }
-.gh-dock .viewed { color: #59636e; }
-.gh-dock .review { display: inline-flex; align-items: center; height: 28px; padding: 0 12px; border-radius: 6px; background: #1f883d; border: 1px solid #1a7f37; color: #fff; font-weight: 600; }
+.gh-dock .chip { padding: 2px 10px; border: 1px solid var(--gh-line); border-radius: 2em; background: var(--gh-bg); font-weight: 600; box-shadow: 0 1px 0 #1f23280a; }
+.gh-dock .chip.risk { color: var(--gh-del-fg); border-color: var(--gh-risk-edge); }
+.gh-dock .viewed { color: var(--gh-muted); }
+.gh-dock .review { display: inline-flex; align-items: center; height: 28px; padding: 0 12px; border-radius: 6px; background: var(--gh-green); border: 1px solid var(--gh-green-edge); color: #fff; font-weight: 600; }
 .app.s1 .gh-dock { top: 58px; right: var(--dock-right, 260px); } /* just before Bobby's own controls (site.js) */
 .gh-tree { left: 16px; top: 318px; width: 290px; bottom: 0; padding: 0 8px 0 0; overflow: hidden; font-size: 14px; }
-.gh-tree .filter { height: 32px; display: flex; align-items: center; padding: 0 10px; margin-bottom: 8px; border: 1px solid var(--gh-line); border-radius: 6px; color: #818b98; }
+.gh-tree .filter { height: 32px; display: flex; align-items: center; padding: 0 10px; margin-bottom: 8px; border: 1px solid var(--gh-line); border-radius: 6px; color: var(--gh-faint); }
 .gh-tree .t { height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-radius: 6px; white-space: nowrap; }
 .gh-tree .t.l2 { padding-left: 24px; } .gh-tree .t.l3 { padding-left: 40px; }
-.gh-tree .t.on { background: #818b9826; font-weight: 600; }
+.gh-tree .t.on { background: var(--gh-sel); font-weight: 600; }
 .gh-tree .t i { margin-left: auto; width: 16px; height: 16px; display: grid; place-items: center; border-radius: 3px; font: 700 11px var(--gh-ui); font-style: normal; color: #fff; }
-.gh-tree .t i.a { background: #1a7f37; } .gh-tree .t i.m { background: #9a6700; }
+.gh-tree .t i.a { background: var(--gh-add-fg); } .gh-tree .t i.m { background: var(--gh-mod); }
 /* step 2: each name flies onto the same name in Bobby's tree (site.js measures --fly), then hands over to it */
 .gh-tree { overflow: visible; }
 .gh-tree .t, .gh-tree .filter { transform-origin: 0 0; transition: transform .9s var(--move), opacity .3s var(--ease), background-color .3s var(--ease); }
@@ -165,30 +194,30 @@ html.snapping .site-foot { scroll-snap-align: end; }
 .app .gh-tree.gone :is(.t, .filter) { opacity: 0; }
 .app .gh-tree.gone :is(.t, .filter):not([style*="--fly"]) { transition-delay: 0s; } /* nothing to land on: just go */
 .gh-diffs { left: 322px; top: 318px; width: 1102px; bottom: 0; overflow: hidden; }
-.gh-diffs .file { border: 1px solid var(--gh-line); border-radius: 6px; margin-bottom: 16px; overflow: hidden; background: #fff; }
-.gh-diffs .file header { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; background: #f6f8fa; border-bottom: 1px solid var(--gh-line); font-size: 12px; }
+.gh-diffs .file { border: 1px solid var(--gh-line); border-radius: 6px; margin-bottom: 16px; overflow: hidden; background: var(--gh-bg); }
+.gh-diffs .file header { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; background: var(--gh-canvas); border-bottom: 1px solid var(--gh-line); font-size: 12px; }
 .gh-diffs .file header b { font: 600 12px var(--gh-code); }
-.gh-diffs .file header .ct { font: 600 12px var(--gh-code); color: #59636e; }
-.gh-diffs .file header .cp, .gh-diffs .file header .chev { color: #59636e; }
-.gh-diffs .file header em { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; padding: 3px 10px; border: 1px solid var(--gh-line); border-radius: 6px; background: #fff; font-style: normal; color: #59636e; }
+.gh-diffs .file header .ct { font: 600 12px var(--gh-code); color: var(--gh-muted); }
+.gh-diffs .file header .cp, .gh-diffs .file header .chev { color: var(--gh-muted); }
+.gh-diffs .file header em { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; padding: 3px 10px; border: 1px solid var(--gh-line); border-radius: 6px; background: var(--gh-bg); font-style: normal; color: var(--gh-muted); }
 .gh-diffs .file header em i { font-style: normal; }
 .gh-diffs table { width: 100%; border-collapse: collapse; font: 12px/20px var(--gh-code); }
 .gh-diffs td { padding: 0 10px; vertical-align: top; }
-.gh-diffs td.no { width: 1%; min-width: 50px; text-align: right; color: #59636e; user-select: none; }
+.gh-diffs td.no { width: 1%; min-width: 50px; text-align: right; color: var(--gh-muted); user-select: none; }
 .gh-diffs td code { white-space: pre; font: inherit; }
 .gh-diffs td code b { font-weight: 400; display: inline-block; width: 14px; }
-.gh-diffs tr.a td { background: #dafbe1; } .gh-diffs tr.a td.no { background: #aceebb; }
-.gh-diffs tr.d td { background: #ffebe9; } .gh-diffs tr.d td.no { background: #ffcecb; }
-.gh-diffs tr.hk td { background: #ddf4ff; color: #59636e; } .gh-diffs tr.hk td.no { background: #b6e3ff; }
-.gh-diffs .k { color: #cf222e; } .gh-diffs .s { color: #0a3069; } .gh-diffs .f { color: #8250df; } .gh-diffs .n { color: #0550ae; }
-.gh-diffs tr.tr td { padding: 0; background: #f6f8fa; border-top: 1px solid var(--gh-line); border-bottom: 1px solid var(--gh-line); }
+.gh-diffs tr.a td { background: var(--gh-add-bg); } .gh-diffs tr.a td.no { background: var(--gh-add-no); }
+.gh-diffs tr.d td { background: var(--gh-del-bg); } .gh-diffs tr.d td.no { background: var(--gh-del-no); }
+.gh-diffs tr.hk td { background: var(--gh-hunk); color: var(--gh-muted); } .gh-diffs tr.hk td.no { background: var(--gh-hunk-no); }
+.gh-diffs .k { color: var(--gh-k); } .gh-diffs .s { color: var(--gh-s); } .gh-diffs .f { color: var(--gh-f); } .gh-diffs .n { color: var(--gh-n); }
+.gh-diffs tr.tr td { padding: 0; background: var(--gh-canvas); border-top: 1px solid var(--gh-line); border-bottom: 1px solid var(--gh-line); }
 .gh-diffs .th { padding: 12px 16px; font: 14px/1.5 var(--gh-ui); white-space: normal; }
-.gh-diffs .tbox { max-width: 760px; border: 1px solid var(--gh-line); border-radius: 6px; background: #fff; overflow: hidden; }
+.gh-diffs .tbox { max-width: 760px; border: 1px solid var(--gh-line); border-radius: 6px; background: var(--gh-bg); overflow: hidden; }
 .gh-diffs .tc { display: flex; gap: 10px; padding: 12px 16px; }
 .gh-diffs .tc .av { width: 24px; height: 24px; font-size: 9px; }
-.gh-diffs .tc p { margin: 0; } .gh-diffs .tc p span { color: #59636e; font-size: 12px; }
-.gh-diffs .tf { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px; border-top: 1px solid var(--gh-line); background: #f6f8fa; }
-.gh-diffs .tf .reply { flex: 1; padding: 5px 12px; border: 1px solid var(--gh-line); border-radius: 6px; background: #fff; color: #818b98; }
+.gh-diffs .tc p { margin: 0; } .gh-diffs .tc p span { color: var(--gh-muted); font-size: 12px; }
+.gh-diffs .tf { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px; border-top: 1px solid var(--gh-line); background: var(--gh-canvas); }
+.gh-diffs .tf .reply { flex: 1; padding: 5px 12px; border: 1px solid var(--gh-line); border-radius: 6px; background: var(--gh-bg); color: var(--gh-faint); }
 .gh-diffs .tf .btn { height: 28px; font-size: 12px; }
 /* the page moves up into Bobby's bars, then the diffs make room for Bobby's file tree */
 .app.s1 .gh-tree, .app.s1 .gh-diffs { top: 108px; }
@@ -199,11 +228,11 @@ html.snapping .site-foot { scroll-snap-align: end; }
 .app.s3 .gh-diffs .file { opacity: 0; }
 
 /* the ping that interrupts you */
-.ping { right: 24px; top: 108px; width: 320px; z-index: 9; display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; background: #fff; border: 1px solid var(--gh-line); border-radius: 12px; box-shadow: 0 12px 30px rgba(31, 35, 40, .2); font-size: 14px; }
-.ping > b { font-size: 12px; color: #611f69; }
+.ping { right: 24px; top: 108px; width: 320px; z-index: 9; display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; background: var(--gh-bg); border: 1px solid var(--gh-line); border-radius: 12px; box-shadow: 0 12px 30px rgba(31, 35, 40, .2); font-size: 14px; }
+.ping > b { font-size: 12px; color: var(--gh-slack); }
 
 /* toast */
-.toast { position: fixed; z-index: 30; left: 50%; bottom: 24px; transform: translate(-50%, 16px); padding: 9px 16px; border-radius: 3px; background: #2b261e; color: #fffcf6; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; }
+.toast { position: fixed; z-index: 30; left: 50%; bottom: 24px; transform: translate(-50%, 16px); padding: 9px 16px; border-radius: 3px; background: var(--text); color: var(--bg); font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
 /* a phone on its side: the same, tighter */

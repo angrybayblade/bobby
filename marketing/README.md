@@ -59,6 +59,11 @@ for reduced motion.
   into it (and back the same way: the viewers return onto the files, which show as each lands); step 4 zooms the canvas into one file, whose focused view (`data-zoom-from`)
   grows out of the same spot. `site.js` measures both moves on the drawn pages, at load and on resize.
 
+The header's switch flips the whole site between light and dark (`theme.js`; it follows the system until you pick,
+and each page's `<head>` sets `data-theme` before it paints). Dark is the app's warm dark around GitHub's dark theme:
+GitHub's colours are `--gh-*` tokens in `styles.css`, and Bobby's layers take the site's `data-theme`, since the
+capture carries both of the app's themes.
+
 The site around the mock keeps the app's rules too: 3px corners, and the current thing marked by weight rather than
 an underline, a left bar or a ring.
 

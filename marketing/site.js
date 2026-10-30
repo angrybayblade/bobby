@@ -21,7 +21,7 @@ const shadows = [];
   const sheet = new CSSStyleSheet(); // the app's CSS, shared by every layer of Bobby
   sheet.replaceSync(`${css}
     .root { display: block !important; position: absolute !important; inset: 0; width: ${W}px; height: ${H}px; overflow: hidden !important; background: transparent !important; }
-    .root.root.root { --line: #bcc5ce; --line-soft: #d5dce3; }
+    .root.root.root[data-theme="light"] { --line: #bcc5ce; --line-soft: #d5dce3; }
     .root.root.root .dv { --shadow: 0 1px 2px rgba(31, 35, 40, .05), 0 4px 12px rgba(31, 35, 40, .05); } /* the Diff viewers sit lighter on the page */
     .root.root.root .lens { --shadow: 0 1px 2px rgba(31, 35, 40, .05), 0 6px 18px rgba(31, 35, 40, .06); } /* and so does Lens's card */
     .root.root.root .lens:not(.filled) .focus { border-width: 1px; }
@@ -64,6 +64,7 @@ const shadows = [];
     root.className = "root";
     for (const [k, v] of Object.entries(r.attrs)) root.setAttribute(k, v);
     root.dataset.motion = "on"; // captured still (motion off), but the app's CSS would then stop every transition here
+    root.dataset.theme = document.documentElement.dataset.theme; // the site's, which carries the app's both themes
     root.setAttribute("style", r.style);
     for (const bl of [...host.children]) {
       const part = states[bl.dataset.state]?.[bl.dataset.region];
@@ -78,6 +79,9 @@ const shadows = [];
     shadow.append(root);
     shadows.push(shadow);
   }
+  // the site's switch flips Bobby too
+  new MutationObserver(() => { for (const s of shadows) s.querySelector(".root").dataset.theme = document.documentElement.dataset.theme; })
+    .observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   // outerHTML loses scroll positions: put them back
   requestAnimationFrame(() => {
     for (const el of shadows.flatMap((s) => [...s.querySelectorAll("[data-scroll]")])) { const [t, l] = el.dataset.scroll.split(",").map(Number); el.scrollTop = t; el.scrollLeft = l; }
