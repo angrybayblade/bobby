@@ -190,7 +190,7 @@ function renderTop() {
         : `<a class="prtitle" href="${esc(g.pr.url)}" target="_blank" rel="noopener">#${g.pr.number} ${esc(g.pr.title)}</a>`}
     ${updatePill()}${llm}${lsp}
     ${coreProgress()}
-    <div class="prog" title="${done} of ${total} pages reviewed"><div class="bar"><i style="width:${pct}%"></i></div>${done}/${total}${mins && done < total ? ` · ~${mins}m` : ""}</div>
+    <div class="prog" title="${done} of ${total} pages reviewed"><div class="bar"><i style="width:${pct}%"></i></div><span>${done}/${total}${mins && done < total ? ` · ~${mins}m` : ""}</span></div>
     <div class="seg" role="group" aria-label="View">${views.map((v) => `<button data-view="${v.id}" aria-pressed="${app.viewId === v.id}" title="${esc(v.hint)} (${esc(keysOf(app.settings, "nextView").map(keyText)[0] ?? "")})">${esc(v.name)}</button>`).join("")}</div>
     ${drafts ? `<button class="pill signal" data-act="submit">${drafts} draft${drafts > 1 ? "s" : ""} · ${esc(keyText(keysOf(app.settings, "submit")[0] ?? ""))}</button>` : ""}
     <button class="pill tog" data-act="tests" aria-pressed="${app.settings.tests === "show"}" title="Test files, in every view: ${app.settings.tests === "show" ? "shown. Click to hide" : "hidden. Click to show"}">⚗ Tests</button>
@@ -208,7 +208,7 @@ function coreProgress() {
   const loc = app.get(app.focus);
   if (!loc) return "";
   const pages = corePages(loc.ci), d = pages.filter((p) => app.isReviewed(p)).length;
-  return `<div class="prog core" title="Core ${loc.ci + 1}: ${d} of ${pages.length} pages reviewed"><span>core ${loc.ci + 1}</span><div class="bar"><i style="width:${Math.round((d / pages.length) * 100)}%"></i></div>${d}/${pages.length}</div>`;
+  return `<div class="prog core" title="Core ${loc.ci + 1}: ${d} of ${pages.length} pages reviewed"><span>core ${loc.ci + 1}</span><div class="bar"><i style="width:${Math.round((d / pages.length) * 100)}%"></i></div><span>${d}/${pages.length}</span></div>`;
 }
 
 // Finishing a core gets a moment: what you flagged and noted there, and what to look for next.

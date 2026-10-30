@@ -220,14 +220,12 @@ kbd {
 .seg { display: flex; padding: 3px; border-radius: 3px; background: var(--raised); gap: 2px; }
 .seg, #top .pill, #top .iconbtn { flex: none; }
 /* The progress bars give way before anything is pushed off the bar: they shrink to a stub, their counts stay. */
-.prog { flex: 0 1 auto; min-width: 0; }
-.prog > :not(.bar) { flex: none; } /* the counts keep their size */
-.prog .bar { flex: 0 1 auto; min-width: 20px; }
-.prog.core .bar { min-width: 14px; }
-@media (max-width: 1520px) { #top { gap: 12px; } #top .agpill .agl { display: none; } }
+.prog { flex: none; } /* never squeezed onto what's beside them: the since pill gives way instead (its title says it all) */
+#top .pill[data-act="since"] { flex: 0 1 auto; min-width: 56px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 1520px) { #top { gap: 12px; } #top .agpill .agl { display: none; } .prog .bar { display: none; } }
 /* Narrow windows: the title gives way first, then the bars shrink to their counts. */
 @media (max-width: 1100px) { #top { gap: 12px; padding-inline: 14px; } .prog .bar { width: 64px; } .prog.core .bar { width: 32px; } }
-@media (max-width: 1180px) { .prog .bar, .prog.core span, #top .pill[data-act="notes"] { display: none; } }
+@media (max-width: 1180px) { .prog .bar, .prog.core span:first-child, #top .pill[data-act="notes"] { display: none; } }
 @media (max-width: 1000px) { #top { gap: 8px; } }
 @media (max-width: 600px) { .prtitle { display: none; } #top { gap: 8px; padding-inline: 10px; } .seg button { padding-inline: 7px; } }
 @media (max-width: 480px) { #top { flex-wrap: wrap; } }
