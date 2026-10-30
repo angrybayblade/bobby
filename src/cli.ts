@@ -12,7 +12,7 @@ import { allow, SERVERS, serverById, startServers, stopServers } from "./servers
 import { resolve, reviewId, start, type ReviewOptions } from "./review.ts";
 import { noteRecent, recentOf } from "./recents.ts";
 import { openCommand, runningApp } from "./running.ts";
-import { serveStdio } from "./bridge.ts";
+import { ensureApp, serveStdio } from "./bridge.ts";
 import { type App, startServer, type Session } from "./server.ts";
 import pkg from "../package.json" with { type: "json" };
 import * as log from "./log.ts";
@@ -65,7 +65,9 @@ const USAGE = `bobby: review a PR one focused page at a time
   bobby clean [--repos]              remove caches and exported trees (and with --repos, the clones
                                      in ~/.bobby/repos); your reviews' progress stays
   bobby logs [n]                     the log's last n lines (default 80) and where it is: for a bug report
-  bobby stop                         stop the Bobby running here (as one bobby mcp started)
+  bobby start                        start Bobby in the background (if it isn't running), for bobby <pr>
+                                     to hand reviews to
+  bobby stop                         stop the Bobby running here (as one bobby start or bobby mcp started)
   bobby mcp                          an MCP server (stdio) for your agents, to open reviews in the Bobby
                                      running here, or one it starts: claude mcp add bobby -- bobby mcp
 
@@ -89,7 +91,7 @@ const USAGE = `bobby: review a PR one focused page at a time
   --ssh          if cloning over HTTPS (with gh's sign-in) fails, try SSH without asking
   -v, --version  print the version`;
 
-const [cmd, arg] = ["extract", "open", "lsp", "clean", "home", "update", "logs", "mcp", "stop"].includes(positionals[0]) ? [positionals[0], positionals[1]] : ["review", positionals[0]];
+const [cmd, arg] = ["extract", "open", "lsp", "clean", "home", "update", "logs", "mcp", "stop", "start"].includes(positionals[0]) ? [positionals[0], positionals[1]] : ["review", positionals[0]];
 if (cmd !== "logs" && !values.version && !values.help) log.started(pkg.version, process.argv.slice(2));
 // bobby logs: where the log is, and its last lines, to paste into a bug report
 if (cmd === "logs") {
@@ -121,6 +123,13 @@ if (cmd === "review" && arg) try { parsePrArg(arg); } catch (e) {
 if (!/^\d{1,5}$/.test(values.port!) || Number(values.port) > 65535) fail(`--port takes a port number (0–65535), got "${values.port}"`);
 if (values.repo && !statSync(values.repo, { throwIfNoEntry: false })?.isDirectory()) fail(`--repo takes a folder with a git checkout, got "${values.repo}"`);
 if (cmd === "lsp") process.exit(await lspCommand(arg, positionals[2]));
+// bobby start: a Bobby app running here, started in the background (on the home page) if none is; then bobby <pr> hands
+// its review to it and returns at once. For agents and scripts, which can't hold a terminal open.
+if (cmd === "start") {
+  const was = await runningApp(), url = was ?? (await ensureApp());
+  console.log(`${was ? "Bobby is already running" : "✓ started Bobby in the background"}\n\n  ▶ ${url}/\n`);
+  process.exit(0);
+}
 // bobby stop: the Bobby app running here, as one an agent started in the background (bobby mcp), with no terminal to stop
 if (cmd === "stop") {
   const other = holder();
