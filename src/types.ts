@@ -132,6 +132,15 @@ export interface Finding {
   draftId?: string; // the draft it became
 }
 /** A finished agent review, for one head commit. left: findings on files the diff doesn't have, left out. */
+/** A behaviour map (map.ts): how the system behaves before and after the change, as one graph whose parts are marked
+ *  same, added, removed or changed, at the level the change lives at. Kept for its head commit. */
+export type MapLevel = "local" | "module" | "service" | "user" | "infra";
+export type MapStatus = "same" | "added" | "removed" | "changed";
+export interface MapNode { id: string; label: string; kind: string; status: MapStatus; group?: string; note?: string; ref?: string } // ref: ref://side/path#L12, its code
+export interface MapEdge { from: string; to: string; label: string; status: MapStatus; before?: string } // before: a changed edge's label before the PR
+export interface MapChange { title: string; detail: string; nodes: string[]; edges: number[] } // edges: indexes into edges
+export interface BehaviourMap { headSha: string; at: string; level: MapLevel; asked?: MapLevel; why: string; summary: string; nodes: MapNode[]; edges: MapEdge[]; changes: MapChange[]; cost?: number }
+
 export interface AgentReview { headSha: string; at: string; summary: string; findings: Finding[]; focus?: string; left?: number; cost?: number } // focus: what you asked it to look at
 
 /** A question you asked Claude about some lines (ask.ts), and its follow-ups: kept on those lines, for that head commit. */
@@ -152,6 +161,7 @@ export interface ReviewState {
   lastSeenAt?: string;
   note?: string; // "where my head was": parked thought shown on return
   agent?: AgentReview; // the last agent-assisted review (agent.ts)
+  map?: BehaviourMap; // the last behaviour map Claude drew (map.ts)
   asks?: Ask[]; // questions about lines, and Claude's answers (ask.ts)
   agentTools?: Record<string, "read" | "all">; // this PR's choice of your own tools for Claude (connected.ts); absent: the launch default
 }
