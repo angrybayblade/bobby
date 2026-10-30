@@ -7,7 +7,7 @@ import pkg from "../package.json" with { type: "json" };
 import { run } from "./git.ts";
 import { home, loadSettings } from "./state.ts";
 
-export interface Release { version: string; url: string; how?: string }
+export interface Release { version: string; tag: string; url: string; how?: string }
 const REPO = pkg.repository.url.match(/github\.com\/([^/]+\/[^/.]+)/)![1];
 const EVERY = 6 * 3_600_000;
 
@@ -29,7 +29,7 @@ async function releases(): Promise<Release[]> {
   if (!r.ok) throw new Error(`GitHub's releases API answered ${r.status}`);
   const pre = pkg.version.includes("-");
   return ((await r.json()) as Array<{ tag_name: string; html_url: string; draft: boolean; prerelease: boolean }>)
-    .filter((x) => !x.draft && (pre || !x.prerelease)).map((x) => ({ version: x.tag_name.replace(/^v/, ""), url: x.html_url }))
+    .filter((x) => !x.draft && (pre || !x.prerelease)).map((x) => ({ version: x.tag_name.replace(/^v/, ""), tag: x.tag_name, url: x.html_url }))
     .sort((a, b) => compareVersions(b.version, a.version));
 }
 
@@ -62,22 +62,24 @@ export function assetName(tag: string, platform: string = process.platform, arch
  *  running keeps working until it's restarted. */
 export async function selfUpdate(want: string | undefined, say: (m: string) => void): Promise<void> {
   if (!isBinary()) throw new Error("this Bobby runs from a checkout of the source: update it with git pull && bun install");
-  let tag = want?.replace(/^v/, "");
-  if (!tag) {
+  // The release's own tag names its download, with or without a leading v (v0.1.0-rc14, 0.1.0-rc13)
+  let version = want?.replace(/^v/, ""), tag: string;
+  if (!version) {
     say("  Asking GitHub for the newest release…");
     const latest = (await releases())[0];
     if (!latest) throw new Error(`GitHub lists no releases of ${REPO}`);
     if (compareVersions(latest.version, pkg.version) <= 0) { say(`✓ Bobby ${pkg.version} is the newest`); return; }
-    tag = latest.version;
-  } else if (tag === pkg.version) { say(`✓ Bobby ${pkg.version} is already installed`); return; }
+    ({ version, tag } = latest);
+  } else if (version === pkg.version) { say(`✓ Bobby ${pkg.version} is already installed`); return; }
+  else tag = (await releases().catch(() => [])).find((x) => x.version === version)?.tag ?? want!;
   const name = assetName(tag);
   if (!name) throw new Error(`there's no Bobby build for ${process.platform} ${process.arch}`);
   const target = realpathSync(process.execPath), dir = dirname(target);
   const base = `https://github.com/${REPO}/releases/download/${tag}`;
-  say(`  Downloading Bobby ${tag} (${name})…`);
+  say(`  Downloading Bobby ${version} (${name})…`);
   const get = (u: string) => fetch(u, { signal: AbortSignal.timeout(300_000) });
   const [res, sums] = await Promise.all([get(`${base}/${name}`), get(`${base}/SHA256SUMS`)]);
-  if (res.status === 404) throw new Error(`there's no release ${tag} with ${name}: see https://github.com/${REPO}/releases`);
+  if (res.status === 404) throw new Error(`there's no release ${version} with ${name}: see https://github.com/${REPO}/releases`);
   if (!res.ok) throw new Error(`downloading ${name} failed (${res.status})`);
   const bytes = await res.arrayBuffer();
   if (sums.ok) {
@@ -98,7 +100,7 @@ export async function selfUpdate(want: string | undefined, say: (m: string) => v
     if (process.platform !== "win32") chmodSync(fresh, 0o755);
     if (process.platform === "darwin") await run(["xattr", "-d", "com.apple.quarantine", fresh], { allowFail: true }).catch(() => {});
     const runs = (await run([fresh, "--version"], { allowFail: true, timeoutMs: 30_000 }).catch(() => "")).trim();
-    if (runs !== tag) throw new Error(`the downloaded Bobby doesn't run here (it said "${runs || "nothing"}")`);
+    if (runs !== version) throw new Error(`the downloaded Bobby doesn't run here (it said "${runs || "nothing"}")`);
     if (process.platform === "win32") { rmSync(`${target}.old`, { force: true }); renameSync(target, `${target}.old`); } // Windows won't replace a running .exe, but renames it
     renameSync(fresh, target);
   } catch (e) {
@@ -106,7 +108,7 @@ export async function selfUpdate(want: string | undefined, say: (m: string) => v
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
-  say(`✓ Bobby ${tag} installed at ${target} (was ${pkg.version})`);
+  say(`✓ Bobby ${version} installed at ${target} (was ${pkg.version})`);
 }
 
 /** The binary a Windows update set aside (it can't be removed while it runs): gone the next time Bobby starts. */

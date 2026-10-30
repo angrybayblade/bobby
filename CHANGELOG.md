@@ -8,6 +8,7 @@ What changed in each release, newest first. Each release's full notes, with inst
 - **`bobby start`** runs Bobby in the background (if it isn't running), for agents and scripts: `bobby <pr>` then hands its review to it and returns at once. **`bobby stop`** stops it.
 - **A skill for agents**, `skills/bobby/SKILL.md`: how to open PRs and branches in Bobby, with the tool or the CLI, and what to do when it can't.
 - `bobby <pr> --ssh` passes `--ssh` on to the Bobby already running.
+- `bobby update` finds releases tagged with a leading `v`, like 0.1.0-rc14, which it used to say didn't exist.
 
 ## 0.1.0-rc14 (2026-10-29)
 
