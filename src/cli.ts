@@ -216,15 +216,15 @@ if (running && toHome) {
 if (running) {
   if (cmd === "open") fail(`Bobby is already running at ${running}: stop it to open a graph file`);
   const local = arg ? undefined : values.repo ?? process.cwd();
-  const r = await fetch(`${running}/api/open`, { method: "POST", headers: { "content-type": "application/json", origin: running }, body: JSON.stringify({ arg, repo: arg ? values.repo && resolvePath(values.repo) : resolvePath(local!), cwd: process.cwd(), base: values.base, refresh: values.refresh, noLlm: values["no-llm"], noLsp: values["no-lsp"] }) });
-  const out = (await r.json()) as { id?: string; error?: string; setup?: string };
+  const r = await fetch(`${running}/api/open`, { method: "POST", headers: { "content-type": "application/json", origin: running }, body: JSON.stringify({ arg, repo: arg ? values.repo && resolvePath(values.repo) : resolvePath(local!), cwd: process.cwd(), base: values.base, refresh: values.refresh, noLlm: values["no-llm"], noLsp: values["no-lsp"], ...(values.ssh ? { ssh: true } : {}) }) });
+  const out = (await r.json()) as { id?: string; error?: string; setup?: string; ask?: string };
   if (!out.id && arg && out.setup === "gh") { // its page sets gh up, then opens the PR
     const url = `${running}/?open=${encodeURIComponent(arg)}`;
     log.warn(`  ${out.error}\n  GitHub's CLI isn't set up: the page sets it up, then opens the PR\n\n  ▶ ${url}\n`);
     if (!values["no-open"]) await run(openCommand(url), { allowFail: true }).catch(() => {});
     process.exit(0);
   }
-  if (!out.id && arg) fail(out.error ?? `Bobby at ${running} couldn't open it`);
+  if (!out.id && arg) fail(out.ask === "ssh" ? `${out.error}\nRun again with --ssh to try SSH, with your keys.` : out.error ?? `Bobby at ${running} couldn't open it`);
   // a bare `bobby` in a repo with nothing to review: the home page instead
   const url = out.id ? `${running}/r/${out.id}` : `${running}/`;
   log.info(out.id ? `  opened in the Bobby already running (its page shows the progress)\n\n  ▶ ${url}\n`
