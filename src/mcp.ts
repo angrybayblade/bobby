@@ -47,7 +47,7 @@ const REPORT = { name: "report_finding", description: "Report one finding of you
     line: int("The line it's on (its last line, for a range)."), startLine: int("The first line, for a range on the same side; else 0."),
     severity: { type: "string", enum: ["bug", "risk", "question", "nit"] }, title: str("At most 10 words, stating the problem."), body: str("The review comment to the PR's author, in Markdown, citing the code you checked."),
   }, required: ["path", "side", "line", "severity", "title", "body"] } };
-const toolsOf = (ctx: McpContext) => (ctx.report ? [...TOOLS, REPORT] : TOOLS);
+const toolsOf = (ctx: McpContext): Tool[] => (ctx.report ? [...TOOLS, REPORT] : TOOLS);
 
 /** One JSON-RPC request (or a batch) to the endpoint. */
 export async function handleMcp(req: Request, token: string): Promise<Response> {
@@ -56,26 +56,33 @@ export async function handleMcp(req: Request, token: string): Promise<Response> 
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: { allow: "POST" } });
   const body = await req.json().catch(() => null);
   if (!body) return Response.json({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } }, { status: 400 });
-  const one = async (m: { id?: string | number; method: string; params?: any }) => {
-    if (m.id === undefined) return null; // a notification: nothing to say
-    try { return { jsonrpc: "2.0", id: m.id, result: await call(ctx, m.method, m.params ?? {}) }; }
-    catch (e) { return { jsonrpc: "2.0", id: m.id, error: { code: (e as { code?: number }).code ?? -32603, message: (e as Error).message } }; }
-  };
-  const out = Array.isArray(body) ? (await Promise.all(body.map(one))).filter(Boolean) : await one(body);
-  return out && (!Array.isArray(out) || out.length) ? Response.json(out) : new Response(null, { status: 202 });
+  const out = await answer(body, toolsOf(ctx), (name, a) => run(ctx, name, a));
+  return out ? Response.json(out) : new Response(null, { status: 202 });
 }
 
-async function call(ctx: McpContext, method: string, params: any) {
-  if (method === "initialize") return { protocolVersion: params.protocolVersion ?? "2025-06-18", capabilities: { tools: {} }, serverInfo: { name: "bobby", version: pkg.version } };
-  if (method === "ping") return {};
-  if (method === "tools/list") return { tools: toolsOf(ctx) };
-  if (method === "tools/call") {
-    const tool = toolsOf(ctx).find((t) => t.name === params.name);
-    if (!tool) throw Object.assign(new Error(`no tool ${params.name}`), { code: -32602 });
-    try { return { content: [{ type: "text", text: await run(ctx, params.name, params.arguments ?? {}) }] }; }
-    catch (e) { return { content: [{ type: "text", text: (e as Error).message }], isError: true }; }
-  }
-  throw Object.assign(new Error(`no method ${method}`), { code: -32601 });
+/** A tool an MCP server offers, as tools/list gives it. */
+export type Tool = { name: string; description: string; inputSchema: object };
+/** The answer to one JSON-RPC message (or a batch) for a server with these tools; null when there's nothing to say
+ *  (notifications). A tool that fails answers its error as text, for the model to read. */
+export async function answer(body: any, tools: Tool[], runTool: (name: string, a: Record<string, unknown>) => Promise<string>) {
+  const one = async (m: { id?: string | number; method: string; params?: any }) => {
+    if (m.id === undefined) return null; // a notification: nothing to say
+    try { return { jsonrpc: "2.0", id: m.id, result: await call(m.method, m.params ?? {}) }; }
+    catch (e) { return { jsonrpc: "2.0", id: m.id, error: { code: (e as { code?: number }).code ?? -32603, message: (e as Error).message } }; }
+  };
+  const call = async (method: string, params: any) => {
+    if (method === "initialize") return { protocolVersion: params.protocolVersion ?? "2025-06-18", capabilities: { tools: {} }, serverInfo: { name: "bobby", version: pkg.version } };
+    if (method === "ping") return {};
+    if (method === "tools/list") return { tools };
+    if (method === "tools/call") {
+      if (!tools.some((t) => t.name === params.name)) throw Object.assign(new Error(`no tool ${params.name}`), { code: -32602 });
+      try { return { content: [{ type: "text", text: await runTool(params.name, params.arguments ?? {}) }] }; }
+      catch (e) { return { content: [{ type: "text", text: (e as Error).message }], isError: true }; }
+    }
+    throw Object.assign(new Error(`no method ${method}`), { code: -32601 });
+  };
+  const out = Array.isArray(body) ? (await Promise.all(body.map(one))).filter(Boolean) : await one(body);
+  return out && (!Array.isArray(out) || out.length) ? out : null;
 }
 
 const MAX_LINES = 400;
