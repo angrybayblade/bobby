@@ -4,6 +4,9 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- **Open reviews from your agent.** `bobby mcp` is an MCP server for Claude Code (or any MCP client): `claude mcp add --scope user bobby -- bobby mcp`, then ask it to open a PR, or your branch, with Bobby. It opens in the Bobby already running, or one it starts in the background.
+- **`bobby stop`** stops the Bobby running on this machine, as one started in the background.
+
 ## 0.1.0-rc14 (2026-10-29)
 
 GitHub, more fully: submitting into a review you started on github.com, comments on whole files, suggested changes, reactions, viewed files in step with GitHub, and the changes since your last review. Clones over HTTPS with gh's sign-in, and a log for bug reports.

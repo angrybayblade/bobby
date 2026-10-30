@@ -124,6 +124,8 @@ bobby open <graph.json> [--repo dir]  # open the UI on an existing graph file
 bobby lsp                             # the language servers behind the inspector, by language
 bobby lsp install <language>          # install one (typescript, python), or say how (go)
 bobby logs [n]                        # the log's last n lines (default 80), and where the whole log is
+bobby stop                            # stop the Bobby running here (as one bobby mcp started in the background)
+bobby mcp                             # an MCP server for your agents: see below
 ```
 
 `extract` waits for Claude's tree (unless `--no-llm`) and writes it, falling back to the static tree if Claude fails. With `--lsp`, it also waits for the installed language servers' definitions. `open` views any `bobby.review-graph/v1` file, whoever produced it. With `--repo`, it can also load more context around hunks, and start the language server.
@@ -146,6 +148,18 @@ bobby logs [n]                        # the log's last n lines (default 80), and
 | `-o, --out <file>` | stdout | Output file for `extract`. |
 
 Environment: `BOBBY_MODEL` picks the Claude model passed to `claude --model` (the old `PRFOCUS_MODEL` still works); `BOBBY_REVIEW_MODEL`, the one for [Claude's review](reviewing.md#claudes-review-preview). `BOBBY_NO_UPDATE_CHECK=1` turns off the check for new versions. `BOBBY_AGENT_TOOLS` is `--agent-tools` (your own MCP servers and connectors Claude may use, as in [Reviewing](reviewing.md#your-own-tools-linear-notion-slack-datadog)). `BOBBY_HOME` keeps Bobby's files somewhere other than `~/.bobby` (a test, say). `BOBBY_HOST` and `BOBBY_ALLOW_HOSTS` (comma-separated) set `--host` and `--allow-host`.
+
+## Open reviews from your agent
+
+`bobby mcp` is an MCP server, over stdio, for your own agents: ask Claude Code (or Cursor, or any MCP client) to "open acme/payments#482 with Bobby", and the review opens in your browser. Add it to Claude Code once, for every project:
+
+```sh
+claude mcp add --scope user bobby -- bobby mcp
+```
+
+It has one tool, `open_review`: a PR (its URL, `owner/repo#number`, or its number in the repo you're in), or with none, the branch in the folder the agent works in, as a bare `bobby` there would. It opens it in the Bobby already running on this machine, with your other reviews, or starts one in the background (on the home page, without opening the browser), then shows the review. If `gh` isn't set up, it shows the page that sets it up, then opens the PR. If cloning over HTTPS fails, the agent asks you before trying SSH.
+
+A Bobby started this way has no terminal: `bobby stop` stops it.
 
 ## On a remote machine
 

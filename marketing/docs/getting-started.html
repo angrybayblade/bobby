@@ -157,6 +157,8 @@ bobby open &lt;graph.json&gt; [--repo dir]  # open the UI on an existing graph f
 bobby lsp                             # the language servers behind the inspector, by language
 bobby lsp install &lt;language&gt;          # install one (typescript, python), or say how (go)
 bobby logs [n]                        # the log's last n lines (default 80), and where the whole log is
+bobby stop                            # stop the Bobby running here (as one bobby mcp started in the background)
+bobby mcp                             # an MCP server for your agents: see below
 </code></pre>
 <p><code>extract</code> waits for Claude's tree (unless <code>--no-llm</code>) and writes it, falling back to the static tree if Claude fails. With <code>--lsp</code>, it also waits for the installed language servers' definitions. <code>open</code> views any <code>bobby.review-graph/v1</code> file, whoever produced it. With <code>--repo</code>, it can also load more context around hunks, and start the language server.</p>
 <h2 id="flags"><a class="anchor" href="#flags" aria-hidden="true">#</a>Flags</h2>
@@ -180,6 +182,12 @@ bobby logs [n]                        # the log's last n lines (default 80), and
 </tbody>
 </table></div>
 <p>Environment: <code>BOBBY_MODEL</code> picks the Claude model passed to <code>claude --model</code> (the old <code>PRFOCUS_MODEL</code> still works); <code>BOBBY_REVIEW_MODEL</code>, the one for <a href="reviewing.html#claudes-review-preview">Claude's review</a>. <code>BOBBY_NO_UPDATE_CHECK=1</code> turns off the check for new versions. <code>BOBBY_AGENT_TOOLS</code> is <code>--agent-tools</code> (your own MCP servers and connectors Claude may use, as in <a href="reviewing.html#your-own-tools-linear-notion-slack-datadog">Reviewing</a>). <code>BOBBY_HOME</code> keeps Bobby's files somewhere other than <code>~/.bobby</code> (a test, say). <code>BOBBY_HOST</code> and <code>BOBBY_ALLOW_HOSTS</code> (comma-separated) set <code>--host</code> and <code>--allow-host</code>.</p>
+<h2 id="open-reviews-from-your-agent"><a class="anchor" href="#open-reviews-from-your-agent" aria-hidden="true">#</a>Open reviews from your agent</h2>
+<p><code>bobby mcp</code> is an MCP server, over stdio, for your own agents: ask Claude Code (or Cursor, or any MCP client) to &quot;open acme/payments#482 with Bobby&quot;, and the review opens in your browser. Add it to Claude Code once, for every project:</p>
+<pre><code class="language-sh">claude mcp add --scope user bobby -- bobby mcp
+</code></pre>
+<p>It has one tool, <code>open_review</code>: a PR (its URL, <code>owner/repo#number</code>, or its number in the repo you're in), or with none, the branch in the folder the agent works in, as a bare <code>bobby</code> there would. It opens it in the Bobby already running on this machine, with your other reviews, or starts one in the background (on the home page, without opening the browser), then shows the review. If <code>gh</code> isn't set up, it shows the page that sets it up, then opens the PR. If cloning over HTTPS fails, the agent asks you before trying SSH.</p>
+<p>A Bobby started this way has no terminal: <code>bobby stop</code> stops it.</p>
 <h2 id="on-a-remote-machine"><a class="anchor" href="#on-a-remote-machine" aria-hidden="true">#</a>On a remote machine</h2>
 <p>Bobby can run on a cloud VM or a dev box and be opened from your laptop's browser. It sets up <code>gh</code> and Claude there from its page: both sign in through a tab on your laptop, so nothing needs to reach the VM. There's no sign-in: <strong>anyone who can reach its port can read the code under review and post on GitHub as you.</strong> So pick one of these, safest first.</p>
 <p><strong>An SSH tunnel</strong> (nothing to open up). Bobby stays on the VM's loopback, and the tunnel brings it to yours; any local port works:</p>
@@ -234,6 +242,7 @@ bobby &lt;pr-url&gt; --no-open --host 0.0.0.0 --allow-host bobby.dev.internal   
       <a href="#review-your-own-branch-no-pr-needed">Review your own branch, no PR needed</a>
       <a href="#commands">Commands</a>
       <a href="#flags">Flags</a>
+      <a href="#open-reviews-from-your-agent">Open reviews from your agent</a>
       <a href="#on-a-remote-machine">On a remote machine</a>
       <a href="#what-it-writes-to-disk">What it writes to disk</a>
       <a href="#reporting-a-problem">Reporting a problem</a>

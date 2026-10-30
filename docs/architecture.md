@@ -32,6 +32,9 @@ src/                     extraction, server and CLI (TypeScript, run directly by
   llm.ts                 Claude's change tree (headless `claude -p` with a JSON schema)
   graph.ts               packs everything into a ReviewGraph; wires edges; builds the walk
   server.ts              Bun HTTP server: one app of many reviews (/r/<id>), static files, the APIs
+  mcp.ts                 Bobby's tools for its own runs of Claude, over MCP (/mcp/<token>)
+  bridge.ts              bobby mcp: an MCP server over stdio for your agents, to open reviews in the running app
+  running.ts             the app already running on this machine (by its lock), and the browser to show it in
   review.ts              a review from a PR, a commit or a branch: resolve, build, start (Claude, servers, watchers)
   recents.ts             the home page's data: recents, and the user's PRs from GitHub
   assets.ts              public/ embedded in a compiled binary (filled by scripts/build.ts)
