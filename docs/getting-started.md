@@ -44,7 +44,7 @@ Binaries are built for macOS, Linux and Windows. Windows gets the least use, so 
 
 `bobby update` installs the newest release in place of the binary you ran, wherever it lives: it downloads the build for your OS and CPU, checks it against the release's `SHA256SUMS` and that it runs, then swaps it in. `bobby update 0.1.0-rc11` installs that version instead, to go back. A Bobby already running keeps the old version until you restart it. If the binary's folder isn't yours to write (`/usr/local/bin`, say), run it with the rights to, or use the install script again.
 
-Release binaries aren't code-signed. On macOS, if Gatekeeper blocks a downloaded one, run `xattr -d com.apple.quarantine "$(which bobby)"`. Each release has a `SHA256SUMS` file to check downloads against.
+Release binaries aren't code-signed. On macOS, if Gatekeeper blocks a downloaded one, run `xattr -d com.apple.quarantine "$(which bobby)"`. Each release has a `SHA256SUMS` file to check downloads against, and, from the release after 0.1.0-rc15, signed build provenance: `gh attestation verify bobby-<version>-<os>-<arch>.tar.gz --repo angrybayblade/bobby` checks that an archive was built by this repository's release workflow, from the tagged commit.
 
 The binary is 62–86 MB, depending on the platform (27–41 MB to download), because it carries the Bun runtime and the tree-sitter grammars. The UI's files are embedded in it, so it runs with nothing beside it.
 

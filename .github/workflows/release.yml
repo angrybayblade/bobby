@@ -12,8 +12,8 @@ on:
   push:
     tags: ["v[0-9]*", "[0-9]*"]
 
-permissions:
-  contents: write # create the release and upload its assets
+# Actions are pinned to a commit, not a tag a compromised action could move. Nothing may write but the release job.
+permissions: {}
 
 concurrency:
   group: release-${{ github.ref }}
@@ -22,10 +22,16 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # create the release and upload its assets
+      id-token: write # sign the build provenance
+      attestations: write # and record it
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false # no later step needs git to push
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.4
 
@@ -75,6 +81,13 @@ jobs:
           done
           (cd release && sha256sum * > SHA256SUMS)
           ls -lh release
+
+      # Signed provenance for each archive: who built it, from which commit, by which workflow. Check one with
+      # gh attestation verify <archive> --repo angrybayblade/bobby
+      - name: Attest the build
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: "release/bobby-*"
 
       - name: Publish the release
         env:
