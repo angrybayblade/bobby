@@ -1,7 +1,7 @@
 // Map: how the PR changes what the system does, as a diagram, before and after. Claude draws it (map.ts, through
 // /api/map) at the level the change lives at: local (one function to another), module, service, the end user's or the
-// infrastructure's. It's one graph whose parts are marked same, added, removed or changed, so Before, After and Changes
-// are three ways of drawing the same data; the rail lists the behavioural changes, and picking one lights up its part
+// infrastructure's. It's one graph whose parts are marked same, added, removed or changed, laid out once: a slider runs
+// from before to after, fading out what the PR removes and in what it adds, so nothing moves as you compare; the rail lists the behavioural changes, and picking one lights up its part
 // of the diagram. A node's code, and the code a change cites, open in the code viewer.
 import { api, esc } from "../core.js";
 import { md } from "../comments.js";
@@ -11,7 +11,6 @@ import { injectCss } from "./flow.js";
 
 const LEVELS = [["local", "Local", "function to function"], ["module", "Module", "module to module"], ["service", "Service", "service to service"], ["user", "End user", "what users see"], ["infra", "Infra", "how it runs"]];
 const KIND = { function: "function", module: "module", service: "service", actor: "person", screen: "screen", store: "data store", queue: "queue", external: "outside system", infra: "infra" };
-const MODES = [["before", "Before"], ["changes", "Changes"], ["after", "After"]];
 const W = 236; // a box's width
 
 const CSS = `
@@ -52,23 +51,37 @@ const CSS = `
 .bmap .ml { margin-top: 3px; font: 600 13.5px/1.3 var(--font-prose); color: var(--text); overflow-wrap: break-word; }
 .bmap .mn.kind-function .ml, .bmap .mn.kind-module .ml { font: 600 12px/1.35 var(--font-code); overflow-wrap: anywhere; }
 .bmap .mo { margin-top: 5px; font-size: 12px; line-height: 1.4; color: var(--muted); }
-.bmap .changes .mn.st-added { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 9%, var(--surface)); }
-.bmap .changes .mn.st-added .st { color: var(--ok); }
-.bmap .changes .mn.st-removed { border-color: var(--risk); border-style: dashed; background: var(--bg); box-shadow: none; }
-.bmap .changes .mn.st-removed .ml { text-decoration: line-through; text-decoration-color: var(--risk); color: var(--muted); }
-.bmap .changes .mn.st-removed .st { color: var(--risk); }
-.bmap .changes .mn.st-changed { border-color: var(--signal); background: color-mix(in srgb, var(--signal) 9%, var(--surface)); }
-.bmap .changes .mn.st-changed .st { color: var(--signal); }
+.bmap .mn.st-added { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 9%, var(--surface)); }
+.bmap .mn.st-added .st { color: var(--ok); }
+.bmap .mn.st-removed { border-color: var(--risk); border-style: dashed; background: var(--bg); box-shadow: none; }
+.bmap .mn.st-removed .st { color: var(--risk); }
+.bmap .mn.st-changed { border-color: var(--signal); background: color-mix(in srgb, var(--signal) 9%, var(--surface)); }
+.bmap .mn.st-changed .st { color: var(--signal); }
 .bmap .plane path { fill: none; stroke: var(--faint); stroke-width: 1.3; transition: opacity var(--dur, .2s); }
-.bmap .changes path.st-added { stroke: var(--ok); stroke-width: 1.8; }
-.bmap .changes path.st-removed { stroke: var(--risk); stroke-width: 1.5; stroke-dasharray: 5 4; }
-.bmap .changes path.st-changed { stroke: var(--signal); stroke-width: 1.8; }
+.bmap path.st-added { stroke: var(--ok); stroke-width: 1.8; }
+.bmap path.st-removed { stroke: var(--risk); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.bmap path.st-changed { stroke: var(--signal); stroke-width: 1.8; }
 .bmap .el { position: absolute; transform: translate(-50%, -50%); max-width: 168px; width: max-content; padding: 2px 7px; border-radius: 3px; background: var(--bg); border: 1px solid var(--line-soft); font: 11.5px/1.35 var(--font-ui); color: var(--muted); text-align: center; text-wrap: balance; transition: opacity var(--dur, .2s); }
-.bmap .changes .el.st-added { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
-.bmap .changes .el.st-removed { color: var(--risk); text-decoration: line-through; border-style: dashed; border-color: color-mix(in srgb, var(--risk) 40%, transparent); }
-.bmap .changes .el.st-changed { color: var(--text); border-color: color-mix(in srgb, var(--signal) 45%, transparent); }
-.bmap .el s { display: block; color: var(--faint); }
-.bmap .plane.lit .dim { opacity: .15; }
+.bmap .el.st-added { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+.bmap .el.st-removed { color: var(--risk); border-style: dashed; border-color: color-mix(in srgb, var(--risk) 40%, transparent); }
+.bmap .el.st-changed { color: var(--text); border-color: color-mix(in srgb, var(--signal) 45%, transparent); }
+.bmap .el.two { display: grid; }
+.bmap .el.two > span { grid-area: 1 / 1; align-self: center; }
+.bmap .el .was { opacity: calc(1 - var(--t)); }
+.bmap .el .now { opacity: var(--t); }
+/* the slider: --t runs from 0 (before) to 1 (after); what's only in one of them fades with it */
+@property --t { syntax: "<number>"; inherits: true; initial-value: 1; }
+.bmap .plane { transition: --t .45s ease; }
+.bmap .plane.sliding { transition: none; }
+.bmap .mn, .bmap .el, .bmap .plane path { opacity: calc(var(--o, 1) * var(--d, 1)); }
+.bmap .st-added { --o: var(--t); }
+.bmap .st-removed { --o: calc(1 - var(--t)); }
+.bmap .plane.at-before .st-added, .bmap .plane.at-after .st-removed { pointer-events: none; }
+.bmap .slide { display: flex; align-items: center; gap: 10px; }
+.bmap .slide button { padding: 4px 2px; border: 0; background: none; font-size: 13px; color: var(--muted); }
+.bmap .slide button.on { color: var(--text); font-weight: 650; } /* weight, not colour */
+.bmap .slide input { width: 150px; accent-color: var(--text); }
+.bmap .plane.lit .dim { --d: .15; }
 .bmap .mrail { border-left: 1px solid var(--line-soft); overflow: auto; padding: 16px 18px 40px; }
 .bmap .mrail h4 { margin: 0 0 10px; font: 600 10.5px var(--font-ui); letter-spacing: .09em; text-transform: uppercase; color: var(--faint); }
 .bmap .mrail ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -110,7 +123,7 @@ export default {
   mount(el, app) {
     injectCss("map", CSS);
     const root = el.appendChild(Object.assign(document.createElement("div"), { className: "bmap" }));
-    let data = null, mode = "changes", sel = -1, want = "", dead = false, timer = 0, plane = null, fitEl = null, size = null;
+    let data = null, t = 1, sel = -1, want = "", dead = false, timer = 0, plane = null, fitEl = null, size = null;
 
     async function load() {
       clearTimeout(timer);
@@ -137,18 +150,18 @@ export default {
         <div class="mhd">
           <div><div class="mlevel"><b>${lvl[1]}</b> · ${lvl[2]}</div><h2 title="${esc(m.summary)}">${esc(m.summary)}</h2><p class="mwhy" title="${esc(m.why)}">${esc(m.why)}</p></div>
           <div class="mctl">
-            <div class="seg">${MODES.map(([id, name]) => `<button data-mode="${id}" class="${mode === id ? "on" : ""}">${name}</button>`).join("")}</div>
+            <div class="slide"><button data-end="0">Before</button><input type="range" min="0" max="1" step="0.01" value="${t}" aria-label="Before or after the PR"><button data-end="1">After</button></div>
             <select data-level title="The level to draw it at"><option value="">Claude picks the level</option>${LEVELS.map(([id, name, sub]) => `<option value="${id}"${want === id ? " selected" : ""}>${name}: ${sub}</option>`).join("")}</select>
             <button class="btn" data-redraw ${data.running ? "disabled" : ""}>Redraw</button>
           </div>
         </div>
         ${banner}
         <div class="mbody">
-          <div class="stage"><div class="fit"><div class="plane ${mode}${sel >= 0 ? " lit" : ""}"></div></div></div>
+          <div class="stage"><div class="fit"><div class="plane${sel >= 0 ? " lit" : ""}"></div></div></div>
           <aside class="mrail">
             <h4>What changes</h4>
             <ol>${m.changes.map((c, i) => `<li data-change="${i}" class="${sel === i ? "on" : ""}"><div class="ct"><i>${i + 1}</i>${esc(c.title)}</div><div class="cd">${md(c.detail)}</div></li>`).join("")}</ol>
-            <div class="mkeys">← → before, changes, after · ↑ ↓ step through the changes</div>
+            <div class="mkeys">← → before, after · ↑ ↓ step through the changes</div>
             <div class="mfoot">Drawn by Claude ${new Date(m.at).toLocaleString()}${m.cost ? ` · $${m.cost.toFixed(2)}` : ""}</div>
           </aside>
         </div>`;
@@ -172,28 +185,21 @@ export default {
            ${data?.error ? `<p class="merr">${esc(data.error)}</p>` : ""}`}</div>`;
     }
 
-    /** The parts to draw in this mode: before has no added parts, after no removed ones. */
-    function shown(m) {
-      const keep = (st) => (mode === "before" ? st !== "added" : mode === "after" ? st !== "removed" : true);
-      const nodes = m.nodes.filter((n) => keep(n.status)), ids = new Set(nodes.map((n) => n.id));
-      const edges = m.edges.map((e, i) => ({ ...e, i })).filter((e) => keep(e.status) && ids.has(e.from) && ids.has(e.to));
-      return { nodes, edges };
-    }
-
     function diagram(m) {
-      const { nodes, edges } = shown(m), change = m.changes[sel];
+      const nodes = m.nodes, edges = m.edges.map((e, i) => ({ ...e, i })), change = m.changes[sel];
       const litNodes = new Set(change ? [...change.nodes, ...change.edges.flatMap((i) => [m.edges[i]?.from, m.edges[i]?.to])] : []);
       const litEdges = new Set(change?.edges ?? []);
       const dim = (lit) => (change && !lit ? " dim" : "");
-      const badge = (st) => (mode === "changes" && st !== "same" ? `<span class="st">${st}</span>` : "");
+      const badge = (st) => (st !== "same" ? `<span class="st">${st}</span>` : "");
       // boxes and labels first, so the layout knows their sizes
       plane.innerHTML = nodes.map((n) => `<div class="mn kind-${esc(n.kind)} st-${n.status}${dim(litNodes.has(n.id))}" data-id="${esc(n.id)}"${n.ref ? ` data-ref="${esc(n.ref)}" title="Open its code"` : ""}>
           <div class="mk"><span class="kd">${KIND[n.kind] ?? esc(n.kind)}</span>${n.group ? `<span class="g">${esc(n.group)}</span>` : ""}${badge(n.status)}</div>
           <div class="ml">${esc(n.label)}</div>${n.note ? `<div class="mo">${esc(n.note)}</div>` : ""}</div>`).join("") +
         edges.map((e, j) => {
-          const was = mode === "changes" && e.status === "changed" && e.before ? `<s>${esc(e.before)}</s>` : "";
-          const label = mode === "before" && e.status === "changed" && e.before ? e.before : e.label;
-          return label || was ? `<div class="el st-${e.status}${dim(litEdges.has(e.i))}" data-edge="${j}">${esc(label)}${was}</div>` : "";
+          // a changed interaction: what it did, fading into what it does, in one place
+          const two = e.status === "changed" && e.before && e.before !== e.label;
+          const inner = two ? `<span class="was">${esc(e.before)}</span><span class="now">${esc(e.label)}</span>` : esc(e.label);
+          return e.label || two ? `<div class="el st-${e.status}${two ? " two" : ""}${dim(litEdges.has(e.i))}" data-edge="${j}">${inner}</div>` : "";
         }).join("");
       const box = new Map([...plane.querySelectorAll(".mn")].map((d) => [d.dataset.id, d]));
       const tag = new Map([...plane.querySelectorAll(".el")].map((d) => [Number(d.dataset.edge), d]));
@@ -208,7 +214,7 @@ export default {
         const [p0, ...rest] = at.points;
         let d = `M${p0[0]},${p0[1]}`, prev = p0;
         for (const q of rest) { const my = (prev[1] + q[1]) / 2; d += ` C${prev[0]},${my} ${q[0]},${my} ${q[0]},${q[1]}`; prev = q; }
-        paths.push(`<path class="st-${e.status}${dim(litEdges.has(e.i))}" d="${d}" marker-end="url(#mapArrow-${mode === "changes" ? e.status : "same"})"/>`);
+        paths.push(`<path class="st-${e.status}${dim(litEdges.has(e.i))}" d="${d}" marker-end="url(#mapArrow-${e.status})"/>`);
         const lb = tag.get(j);
         if (lb && at.label) { lb.style.left = `${at.label.x}px`; lb.style.top = `${at.label.y}px`; }
       });
@@ -216,6 +222,7 @@ export default {
       plane.insertAdjacentHTML("afterbegin", `<svg width="${lay.width}" height="${lay.height}"><defs>${Object.entries(colour).map(([st, c]) =>
         `<marker id="mapArrow-${st}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" style="fill:${c};stroke:none"/></marker>`).join("")}</defs>${paths.join("")}</svg>`);
       size = { w: lay.width, h: lay.height };
+      slide(t);
       const s = fit();
       if (change) { // bring the change's part of the diagram into view
         const lit = [...plane.querySelectorAll(".mn:not(.dim)")], stage = root.querySelector(".stage");
@@ -251,14 +258,26 @@ export default {
     root.addEventListener("pointerup", endPan);
     root.addEventListener("pointercancel", endPan);
 
-    const setMode = (to) => { if (to !== mode) { mode = to; render(); } };
+    /** Moves the slider to v, 0 (before) to 1 (after): nothing is laid out again, the parts only in one fade. */
+    function slide(v, sliding = false) {
+      t = Math.max(0, Math.min(1, v));
+      if (!plane) return;
+      plane.classList.toggle("sliding", sliding);
+      plane.style.setProperty("--t", t);
+      plane.classList.toggle("at-before", t < 0.5);
+      plane.classList.toggle("at-after", t >= 0.5);
+      const input = root.querySelector(".slide input");
+      if (input && Number(input.value) !== t) input.value = t;
+      root.querySelectorAll(".slide [data-end]").forEach((b) => b.classList.toggle("on", Math.round(t) === Number(b.dataset.end)));
+    }
+    root.addEventListener("input", (ev) => { if (ev.target.matches(".slide input")) slide(Number(ev.target.value), true); });
     const pick = (i, toggle = true) => { sel = toggle && i === sel ? -1 : i; render(); };
     root.addEventListener("click", (ev) => {
       const t = ev.target;
       if (t.closest("a")) return; // a reference in a change: the viewer opens it (code.js)
-      const b = t.closest("[data-mode],[data-want],[data-draw],[data-redraw],[data-cancel],[data-change],.mn[data-ref]");
+      const b = t.closest("[data-end],[data-want],[data-draw],[data-redraw],[data-cancel],[data-change],.mn[data-ref]");
       if (!b) return;
-      if (b.dataset.mode) setMode(b.dataset.mode);
+      if (b.dataset.end) slide(Number(b.dataset.end));
       else if (b.dataset.want !== undefined) { want = b.dataset.want; render(); }
       else if (b.hasAttribute("data-draw")) draw(want);
       else if (b.hasAttribute("data-redraw")) draw(want);
@@ -269,9 +288,8 @@ export default {
     root.addEventListener("change", (ev) => { if (ev.target.matches("[data-level]")) want = ev.target.value; });
 
     const step = (d) => { const n = data?.map?.changes.length ?? 0; if (n) pick(sel < 0 ? (d > 0 ? 0 : n - 1) : Math.max(0, Math.min(n - 1, sel + d)), false); };
-    const turn = (d) => { const i = MODES.findIndex((x) => x[0] === mode) + d; if (MODES[i]) setMode(MODES[i][0]); };
     const keys = { // by action (keys.js)
-      left: () => turn(-1), right: () => turn(1), up: () => step(-1), down: () => step(1),
+      left: () => slide(0), right: () => slide(1), up: () => step(-1), down: () => step(1),
       zoomOut: () => { if (sel >= 0) pick(sel); },
     };
 
