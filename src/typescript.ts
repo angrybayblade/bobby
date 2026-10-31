@@ -23,8 +23,9 @@ export const typescript: LanguageServer = {
     const dir = serverDir(NAME);
     return {
       ...(await nodeCommand(join(dir, CLI), ["--stdio"], log)),
-      // Not the syntax-only server: it answers an import with the import line itself.
-      init: { tsserver: { path: join(dir, "node_modules", "typescript", "lib", "tsserver.js"), useSyntaxServer: "never" }, hostInfo: "bobby", maxTsServerMemory: 4096 },
+      // Not the syntax-only server: it answers an import with the import line itself. No automatic type acquisition: it
+      // would npm install the @types the PR's package.json names, onto your network and disk.
+      init: { tsserver: { path: join(dir, "node_modules", "typescript", "lib", "tsserver.js"), useSyntaxServer: "never" }, hostInfo: "bobby", maxTsServerMemory: 4096, disableAutomaticTypingAcquisition: true },
     };
   },
   outside(p) {
