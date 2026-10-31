@@ -71,7 +71,8 @@ Rules:
 
 export async function claudeTree(pr: PrInfo, a: Analysis, files: FileDiff[]): Promise<ChangeTree> {
   const prompt = buildPrompt(pr, a);
-  const cmd = [claudeBin() ?? "claude", "-p", "--output-format", "json", "--tools", "", "--no-session-persistence", "--json-schema", JSON.stringify(SCHEMA)];
+  const cmd = [claudeBin() ?? "claude", "-p", "--output-format", "json", "--tools", "", "--no-session-persistence",
+    "--strict-mcp-config", "--setting-sources", "", "--disable-slash-commands", "--json-schema", JSON.stringify(SCHEMA)]; // none of your own setup: no MCP servers, settings or permissions
   const model = process.env.BOBBY_MODEL ?? process.env.PRFOCUS_MODEL; // PRFOCUS_MODEL: the old name
   if (model) cmd.push("--model", model);
   const out = JSON.parse(await run(cmd, { cwd: tmpdir(), input: prompt, timeoutMs: 15 * 60_000 })); // a stuck claude mustn't leave the review "organising" forever
