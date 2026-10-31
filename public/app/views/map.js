@@ -16,28 +16,27 @@ const STEPS = 8; // the steps the loader shows, the latest last (the server keep
 
 const CSS = `
 .bmap { position: absolute; inset: 0; display: flex; flex-direction: column; min-height: 0; }
-.bmap .mhd { display: flex; gap: 24px; align-items: flex-start; justify-content: space-between; padding: 14px 24px 12px; border-bottom: 1px solid var(--line-soft); }
-.bmap .mhd h2 { margin: 3px 0 3px; font: 600 calc(var(--size) * .95)/1.45 var(--font-prose); max-width: 100ch; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.bmap .mwhy span { color: var(--faint); margin-right: 4px; }
-.bmap .mwhy { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); max-width: 110ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.bmap .mtitle { flex: 1; min-width: 0; }
-.bmap .mctl { display: flex; gap: 10px; align-items: center; flex: none; }
+.bmap .mctl { display: flex; gap: 14px; align-items: center; flex: none; margin-left: auto; }
 .bmap .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
-.bmap .seg button { padding: 5px 12px; font-size: 13px; color: var(--muted); background: none; border: 0; }
+.bmap .seg button { padding: 3px 10px; font-size: 12.5px; color: var(--muted); background: none; border: 0; }
 .bmap .seg button + button { border-left: 1px solid var(--line); }
 .bmap .seg button.on { color: var(--text); font-weight: 650; background: var(--raised); } /* weight, not colour */
-.bmap .mctl .btn { padding: 5px 12px; font-size: 13px; }
+.bmap .mctl .btn { padding: 3px 10px; font-size: 12.5px; }
 .bmap .banner { padding: 7px 24px; font-size: 13px; color: var(--muted); background: var(--raised); border-bottom: 1px solid var(--line-soft); display: flex; gap: 10px; align-items: center; }
 .bmap .banner .btn { padding: 3px 10px; font-size: 12.5px; }
 .bmap .mbody { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 340px; }
 .bmap .mleft { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-.bmap .mlayers { display: flex; align-items: baseline; gap: 4px 6px; flex-wrap: wrap; padding: 10px 24px 9px; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
-.bmap .mlayers button { padding: 2px 4px; border: 0; background: none; font: inherit; color: var(--muted); }
-.bmap .mlayers button i { font-style: normal; color: var(--faint); margin-right: 5px; font-variant-numeric: tabular-nums; }
-.bmap .mlayers button.on { color: var(--text); font-weight: 650; } /* weight, not colour */
-.bmap .mlayers .sep { color: var(--faint); }
-.bmap .mlayers .mabout { flex-basis: 100%; padding: 0 4px; font-size: 12.5px; color: var(--muted); }
-.bmap .stage { flex: 1; min-height: 0; position: relative; overflow: hidden; min-width: 0; cursor: grab; touch-action: none; }
+.bmap .mlayers { display: flex; align-items: center; gap: 16px; padding: 8px 16px 8px 20px; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+.bmap .mtabs { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; white-space: nowrap; }
+.bmap .mtabs button { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; padding: 2px 4px; border: 0; background: none; font: inherit; color: var(--muted); }
+.bmap .mtabs button.on { flex: none; }
+.bmap .mtabs button i { font-style: normal; color: var(--faint); margin-right: 5px; font-variant-numeric: tabular-nums; }
+.bmap .mtabs button.on { color: var(--text); font-weight: 650; } /* weight, not colour */
+.bmap .mtabs .sep { color: var(--faint); }
+.bmap .stage { flex: 1; min-height: 0; position: relative; display: flex; min-width: 0; cursor: grab; touch-action: none; }
+.bmap .pane { position: relative; flex: 1; min-width: 0; overflow: hidden; }
+.bmap .pane + .pane { border-left: 1px solid var(--line-soft); }
+.bmap .ptag { position: absolute; left: 16px; top: 12px; z-index: 1; font: 600 10.5px var(--font-ui); letter-spacing: .09em; text-transform: uppercase; color: var(--faint); pointer-events: none; }
 .bmap .stage.panning { cursor: grabbing; user-select: none; }
 .bmap .mzoom { position: absolute; left: 16px; bottom: 16px; display: flex; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); overflow: hidden; cursor: default; }
 .bmap .mzoom button { min-width: 30px; padding: 4px 8px; border: 0; background: none; font: 13px var(--font-ui); color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -85,7 +84,7 @@ const CSS = `
 .bmap .slide { display: flex; align-items: center; gap: 10px; }
 .bmap .slide button { padding: 4px 2px; border: 0; background: none; font-size: 13px; color: var(--muted); }
 .bmap .slide button.on { color: var(--text); font-weight: 650; } /* weight, not colour */
-.bmap .slide input { width: 150px; accent-color: var(--text); }
+.bmap .slide input { width: 120px; accent-color: var(--text); }
 .bmap .plane.lit .dim { --d: .15; }
 .bmap .mrail { border-left: 1px solid var(--line-soft); overflow: auto; padding: 16px 18px 40px; }
 .bmap .mrail h4 { margin: 0 0 10px; font: 600 10.5px var(--font-ui); letter-spacing: .09em; text-transform: uppercase; color: var(--faint); }
@@ -134,6 +133,9 @@ export default {
   mount(el, app) {
     injectCss("map", CSS);
     const root = el.appendChild(Object.assign(document.createElement("div"), { className: "bmap" }));
+    let split = false;
+    try { split = localStorage.getItem("bobby.map.split") === "1"; } catch {}
+    let planes = [];
     let tick = 0, data = null, t = 1, sel = -1, layer = 0, dead = false, timer = 0, plane = null, size = null, drawn = "";
     // the camera: framed to fit the map until you pan or zoom; then yours until another map is drawn
     let cam = { tx: 0, ty: 0, s: 1 }, mine = false;
@@ -161,29 +163,28 @@ export default {
         : data.error ? `<div class="banner">Couldn't redraw it: ${esc(data.error)}</div>`
         : data.stale ? `<div class="banner">Drawn for an earlier commit of this PR. <button class="btn" data-redraw>Redraw it</button></div>` : "";
       root.innerHTML = `
-        <div class="mhd">
-          <div class="mtitle"><h2 title="${esc(m.summary)}">${esc(m.summary)}</h2><p class="mwhy" title="${esc(m.scope)}"><span>Changes</span>${esc(m.scope)}</p><p class="mwhy" title="${esc(m.effect)}"><span>Affects</span>${esc(m.effect)}</p></div>
-          <div class="mctl">
-            <div class="slide"><button data-end="0">Before</button><input type="range" min="0" max="1" step="0.01" value="${t}" aria-label="Before or after the PR"><button data-end="1">After</button></div>
-            <button class="btn" data-redraw ${data.running ? "disabled" : ""}>Redraw</button>
-          </div>
-        </div>
         ${banner}
         <div class="mbody">
           <div class="mleft">
-            <nav class="mlayers">${m.layers.length > 1 ? m.layers.map((x, i) => `${i ? `<span class="sep">›</span>` : ""}<button data-layer="${i}" class="${i === layer ? "on" : ""}" title="${esc(x.about)}"><i>${i + 1}</i>${esc(x.name)}</button>`).join("") : `<button class="on">${esc(L.name)}</button>`}<span class="mabout">${esc(L.about)}</span></nav>
-            <div class="stage"><div class="plane${sel >= 0 ? " lit" : ""}"></div>
+            <nav class="mlayers"><div class="mtabs">${m.layers.map((x, i) => `${i ? `<span class="sep">›</span>` : ""}<button data-layer="${i}" class="${i === layer ? "on" : ""}" title="${esc(x.about)}">${m.layers.length > 1 ? `<i>${i + 1}</i>` : ""}${esc(x.name)}</button>`).join("")}</div>
+              <div class="mctl">
+                ${split ? "" : `<div class="slide"><button data-end="0">Before</button><input type="range" min="0" max="1" step="0.01" value="${t}" aria-label="Before or after the PR"><button data-end="1">After</button></div>`}
+                <div class="seg"><button data-split="0" class="${split ? "" : "on"}" title="One diagram, a slider from before to after">Inline</button><button data-split="1" class="${split ? "on" : ""}" title="Before and after side by side">Split</button></div>
+                <button class="btn" data-redraw ${data.running ? "disabled" : ""} title="Have Claude draw it again">Redraw</button>
+              </div></nav>
+            <div class="stage">${(split ? [["before", "Before"], ["after", "After"]] : [["", ""]]).map(([side, name]) => `<div class="pane">${name ? `<span class="ptag">${name}</span>` : ""}<div class="plane${sel >= 0 ? " lit" : ""}" data-side="${side}"></div></div>`).join("")}
               <div class="mzoom"><button data-zoom="-1" title="Zoom out">−</button><button data-zoom="fit" title="Fit the map to the canvas"></button><button data-zoom="1" title="Zoom in">+</button></div></div>
           </div>
           <aside class="mrail">
             <h4>What changes</h4>
             <ol>${m.changes.map((c, i) => `<li data-change="${i}" class="${sel === i ? "on" : ""}"><div class="ct"><i>${i + 1}</i>${esc(c.title)}</div><div class="cd">${md(c.detail)}</div></li>`).join("")}</ol>
-            <div class="mkeys">← → before, after · ↑ ↓ step through the changes · enter / esc a layer deeper or higher · drag or scroll to pan, pinch or ctrl+scroll to zoom</div>
+            <div class="mkeys">← → before, after (inline) · ↑ ↓ step through the changes · enter / esc a layer deeper or higher · drag or scroll to pan, pinch or ctrl+scroll to zoom</div>
             <div class="mfoot">Drawn by Claude ${new Date(m.at).toLocaleString()}${m.cost ? ` · $${m.cost.toFixed(2)}` : ""}</div>
           </aside>
         </div>`;
-      plane = root.querySelector(".plane");
-      if (drawn !== `${m.at} ${layer}`) { drawn = `${m.at} ${layer}`; mine = false; } // a new map or layer: framed afresh
+      planes = [...root.querySelectorAll(".plane")];
+      plane = planes[0];
+      if (drawn !== `${m.at} ${layer} ${split}`) { drawn = `${m.at} ${layer} ${split}`; mine = false; } // a new map, layer or mode: framed afresh
       root.querySelector(".mrail li.on")?.scrollIntoView({ block: "nearest" });
       diagram(m);
     }
@@ -228,8 +229,27 @@ export default {
       el.textContent = secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m ${String(secs % 60).padStart(2, "0")}s`;
     }
 
+    /** Draws the layer on each plane: inline, all its parts, which the slider fades; split, before's on one side and
+     *  after's on the other, each laid out on its own. The planes share a camera, so they pan and zoom together. */
     function diagram(m) {
-      const L = m.layers[layer], nodes = L.nodes, edges = L.edges.map((e, i) => ({ ...e, i })), change = m.changes[sel];
+      const L = m.layers[layer], sizes = [];
+      for (const p of planes) {
+        const side = p.dataset.side, keep = (st) => (side === "before" ? st !== "added" : side === "after" ? st !== "removed" : true);
+        const nodes = L.nodes.filter((n) => keep(n.status)), ids = new Set(nodes.map((n) => n.id));
+        const edges = L.edges.map((e, i) => ({ ...e, i })).filter((e) => keep(e.status) && ids.has(e.from) && ids.has(e.to));
+        sizes.push(drawPlane(p, m, nodes, edges));
+        if (side) { p.style.setProperty("--t", side === "after" ? 1 : 0); p.classList.add("sliding", side === "after" ? "at-after" : "at-before"); } // a side shows its own end
+      }
+      size = { w: Math.max(...sizes.map((x) => x.w)), h: Math.max(...sizes.map((x) => x.h)) };
+      if (!split) slide(t);
+      const change = m.changes[sel];
+      if (!mine) cam = fitted();
+      if (change && !split) frame([...plane.querySelectorAll(".mn:not(.dim)")]); // split: both sides stay as they are, the change lit on each
+      apply();
+    }
+
+    function drawPlane(plane, m, nodes, edges) {
+      const change = m.changes[sel];
       const litNodes = new Set(change?.nodes ?? []);
       const litEdges = new Set(edges.filter((e) => litNodes.has(e.from) && litNodes.has(e.to)).map((e) => e.i));
       const plain = (k) => k === "step" || k === "outcome"; // a box that's only its words
@@ -265,21 +285,16 @@ export default {
         if (lb && at.label) { lb.style.left = `${at.label.x}px`; lb.style.top = `${at.label.y}px`; }
       });
       plane.insertAdjacentHTML("afterbegin", `<svg width="${lay.width}" height="${lay.height}"><defs><marker id="mapArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" style="fill:var(--faint);stroke:none"/></marker></defs>${paths.join("")}</svg>`);
-      size = { w: lay.width, h: lay.height };
-      slide(t);
-      plane.style.width = `${size.w}px`; plane.style.height = `${size.h}px`;
-      if (change) frame([...plane.querySelectorAll(".mn:not(.dim)")]);
-      else if (!mine) cam = fitted();
-      apply();
+      plane.style.width = `${lay.width}px`; plane.style.height = `${lay.height}px`;
+      return { w: lay.width, h: lay.height };
     }
 
     // ---- the canvas: a fixed stage the map moves and scales in. Drag or scroll to pan; pinch or ctrl+scroll to zoom.
     const PAD = 40, MIN = 0.2, MAX = 2;
-    const stageEl = () => root.querySelector(".stage");
+    const stageEl = () => root.querySelector(".pane"); // each pane is the same size
     function apply(glide = false) {
       if (!plane) return;
-      plane.classList.toggle("glide", glide);
-      plane.style.transform = `translate(${cam.tx}px, ${cam.ty}px) scale(${cam.s})`;
+      for (const p of planes) { p.classList.toggle("glide", glide); p.style.transform = `translate(${cam.tx}px, ${cam.ty}px) scale(${cam.s})`; }
       const pct = root.querySelector('[data-zoom="fit"]');
       if (pct) pct.textContent = `${Math.round(cam.s * 100)}%`;
     }
@@ -328,7 +343,7 @@ export default {
       const st = ev.target.closest(".stage");
       if (!st) return;
       ev.preventDefault();
-      const r = st.getBoundingClientRect();
+      const r = (ev.target.closest(".pane") ?? stageEl()).getBoundingClientRect(); // around the pointer in its own pane
       if (ev.ctrlKey || ev.metaKey) return zoom(Math.exp(-ev.deltaY * 0.01), ev.clientX - r.left, ev.clientY - r.top); // pinch, or ctrl+scroll
       cam = { ...cam, tx: cam.tx - ev.deltaX, ty: cam.ty - ev.deltaY };
       mine = true;
@@ -338,7 +353,7 @@ export default {
     /** Moves the slider to v, 0 (before) to 1 (after): nothing is laid out again, the parts only in one fade. */
     function slide(v, sliding = false) {
       t = Math.max(0, Math.min(1, v));
-      if (!plane) return;
+      if (!plane || split) return;
       plane.classList.toggle("sliding", sliding);
       plane.style.setProperty("--t", t);
       plane.classList.toggle("at-before", t < 0.5);
@@ -360,20 +375,27 @@ export default {
       const z = t.closest("[data-zoom]");
       if (z) { if (z.dataset.zoom === "fit") { cam = fitted(); mine = false; apply(true); } else zoom(z.dataset.zoom > 0 ? 1.25 : 0.8, undefined, undefined, true); return; }
       if (t.closest("a")) return; // a reference in a change: the viewer opens it (code.js)
-      const b = t.closest("[data-end],[data-layer],[data-draw],[data-redraw],[data-cancel],[data-change],.mn[data-ref]");
+      const b = t.closest("[data-end],[data-split],[data-layer],[data-draw],[data-redraw],[data-cancel],[data-change],.mn[data-ref]");
       if (!b) return;
       if (b.dataset.end) slide(Number(b.dataset.end));
+      else if (b.dataset.split) setSplit(b.dataset.split === "1");
       else if (b.dataset.layer) toLayer(Number(b.dataset.layer));
       else if (b.hasAttribute("data-draw") || b.hasAttribute("data-redraw")) draw();
       else if (b.hasAttribute("data-cancel")) api("/api/map/cancel", {}).then(load);
       else if (b.dataset.change) pick(Number(b.dataset.change));
       else if (b.dataset.ref) { const r = parseRef(b.dataset.ref); if (r) openRef(app, r); }
     });
+    const setSplit = (on) => {
+      if (on === split) return;
+      split = on;
+      try { localStorage.setItem("bobby.map.split", on ? "1" : "0"); } catch {}
+      render();
+    };
     const toLayer = (i) => { const n = data?.map?.layers.length ?? 0; if (i >= 0 && i < n && i !== layer) { layer = i; render(); } };
 
     const step = (d) => { const n = data?.map?.changes.length ?? 0; if (n) pick(sel < 0 ? (d > 0 ? 0 : n - 1) : Math.max(0, Math.min(n - 1, sel + d)), false); };
     const keys = { // by action (keys.js)
-      left: () => slide(0), right: () => slide(1), up: () => step(-1), down: () => step(1),
+      left: () => slide(0), right: () => slide(1), // inline only: split shows both up: () => step(-1), down: () => step(1),
       zoomIn: () => toLayer(layer + 1),
       zoomOut: () => { if (sel >= 0) pick(sel); else toLayer(layer - 1); },
     };
