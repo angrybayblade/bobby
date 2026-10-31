@@ -12,6 +12,7 @@ What changed in each release, newest first. Each release's full notes, with inst
 - The first open of a repo clones only the PR's base branch, not every branch: a quarter less on disk for a busy repo, and a little faster.
 - Building a review reads the files it follows imports into through one running git, not one git each: about 4 s instead of 5.6 s on a 30-file PR.
 - Reopening a review whose PR hasn't moved on no longer waits for GitHub's comments: it opens with last time's in under a second (was about 3), and the current ones replace them as they arrive.
+- Claude's runs have a spending ceiling each, well above what one usually costs ($5 for a review or a map, $2 for a question, $3 for the change tree), and at most three run at once across your reviews; the rest wait their turn.
 
 ## 0.1.0-rc15 (2026-10-30)
 

@@ -7,7 +7,7 @@ import * as log from "./log.ts";
 import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Subprocess } from "bun";
-import { claudeBin, claudeStatus } from "./claude.ts";
+import { claudeBin, claudeBusy, claudeStatus, claudeTurn, SPEND } from "./claude.ts";
 import type { ReviewGraph } from "./graph.ts";
 import { keepTree } from "./langserver.ts";
 import { home } from "./state.ts";
@@ -170,19 +170,29 @@ interface Event {
   structured_output?: unknown; result?: string; total_cost_usd?: number; // the result's
 }
 
+// minutes: how long before it's stopped; budget: the dollars it may spend (claude.ts SPEND)
+type RunOptions = { schema?: object; onText?: (text: string) => void; minutes?: number; budget?: number; tools?: string; connected?: Connected | null };
 /** Runs Claude Code on a prompt, in the head commit's export with only Read, Grep and Glob, and nothing of your own
  *  setup (settings, MCP servers, sessions). job.steps says what it's doing; onText gets its answer as it's written.
  *  The result: its structured output (with a schema), else its text. */
-export async function runClaude(cwd: string, g: ReviewGraph, job: AgentJob, prompt: string, o: { schema?: object; onText?: (text: string) => void; minutes?: number; tools?: string; connected?: Connected | null } = {}): Promise<Event> {
+export async function runClaude(cwd: string, g: ReviewGraph, job: AgentJob, prompt: string, o: RunOptions = {}): Promise<Event> {
   const step = (m: string) => { job.steps.push(m); if (job.steps.length > 200) job.steps.splice(0, 100); };
   const st = await claudeStatus();
   if (!st.installed || !st.loggedIn) throw new Error(st.installed ? "Claude Code isn't signed in" : "Claude Code isn't installed");
   const root = await sourceTree(cwd, g, step);
+  if (claudeBusy()) step("Waiting for another Claude run to finish");
+  const done = await claudeTurn();
+  try {
+    if (job.error) throw new Error(job.error); // stopped while it waited
+    return await runIn(root, job, prompt, step, o);
+  } finally { done(); }
+}
+async function runIn(root: string, job: AgentJob, prompt: string, step: (m: string) => void, o: RunOptions): Promise<Event> {
   step("Reading the diff");
   // None of your own setup, unless you've let some of it in (connected.ts): then your user settings, for its
   // connections, with hooks off and only what you chose allowed.
   const c = o.connected, allowed = [...(o.tools ? ["mcp__bobby"] : []), ...(c?.allowed ?? [])];
-  const cmd = [claudeBin() ?? "claude", "-p", "--output-format", "stream-json", "--verbose", "--tools", "Read,Grep,Glob", "--no-session-persistence",
+  const cmd = [claudeBin() ?? "claude", "-p", "--output-format", "stream-json", "--verbose", "--tools", "Read,Grep,Glob", "--no-session-persistence", "--max-budget-usd", String(o.budget ?? SPEND.review),
     ...(c ? c.args : ["--strict-mcp-config", "--setting-sources", ""]), "--disable-slash-commands", ...(o.schema ? ["--json-schema", JSON.stringify(o.schema)] : []), ...(o.onText ? ["--include-partial-messages"] : []),
     ...(o.tools ? ["--mcp-config", o.tools] : []), // Bobby's own tools (mcp.ts)
     ...(c?.disallowed.length ? ["--disallowedTools", ...c.disallowed] : []), ...(allowed.length ? ["--allowedTools", ...allowed] : [])];
@@ -221,6 +231,7 @@ export async function runClaude(cwd: string, g: ReviewGraph, job: AgentJob, prom
   } finally { clearTimeout(kill); job.proc = undefined; }
   const code = await p.exited;
   if (job.error) throw new Error(job.error);
+  if (result?.subtype === "error_max_budget_usd") throw new Error(`Claude reached this run's $${o.budget ?? SPEND.review} limit and stopped`);
   if (!result || (o.schema ? !result.structured_output : !result.result)) throw new Error(result?.result?.slice(0, 300) || (await new Response(p.stderr).text()).trim().split("\n").at(-1) || `claude exited ${code}`);
   return result;
 }

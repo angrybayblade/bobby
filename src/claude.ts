@@ -132,3 +132,19 @@ export function cancelLogin() {
   Object.assign(job, { login: undefined, url: undefined, step: job.step === "installing" ? job.step : "idle" });
 }
 export const dismiss = () => { job.dismissed = true; };
+
+// At most this many Claude runs at once, across every review (each a process, each spending your quota); the others
+// wait their turn. claudeTurn resolves when it's this run's, with what gives the turn back.
+const MAX_RUNS = 3;
+let running = 0;
+const waiting: Array<() => void> = [];
+export const claudeBusy = () => running >= MAX_RUNS;
+export async function claudeTurn(): Promise<() => void> {
+  while (running >= MAX_RUNS) await new Promise<void>((ok) => waiting.push(ok));
+  running++;
+  let given = false;
+  return () => { if (given) return; given = true; running--; waiting.shift()?.(); };
+}
+/** What a run costs at most, in dollars, past which Claude stops: far above what one usually costs (a review or a map,
+ *  well under a dollar), so it only ends one that's gone round in circles. */
+export const SPEND = { review: 5, ask: 2, tree: 3 };

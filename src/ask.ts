@@ -2,6 +2,7 @@
 // the code around them (the same read-only setup as Claude's review, agent.ts). Follow-ups carry the conversation so
 // far. The answer is for you, the reviewer: turn it into a comment or a note if you want to keep it.
 import { type AgentJob, TOOLS_NOTE, runClaude } from "./agent.ts";
+import { SPEND } from "./claude.ts";
 import type { ReviewGraph } from "./graph.ts";
 import type { Connected } from "./connected.ts";
 import { refContext, resolveRefs } from "./refs.ts";
@@ -34,7 +35,7 @@ export async function runAsk(cwd: string, g: ReviewGraph, ask: Ask, job: AgentJo
   const turn = ask.turns.at(-1)!;
   try {
     const prompt = askPrompt(g, ask, !!tools).replace(/\n# The reviewer asks\n/, (m) => (connected ? `\n${connected.note}\n${m}` : m));
-    const r = await runClaude(cwd, g, job, prompt, { onText: (t) => { job.text = t; }, minutes: 10, tools, connected });
+    const r = await runClaude(cwd, g, job, prompt, { onText: (t) => { job.text = t; }, minutes: 10, budget: SPEND.ask, tools, connected });
     turn.a = await resolveRefs((r.result ?? job.text ?? "").trim(), refContext(cwd, g));
   } catch (e) {
     turn.error = job.error ?? (e as Error).message;

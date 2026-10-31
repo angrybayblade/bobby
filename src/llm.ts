@@ -1,5 +1,5 @@
 import { tmpdir } from "node:os";
-import { claudeBin } from "./claude.ts";
+import { claudeBin, claudeTurn, SPEND } from "./claude.ts";
 import { run } from "./git.ts";
 import { emptyBands, finalize, refNode, type Analysis } from "./analyze.ts";
 import type { ChangeTree, Core, FileDiff, PrInfo, TreeNode } from "./types.ts";
@@ -72,10 +72,11 @@ Rules:
 export async function claudeTree(pr: PrInfo, a: Analysis, files: FileDiff[]): Promise<ChangeTree> {
   const prompt = buildPrompt(pr, a);
   const cmd = [claudeBin() ?? "claude", "-p", "--output-format", "json", "--tools", "", "--no-session-persistence",
-    "--strict-mcp-config", "--setting-sources", "", "--disable-slash-commands", "--json-schema", JSON.stringify(SCHEMA)]; // none of your own setup: no MCP servers, settings or permissions
+    "--strict-mcp-config", "--setting-sources", "", "--disable-slash-commands", "--max-budget-usd", String(SPEND.tree), "--json-schema", JSON.stringify(SCHEMA)]; // none of your own setup: no MCP servers, settings or permissions
   const model = process.env.BOBBY_MODEL ?? process.env.PRFOCUS_MODEL; // PRFOCUS_MODEL: the old name
   if (model) cmd.push("--model", model);
-  const out = JSON.parse(await run(cmd, { cwd: tmpdir(), input: prompt, timeoutMs: 15 * 60_000 })); // a stuck claude mustn't leave the review "organising" forever
+  const done = await claudeTurn(); // in turn with the other Claude runs (claude.ts)
+  const out = JSON.parse(await run(cmd, { cwd: tmpdir(), input: prompt, timeoutMs: 15 * 60_000 }).finally(done)); // a stuck claude mustn't leave the review "organising" forever
   if (out.is_error || !out.structured_output) throw new Error(`claude returned no structured output: ${String(out.result).slice(0, 300)}`);
   return toTree(out.structured_output, a, files);
 }
