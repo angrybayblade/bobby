@@ -144,11 +144,15 @@ async function run(s: Session, srv: LanguageServer) {
 }
 
 /** The code servers read: your working copy for a local review, else the PR's head exported once (every language's
- *  files, so a server you agree to later reads the same tree), kept marked as in use while Bobby runs. */
+ *  files, so a server you agree to later reads the same tree), kept marked as in use while its review is open. */
 function treeRoot(s: Session): Promise<string> {
   const pr = s.staticGraph.pr;
   if (pr.provider === "local") return Promise.resolve(s.cwd!);
-  return (s.root ??= headTree(s.cwd!, pr, SERVERS, serversFor(s.staticGraph)).then((dir) => { setInterval(() => keepTree(dir), 3_600_000).unref(); return dir; }));
+  return (s.root ??= headTree(s.cwd!, pr, SERVERS, serversFor(s.staticGraph)).then((dir) => {
+    clearInterval(s.keepTimer); // marked in use while its review is live; once stopped, it's left for prune to clear
+    if (live.has(s)) s.keepTimer = setInterval(() => keepTree(dir), 3_600_000).unref();
+    return dir;
+  }));
 }
 function merge(s: Session, placed: Record<string, Definition[]>) {
   s.definitions = { ...(s.definitions ?? s.staticGraph.definitions ?? {}), ...placed };
@@ -156,6 +160,7 @@ function merge(s: Session, placed: Record<string, Definition[]>) {
 
 export async function stopServers(s: Session) {
   live.delete(s);
+  clearInterval(s.keepTimer);
   await Promise.all(Object.values(s.inspectors ?? {}).map((i) => i.stop()));
 }
 /** The inspector for a file, if its language's server is up. */

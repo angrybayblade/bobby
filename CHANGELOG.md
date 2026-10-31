@@ -7,7 +7,7 @@ What changed in each release, newest first. Each release's full notes, with inst
 - **Security:** another website can no longer make Bobby open a PR (clone its repo, hand it to Claude) by pointing at a review's address. A PR you've never opened in Bobby, reached from outside it, asks before it opens.
 - **Security:** the Claude run that organises a review into its tree no longer loads your own Claude Code setup: your MCP servers, claude.ai connectors, settings and permissions stay out of it, as they already did for Review with Claude, Ask and Map.
 - **Security:** no other site can show Bobby inside a frame, where it could dress a click on Approve up as something else.
-- A review Bobby closes (no page open on it for 15 minutes) no longer stays in memory, and ending Bobby with ctrl-c stops every review's language servers.
+- A review Bobby closes (no page open on it for 15 minutes) no longer stays in memory, and ending Bobby with ctrl-c stops every review's language servers. The copies of a PR's code they read are cleared once their review is closed, rather than kept while Bobby runs.
 
 ## 0.1.0-rc15 (2026-10-30)
 

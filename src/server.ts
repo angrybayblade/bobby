@@ -36,6 +36,7 @@ export interface Session {
   servers?: Record<string, ServerInfo>;
   inspectors?: Record<string, Inspector>;
   root?: Promise<string>;
+  keepTimer?: ReturnType<typeof setInterval>; // keeps root marked in use while the review is live
   log?: (m: string) => void;
   definitions?: Record<string, Definition[]>;
   repo?: Promise<Repo>; // the head commit's syntax, for the inspector without a language server
