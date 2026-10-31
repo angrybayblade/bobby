@@ -195,23 +195,24 @@ function renderTop() {
     <div class="prog" title="${done} of ${total} pages reviewed"><div class="bar"><i style="width:${pct}%"></i></div><span>${done}/${total}${mins && done < total ? ` · ~${mins}m` : ""}</span></div>
     <div class="seg" role="group" aria-label="View">${views.map((v) => `<button data-view="${v.id}" aria-pressed="${app.viewId === v.id}" title="${esc(v.hint)} (${esc(keysOf(app.settings, "nextView").map(keyText)[0] ?? "")})">${esc(v.name)}</button>`).join("")}</div>
     ${drafts ? `<button class="pill signal" data-act="submit">${drafts} draft${drafts > 1 ? "s" : ""} · ${esc(keyText(keysOf(app.settings, "submit")[0] ?? ""))}</button>` : ""}
+    ${commentsButton()}${unresolvedButton()}
     ${toggle("tests", "Tests", "Test files", app.settings.tests === "show", ICONS.tests)}
     ${toggle("generated", "Generated", "Generated files (openapi specs, __generated__/, @generated, DO NOT EDIT…)", app.settings.generated === "show", ICONS.generated)}
     ${toggle("untouched", "Untouched", "Untouched code the changes rely on or affect", app.settings.untouched !== "hide", ICONS.untouched)}
     <button class="iconbtn${app.state.notes.length ? " counted" : ""}" data-act="notes" aria-label="Notes" ${tip("Notes", "Your private notes. Never posted to GitHub.", "notes")}>${ICONS.notes}${app.state.notes.length ? `<i>${app.state.notes.length}</i>` : ""}</button>
-    ${agentPill(app)}${unresolvedButton()}${commentsButton()}
+    ${agentPill(app)}
     <button class="iconbtn" data-act="files" aria-pressed="${app.settings.fileTree !== "hide"}" aria-label="File tree" ${tip("File tree", app.settings.fileTree !== "hide" ? "Shown. Click to hide" : "Hidden. Click to show", "files")}>${ICONS.files}</button>
     <button class="iconbtn" data-act="settings" aria-label="Settings" ${tip("Settings", "", "settings")}>${GEAR}</button>`;
 }
 
 /** A tooltip (tip.js): what it is, what it does or its state, and its key when it has one. */
-function tip(name, more, key) {
+export function tip(name, more, key) {
   const k = key && keysOf(app.settings, key).map(keyText)[0];
   return `data-tip="${esc(name)}"${more ? ` data-tip-more="${esc(more)}"` : ""}${k ? ` data-tip-key="${esc(k)}"` : ""}`;
 }
 /** A switch for what every view shows, as an icon: struck through and faint while it's off. */
 const toggle = (act, name, what, on, icon) =>
-  `<button class="iconbtn tog" data-act="${act}" aria-pressed="${on}" aria-label="${esc(name)}" ${tip(name, `${what}, in every view: ${on ? "shown. Click to hide" : "hidden. Click to show"}`)}>${icon}</button>`;
+  `<button class="iconbtn tog" data-act="${act}" aria-pressed="${on}" aria-label="${esc(name)}" ${tip(name, `${what}, in every view: ${on ? "shown. Click to hide" : "hidden. Click to show"}`, act)}>${icon}</button>`;
 
 // Progress inside the core you're in: a bar that moves every few pages, not every few dozen.
 const corePages = (ci) => app.index.walk.filter((p) => app.get(p)?.ci === ci);
@@ -600,7 +601,7 @@ function welcomeBackLite() {
 // Every comment in the PR, open or collapsed in place: filled when they're showing.
 function commentsButton() {
   const n = prCount(app), open = (app.settings.comments ?? "open") === "open";
-  return n ? `<button class="pill cmpill" data-act="pr-comments" aria-pressed="${open}" ${tip(`${n} comment${n > 1 ? "s" : ""}`, `${open ? "Collapse" : "Show"} every comment in the PR`)}>${bubble(open)} ${n}</button>` : "";
+  return n ? `<button class="pill cmpill" data-act="pr-comments" aria-pressed="${open}" ${tip(`${n} comment${n > 1 ? "s" : ""}`, `${open ? "Collapse" : "Show"} every comment in the PR`, "comments")}>${bubble(open)} ${n}</button>` : "";
 }
 
 // GitHub's threads still open, as GitHub counts them on the PR: a click (or N) goes through them.

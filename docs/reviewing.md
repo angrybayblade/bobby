@@ -61,7 +61,10 @@ The breadcrumb bar shows where you are (`repo #n › core › page`) and the cur
 | `d` | Fit (Diff): the file you're on, as wide as it goes with its top at the top of the stage, as a double-click in the file tree shows it. Again, before you pan or zoom, to go back. |
 | `g` | Details: the page for what you're on, on its own with what it relies on and affects; again, or `esc`, to go back exactly as you were |
 | `t` | File tree on the right: show or hide |
-| `l` | Diff layout for every file: inline or split (old beside new). Also the **Inline / Split** switch under the header; a file's own button switches just that file. |
+| `T` / `G` / `U` | Show or hide test files / generated files / untouched code, in every view (the flask, wand and dashed-circle switches in the top bar) |
+| `C` | Show or collapse every comment in the PR (the comments pill in the top bar) |
+| `Q` | Review with Claude: its prompt, what it's doing, or its findings once it's done (the sparkles in the top bar) |
+| `l` | Layout for every file, and Map's before and after: inline or split (old beside new). Also the **Inline / Split** switch under the header; a file's own button switches just that file. |
 | `?` | All keys |
 | `⌘K` / `Ctrl+K` | Command palette: search every command, core, file and page by name, then `enter` to run or jump. Each command shows its key, so it's also a way to learn them. |
 

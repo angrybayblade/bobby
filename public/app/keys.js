@@ -30,6 +30,10 @@ export const ACTIONS = [
   { id: "nextView", group: "Reading", title: "Switch view: Conversation, Flow, Outline, Lens, Diff", keys: ["v"] },
   { id: "layout", group: "Reading", title: "Diff layout: inline or split", keys: ["l"] },
   { id: "files", group: "Reading", title: "Show or hide the file tree", keys: ["t"] },
+  { id: "tests", group: "Reading", title: "Show or hide test files, in every view", keys: ["T"] },
+  { id: "generated", group: "Reading", title: "Show or hide generated files, in every view", keys: ["G"] },
+  { id: "untouched", group: "Reading", title: "Show or hide untouched code the changes rely on or affect, in every view", keys: ["U"] },
+  { id: "comments", group: "Reading", title: "Show or collapse every comment in the PR", keys: ["C"] },
   // reviewing
   { id: "reviewed", group: "Reviewing", title: "Looks good: mark reviewed and move on", keys: ["a"] },
   { id: "unmark", group: "Reviewing", title: "Un-mark this page", keys: ["u"] },
@@ -41,6 +45,7 @@ export const ACTIONS = [
   { id: "comment", group: "Reviewing", title: "Comment on a line (the selected ones, else the likeliest)", keys: ["c"] },
   { id: "note", group: "Reviewing", title: "Private note on a line: only you see it", keys: ["m"] },
   { id: "ask", group: "Reviewing", title: "Ask Claude about the selected lines (else the likeliest)", keys: ["q"] },
+  { id: "claudeReview", group: "Reviewing", title: "Review with Claude: what it's doing, or its findings once it's done", keys: ["Q"] },
   { id: "notes", group: "Reviewing", title: "Your notes", keys: ["M"] },
   { id: "park", group: "Reviewing", title: "Park a thought, shown when you return", keys: ["p"] },
   { id: "submit", group: "Reviewing", title: "Submit review", keys: ["s"] },

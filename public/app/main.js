@@ -1,11 +1,11 @@
 import { askPoll } from "./ask.js";
 import { syncViewed } from "./viewed.js";
 import { report, reportErrors } from "./report.js";
-import { agentPoll, nextFinding, openAsk } from "./agent.js";
+import { agentPillClick, agentPoll, nextFinding, openAsk } from "./agent.js";
 import { DONE, LOW, api, createApp, esc, reviewBase } from "./core.js";
 import { escapeCode, inspectorKey, inspectorOpen, wireRefs, expandAll, keepDraft, moveLine, renderFile, renderNode, renderPage, startComment, startFileNote } from "./code.js";
 import * as chrome from "./chrome.js";
-import { nextUnresolved } from "./comments.js";
+import { nextUnresolved, togglePR } from "./comments.js";
 import { offerClaude } from "./claude-setup.js";
 import { offerGh } from "./gh-setup.js";
 import * as palette from "./palette.js";
@@ -372,7 +372,11 @@ const ACTS = {
   files: () => chrome.toggleFiles(),
   entry: () => { const e = app.entryPoint(); if (e) app.setFocus(e.pid, { level: 1 }); },
   layout: () => app.toggleLayout(),
+  tests: () => flipSetting("tests", "show", "hide"), generated: () => flipSetting("generated", "show", "hide"), untouched: () => flipSetting("untouched", "hide", "show"),
+  comments: () => togglePR(app),
+  claudeReview: () => agentPillClick(app),
 };
+function flipSetting(k, a, b) { app.saveSettings({ [k]: app.settings[k] === a ? b : a }); }
 // ---- command palette: every action by name, with its keys, plus what has no key of its own
 function commands() {
   const s = app.settings, flip = (k, a, b) => app.saveSettings({ [k]: s[k] === a ? b : a });
@@ -383,14 +387,10 @@ function commands() {
     { id: "tour", title: "Take the tour", sub: "how the walk, the views and the keys fit together", run: () => tour.start() },
     { id: "gh", title: "Set up GitHub CLI", sub: "install gh and sign in to GitHub, for PRs and posting reviews", run: () => offerGh({ force: true }) },
     ...(app.since ? [{ id: "since", title: "Review changes since your last review", sub: `${app.since.commits} commit${app.since.commits > 1 ? "s" : ""} since ${new Date(app.since.at).toLocaleDateString()}: just what they changed`, run: () => chrome.openSince() }] : []),
-    { id: "agent", title: "Review with Claude…", sub: "say what to focus on; Claude suggests comments for you to add or dismiss", run: () => openAsk(app) },
     { id: "agent-tools", title: "Claude's tools for this PR…", sub: "which of your MCP servers and connectors (Linear, Notion, Slack…) Claude may use", run: () => openAsk(app, { tools: true }) },
     { id: "agent-next", title: "Go through Claude's findings", sub: "one at a time, with the code each is about", run: () => nextFinding(app) || chrome.toast("No open findings from Claude.", 4000) },
     { id: "claude", title: "Set up Claude Code", sub: "install it and sign in, for Claude's tree of the change", run: () => offerClaude({ force: true }) },
     ...views.filter((v) => v.id !== currentId).map((v) => ({ id: `view:${v.id}`, title: `${v.name} view`, sub: v.hint, run: () => app.switchView(v.id) })),
-    { id: "set:tests", title: `${s.tests === "show" ? "Hide" : "Show"} tests`, run: () => flip("tests", "show", "hide") },
-    { id: "set:generated", title: `${s.generated === "show" ? "Hide" : "Show"} generated files`, run: () => flip("generated", "show", "hide") },
-    { id: "set:untouched", title: `${s.untouched === "hide" ? "Show" : "Hide"} untouched code`, run: () => flip("untouched", "hide", "show") },
     ...[["system", "System"], ["dark", "Dark"], ["light", "Light"]].filter(([v]) => v !== s.theme).map(([v, t]) => ({ id: `theme:${v}`, title: `Theme: ${t}`, run: () => app.saveSettings({ theme: v }) })),
   ];
 }

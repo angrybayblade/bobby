@@ -3,7 +3,7 @@
 // ("3 findings"); a click on that goes through them one at a time (agent-walk.js). They also sit on their lines as
 // suggestions. Each one becomes a draft of yours (Add to review) or goes away (Dismiss); nothing is posted until you
 // submit, as with your own drafts.
-import { ICONS } from "./chrome.js";
+import { ICONS, tip } from "./chrome.js";
 import { api, esc } from "./core.js";
 import { offerClaude } from "./claude-setup.js";
 import { MOD } from "./palette.js";
@@ -56,7 +56,7 @@ export function agentPill(app) {
   if (!a) return "";
   const failed = !a.running && a.error && a.error !== "Stopped" && errorSeen !== a.error;
   // at rest, an icon; while it works or has something to say, a pill that says so
-  const tipped = (name, more) => `data-tip="${esc(name)}" data-tip-more="${esc(more)}"`;
+  const tipped = (name, more) => tip(name, more, "claudeReview");
   if (!a.running && !failed && !a.open) {
     const nothing = app.agentReview && !app.agentReview.findings.length;
     return `<button class="iconbtn agpill" data-act="agent" aria-label="Review with Claude" ${tipped("Review with Claude", nothing ? "Claude's last review found nothing to raise. Click to ask again, about something in particular"
