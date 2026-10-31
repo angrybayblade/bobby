@@ -124,7 +124,7 @@ Comments on **untouched code** can't be inline on GitHub. They're kept as drafts
 
 ## Claude's review (preview)
 
-Claude reviews only when you ask. **✦ Review with Claude** in the top bar (or **Review with Claude…** in the command palette) opens a prompt: say what it should focus on ("Could this break existing API clients?"), pick from the suggestions (bugs and edge cases, callers, security, errors, concurrency, tests), or leave it empty for a general review; `⌘↵` starts it. Claude reads the diff, then checks the code around it at the PR's head: callers, definitions, tests. The prompt then shows what it's doing; close it and keep reviewing, as it usually takes a minute or two (or **Stop it**). The pill says **Claude is reviewing…** meanwhile, and when it's done, how many findings it has: that's the only notice, nothing pops up.
+Claude reviews only when you ask. **Review with Claude** (the sparkles in the top bar) (or **Review with Claude…** in the command palette) opens a prompt: say what it should focus on ("Could this break existing API clients?"), pick from the suggestions (bugs and edge cases, callers, security, errors, concurrency, tests), or leave it empty for a general review; `⌘↵` starts it. Claude reads the diff, then checks the code around it at the PR's head: callers, definitions, tests. The prompt then shows what it's doing; close it and keep reviewing, as it usually takes a minute or two (or **Stop it**). The pill says **Claude is reviewing…** meanwhile, and when it's done, how many findings it has: that's the only notice, nothing pops up.
 
 Click the pill to go through the findings one at a time, worst first; **New review…** at the top asks again, about something else. Each shows its tag (Bug, Risk, Question or Nit), where it is, the code it's about with its lines marked, and Claude's comment as it would be posted. Then:
 
@@ -172,7 +172,7 @@ Notes are for you: reminders, questions to come back to, half-formed thoughts. *
 |---|---|
 | On a line | Select a line and press `m`. Or open the composer as for a comment and switch it to **Private note**; the choice sticks for the next one. |
 | On a whole file | In the Diff view, click ✎ in the file's header. File notes show at the top of the file, and on its pages in every view. |
-| On the whole PR | Press `M`, or click **✎ Notes** in the header, and write in the panel. |
+| On the whole PR | Press `M`, or click **Notes** (the pen) in the header, and write in the panel. |
 
 A note on a line **floats beside it**, over the right edge of the code, like a sticky note; notes on nearby lines stack. Collapse one to a small icon on its line with – (or click its header), delete it with ✕. Notes follow the same file and PR collapsing as comments. The **Notes** panel (`M`) also lists every note on code; click one to jump to its page. The composer is dashed while it's in note mode.
 

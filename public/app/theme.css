@@ -222,10 +222,10 @@ kbd {
 /* The progress bars give way before anything is pushed off the bar: they shrink to a stub, their counts stay. */
 .prog { flex: none; } /* never squeezed onto what's beside them: the since pill gives way instead (its title says it all) */
 #top .pill[data-act="since"] { flex: 0 1 auto; min-width: 56px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (max-width: 1520px) { #top { gap: 12px; } #top .agpill .agl { display: none; } .prog .bar { display: none; } }
+@media (max-width: 1520px) { #top { gap: 12px; } .prog .bar { display: none; } }
 /* Narrow windows: the title gives way first, then the bars shrink to their counts. */
 @media (max-width: 1100px) { #top { gap: 12px; padding-inline: 14px; } .prog .bar { width: 64px; } .prog.core .bar { width: 32px; } }
-@media (max-width: 1180px) { .prog .bar, .prog.core span:first-child, #top .pill[data-act="notes"] { display: none; } }
+@media (max-width: 1180px) { .prog .bar, .prog.core span:first-child { display: none; } }
 @media (max-width: 1000px) { #top { gap: 8px; } }
 @media (max-width: 600px) { .prtitle { display: none; } #top { gap: 8px; padding-inline: 10px; } .seg button { padding-inline: 7px; } }
 @media (max-width: 480px) { #top { flex-wrap: wrap; } }
@@ -574,7 +574,20 @@ body.inspecting .ln[data-side="RIGHT"] code, body.inspecting .inspector .pl code
 .code .fh .lay { margin-left: 4px; padding: 0 7px; font: 500 11px/18px var(--font-ui); color: var(--faint); border: 1px solid var(--line-soft); border-radius: 1px; }
 .code .fh .lay:hover { color: var(--text); border-color: var(--muted); }
 #where .seg.lay { margin-left: auto; padding: 2px; }
-#top .pill.tog[aria-pressed="false"] { color: var(--faint); border-style: dashed; text-decoration: line-through; text-decoration-color: var(--faint); }
+/* a switch for what every view shows: an icon, struck through and faint while it's off */
+.iconbtn.tog { position: relative; }
+.iconbtn.tog[aria-pressed="false"] { color: var(--faint); }
+.iconbtn.tog[aria-pressed="false"]::after { content: ""; position: absolute; left: 50%; top: 50%; width: 20px; height: 1.6px; border-radius: 1px; background: currentColor; box-shadow: 0 0 0 1.5px var(--bg); transform: translate(-50%, -50%) rotate(-45deg); }
+.iconbtn.tog[aria-pressed="false"]:hover { color: var(--muted); }
+.iconbtn.counted { width: auto; padding: 0 7px; display: inline-flex; gap: 4px; align-items: center; }
+.iconbtn.counted i { font: 500 12px var(--font-ui); font-style: normal; font-variant-numeric: tabular-nums; }
+/* tooltips (tip.js) */
+.tip { position: fixed; z-index: 200; max-width: 280px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); box-shadow: var(--shadow); font: 12.5px/1.45 var(--font-ui); color: var(--muted); pointer-events: none; opacity: 0; transform: translateY(-2px); transition: opacity .12s, transform .12s; }
+.tip.on { opacity: 1; transform: none; }
+.tip b { color: var(--text); font-weight: 600; }
+.tip kbd { margin-left: 8px; padding: 0 5px; border: 1px solid var(--line); border-radius: 3px; font: 11px var(--font-code); color: var(--muted); }
+.tip span { display: block; margin-top: 2px; }
+@media (prefers-reduced-motion: reduce) { .tip { transition: none; } }
 #where .seg.lay button { padding: 1px 9px; font-size: 12px; max-width: none; }
 #where .seg.lay + .levels { margin-left: 14px; }
 /* Split diff: old on the left, new on the right; long lines wrap so the two sides stay in step. */

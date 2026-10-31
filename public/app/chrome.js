@@ -3,6 +3,7 @@ import { agentPill, agentPillClick } from "./agent.js";
 import { BAND_TEXT, DONE, LEVELS, LOW, api, esc, inline } from "./core.js";
 import { MOD } from "./palette.js";
 import * as tour from "./tour.js";
+import "./tip.js";
 import { ACTIONS, action, bind, bindable, kbdHtml, keyHtml, keyName, keyOfEvent, keysOf, keyText, reset, unbind } from "./keys.js";
 import { bubble, nextUnresolved, prCount, togglePR, unresolved } from "./comments.js";
 import { offerClaude } from "./claude-setup.js";
@@ -193,14 +194,23 @@ function renderTop() {
     <div class="prog" title="${done} of ${total} pages reviewed"><div class="bar"><i style="width:${pct}%"></i></div><span>${done}/${total}${mins && done < total ? ` · ~${mins}m` : ""}</span></div>
     <div class="seg" role="group" aria-label="View">${views.map((v) => `<button data-view="${v.id}" aria-pressed="${app.viewId === v.id}" title="${esc(v.hint)} (${esc(keysOf(app.settings, "nextView").map(keyText)[0] ?? "")})">${esc(v.name)}</button>`).join("")}</div>
     ${drafts ? `<button class="pill signal" data-act="submit">${drafts} draft${drafts > 1 ? "s" : ""} · ${esc(keyText(keysOf(app.settings, "submit")[0] ?? ""))}</button>` : ""}
-    <button class="pill tog" data-act="tests" aria-pressed="${app.settings.tests === "show"}" title="Test files, in every view: ${app.settings.tests === "show" ? "shown. Click to hide" : "hidden. Click to show"}">⚗ Tests</button>
-    <button class="pill tog" data-act="generated" aria-pressed="${app.settings.generated === "show"}" title="Generated files (openapi specs, __generated__/, @generated, DO NOT EDIT…), in every view: ${app.settings.generated === "show" ? "shown. Click to hide" : "hidden. Click to show"}">⚙ Generated</button>
-    <button class="pill tog" data-act="untouched" aria-pressed="${app.settings.untouched !== "hide"}" title="Untouched code the changes rely on or affect, in every view: ${app.settings.untouched === "hide" ? "hidden. Click to show" : "shown. Click to hide"}">○ Untouched</button>
-    <button class="pill" data-act="notes" title="Your private notes (${esc(keyName(app.settings, "notes"))}). Never posted to GitHub.">✎ Notes${app.state.notes.length ? ` · ${app.state.notes.length}` : ""}</button>
+    ${toggle("tests", "Tests", "Test files", app.settings.tests === "show", ICONS.tests)}
+    ${toggle("generated", "Generated", "Generated files (openapi specs, __generated__/, @generated, DO NOT EDIT…)", app.settings.generated === "show", ICONS.generated)}
+    ${toggle("untouched", "Untouched", "Untouched code the changes rely on or affect", app.settings.untouched !== "hide", ICONS.untouched)}
+    <button class="iconbtn${app.state.notes.length ? " counted" : ""}" data-act="notes" aria-label="Notes" ${tip("Notes", "Your private notes. Never posted to GitHub.", "notes")}>${ICONS.notes}${app.state.notes.length ? `<i>${app.state.notes.length}</i>` : ""}</button>
     ${agentPill(app)}${unresolvedButton()}${commentsButton()}
-    <button class="iconbtn" data-act="files" aria-pressed="${app.settings.fileTree !== "hide"}" title="File tree (${esc(keysOf(app.settings, "files").map(keyText)[0] ?? "")})" aria-label="File tree">▤</button>
-    <button class="iconbtn" data-act="settings" title="Settings (${esc(keyName(app.settings, "settings"))})" aria-label="Settings">${GEAR}</button>`;
+    <button class="iconbtn" data-act="files" aria-pressed="${app.settings.fileTree !== "hide"}" aria-label="File tree" ${tip("File tree", app.settings.fileTree !== "hide" ? "Shown. Click to hide" : "Hidden. Click to show", "files")}>${ICONS.files}</button>
+    <button class="iconbtn" data-act="settings" aria-label="Settings" ${tip("Settings", "", "settings")}>${GEAR}</button>`;
 }
+
+/** A tooltip (tip.js): what it is, what it does or its state, and its key when it has one. */
+function tip(name, more, key) {
+  const k = key && keysOf(app.settings, key).map(keyText)[0];
+  return `data-tip="${esc(name)}"${more ? ` data-tip-more="${esc(more)}"` : ""}${k ? ` data-tip-key="${esc(k)}"` : ""}`;
+}
+/** A switch for what every view shows, as an icon: struck through and faint while it's off. */
+const toggle = (act, name, what, on, icon) =>
+  `<button class="iconbtn tog" data-act="${act}" aria-pressed="${on}" aria-label="${esc(name)}" ${tip(name, `${what}, in every view: ${on ? "shown. Click to hide" : "hidden. Click to show"}`)}>${icon}</button>`;
 
 // Progress inside the core you're in: a bar that moves every few pages, not every few dozen.
 const corePages = (ci) => app.index.walk.filter((p) => app.get(p)?.ci === ci);
@@ -580,13 +590,13 @@ function welcomeBackLite() {
 // Every comment in the PR, open or collapsed in place: filled when they're showing.
 function commentsButton() {
   const n = prCount(app), open = (app.settings.comments ?? "open") === "open";
-  return n ? `<button class="pill cmpill" data-act="pr-comments" aria-pressed="${open}" title="${open ? "Collapse" : "Show"} every comment in the PR">${bubble(open)} ${n}</button>` : "";
+  return n ? `<button class="pill cmpill" data-act="pr-comments" aria-pressed="${open}" ${tip(`${n} comment${n > 1 ? "s" : ""}`, `${open ? "Collapse" : "Show"} every comment in the PR`)}>${bubble(open)} ${n}</button>` : "";
 }
 
 // GitHub's threads still open, as GitHub counts them on the PR: a click (or N) goes through them.
 function unresolvedButton() {
   const n = unresolved(app).length;
-  return n ? `<button class="pill unrpill" data-act="next-unresolved" title="Go to the next unresolved thread (${esc(keyName(app.settings, "nextUnresolved"))})">${n} unresolved</button>` : "";
+  return n ? `<button class="pill unrpill" data-act="next-unresolved" ${tip(`${n} unresolved`, "Go to the next unresolved thread", "nextUnresolved")}>${n} unresolved</button>` : "";
 }
 
 // ---------------------------------------------------------------- language servers
@@ -679,4 +689,14 @@ function onClick(ev) {
   })[ds.act]?.();
 }
 
-const GEAR = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
+const icon = (d) => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const ICONS = {
+  tests: icon(`<path d="M9 3h6"/><path d="M10 3v6.5L4.6 18.6A1.6 1.6 0 0 0 6 21h12a1.6 1.6 0 0 0 1.4-2.4L14 9.5V3"/><path d="M7.5 15h9"/>`), // a flask
+  generated: icon(`<path d="m4 20 10-10"/><path d="m12.5 8.5 3 3"/><path d="M17 3v3"/><path d="M15.5 4.5h3"/><path d="M20 9v2"/><path d="M19 10h2"/><path d="M8 3v2"/><path d="M7 4h2"/>`), // a wand
+  untouched: icon(`<path d="M10.1 2.2a10 10 0 0 1 3.8 0"/><path d="M17.6 3.7a10 10 0 0 1 2.7 2.7"/><path d="M21.8 10.1a10 10 0 0 1 0 3.8"/><path d="M20.3 17.6a10 10 0 0 1-2.7 2.7"/><path d="M13.9 21.8a10 10 0 0 1-3.8 0"/><path d="M6.4 20.3a10 10 0 0 1-2.7-2.7"/><path d="M2.2 13.9a10 10 0 0 1 0-3.8"/><path d="M3.7 6.4a10 10 0 0 1 2.7-2.7"/>`), // a dashed circle
+  notes: icon(`<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>`), // a pen
+  files: icon(`<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/>`), // a panel at the side
+  claude: icon(`<path d="M12 3c.5 4.5 2.5 6.5 7 7-4.5.5-6.5 2.5-7 7-.5-4.5-2.5-6.5-7-7 4.5-.5 6.5-2.5 7-7Z"/><path d="M19 15c.2 1.6.9 2.3 2.5 2.5-1.6.2-2.3.9-2.5 2.5-.2-1.6-.9-2.3-2.5-2.5 1.6-.2 2.3-.9 2.5-2.5Z"/>`), // sparkles
+};
+export { ICONS };
+const GEAR = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;

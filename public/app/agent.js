@@ -3,6 +3,7 @@
 // ("3 findings"); a click on that goes through them one at a time (agent-walk.js). They also sit on their lines as
 // suggestions. Each one becomes a draft of yours (Add to review) or goes away (Dismiss); nothing is posted until you
 // submit, as with your own drafts.
+import { ICONS } from "./chrome.js";
 import { api, esc } from "./core.js";
 import { offerClaude } from "./claude-setup.js";
 import { MOD } from "./palette.js";
@@ -54,12 +55,17 @@ export function agentPill(app) {
   const a = app.agent;
   if (!a) return "";
   const failed = !a.running && a.error && a.error !== "Stopped" && errorSeen !== a.error;
-  const [cls, text, title] = a.running ? ["pulse", "Reviewing…", `Claude is reviewing the PR: ${a.step ?? ""}. Click to see what it's doing, or stop it`]
-    : failed ? ["", "Claude's review failed", a.error]
-    : a.open ? ["signal", `${a.open} finding${a.open > 1 ? "s" : ""}`, "Go through Claude's findings, one at a time"]
-    : app.agentReview && !app.agentReview.findings.length ? ["", "Claude found nothing", "Claude's review found nothing to raise. Click to ask again, about something in particular"]
-    : ["", "<span class=\"agl\">Review with </span>Claude", "Review with Claude: ask Claude to review the PR, about what you choose; it suggests comments for you to add or dismiss"];
-  return `<button class="pill agpill ${cls}" data-act="agent" title="${esc(title)}">✦ ${text.startsWith("<span") ? text : esc(text)}</button>`;
+  // at rest, an icon; while it works or has something to say, a pill that says so
+  const tipped = (name, more) => `data-tip="${esc(name)}" data-tip-more="${esc(more)}"`;
+  if (!a.running && !failed && !a.open) {
+    const nothing = app.agentReview && !app.agentReview.findings.length;
+    return `<button class="iconbtn agpill" data-act="agent" aria-label="Review with Claude" ${tipped("Review with Claude", nothing ? "Claude's last review found nothing to raise. Click to ask again, about something in particular"
+      : "Ask Claude to review the PR, about what you choose; it suggests comments for you to add or dismiss")}>${ICONS.claude}</button>`;
+  }
+  const [cls, text, name, more] = a.running ? ["pulse", "Reviewing…", "Claude is reviewing", `${a.step ?? ""}. Click to see what it's doing, or stop it`]
+    : failed ? ["", "Claude's review failed", "Claude's review failed", a.error]
+    : ["signal", `${a.open} finding${a.open > 1 ? "s" : ""}`, "Claude's findings", "Go through them, one at a time"];
+  return `<button class="pill agpill ${cls}" data-act="agent" ${tipped(name, more)}>✦ ${esc(text)}</button>`;
 }
 let errorSeen = null;
 

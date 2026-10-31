@@ -4,6 +4,7 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- The top bar's Tests, Generated, Untouched, Notes and Review with Claude are icons now, with tooltips that say what each does, its state and its key. A switch that's off is struck through. Claude's button turns back into a pill while it reviews or has findings.
 - **Map**, a new view: how the PR changes what the system does, drawn by Claude before and after: it scopes the change and what it affects, then draws it in layers it defines for the PR, from an overview in plain words down to the code. See it **Before** and **After**, inline on a slider or split side by side.
 - **Open reviews from your agent.** `bobby mcp` is an MCP server for Claude Code (or any MCP client): `claude mcp add --scope user bobby -- bobby mcp`, then ask it to open a PR, or your branch, with Bobby. It opens in the Bobby already running, or one it starts in the background.
 - **`bobby start`** runs Bobby in the background (if it isn't running), for agents and scripts: `bobby <pr>` then hands its review to it and returns at once. **`bobby stop`** stops it.
