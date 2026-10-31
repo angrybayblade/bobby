@@ -122,13 +122,14 @@ function ghCredentials(): string[] {
 
 /** Cloning over HTTPS failed, and SSH hasn't been allowed: the caller asks you (the terminal, or the page) first. */
 export class CloneError extends Error { readonly askSsh = true; }
-/** Clones owner/repo into dest. Over HTTPS with gh's login first: the one credential Bobby already relies on, checked
- *  against GitHub's certificate, and none of your SSH keys or agents involved. If that fails, over SSH (your keys, your
+/** Clones owner/repo into dest: its base branch only, as fetchPr fetches the rest a PR needs (all branches can be ten
+ *  times as much). Over HTTPS with gh's login first: the one credential Bobby already relies on, checked against
+ *  GitHub's certificate, and none of your SSH keys or agents involved. If that fails, over SSH (your keys, your
  *  ~/.ssh/config) only when ssh says you allowed it; otherwise a CloneError, to ask. */
-export async function cloneRepo(owner: string, repo: string, dest: string, ssh = false): Promise<void> {
+export async function cloneRepo(owner: string, repo: string, dest: string, base: string, ssh = false): Promise<void> {
   const env = { GIT_TERMINAL_PROMPT: "0" }; // no username prompt in a terminal nobody's watching: fail, and say why
   try {
-    await run(["git", ...ghCredentials(), "clone", "--quiet", "--no-tags", `https://github.com/${owner}/${repo}.git`, dest], { env });
+    await run(["git", ...ghCredentials(), "clone", "--quiet", "--no-tags", "--single-branch", "--branch", base, `https://github.com/${owner}/${repo}.git`, dest], { env });
     return;
   } catch (e) {
     const why = String((e as Error).message).replace(/^git\b.*? failed \(\d+\): (fatal: )?/, "").trim();
@@ -136,7 +137,7 @@ export async function cloneRepo(owner: string, repo: string, dest: string, ssh =
     if (!ssh) throw new CloneError(`Couldn't clone ${owner}/${repo} over HTTPS with gh's sign-in: ${why}\nBobby can try SSH instead, with your SSH keys and ~/.ssh/config.`);
   }
   log.info(`  trying SSH (git@github.com:${owner}/${repo}.git), as you allowed…`);
-  await run(["git", "clone", "--quiet", "--no-tags", `git@github.com:${owner}/${repo}.git`, dest], { env });
+  await run(["git", "clone", "--quiet", "--no-tags", "--single-branch", "--branch", base, `git@github.com:${owner}/${repo}.git`, dest], { env });
 }
 
 /** Reads the PR's metadata and finds (or clones) a local checkout. Doesn't fetch, so it's cheap enough to run on every launch.
@@ -159,7 +160,7 @@ export async function resolvePr(arg: string, repoDir?: string, from = process.cw
     cwd = join(home(), "repos", owner, repo);
     if (!existsSync(cwd)) {
       log.info(`  cloning ${owner}/${repo} into ${cwd} (first time only)…`);
-      await cloneRepo(owner, repo, cwd, ssh);
+      await cloneRepo(owner, repo, cwd, meta.baseRefName, ssh);
     }
     remote = (await remoteFor(cwd, owner, repo)) ?? "origin";
   }
