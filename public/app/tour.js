@@ -14,7 +14,7 @@ const TOUR = () => [
   { title: "Welcome", body: `I'll take you through this PR one page at a time, in dependency order: the code a change relies on, then the change, then what it affects. Four quick tips, or ${kbd("esc")} to skip.` },
   { at: "#where", title: "Where you are", body: `The PR, the core change you're in, and the page you're on. ${k("zoomIn")} zooms in and ${k("zoomOut")} zooms out: overview, core, page.` },
   { at: "#view", title: "The walk", body: `${k("next")} ${k("prev")} step through it. <i class="glyph core"></i> is a core change, <i class="glyph change"></i> changed code, <i class="glyph context"></i> untouched code around it. ${k("reviewed")} marks a page reviewed and moves on, ${k("flag")} flags it for later, ${k("comment")} comments on a line.` },
-  { at: '#top .seg[aria-label="View"]', title: "Four ways to see it", body: `Flow, Outline, Lens and Diff show the same walk. ${k("nextView")} switches, and you keep your place.` },
+  { at: '#top .seg[aria-label="View"]', title: "Ways to see it", body: `Lens, Outline, Flow and Diff show the same walk; Conversation is the PR's thread and Map how its behaviour changes. ${k("nextView")} switches, ${k("prevView")} goes back, and you keep your place.` },
   { at: "#keys", title: "Keys when you need them", body: `These hints fade once you've used them. ${k("help")} lists every key, ${PALETTE_KEY} searches every command, and ${k("submit")} submits your review.`, next: "Start reviewing" },
 ];
 

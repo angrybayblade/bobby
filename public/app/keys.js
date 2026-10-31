@@ -27,7 +27,14 @@ export const ACTIONS = [
   { id: "fit", group: "Reading", title: "Fit: the file you're on, as wide as it goes with its top at the top (as a double-click in the file tree); again to go back", keys: ["d"] },
   { id: "fullScreen", group: "Reading", title: "Details: the page on its own, with what it relies on and affects; again to go back", keys: ["g"] },
   { id: "expand", group: "Reading", title: "Open collapsed code, then more context", keys: ["e"] },
-  { id: "nextView", group: "Reading", title: "Switch view: Conversation, Flow, Outline, Lens, Diff", keys: ["v"] },
+  { id: "nextView", group: "Reading", title: "Next view, to the right: Conversation, Map, Lens, Outline, Flow, Diff", keys: ["v", "Ctrl+."] },
+  { id: "prevView", group: "Reading", title: "Previous view, to the left", keys: ["Ctrl+,"] },
+  { id: "view:conversation", group: "Reading", title: "Switch to Conversation", keys: ["Ctrl+c"] },
+  { id: "view:map", group: "Reading", title: "Switch to Map", keys: ["Ctrl+m"] },
+  { id: "view:lens", group: "Reading", title: "Switch to Lens", keys: ["Ctrl+l"] },
+  { id: "view:outline", group: "Reading", title: "Switch to Outline", keys: ["Ctrl+o"] },
+  { id: "view:flow", group: "Reading", title: "Switch to Flow", keys: ["Ctrl+f"] },
+  { id: "view:diff", group: "Reading", title: "Switch to Diff", keys: ["Ctrl+d"] },
   { id: "layout", group: "Reading", title: "Diff layout: inline or split", keys: ["l"] },
   { id: "files", group: "Reading", title: "Show or hide the file tree", keys: ["t"] },
   { id: "tests", group: "Reading", title: "Show or hide test files, in every view", keys: ["T"] },
@@ -63,7 +70,7 @@ export const actionFor = (settings, key) => ACTIONS.find((a) => keysOf(settings,
 
 const NAMES = { Enter: "enter", Escape: "esc", " ": "space", ArrowLeft: "←", ArrowRight: "→", ArrowUp: "↑", ArrowDown: "↓", "!": "shift 1", Tab: "tab", Backspace: "⌫", Delete: "del" };
 /** How a key is shown: its words, each in its own <kbd> ("shift 1" is two, "shift ←" too). */
-export const keyText = (k) => (k.startsWith("Shift+") ? `shift ${keyText(k.slice(6))}` : NAMES[k] ?? k);
+export const keyText = (k) => (k.startsWith("Shift+") ? `shift ${keyText(k.slice(6))}` : k.startsWith("Ctrl+") ? `ctrl ${keyText(k.slice(5))}` : NAMES[k] ?? k);
 export const kbdHtml = (k) => keyText(k).split(" ").map((x) => `<kbd>${esc(x)}</kbd>`).join(" ");
 /** An action's first key as plain text, for a tooltip: "c", "shift 1", or "unbound". */
 export const keyName = (settings, id) => (keysOf(settings, id)[0] ? keyText(keysOf(settings, id)[0]) : "unbound");
@@ -102,11 +109,14 @@ function tidy(keys) {
   }
   return out;
 }
-/** Keys that can't be bound: modifiers alone, and what text fields and the browser need. */
-export const bindable = (ev) => !["Shift", "Control", "Alt", "Meta", "CapsLock", "Tab", "Dead", "Unidentified"].includes(ev.key) && !ev.metaKey && !ev.ctrlKey && !ev.altKey;
+/** Keys that can't be bound: modifiers alone, what text fields and the browser need, and ctrl+K (the palette). Ctrl
+ *  with a key is bindable, without shift. */
+export const bindable = (ev) => !["Shift", "Control", "Alt", "Meta", "CapsLock", "Tab", "Dead", "Unidentified"].includes(ev.key) && !ev.metaKey && !ev.altKey
+  && !(ev.ctrlKey && (ev.shiftKey || ev.key.toLowerCase() === "k"));
 /** A keydown as a key: shift+1 is "!" whatever the layout prints; shift with a named key (an arrow, enter) is
  *  "Shift+<key>". A printed character carries its shift already ("J", "?"). */
 export function keyOfEvent(ev) {
+  if (ev.ctrlKey) return `Ctrl+${ev.key.length === 1 ? ev.key.toLowerCase() : ev.key}`; // ctrl+d, ctrl+. (ctrl+shift isn't bound)
   if (ev.shiftKey && ev.code === "Digit1") return "!";
   return ev.shiftKey && ev.key.length > 1 && ev.key !== "Shift" ? `Shift+${ev.key}` : ev.key;
 }

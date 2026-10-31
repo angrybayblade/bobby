@@ -193,7 +193,7 @@ function renderTop() {
     ${updatePill()}${llm}${lsp}
     ${coreProgress()}
     <div class="prog" title="${done} of ${total} pages reviewed"><div class="bar"><i style="width:${pct}%"></i></div><span>${done}/${total}${mins && done < total ? ` · ~${mins}m` : ""}</span></div>
-    <div class="seg" role="group" aria-label="View">${views.map((v) => `<button data-view="${v.id}" aria-pressed="${app.viewId === v.id}" title="${esc(v.hint)} (${esc(keysOf(app.settings, "nextView").map(keyText)[0] ?? "")})">${esc(v.name)}</button>`).join("")}</div>
+    <div class="seg" role="group" aria-label="View">${views.map((v) => `<button data-view="${v.id}" aria-pressed="${app.viewId === v.id}" ${tip(v.name, v.hint, `view:${v.id}`)}>${esc(v.name)}</button>`).join("")}</div>
     ${drafts ? `<button class="pill signal" data-act="submit">${drafts} draft${drafts > 1 ? "s" : ""} · ${esc(keyText(keysOf(app.settings, "submit")[0] ?? ""))}</button>` : ""}
     ${commentsButton()}${unresolvedButton()}
     ${toggle("tests", "Tests", "Test files", app.settings.tests === "show", ICONS.tests)}

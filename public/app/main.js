@@ -367,6 +367,8 @@ const ACTS = {
   lineDown: () => lines(1), lineUp: () => lines(-1), lineDownMore: () => lines(1, true), lineUpMore: () => lines(-1, true),
   zoomIn: () => app.setLevel(app.level + 1), zoomOut: () => app.setLevel(app.level - 1),
   nextView: () => app.switchView(views[(views.findIndex((v) => v.id === currentId) + 1) % views.length].id),
+  prevView: () => app.switchView(views[(views.findIndex((v) => v.id === currentId) + views.length - 1) % views.length].id),
+  ...Object.fromEntries(views.map((v) => [`view:${v.id}`, () => app.switchView(v.id)])), // ctrl+ its letter
   submit: () => chrome.submit(), help: () => chrome.help(), settings: () => chrome.settings(), park: () => chrome.park(), notes: () => chrome.notes(),
   switchTree: () => app.switchTree(),
   files: () => chrome.toggleFiles(),
@@ -382,6 +384,7 @@ function commands() {
   const s = app.settings, flip = (k, a, b) => app.saveSettings({ [k]: s[k] === a ? b : a });
   return [
     ...ACTIONS.filter((a) => a.id !== "switchTree" || (app.claudeReady && app.graph.generator.tree !== "claude"))
+      .filter((a) => !a.id.startsWith("view:") || views.some((v) => `view:${v.id}` === a.id && v.id !== currentId)) // only views this review has
       .map((a) => ({ id: `key:${a.id}`, title: a.title, keys: keysOf(app.settings, a.id).slice(0, 1).flatMap((k) => keyText(k).split(" ")), run: () => runAction(a.id, { learn: false }) })),
     { id: "keys", title: "Customize keyboard shortcuts", sub: "bind any action to the keys you like", run: () => chrome.keysEditor() },
     { id: "tour", title: "Take the tour", sub: "how the walk, the views and the keys fit together", run: () => tour.start() },
@@ -390,7 +393,6 @@ function commands() {
     { id: "agent-tools", title: "Claude's tools for this PR…", sub: "which of your MCP servers and connectors (Linear, Notion, Slack…) Claude may use", run: () => openAsk(app, { tools: true }) },
     { id: "agent-next", title: "Go through Claude's findings", sub: "one at a time, with the code each is about", run: () => nextFinding(app) || chrome.toast("No open findings from Claude.", 4000) },
     { id: "claude", title: "Set up Claude Code", sub: "install it and sign in, for Claude's tree of the change", run: () => offerClaude({ force: true }) },
-    ...views.filter((v) => v.id !== currentId).map((v) => ({ id: `view:${v.id}`, title: `${v.name} view`, sub: v.hint, run: () => app.switchView(v.id) })),
     ...[["system", "System"], ["dark", "Dark"], ["light", "Light"]].filter(([v]) => v !== s.theme).map(([v, t]) => ({ id: `theme:${v}`, title: `Theme: ${t}`, run: () => app.saveSettings({ theme: v }) })),
   ];
 }
@@ -403,6 +405,11 @@ document.addEventListener("keydown", (ev) => {
     return palette.open(app, commands());
   }
   if (chrome.isOpen() && ev.key === "Escape" && !ev.metaKey && !ev.ctrlKey && !ev.altKey) { ev.preventDefault(); return chrome.close(); } // from its text box too
+  if (ev.ctrlKey && !ev.metaKey && !ev.altKey && !ev.shiftKey && !typing(ev.target) && !chrome.isOpen() && !inspectorOpen()) { // ctrl+ a key: the views
+    if (ev.key.toLowerCase() === "c" && String(getSelection()).trim()) return; // copying what's selected, where ctrl+c copies
+    if (press(keyOfEvent(ev))) ev.preventDefault();
+    return;
+  }
   if (typing(ev.target) || ev.metaKey || ev.ctrlKey || ev.altKey) return;
   if ((ev.key === "Enter" || ev.key === " ") && control(ev.target)) return;
   if (chrome.isOpen()) {
