@@ -113,7 +113,7 @@ const STYLE = `
 .conv .note.err { color: var(--risk); }
 `;
 
-const avatar = (p) => `<img class="cav" src="/api/avatar?u=${encodeURIComponent(p?.avatar ?? p?.login ?? "")}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`;
+const avatar = (p) => `<img class="cav" src="/api/avatar?u=${encodeURIComponent(p?.avatar ?? p?.login ?? "")}" alt="" loading="lazy" data-av>`;
 const when = (t) => `<span class="when" title="${esc(t ?? "")}">${esc(ago(t))}</span>`;
 const VERB = { APPROVED: "approved these changes", CHANGES_REQUESTED: "requested changes", COMMENTED: "reviewed", DISMISSED: "reviewed (dismissed)" };
 const ICON = { APPROVED: ["ok", "✓"], CHANGES_REQUESTED: ["bad", "±"], COMMENTED: ["", "◉"], DISMISSED: ["", "◌"] };

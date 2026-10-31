@@ -247,7 +247,7 @@ export const prCount = (app) => [...commentIndex(app).byPath].filter(([path]) =>
 const shown = (app, path) => app.filePages(path).length > 0 || app.hunksOf(LOW).some((h) => h.file === path);
 
 // ---- threads
-const avatar = (a) => `<img class="cav" src="/api/avatar?u=${encodeURIComponent(a.avatar ?? a.author)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">`;
+const avatar = (a) => `<img class="cav" src="/api/avatar?u=${encodeURIComponent(a.avatar ?? a.author)}" alt="" loading="lazy" data-av>`;
 const range = (t) => t.startLine && t.startLine !== t.line ? `<span class="crange">L${t.startLine}–L${t.line}</span>` : "";
 /** A file's comments on the whole of it: on line 0, which no row has, so they're drawn at the top of the file. */
 export const fileKey = (path) => `${path}|RIGHT|0`;

@@ -212,7 +212,7 @@ function insertSuggestion(app, el) {
 }
 function composer(app, c) {
   const note = c.kind === "note", ask = c.kind === "ask", me = app.me;
-  const face = me ? `<img class="cav" src="/api/avatar?u=${encodeURIComponent(me.avatar ?? me.login)}" alt="" onerror="this.style.visibility='hidden'">` : "";
+  const face = me ? `<img class="cav" src="/api/avatar?u=${encodeURIComponent(me.avatar ?? me.login)}" alt="" data-av>` : "";
   const range = c.start && !c.file ? `<span class="crange">${rangeLabel({ side: c.side, line: c.line, startLine: Number(c.start.line), startSide: c.start.side })}</span>` : "";
   const kinds = c.file ? `<span class="ccap">Private note on this file</span>` : `<div class="ckind" role="group" aria-label="Kind">${[["comment", "Comment"], ["ask", "✦ Ask"], ["note", "Private note"]].map(([k, t]) =>
     `<button data-ckind="${k}" aria-pressed="${c.kind === k}">${t}</button>`).join("")}</div>`;

@@ -91,9 +91,10 @@ function bootCard({ title, steps = [], elapsed, error }) {
     <h2>${error ? (title ? "Couldn't build this review" : "Couldn't load the review") : "Building the review"}</h2>
     ${title ? `<div class="what">${esc(title)}</div>` : ""}
     ${rows ? `<ol>${rows}</ol>` : error ? "" : `<ol><li class="now"><i></i><span><b>Starting</b></span></li></ol>`}
-    ${error ? `<p class="why">${esc(error)}</p><div class="acts"><a class="btn" href="/">Back home</a><button class="btn" onclick="location.reload()">Try again</button></div>`
+    ${error ? `<p class="why">${esc(error)}</p><div class="acts"><a class="btn" href="/">Back home</a><button class="btn" data-reload>Try again</button></div>`
       : `<div class="foot">${secs != null ? `${secs}s · ` : ""}It opens by itself when it's ready. The terminal Bobby runs in has the details.</div>`}
   </div></div>`;
+  view.querySelector("[data-reload]")?.addEventListener("click", () => location.reload());
 }
 const fresh = !Object.keys(session.settings).length; // nothing saved yet: a first launch
 const app = createApp({ graph, session });

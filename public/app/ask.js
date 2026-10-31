@@ -126,7 +126,7 @@ export function askHtml(app, t, open = true) {
   const range = a.startLine ? `L${a.startLine}–L${a.line}` : `L${a.line}`;
   if (!open) return `<div class="cthread slim ask" data-thread="q:${id}" data-tid="q:${id}" data-tpath="${esc(a.path)}" title="Show your question to Claude">
     <span class="cfaces"><span class="cav agav">✦</span></span><b>You asked Claude</b><span class="cprev">${esc(a.turns.at(-1)?.q ?? "")}</span>${a.running ? `<span class="ctag">answering…</span>` : ""}${bubble(false)}</div>`;
-  const face = me ? `<img class="cav" src="/api/avatar?u=${encodeURIComponent(me.avatar ?? me.login)}" alt="" onerror="this.style.visibility='hidden'">` : `<span class="cav"></span>`;
+  const face = me ? `<img class="cav" src="/api/avatar?u=${encodeURIComponent(me.avatar ?? me.login)}" alt="" data-av>` : `<span class="cav"></span>`;
   const last = a.turns.length - 1, answered = a.turns.some((x) => x.a);
   const turns = a.turns.map((x, k) => {
     const live = k === last && a.running;

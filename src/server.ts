@@ -267,9 +267,15 @@ export function startServer(app: App, port: number, { hostname = "127.0.0.1", al
 const pageLogs: number[] = []; // when the page last logged, for its limit
 /** Answers a request, and logs what went wrong: an error from the API (4xx, 5xx) with what it said, and anything thrown,
  *  which answers 500 instead of dropping the connection. */
-/** On every answer: no other site may frame Bobby's pages (to dress a click on Approve up as something else), and the
- *  browser takes each file as the type it's served as. */
-const SAFE = { "x-frame-options": "DENY", "content-security-policy": "frame-ancestors 'none'", "x-content-type-options": "nosniff", "referrer-policy": "same-origin" };
+/** On every answer: no other site may frame Bobby's pages (to dress a click on Approve up as something else); the page
+ *  runs only Bobby's own scripts and talks only to Bobby, so text from a PR that slipped past escaping still couldn't
+ *  run or send anything anywhere (CSP); and the browser takes each file as the type it's served as. */
+const CSP = [
+  "default-src 'self'", "script-src 'self'", "connect-src 'self'", "object-src 'none'", "base-uri 'none'", "form-action 'self'", "frame-ancestors 'none'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", "font-src https://fonts.gstatic.com", // views set styles inline
+  "img-src 'self' data: https:", // avatars come through Bobby; images in GitHub's own rendering of comments, from GitHub
+].join("; ");
+const SAFE = { "x-frame-options": "DENY", "content-security-policy": CSP, "x-content-type-options": "nosniff", "referrer-policy": "same-origin" };
 function safe(res: Response): Response {
   try { for (const [k, v] of Object.entries(SAFE)) res.headers.set(k, v); return res; } catch { // a fetched answer's headers can't change: copy it
     const out = new Response(res.body, res);

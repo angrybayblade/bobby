@@ -110,7 +110,7 @@ function prRow(x, mine) {
   return `<a class="row" href="/r/${esc(id)}" data-pr="${esc(x.url)}" data-id="${esc(id)}">
     <span class="t"><span class="tt"><b>#${x.number}</b> ${esc(x.title)}</span>${x.draft ? `<span class="tag draft">draft</span>` : ""}${x.approved ? APPROVED : ""}${seen?.open ? `<span class="tag live">open</span>` : ""}</span>
     <span class="side">${p ? `<span title="Your progress: ${p.done} of ${p.total} pages reviewed">${p.done}/${p.total}</span>` : ""}${x.comments ? `<span title="Comments">◂ ${x.comments}</span>` : ""}<span title="Updated">${ago(x.updatedAt)}</span></span>
-    <span class="where">${esc(`${x.owner}/${x.repo}`)} · <img class="av" src="/api/avatar?u=${encodeURIComponent(x.author)}" alt="" loading="lazy" onerror="this.remove()">${esc(x.author)}</span>
+    <span class="where">${esc(`${x.owner}/${x.repo}`)} · <img class="av" src="/api/avatar?u=${encodeURIComponent(x.author)}" alt="" loading="lazy" data-av="remove">${esc(x.author)}</span>
   </a>`;
 }
 function render() {
