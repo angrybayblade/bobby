@@ -12,7 +12,7 @@ import { claudeTree } from "./llm.ts";
 import { buildGraph, type Discussion, VERSION, type ReviewGraph } from "./graph.ts";
 import { loadCachedGraphs, loadCachedTree, loadState, saveCachedGraphs, saveCachedTree } from "./state.ts";
 import { startServers, stopServers } from "./servers.ts";
-import { watchLocal, watchPr } from "./watch.ts";
+import { showDiscussion, watchLocal, watchPr } from "./watch.ts";
 import type { FileDiff, PrInfo } from "./types.ts";
 import type { Session } from "./server.ts";
 
@@ -64,6 +64,9 @@ export interface Prepared {
   staticGraph: ReviewGraph;
   claudeGraph?: ReviewGraph;
   wantLlm: boolean;
+  /** The PR's comments as GitHub has them now, when the graphs came from the cache with the comments of last time:
+   *  they're put on once read (start, extract). */
+  comments?: Promise<Discussion>;
   /** Claude's tree for this review, as a graph (cached per head commit and extraction version). */
   claude(): Promise<ReviewGraph>;
 }
@@ -103,7 +106,8 @@ export async function resolve(arg: string | undefined, o: ReviewOptions): Promis
 
 async function build(arg: string | undefined, cwd: string, key: Key, getPr: () => Promise<PrInfo>, o: ReviewOptions): Promise<Prepared> {
   const log = o.log, t0 = Date.now(), secs = () => `${((Date.now() - t0) / 1000).toFixed(1)}s`;
-  // Same head commit as last time → reuse the built graphs. Comments still change, so they're always re-read.
+  // Same head commit as last time → reuse the built graphs. Comments still change, so they're always re-read: alongside
+  // the build, or, from the cache, after it (the review opens with last time's, and GitHub's replace them).
   const hit = o.refresh ? null : loadCachedGraphs(key);
   const cached = hit?.static.generator.extraction === VERSION ? hit : null;
   const comments: Promise<Discussion> = arg ? reviewComments(key) : Promise.resolve({ comments: [], outdated: [] });
@@ -120,8 +124,7 @@ async function build(arg: string | undefined, cwd: string, key: Key, getPr: () =
     return { pr, files, analysis };
   })());
   if (!cached) extract().catch(() => {}); // alongside reading the comments; its failure is met where it's awaited
-  const discussion = await comments;
-  if (discussion.comments.length) log(`  ${discussion.comments.length} existing review comment(s)`);
+  void comments.then((d) => d.comments.length && log(`  ${d.comments.length} existing review comment(s)`), () => {});
 
   // The clone may lack the cached graph's commits (a fresh clone, a fork's PR, refs/bobby deleted and collected): the
   // UI reads files at both, and the language server exports head. Fetch them as a miss would.
@@ -133,11 +136,11 @@ async function build(arg: string | undefined, cwd: string, key: Key, getPr: () =
   let staticGraph: ReviewGraph, claudeGraph: ReviewGraph | undefined;
   if (cached) {
     log(`  ✓ unchanged since last time (${key.headSha.slice(0, 7)}), using cached graphs (${secs()})`);
-    const fresh = { discussion: discussion.comments, outdated: discussion.outdated };
-    staticGraph = { ...cached.static, ...fresh };
-    claudeGraph = o.noLlm ? undefined : cached.claude && { ...cached.claude, ...fresh }; // --no-llm: not even a cached one
+    staticGraph = cached.static;
+    claudeGraph = o.noLlm ? undefined : cached.claude; // --no-llm: not even a cached one
   } else {
     const { pr, files, analysis } = await extract();
+    const discussion = await comments;
     staticGraph = await buildGraph(cwd, pr, files, analysis, heuristicTree(pr, analysis, files), discussion);
     const tree = o.refresh || o.noLlm ? null : loadCachedTree(pr, VERSION);
     claudeGraph = tree?.source === "claude" ? await buildGraph(cwd, pr, files, analysis, tree, discussion) : undefined;
@@ -150,11 +153,11 @@ async function build(arg: string | undefined, cwd: string, key: Key, getPr: () =
     const cachedTree = o.refresh ? null : loadCachedTree(pr, VERSION);
     const tree = cachedTree?.source === "claude" ? cachedTree : await claudeTree(pr, analysis, files);
     saveCachedTree(pr, VERSION, tree);
-    const g = await buildGraph(cwd, pr, files, analysis, tree, discussion);
+    const g = await buildGraph(cwd, pr, files, analysis, tree, await comments.catch(() => ({ comments: staticGraph.discussion ?? [], outdated: staticGraph.outdated ?? [] })));
     saveCachedGraphs(key, { static: staticGraph, claude: g });
     return g;
   };
-  return { cwd, key, arg, staticGraph, claudeGraph, wantLlm: !o.noLlm && !claudeGraph, claude };
+  return { cwd, key, arg, staticGraph, claudeGraph, wantLlm: !o.noLlm && !claudeGraph, claude, ...(cached ? { comments } : {}) };
 }
 
 /** A built review, live: its state, Claude's tree and the language servers in the background, and watching for new
@@ -167,6 +170,7 @@ export function start(p: Prepared, o: ReviewOptions): Session {
     llm: p.claudeGraph ? "done" : p.wantLlm ? "pending" : "off", refresh: o.refresh,
   };
   void startServers(session, { ask: true, off: o.noLsp, log });
+  p.comments?.then((d) => showDiscussion(session, d), () => {}); // from the cache: GitHub's comments replace last time's
   // Claude's tree, in the background: now, and again if it failed once Claude is set up (claude.ts). Not with --no-llm.
   let asking = false;
   if (!o.noLlm) session.askClaude = () => {

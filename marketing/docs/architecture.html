@@ -115,7 +115,7 @@ scripts/check.sh         typecheck + syntax check (the build gate)
 <h2 id="one-run-end-to-end"><a class="anchor" href="#one-run-end-to-end" aria-hidden="true">#</a>One run, end to end</h2>
 <ol>
 <li><strong>Resolve</strong> (<code>git.ts › resolvePr</code>). <code>gh pr view</code> gives metadata, including the head commit. A local clone is found or made.</li>
-<li><strong>Cache check</strong> (<code>cli.ts</code>). If <code>~/.bobby/cache</code> has graphs for this head commit and the same <code>VERSION</code>, they're reused and steps 3–6 are skipped. Review comments are always re-read.</li>
+<li><strong>Cache check</strong> (<code>cli.ts</code>). If <code>~/.bobby/cache</code> has graphs for this head commit and the same <code>VERSION</code>, they're reused and steps 3–6 are skipped. Review comments are always re-read: the review opens at once with the ones cached last time, and GitHub's replace them when they arrive (<code>showDiscussion</code>).</li>
 <li><strong>Fetch and diff</strong> (<code>git.ts › fetchPr</code>, <code>diff.ts</code>). The PR head and base are fetched into <code>refs/bobby/&lt;n&gt;/</code>, and the diff is taken against the merge-base.</li>
 <li><strong>Analysis</strong> (<code>analyze.ts</code>). Hunks are grouped into units. For supported languages, tree-sitter (<code>syntax.ts</code>) and import resolution (<code>resolve.ts</code>) find the static edges and the references to untouched code that really bind to the changed declarations; other languages fall back to <code>git grep</code> word matches.</li>
 <li><strong>Static tree</strong> (<code>analyze.ts › heuristicTree</code>), then <strong>graph</strong> (<code>graph.ts › buildGraph</code>). The UI starts with this.</li>

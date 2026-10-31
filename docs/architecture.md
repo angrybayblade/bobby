@@ -62,7 +62,7 @@ There's no bundler and no framework. `src/` runs under Bun as TypeScript; `publi
 ## One run, end to end
 
 1. **Resolve** (`git.ts › resolvePr`). `gh pr view` gives metadata, including the head commit. A local clone is found or made.
-2. **Cache check** (`cli.ts`). If `~/.bobby/cache` has graphs for this head commit and the same `VERSION`, they're reused and steps 3–6 are skipped. Review comments are always re-read.
+2. **Cache check** (`cli.ts`). If `~/.bobby/cache` has graphs for this head commit and the same `VERSION`, they're reused and steps 3–6 are skipped. Review comments are always re-read: the review opens at once with the ones cached last time, and GitHub's replace them when they arrive (`showDiscussion`).
 3. **Fetch and diff** (`git.ts › fetchPr`, `diff.ts`). The PR head and base are fetched into `refs/bobby/<n>/`, and the diff is taken against the merge-base.
 4. **Analysis** (`analyze.ts`). Hunks are grouped into units. For supported languages, tree-sitter (`syntax.ts`) and import resolution (`resolve.ts`) find the static edges and the references to untouched code that really bind to the changed declarations; other languages fall back to `git grep` word matches.
 5. **Static tree** (`analyze.ts › heuristicTree`), then **graph** (`graph.ts › buildGraph`). The UI starts with this.

@@ -185,6 +185,8 @@ const opts: ReviewOptions & { refresh?: boolean } = { repo: values.repo, base: v
 
 if (cmd === "extract") {
   const p = await (await resolve(arg, opts)).build();
+  const d = await p.comments?.catch(() => null);
+  if (d) for (const g of [p.staticGraph, p.claudeGraph]) if (g) setDiscussion(g, d);
   let graph = p.claudeGraph ?? p.staticGraph;
   if (p.wantLlm) {
     say("▸ asking Claude to build the change tree…");
