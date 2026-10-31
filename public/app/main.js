@@ -15,6 +15,7 @@ import allViews from "./views/index.js";
 
 // Without these there's no review. A review still being built (just opened) answers "loading", with its steps so far:
 // show them, in your theme, until it's ready; one that failed, or a server gone, says why and stops.
+let merged = false; // the graph came with the language servers' definitions in it
 const [graph, session] = await (async () => {
   for (;;) {
     const r = await fetch(`${reviewBase}/api/graph`).catch(() => null);
@@ -38,6 +39,7 @@ const [graph, session] = await (async () => {
     }
     if (!r.ok) throw new Error(g.error ?? `${r.status} ${r.statusText}`);
     document.body.classList.remove("booting");
+    merged = r.headers.get("x-bobby-definitions") === "servers";
     return [g, await api("/api/session")];
   }
 })().catch((e) => {
@@ -327,7 +329,7 @@ app.toastUndo = (what) => chrome.toast(`<span>${esc(what)}.</span> <button class
 window.addEventListener("unhandledrejection", (ev) => app.fail(ev.reason));
 app.openKeys = () => chrome.keysEditor(); // for the tour's news, which can't import chrome.js
 // The graph and the session are read at once: a server may have finished between them, leaving syntax-only definitions.
-if (!(app.llm === "pending" || busy(app.servers)) && app.servers.some((x) => x.state === "done")) api("/api/definitions").then((d) => { app.graph.definitions = d; }, () => {});
+if (!merged && !(app.llm === "pending" || busy(app.servers)) && app.servers.some((x) => x.state === "done")) api("/api/definitions").then((d) => { app.graph.definitions = d; }, () => {});
 poll(); // always: it also hears of new comments and new work
 
 // ---- start: at the entry point (the unreviewed core with the least around it), on every load. Where you were last is

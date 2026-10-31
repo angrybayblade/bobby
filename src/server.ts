@@ -364,7 +364,10 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
       if (p === "/api/graph") {
         const want = url.searchParams.get("tree");
         const g = want === "static" ? s.staticGraph : (s.claudeGraph ?? s.staticGraph);
-        return json(s.definitions ? { ...g, definitions: s.definitions } : g); // the language server's, once it has answered
+        if (!s.definitions) return json(g);
+        const res = json({ ...g, definitions: s.definitions }); // the language server's, once it has answered
+        res.headers.set("x-bobby-definitions", "servers"); // so the page needn't read them again
+        return res;
       }
       if (p === "/api/session")
         return json({ state: s.state, settings: loadSettings(), llm: s.llm, llmError: s.llmError, servers: Object.values(s.servers ?? {}), me: await whoAmI(), caps: { files: !!s.cwd, inspect: !!s.cwd } });
