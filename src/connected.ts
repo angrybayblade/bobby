@@ -16,12 +16,15 @@ export interface Server { name: string; status: string; prefix: string; read: st
 /** A server's tool names start mcp__<its name, with anything but letters, digits, _ and - as _>__. */
 export const prefixOf = (name: string) => `mcp__${name.replace(/[^\w-]/g, "_")}__`;
 
-const READS = /^(get|list|search|read|fetch|query|find|describe|view|lookup|retrieve|show|count|check|explain|analy[sz]e|summari[sz]e|inspect|browse|resolve|whoami|me|aggregate|extract)$/i;
+const READS = /^(get|list|search|read|fetch|query|find|describe|view|lookup|retrieve|show|count|check|explain|analy[sz]e|summari[sz]e|inspect|resolve|whoami|me|aggregate|extract)$/i;
 const WRITES = /^(create|update|delete|remove|send|post|add|set|write|edit|archive|unarchive|move|upload|invite|assign|unassign|comment|reply|react|schedule|cancel|close|reopen|merge|publish|deploy|run|execute|trigger|start|stop|restart|mute|unmute|ack|acknowledge|approve|reject|submit|insert|upsert|patch|put|rename|duplicate|import|export|fill|click|navigate|press|type|drag|evaluate|emulate|install|enable|disable|mark|pin|unpin|star|subscribe|unsubscribe|join|leave|kick|ban|grant|revoke|share|transfer)$/i;
-/** Whether a tool only reads, from its name: a reading verb among its words and no writing one. Unsure is a write. */
+// Tools that reach any address you give them (fetch_url, http_request, browse): reading through one can send what Claude
+// has read to anywhere, so they count as writes.
+const OUTBOUND = /^(url|uri|urls|http|https|web|webpage|request|webhook|download|crawl|scrape|browse|browser|curl)$/i;
+/** Whether a tool only reads, from its name: a reading verb among its words and no writing or outbound one. Unsure is a write. */
 export function readsOnly(tool: string): boolean { // its name, without the server's prefix
   const words = tool.split(/[_\-.]|(?=[A-Z])/).filter(Boolean);
-  return words.some((w) => READS.test(w)) && !words.some((w) => WRITES.test(w));
+  return words.some((w) => READS.test(w)) && !words.some((w) => WRITES.test(w) || OUTBOUND.test(w));
 }
 
 /** Groups the init event's tools by server. */
@@ -84,6 +87,7 @@ export function resolveSpec(spec: Array<{ match: string; access: Access }>, serv
   return out;
 }
 
+const SECRETS = ["~/.ssh/**", "~/.aws/**", "~/.gnupg/**", "~/.config/gh/**", "~/.config/gcloud/**", "~/.azure/**", "~/.kube/**", "~/.docker/**", "~/.netrc", "~/.npmrc", "~/.pypirc", "~/.git-credentials", "~/.claude/**", "~/.claude.json", "~/Library/Keychains/**", "**/.env", "**/.env.*"];
 /** How Claude runs with a selection: its settings flags, the tools to disallow and allow, and what to tell it;
  *  nothing when nothing's on (it runs as before, with none of your setup). */
 export interface Connected { args: string[]; disallowed: string[]; allowed: string[]; note: string }
@@ -95,7 +99,9 @@ export function runWith(sel: Selection, servers: Server[]): Connected | null {
   const blocked = servers.filter((s) => !sel[s.name] || unknown(s)).map((s) => s.prefix.slice(0, -2));
   const writes = on.filter((s) => sel[s.name] === "read").flatMap((s) => s.write);
   const allowed = on.flatMap((s) => (sel[s.name] === "all" ? [s.prefix.slice(0, -2)] : s.read));
-  const args = ["--setting-sources", "user", "--settings", JSON.stringify({ disableAllHooks: true })];
+  // your user settings, for its connections; your permission rules come too, so where secrets usually live is denied
+  // (a deny beats any allow), lest one of them let Claude read beyond the PR's code
+  const args = ["--setting-sources", "user", "--settings", JSON.stringify({ disableAllHooks: true, permissions: { deny: SECRETS.map((p) => `Read(${p})`) } })];
   const note = `You can also use some of the reviewer's own connected tools, for context the code doesn't have (the PR's ticket, design docs, discussions, alerts): ${on.map((s) => `${s.name} (${sel[s.name] === "read" ? "read only" : "full access"})`).join(", ")}. Their tool names start mcp__ and the server's name. Use them when the PR or the question points to something there (a ticket ID, a link, an incident); don't post, create or change anything through them unless the reviewer asks you to.`;
   return { args, disallowed: [...blocked, ...writes], allowed, note };
 }

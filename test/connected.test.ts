@@ -3,7 +3,7 @@ import { catalogOf, parseSpec, readsOnly, resolveSpec, runWith } from "../src/co
 
 test("tells reading tools from the rest, by name", () => {
   for (const t of ["get_issue", "list_issues", "slack_search_public", "slack_read_thread", "notion-fetch", "notion-get-comments", "search_datadog_logs", "getIssue"]) expect(readsOnly(t)).toBe(true);
-  for (const t of ["save_issue", "slack_send_message", "notion-create-pages", "delete_comment", "get_and_update", "exec", "click", "merge_diff"]) expect(readsOnly(t)).toBe(false);
+  for (const t of ["save_issue", "slack_send_message", "notion-create-pages", "delete_comment", "get_and_update", "exec", "click", "merge_diff", "fetch_url", "web_fetch", "http_get", "browse_page", "get_webpage"]) expect(readsOnly(t)).toBe(false);
 });
 
 const servers = catalogOf({
@@ -20,7 +20,10 @@ test("reads the launch spec", () => {
 test("lets in only what's chosen: a server's reads, or all of it", () => {
   expect(runWith({}, servers)).toBeNull();
   const c = runWith({ "claude.ai Linear": "read", "claude.ai Slack": "all" }, servers)!;
-  expect(c.args).toEqual(["--setting-sources", "user", "--settings", '{"disableAllHooks":true}']);
+  expect(c.args.slice(0, 3)).toEqual(["--setting-sources", "user", "--settings"]);
+  const settings = JSON.parse(c.args[3]);
+  expect(settings.disableAllHooks).toBe(true);
+  expect(settings.permissions.deny).toContain("Read(~/.ssh/**)");
   expect(c.disallowed).toEqual(["mcp__chrome-devtools", "mcp__claude_ai_Linear__save_issue"]);
   expect(c.allowed).toEqual(["mcp__claude_ai_Linear__get_issue", "mcp__claude_ai_Slack"]);
   expect(c.note).toContain("claude.ai Linear (read only), claude.ai Slack (full access)");
