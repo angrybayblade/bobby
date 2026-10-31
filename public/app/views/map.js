@@ -31,11 +31,13 @@ const CSS = `
 .bmap .banner { padding: 7px 24px; font-size: 13px; color: var(--muted); background: var(--raised); border-bottom: 1px solid var(--line-soft); display: flex; gap: 10px; align-items: center; }
 .bmap .banner .btn { padding: 3px 10px; font-size: 12.5px; }
 .bmap .mbody { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 340px; }
-.bmap .stage { overflow: auto; display: flex; min-width: 0; }
-.bmap .stage.pans { cursor: grab; }
+.bmap .stage { position: relative; overflow: hidden; min-width: 0; cursor: grab; touch-action: none; }
 .bmap .stage.panning { cursor: grabbing; user-select: none; }
-.bmap .fit { margin: auto; padding: 36px; flex: none; box-sizing: content-box; }
-.bmap .plane { position: relative; transform-origin: 0 0; }
+.bmap .mzoom { position: absolute; left: 16px; bottom: 16px; display: flex; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); overflow: hidden; cursor: default; }
+.bmap .mzoom button { min-width: 30px; padding: 4px 8px; border: 0; background: none; font: 13px var(--font-ui); color: var(--muted); font-variant-numeric: tabular-nums; }
+.bmap .mzoom button + button { border-left: 1px solid var(--line); }
+.bmap .mzoom button:hover { color: var(--text); background: var(--raised); }
+.bmap .plane { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 .bmap .plane > svg { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
 .bmap .mn { position: absolute; width: ${W}px; box-sizing: border-box; padding: 8px 12px 9px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); transition: opacity var(--dur, .2s), border-color var(--dur, .2s); }
 .bmap .mn[data-ref] { cursor: pointer; }
@@ -58,6 +60,7 @@ const CSS = `
 /* the slider: --t runs from 0 (before) to 1 (after); what's only in one of them fades with it */
 @property --t { syntax: "<number>"; inherits: true; initial-value: 1; }
 .bmap .plane { transition: --t .45s ease; }
+.bmap .plane.glide { transition: --t .45s ease, transform .3s ease; }
 .bmap .plane.sliding { transition: none; }
 .bmap .mn, .bmap .el, .bmap .plane path { opacity: calc(var(--o, 1) * var(--d, 1)); }
 .bmap .st-added { --o: var(--t); }
@@ -119,7 +122,9 @@ export default {
   mount(el, app) {
     injectCss("map", CSS);
     const root = el.appendChild(Object.assign(document.createElement("div"), { className: "bmap" }));
-    let tick = 0, data = null, t = 1, sel = -1, want = "", dead = false, timer = 0, plane = null, fitEl = null, size = null;
+    let tick = 0, data = null, t = 1, sel = -1, want = "", dead = false, timer = 0, plane = null, size = null, drawn = "";
+    // the camera: framed to fit the map until you pan or zoom; then yours until another map is drawn
+    let cam = { tx: 0, ty: 0, s: 1 }, mine = false;
 
     async function load() {
       clearTimeout(timer);
@@ -153,16 +158,17 @@ export default {
         </div>
         ${banner}
         <div class="mbody">
-          <div class="stage"><div class="fit"><div class="plane${sel >= 0 ? " lit" : ""}"></div></div></div>
+          <div class="stage"><div class="plane${sel >= 0 ? " lit" : ""}"></div>
+            <div class="mzoom"><button data-zoom="-1" title="Zoom out">−</button><button data-zoom="fit" title="Fit the map to the canvas"></button><button data-zoom="1" title="Zoom in">+</button></div></div>
           <aside class="mrail">
             <h4>What changes</h4>
             <ol>${m.changes.map((c, i) => `<li data-change="${i}" class="${sel === i ? "on" : ""}"><div class="ct"><i>${i + 1}</i>${esc(c.title)}</div><div class="cd">${md(c.detail)}</div></li>`).join("")}</ol>
-            <div class="mkeys">← → before, after · ↑ ↓ step through the changes</div>
+            <div class="mkeys">← → before, after · ↑ ↓ step through the changes · drag or scroll to pan, pinch or ctrl+scroll to zoom</div>
             <div class="mfoot">Drawn by Claude ${new Date(m.at).toLocaleString()}${m.cost ? ` · $${m.cost.toFixed(2)}` : ""}</div>
           </aside>
         </div>`;
       plane = root.querySelector(".plane");
-      fitEl = root.querySelector(".fit");
+      if (drawn !== m.at) { drawn = m.at; mine = false; } // a new map: framed afresh
       root.querySelector(".mrail li.on")?.scrollIntoView({ block: "nearest" });
       diagram(m);
     }
@@ -243,40 +249,73 @@ export default {
       plane.insertAdjacentHTML("afterbegin", `<svg width="${lay.width}" height="${lay.height}"><defs><marker id="mapArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" style="fill:var(--faint);stroke:none"/></marker></defs>${paths.join("")}</svg>`);
       size = { w: lay.width, h: lay.height };
       slide(t);
-      const s = fit();
-      if (change) { // bring the change's part of the diagram into view
-        const lit = [...plane.querySelectorAll(".mn:not(.dim)")], stage = root.querySelector(".stage");
-        if (lit.length && s) {
-          const rs = lit.map((d) => d.getBoundingClientRect()), at = stage.getBoundingClientRect();
-          const cx = (Math.min(...rs.map((r) => r.left)) + Math.max(...rs.map((r) => r.right))) / 2, cy = (Math.min(...rs.map((r) => r.top)) + Math.max(...rs.map((r) => r.bottom))) / 2;
-          stage.scrollTo({ left: stage.scrollLeft + cx - at.left - stage.clientWidth / 2, top: stage.scrollTop + cy - at.top - stage.clientHeight / 2, behavior: "instant" });
-        }
-      }
+      plane.style.width = `${size.w}px`; plane.style.height = `${size.h}px`;
+      if (change) frame([...plane.querySelectorAll(".mn:not(.dim)")]);
+      else if (!mine) cam = fitted();
+      apply();
     }
 
-    /** Scales the diagram to the stage: smaller to fit, down to a readable size, then it scrolls; never bigger. */
-    function fit() {
-      if (!plane || !size) return;
-      const stage = root.querySelector(".stage"), s = Math.max(0.8, Math.min(1, (stage.clientWidth - 56) / size.w, (stage.clientHeight - 56) / size.h));
-      plane.style.width = `${size.w}px`; plane.style.height = `${size.h}px`;
-      plane.style.transform = `scale(${s})`;
-      fitEl.style.width = `${size.w * s}px`; fitEl.style.height = `${size.h * s}px`;
-      stage.classList.toggle("pans", stage.scrollWidth > stage.clientWidth || stage.scrollHeight > stage.clientHeight);
-      return s;
+    // ---- the canvas: a fixed stage the map moves and scales in. Drag or scroll to pan; pinch or ctrl+scroll to zoom.
+    const PAD = 40, MIN = 0.2, MAX = 2;
+    const stageEl = () => root.querySelector(".stage");
+    function apply(glide = false) {
+      if (!plane) return;
+      plane.classList.toggle("glide", glide);
+      plane.style.transform = `translate(${cam.tx}px, ${cam.ty}px) scale(${cam.s})`;
+      const pct = root.querySelector('[data-zoom="fit"]');
+      if (pct) pct.textContent = `${Math.round(cam.s * 100)}%`;
     }
-    // a diagram bigger than the stage: drag its background to pan
-    let pan = null;
+    /** The whole map in view, centred; never bigger than life. */
+    function fitted() {
+      const st = stageEl(), s = Math.max(MIN, Math.min(1, (st.clientWidth - 2 * PAD) / size.w, (st.clientHeight - 2 * PAD) / size.h));
+      return { s, tx: (st.clientWidth - size.w * s) / 2, ty: Math.max(PAD, (st.clientHeight - size.h * s) / 2) };
+    }
+    /** Brings these boxes into view, centred, zooming out only if they don't fit as it is. */
+    function frame(els) {
+      if (!els.length) return;
+      const st = stageEl(), xs = els.map((d) => [d.offsetLeft, d.offsetLeft + d.offsetWidth]), ys = els.map((d) => [d.offsetTop, d.offsetTop + d.offsetHeight]);
+      const x0 = Math.min(...xs.map((v) => v[0])), x1 = Math.max(...xs.map((v) => v[1])), y0 = Math.min(...ys.map((v) => v[0])), y1 = Math.max(...ys.map((v) => v[1]));
+      const s = Math.max(MIN, Math.min(cam.s, (st.clientWidth - 2 * PAD) / (x1 - x0), (st.clientHeight - 2 * PAD) / (y1 - y0)));
+      cam = { s, tx: st.clientWidth / 2 - ((x0 + x1) / 2) * s, ty: st.clientHeight / 2 - ((y0 + y1) / 2) * s };
+      mine = true;
+    }
+    /** Zooms by k around a point of the stage (its centre by default). */
+    function zoom(k, px, py, glide = false) {
+      const st = stageEl(), s = Math.max(MIN, Math.min(MAX, cam.s * k));
+      px ??= st.clientWidth / 2; py ??= st.clientHeight / 2;
+      cam = { s, tx: px - ((px - cam.tx) / cam.s) * s, ty: py - ((py - cam.ty) / cam.s) * s };
+      mine = true;
+      apply(glide);
+    }
+    let pan = null, dragged = false;
     root.addEventListener("pointerdown", (ev) => {
-      const stage = ev.target.closest(".stage.pans");
-      if (!stage || ev.button || ev.target.closest(".mn[data-ref]")) return;
-      pan = { stage, x: ev.clientX, y: ev.clientY, l: stage.scrollLeft, t: stage.scrollTop, id: ev.pointerId };
-      stage.setPointerCapture(ev.pointerId);
-      stage.classList.add("panning");
+      const st = ev.target.closest(".stage");
+      if (!st || ev.button || ev.target.closest(".mzoom")) return;
+      pan = { st, x: ev.clientX, y: ev.clientY, cam: { ...cam }, id: ev.pointerId };
+      dragged = false;
     });
-    root.addEventListener("pointermove", (ev) => { if (pan?.id === ev.pointerId) { pan.stage.scrollLeft = pan.l - (ev.clientX - pan.x); pan.stage.scrollTop = pan.t - (ev.clientY - pan.y); } });
-    const endPan = () => { pan?.stage.classList.remove("panning"); pan = null; };
+    root.addEventListener("pointermove", (ev) => {
+      if (pan?.id !== ev.pointerId) return;
+      const dx = ev.clientX - pan.x, dy = ev.clientY - pan.y;
+      if (!dragged && Math.hypot(dx, dy) < 4) return; // a click on a box stays a click
+      if (!dragged) { dragged = true; pan.st.setPointerCapture(ev.pointerId); pan.st.classList.add("panning"); }
+      cam = { ...pan.cam, tx: pan.cam.tx + dx, ty: pan.cam.ty + dy };
+      mine = true;
+      apply();
+    });
+    const endPan = () => { pan?.st.classList.remove("panning"); pan = null; };
     root.addEventListener("pointerup", endPan);
     root.addEventListener("pointercancel", endPan);
+    root.addEventListener("wheel", (ev) => {
+      const st = ev.target.closest(".stage");
+      if (!st) return;
+      ev.preventDefault();
+      const r = st.getBoundingClientRect();
+      if (ev.ctrlKey || ev.metaKey) return zoom(Math.exp(-ev.deltaY * 0.01), ev.clientX - r.left, ev.clientY - r.top); // pinch, or ctrl+scroll
+      cam = { ...cam, tx: cam.tx - ev.deltaX, ty: cam.ty - ev.deltaY };
+      mine = true;
+      apply();
+    }, { passive: false });
 
     /** Moves the slider to v, 0 (before) to 1 (after): nothing is laid out again, the parts only in one fade. */
     function slide(v, sliding = false) {
@@ -294,6 +333,9 @@ export default {
     const pick = (i, toggle = true) => { sel = toggle && i === sel ? -1 : i; render(); };
     root.addEventListener("click", (ev) => {
       const t = ev.target;
+      if (dragged) { dragged = false; return; } // the end of a pan, not a click
+      const z = t.closest("[data-zoom]");
+      if (z) { if (z.dataset.zoom === "fit") { cam = fitted(); mine = false; apply(true); } else zoom(z.dataset.zoom > 0 ? 1.25 : 0.8, undefined, undefined, true); return; }
       if (t.closest("a")) return; // a reference in a change: the viewer opens it (code.js)
       const b = t.closest("[data-end],[data-want],[data-draw],[data-redraw],[data-cancel],[data-change],.mn[data-ref]");
       if (!b) return;
@@ -315,7 +357,7 @@ export default {
 
     load();
     return {
-      update(why) { if (why === "resize") fit(); else if (why === "settings" && data) render(); },
+      update(why) { if (why === "resize") { if (plane && size && !mine) { cam = fitted(); apply(); } } else if (why === "settings" && data) render(); },
       keys,
       destroy() { dead = true; clearTimeout(timer); clearInterval(tick); root.remove(); },
     };
