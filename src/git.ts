@@ -1,3 +1,4 @@
+import type { Subprocess } from "bun";
 import { join } from "node:path";
 import * as log from "./log.ts";
 import { existsSync } from "node:fs";
@@ -217,6 +218,59 @@ export async function fileLinesMany(cwd: string, sha: string, paths: string[]): 
     if (fileCache.size > KEEP_FILES) fileCache.delete(fileCache.keys().next().value!);
   }
 }
+
+/** Files read one at a time through one git cat-file --batch, kept running while it's asked (a file each with no process
+ *  each: a git show costs ~100 ms in a big repo), and closed after IDLE_MS without a question. read takes "<sha>:<path>"
+ *  and answers its text, or null when that isn't a file. */
+export class BlobReader {
+  private proc?: Subprocess<"pipe", "pipe", "ignore">;
+  private out?: ReadableStreamDefaultReader<Uint8Array>;
+  private buf = new Uint8Array(0);
+  private queue: Promise<unknown> = Promise.resolve();
+  private idle?: ReturnType<typeof setTimeout>;
+  constructor(private cwd: string) {}
+  read(spec: string): Promise<string | null> {
+    const p = this.queue.then(() => this.one(spec));
+    this.queue = p.catch(() => this.close()); // a broken process is started again by the next question
+    return p;
+  }
+  close() {
+    clearTimeout(this.idle);
+    try { this.proc?.stdin.end(); this.proc?.kill(); } catch { /* gone already */ }
+    this.proc = this.out = undefined;
+    this.buf = new Uint8Array(0);
+  }
+  private async more() {
+    const { value, done } = await this.out!.read();
+    if (done) throw new Error("git cat-file stopped");
+    const b = new Uint8Array(this.buf.length + value.length);
+    b.set(this.buf); b.set(value, this.buf.length);
+    this.buf = b;
+  }
+  private async one(spec: string): Promise<string | null> {
+    clearTimeout(this.idle);
+    if (!this.proc) {
+      this.proc = Bun.spawn(["git", "-c", "core.quotePath=false", "cat-file", "--batch"], { cwd: this.cwd, stdin: "pipe", stdout: "pipe", stderr: "ignore" });
+      this.out = this.proc.stdout.getReader();
+    }
+    this.proc.stdin.write(`${spec}\n`);
+    this.proc.stdin.flush();
+    let nl: number;
+    while ((nl = this.buf.indexOf(10)) < 0) await this.more();
+    const head = new TextDecoder().decode(this.buf.subarray(0, nl)).split(" "); // "<oid> <type> <size>", or "<spec> missing"
+    this.buf = this.buf.subarray(nl + 1);
+    let text: string | null = null;
+    if (head.length === 3) {
+      const size = Number(head[2]);
+      while (this.buf.length < size + 1) await this.more();
+      if (head[1] === "blob") text = new TextDecoder().decode(this.buf.subarray(0, size));
+      this.buf = this.buf.subarray(size + 1);
+    }
+    this.idle = setTimeout(() => this.close(), IDLE_MS);
+    return text;
+  }
+}
+const IDLE_MS = 2000;
 
 /** Files at a commit, through one git cat-file per 500: each path's text, or null when it isn't a file there. */
 export async function catFiles(cwd: string, sha: string, paths: string[]): Promise<Map<string, string | null>> {

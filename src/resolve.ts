@@ -8,7 +8,7 @@
 //   Rust    crate::, super:: and self:: paths, to module files
 // Anything that resolves outside the repo (a library) resolves to nothing.
 import { dirname, join, normalize } from "node:path/posix";
-import { catFiles, git } from "./git.ts";
+import { BlobReader, catFiles, git } from "./git.ts";
 import { family, type Lang, type Syntax, parseSyntax } from "./syntax.ts";
 
 const JS_EXT = ["", ".ts", ".tsx", ".d.ts", ".js", ".jsx", ".mjs", ".cjs", "/index.ts", "/index.tsx", "/index.js", "/index.jsx", "/index.mjs"];
@@ -26,7 +26,8 @@ export class Repo {
   private packages: Promise<Map<string, PkgInfo>> | null = null;
   private goMods: Promise<Array<{ module: string; dir: string }>> | null = null;
 
-  private constructor(readonly cwd: string, readonly sha: string) {}
+  private blobs: BlobReader;
+  private constructor(readonly cwd: string, readonly sha: string) { this.blobs = new BlobReader(cwd); }
 
   // The repo's files by folder and by name, built once: lookups by package or module path would otherwise scan every
   // file, on every unresolved name.
@@ -48,10 +49,10 @@ export class Repo {
     return r;
   }
 
-  /** File contents at head; many at once go through one git cat-file. */
+  /** File contents at head, through one running git cat-file; many at once (readMany) go through a git cat-file of their own. */
   read(path: string): Promise<string | null> {
     let p = this.text.get(path);
-    if (!p) p = keep(this.text, path, this.files.has(path) ? git(this.cwd, ["show", `${this.sha}:${path}`], true) : Promise.resolve(null));
+    if (!p) p = keep(this.text, path, this.files.has(path) ? this.blobs.read(`${this.sha}:${path}`).catch(() => null) : Promise.resolve(null));
     return p;
   }
   async readMany(paths: string[]) {
