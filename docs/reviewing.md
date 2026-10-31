@@ -57,7 +57,7 @@ The breadcrumb bar shows where you are (`repo #n › core › page`) and the cur
 | `n` | Next page you haven't reviewed |
 | `m` / `M` | Private note on a line / your notes panel |
 | `v` or `ctrl`+`.` / `ctrl`+`,` | Next view to the right / to the left (Conversation → Map → Lens → Outline → Flow → Diff, round again) |
-| `ctrl`+`c` `m` `l` `o` `f` `d` | Straight to Conversation, Map, Lens, Outline, Flow or Diff (`ctrl`+`c` still copies while text is selected). Pointing at a view in the switcher shows its key. |
+| `ctrl`+`1` … `ctrl`+`6` | Straight to Conversation, Map, Lens, Outline, Flow or Diff, in the switcher's order. Pointing at a view there shows its key. |
 | `f` | Focus: what you're on fills the screen with its code (Flow, Lens and Diff: the card or file; Outline: the reading pane takes the full width). Again, or `esc`, to go back exactly as you were. |
 | `d` | Fit (Diff): the file you're on, as wide as it goes with its top at the top of the stage, as a double-click in the file tree shows it. Again, before you pan or zoom, to go back. |
 | `g` | Details: the page for what you're on, on its own with what it relies on and affects; again, or `esc`, to go back exactly as you were |

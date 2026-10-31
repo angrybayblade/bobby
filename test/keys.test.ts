@@ -31,9 +31,9 @@ describe("key bindings", () => {
     expect(keyOfEvent({ key: "§", shiftKey: true, code: "Digit1" })).toBe("!");
   });
   test("reads ctrl with a key, for the views", () => {
-    expect(keyOfEvent({ key: "d", ctrlKey: true, code: "KeyD" })).toBe("Ctrl+d");
+    expect(keyOfEvent({ key: "6", ctrlKey: true, code: "Digit6" })).toBe("Ctrl+6");
     expect(keyOfEvent({ key: ",", ctrlKey: true, code: "Comma" })).toBe("Ctrl+,");
-    expect(actionFor({}, "Ctrl+d")).toBe("view:diff");
+    expect(actionFor({}, "Ctrl+6")).toBe("view:diff");
     expect(actionFor({}, "Ctrl+.")).toBe("nextView");
   });
 });

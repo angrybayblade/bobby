@@ -29,12 +29,12 @@ export const ACTIONS = [
   { id: "expand", group: "Reading", title: "Open collapsed code, then more context", keys: ["e"] },
   { id: "nextView", group: "Reading", title: "Next view, to the right: Conversation, Map, Lens, Outline, Flow, Diff", keys: ["v", "Ctrl+."] },
   { id: "prevView", group: "Reading", title: "Previous view, to the left", keys: ["Ctrl+,"] },
-  { id: "view:conversation", group: "Reading", title: "Switch to Conversation", keys: ["Ctrl+c"] },
-  { id: "view:map", group: "Reading", title: "Switch to Map", keys: ["Ctrl+m"] },
-  { id: "view:lens", group: "Reading", title: "Switch to Lens", keys: ["Ctrl+l"] },
-  { id: "view:outline", group: "Reading", title: "Switch to Outline", keys: ["Ctrl+o"] },
-  { id: "view:flow", group: "Reading", title: "Switch to Flow", keys: ["Ctrl+f"] },
-  { id: "view:diff", group: "Reading", title: "Switch to Diff", keys: ["Ctrl+d"] },
+  { id: "view:conversation", group: "Reading", title: "Switch to Conversation", keys: ["Ctrl+1"] },
+  { id: "view:map", group: "Reading", title: "Switch to Map", keys: ["Ctrl+2"] },
+  { id: "view:lens", group: "Reading", title: "Switch to Lens", keys: ["Ctrl+3"] },
+  { id: "view:outline", group: "Reading", title: "Switch to Outline", keys: ["Ctrl+4"] },
+  { id: "view:flow", group: "Reading", title: "Switch to Flow", keys: ["Ctrl+5"] },
+  { id: "view:diff", group: "Reading", title: "Switch to Diff", keys: ["Ctrl+6"] },
   { id: "layout", group: "Reading", title: "Diff layout: inline or split", keys: ["l"] },
   { id: "files", group: "Reading", title: "Show or hide the file tree", keys: ["t"] },
   { id: "tests", group: "Reading", title: "Show or hide test files, in every view", keys: ["T"] },
@@ -116,7 +116,7 @@ export const bindable = (ev) => !["Shift", "Control", "Alt", "Meta", "CapsLock",
 /** A keydown as a key: shift+1 is "!" whatever the layout prints; shift with a named key (an arrow, enter) is
  *  "Shift+<key>". A printed character carries its shift already ("J", "?"). */
 export function keyOfEvent(ev) {
-  if (ev.ctrlKey) return `Ctrl+${ev.key.length === 1 ? ev.key.toLowerCase() : ev.key}`; // ctrl+d, ctrl+. (ctrl+shift isn't bound)
+  if (ev.ctrlKey) return `Ctrl+${ev.key.length === 1 ? ev.key.toLowerCase() : ev.key}`; // ctrl+1, ctrl+. (ctrl+shift isn't bound)
   if (ev.shiftKey && ev.code === "Digit1") return "!";
   return ev.shiftKey && ev.key.length > 1 && ev.key !== "Shift" ? `Shift+${ev.key}` : ev.key;
 }

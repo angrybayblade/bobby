@@ -368,7 +368,7 @@ const ACTS = {
   zoomIn: () => app.setLevel(app.level + 1), zoomOut: () => app.setLevel(app.level - 1),
   nextView: () => app.switchView(views[(views.findIndex((v) => v.id === currentId) + 1) % views.length].id),
   prevView: () => app.switchView(views[(views.findIndex((v) => v.id === currentId) + views.length - 1) % views.length].id),
-  ...Object.fromEntries(views.map((v) => [`view:${v.id}`, () => app.switchView(v.id)])), // ctrl+ its letter
+  ...Object.fromEntries(views.map((v) => [`view:${v.id}`, () => app.switchView(v.id)])), // ctrl+ its place, 1 to 6
   submit: () => chrome.submit(), help: () => chrome.help(), settings: () => chrome.settings(), park: () => chrome.park(), notes: () => chrome.notes(),
   switchTree: () => app.switchTree(),
   files: () => chrome.toggleFiles(),
@@ -406,7 +406,6 @@ document.addEventListener("keydown", (ev) => {
   }
   if (chrome.isOpen() && ev.key === "Escape" && !ev.metaKey && !ev.ctrlKey && !ev.altKey) { ev.preventDefault(); return chrome.close(); } // from its text box too
   if (ev.ctrlKey && !ev.metaKey && !ev.altKey && !ev.shiftKey && !typing(ev.target) && !chrome.isOpen() && !inspectorOpen()) { // ctrl+ a key: the views
-    if (ev.key.toLowerCase() === "c" && String(getSelection()).trim()) return; // copying what's selected, where ctrl+c copies
     if (press(keyOfEvent(ev))) ev.preventDefault();
     return;
   }

@@ -4,7 +4,7 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
-- The views run Conversation, Map, Lens, Outline, Flow, Diff, and each has a key: `ctrl`+`c`, `m`, `l`, `o`, `f`, `d`. `ctrl`+`,` and `ctrl`+`.` move a view left or right. Keys can now use ctrl, when you rebind them too.
+- The views run Conversation, Map, Lens, Outline, Flow, Diff, and each has a key, `ctrl`+`1` to `ctrl`+`6` in that order. `ctrl`+`,` and `ctrl`+`.` move a view left or right. Keys can now use ctrl, when you rebind them too.
 - The top bar's Tests, Generated, Unchanged (was Untouched), Notes and Review with Claude are icons now, with tooltips that say what each does, its state and its key. A switch that's off is struck through. Claude's button turns back into a pill while it reviews or has findings. The comments pill comes first, and new keys match the icons: `T` tests, `G` generated, `U` unchanged, `C` all comments, `Q` Review with Claude.
 - **Map**, a new view: how the PR changes what the system does, drawn by Claude before and after: it scopes the change and what it affects, then draws it in layers it defines for the PR, from an overview in plain words down to the code. See it **Before** and **After**, inline on a slider or split side by side.
 - **Open reviews from your agent.** `bobby mcp` is an MCP server for Claude Code (or any MCP client): `claude mcp add --scope user bobby -- bobby mcp`, then ask it to open a PR, or your branch, with Bobby. It opens in the Bobby already running, or one it starts in the background.
