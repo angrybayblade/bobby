@@ -1,6 +1,6 @@
 // Local mode: review the branch you're on, inside its repo, with no PR needed. The diff runs from the
 // merge-base with a base branch to your working tree (uncommitted tracked changes included).
-import { copyFileSync, existsSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, isAbsolute, join } from "node:path";
 import { git, run } from "./git.ts";
@@ -85,13 +85,13 @@ export async function resolveLocal(dir: string, baseArg?: string): Promise<Local
  *  added with `git add -N` and with a merge in progress, where stash refuses. Untracked files stay out. */
 export async function snapshot(cwd: string): Promise<string> {
   const real = (await git(cwd, ["rev-parse", "--git-path", "index"])).trim(), from = isAbsolute(real) ? real : join(cwd, real);
-  const tmp = join(tmpdir(), `bobby-index-${process.pid}-${Date.now()}`), env = { GIT_INDEX_FILE: tmp };
+  const dir = mkdtempSync(join(tmpdir(), "bobby-index-")), tmp = join(dir, "index"), env = { GIT_INDEX_FILE: tmp }; // a folder only you can write in
   try {
     if (existsSync(from)) copyFileSync(from, tmp);
     else await run(["git", "read-tree", "HEAD"], { cwd, env });
     await run(["git", "add", "-u"], { cwd, env });
     return (await run(["git", "write-tree"], { cwd, env })).trim();
   } finally {
-    rmSync(tmp, { force: true });
+    rmSync(dir, { recursive: true, force: true });
   }
 }
