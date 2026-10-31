@@ -4,6 +4,8 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- **Security:** another website can no longer make Bobby open a PR (clone its repo, hand it to Claude) by pointing at a review's address. A PR you've never opened in Bobby, reached from outside it, asks before it opens.
+
 ## 0.1.0-rc15 (2026-10-30)
 
 - The views run Conversation, Map, Lens, Outline, Flow, Diff, and each has a key, `ctrl`+`1` to `ctrl`+`6` in that order. `ctrl`+`,` and `ctrl`+`.` move a view left or right. Keys can now use ctrl, when you rebind them too.

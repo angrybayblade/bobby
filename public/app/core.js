@@ -55,7 +55,7 @@ export async function api(url, body, method = body ? "POST" : "GET") {
   try { r = await fetch(url, { method, headers: body ? { "content-type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined }); }
   catch { throw new Error("Bobby isn't answering. Is it still running in your terminal?"); }
   const j = await r.json().catch(() => ({}));
-  if (!r.ok && !("ok" in j)) throw new Error(j.error ?? `${r.status} ${r.statusText}`);
+  if (!r.ok && !("ok" in j)) throw Object.assign(new Error(j.error ?? `${r.status} ${r.statusText}`), { closed: !!j.closed }); // closed: the review isn't open (any more)
   return j;
 }
 

@@ -20,6 +20,15 @@ const [graph, session] = await (async () => {
     const r = await fetch(`${reviewBase}/api/graph`).catch(() => null);
     const g = r && (await r.json().catch(() => null));
     if (!r || !g) throw new Error("Bobby isn't answering. Is it still running in your terminal?");
+    if (g.closed) { // not open: open it, by itself if you've opened it before or came here from Bobby, else once you say so
+      if (g.settings) look(g.settings);
+      const ours = (() => { try { return new URL(document.referrer).origin === location.origin; } catch { return false; } })();
+      if (!g.known && !ours) await askToOpen();
+      const o = await fetch(`${reviewBase}/api/open`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).catch(() => null);
+      const og = o && (await o.json().catch(() => null));
+      if (!o?.ok) throw new Error(og?.error ?? "Bobby couldn't open this review.");
+      continue;
+    }
     if (g.loading || g.error) {
       if (g.settings) look(g.settings);
       bootCard(g);
@@ -36,6 +45,21 @@ const [graph, session] = await (async () => {
   return new Promise(() => {});
 });
 
+/** A PR this Bobby has never opened, reached from another site: opening it clones its repo and may run Claude on it,
+ *  so that waits for your click. */
+function askToOpen() {
+  const id = decodeURIComponent(reviewBase.slice(3));
+  document.body.classList.add("booting");
+  document.querySelector("#top").innerHTML = `<a class="brand" href="/" title="Home: your PRs and recent reviews"><img src="/bobby.svg" alt="" width="22" height="22">bobby</a>`;
+  document.querySelector("#view").innerHTML = `<div class="boot"><div class="card">
+    <h2>Open this review?</h2><div class="what">${esc(id)}</div>
+    <div class="acts"><button class="btn primary" data-open>Open</button><a class="btn" href="/">Back home</a></div>
+    <div class="foot">Bobby hasn't opened it before. Opening it clones its repository and reads its code.</div>
+  </div></div>`;
+  const b = document.querySelector("[data-open]");
+  b.focus();
+  return new Promise((res) => b.addEventListener("click", res, { once: true }));
+}
 /** The theme, the style and the text size, before the review's own chrome exists; remembered for the next page's first paint (index.html). */
 function look(s) {
   const root = document.documentElement;
@@ -208,6 +232,7 @@ async function poll() {
   clearTimeout(pollTimer);
   // Unreachable (restarting, asleep): keep trying, slower, and say so once.
   const s = await api("/api/status").catch((e) => {
+    if (e.closed) return void location.reload(); // Bobby restarted, or closed it while no page asked: the page reopens it
     if (!pollLost) chrome.toast(esc(e.message), 6000);
     pollLost = true;
     pollTimer = setTimeout(poll, 10_000);
