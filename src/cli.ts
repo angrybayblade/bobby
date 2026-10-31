@@ -296,8 +296,8 @@ if (cmd === "open") {
 }
 await serve(app, path);
 
-// A review no page has asked about for 15 minutes (an open page polls every 10 s) is unloaded: its language servers and
-// watchers stop, and it's built again (from the cache) when opened. Its progress is saved as you go.
+// A review no page has asked about for 15 minutes (an open page polls every 10 s) is unloaded: its language servers,
+// watchers and Claude's runs stop, and it's built again (from the cache) when opened. Its progress is saved as you go.
 const IDLE = 15 * 60_000;
 setInterval(() => {
   for (const [id, s] of app.reviews) {
@@ -305,6 +305,8 @@ setInterval(() => {
     app.reviews.delete(id);
     s.stopWatching?.();
     void stopServers(s);
+    for (const j of [s.agentJob, s.mapJob, ...(s.askJobs?.values() ?? [])]) // Claude's runs on it end too: a late one mustn't save over it once it's reopened
+      if (j && !j.done) { j.error = "Stopped: the review was closed"; j.proc?.kill(); }
     log.info(`  ▸ closed ${id}: no page open on it for 15 minutes (reopen it from the home page)`);
   }
 }, 60_000);
