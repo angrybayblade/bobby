@@ -1,37 +1,33 @@
 import { expect, test } from "bun:test";
 import { normalize } from "../src/map.ts";
 
+const node = (id: string, more: object = {}) => ({ id, label: id, kind: "step", status: "same", group: "", note: "", points: [], before: [], ref: "", ...more });
+const edge = (from: string, to: string, more: object = {}) => ({ from, to, label: "", status: "same", before: "", ...more });
 const raw = {
-  level: "service", why: "A new worker retries charges.", summary: "Failed charges are retried by a worker.",
-  nodes: [
-    { id: "api", label: "Charges API", kind: "service", status: "same", group: "payments", note: "", ref: "" },
-    { id: "worker", label: "Retry worker", kind: "service", status: "added", group: "payments", note: "new", ref: "src/worker.ts#L3" },
-    { id: "stripe", label: "Stripe", kind: "external", status: "same", group: "", note: "", ref: "" },
-    { id: "api", label: "duplicate", kind: "service", status: "same", group: "", note: "", ref: "" },
-    { id: "odd", label: "Odd", kind: "spaceship", status: "exploded", group: "", note: "", ref: "" },
+  scope: "Where charges are retried.", effect: "Customers whose card fails once.", summary: "Failed charges are retried by a worker.",
+  layers: [
+    { name: "Checkout", about: "What a customer goes through.", nodes: [node("pay"), node("charge", { status: "changed", points: ["fails: retry ×3"], before: ["fails: error"] }), node("done", { kind: "outcome" }), node("pay", { label: "duplicate" })],
+      edges: [edge("pay", "charge"), edge("charge", "done", { status: "changed", label: "after retries", before: "at once" }), edge("pay", "worker")] },
+    { name: "Inside", about: "", nodes: [node("worker", { kind: "service", status: "added", ref: "src/worker.ts#L3" }), node("odd", { kind: "spaceship", status: "exploded" }), node("pay")],
+      edges: [edge("worker", "odd", { status: "added", before: "ignored" })] },
+    { name: "Empty", about: "", nodes: [], edges: [] },
   ],
-  edges: [
-    { from: "api", to: "ghost", label: "nowhere", status: "same", before: "" },
-    { from: "api", to: "stripe", label: "charges once", status: "changed", before: "charges, fails" },
-    { from: "worker", to: "stripe", label: "retries ×3", status: "added", before: "ignored" },
-  ],
-  changes: [{ title: "Charges retry", detail: "Before, a failure was final.", nodes: ["worker", "ghost"], edges: [0, 1, 2] }, { title: "", detail: "x", nodes: [], edges: [] }],
+  changes: [{ title: "Charges retry", detail: "Before, a failure was final.", nodes: ["charge", "worker", "ghost"] }, { title: "", detail: "x", nodes: [] }],
 };
 
-test("a map is made safe to draw", () => {
+test("a map is made safe to draw, layer by layer", () => {
   const m = normalize(raw);
-  expect(m.level).toBe("service");
-  expect(m.nodes.map((n) => n.id)).toEqual(["api", "worker", "stripe", "odd"]); // the duplicate id is dropped
-  expect(m.nodes[3]).toMatchObject({ kind: "module", status: "same" }); // unknown kind and status fall back
-  expect(m.nodes[0]).toEqual({ id: "api", label: "Charges API", kind: "service", status: "same", group: "payments" }); // empty fields left out
-  expect(m.edges).toEqual([ // the edge to a missing node is dropped; only a changed edge keeps what it was
-    { from: "api", to: "stripe", label: "charges once", status: "changed", before: "charges, fails" },
-    { from: "worker", to: "stripe", label: "retries ×3", status: "added" },
+  expect(m.layers.map((l) => l.name)).toEqual(["Checkout", "Inside"]); // a layer with nothing on it is dropped
+  const [top, inside] = m.layers;
+  expect(top.nodes.map((n) => n.id)).toEqual(["pay", "charge", "done"]); // the duplicate id is dropped
+  expect(inside.nodes.map((n) => n.id)).toEqual(["worker", "odd"]); // ids are unique across layers too
+  expect(top.nodes[1]).toEqual({ id: "charge", label: "charge", kind: "step", status: "changed", points: ["fails: retry ×3"], before: ["fails: error"] });
+  expect(inside.nodes[1]).toMatchObject({ kind: "step", status: "same" }); // unknown kind and status fall back
+  expect(top.edges).toEqual([ // an edge to a node on another layer is dropped; only a changed edge keeps what it was
+    { from: "pay", to: "charge", label: "", status: "same" },
+    { from: "charge", to: "done", label: "after retries", status: "changed", before: "at once" },
   ]);
-  expect(m.changes).toEqual([{ title: "Charges retry", detail: "Before, a failure was final.", nodes: ["worker"], edges: [0, 1] }]); // indexes follow the edges kept
-});
-
-test("the level the reviewer asked for is kept", () => {
-  expect(normalize({ ...raw, level: "nonsense" }, "user")).toMatchObject({ level: "user", asked: "user" });
-  expect(normalize({ ...raw, level: "nonsense" }).level).toBe("module");
+  expect(inside.edges).toEqual([{ from: "worker", to: "odd", label: "", status: "added" }]);
+  expect(m.changes).toEqual([{ title: "Charges retry", detail: "Before, a failure was final.", nodes: ["charge", "worker"] }]);
+  expect(m).toMatchObject({ scope: "Where charges are retried.", effect: "Customers whose card fails once." });
 });

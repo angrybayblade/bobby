@@ -1,37 +1,43 @@
-// Map: how the PR changes what the system does, as a diagram, before and after. Claude draws it (map.ts, through
-// /api/map) at the level the change lives at: local (one function to another), module, service, the end user's or the
-// infrastructure's. It's one graph whose parts are marked same, added, removed or changed, laid out once: a slider runs
-// from before to after, fading out what the PR removes and in what it adds, so nothing moves as you compare; the rail lists the behavioural changes, and picking one lights up its part
-// of the diagram. A node's code, and the code a change cites, open in the code viewer.
+// Map: how the PR changes what the system does, as diagrams, before and after. Claude draws it (map.ts, through
+// /api/map): it scopes the change and what it affects, then draws it at layers of abstraction it defines for the PR,
+// from an overview in plain words down to the code. Each layer is one graph whose parts are marked same, added, removed
+// or changed, laid out once: a slider runs from before to after, fading out what the PR removes and in what it adds,
+// so nothing moves as you compare. The rail lists the behavioural changes, and picking one lights up its parts. A
+// part's code, and the code a change cites, open in the code viewer.
 import { api, esc } from "../core.js";
 import { md } from "../comments.js";
 import { openRef } from "../code.js";
 import { mapLayout } from "./maplayout.js";
 import { injectCss } from "./flow.js";
 
-const LEVELS = [["local", "Local", "function to function"], ["module", "Module", "module to module"], ["service", "Service", "service to service"], ["user", "End user", "what users see"], ["infra", "Infra", "how it runs"]];
 const KIND = { function: "function", module: "module", service: "service", actor: "person", screen: "screen", store: "data store", queue: "queue", external: "outside system", infra: "infra" };
-const W = 236; // a box's width
+const W = 236; // a box's width (a step or an outcome is as wide as its words, up to this)
 const STEPS = 8; // the steps the loader shows, the latest last (the server keeps as many)
 
 const CSS = `
 .bmap { position: absolute; inset: 0; display: flex; flex-direction: column; min-height: 0; }
 .bmap .mhd { display: flex; gap: 24px; align-items: flex-start; justify-content: space-between; padding: 14px 24px 12px; border-bottom: 1px solid var(--line-soft); }
 .bmap .mhd h2 { margin: 3px 0 3px; font: 600 calc(var(--size) * .95)/1.45 var(--font-prose); max-width: 100ch; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.bmap .mlevel { font: 600 10.5px var(--font-ui); letter-spacing: .09em; text-transform: uppercase; color: var(--faint); }
-.bmap .mlevel b { color: var(--text); font-weight: 650; }
-.bmap .mwhy { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--muted); max-width: 100ch; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.bmap .mwhy span { color: var(--faint); margin-right: 4px; }
+.bmap .mwhy { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--muted); max-width: 110ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bmap .mtitle { flex: 1; min-width: 0; }
 .bmap .mctl { display: flex; gap: 10px; align-items: center; flex: none; }
 .bmap .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
 .bmap .seg button { padding: 5px 12px; font-size: 13px; color: var(--muted); background: none; border: 0; }
 .bmap .seg button + button { border-left: 1px solid var(--line); }
 .bmap .seg button.on { color: var(--text); font-weight: 650; background: var(--raised); } /* weight, not colour */
-.bmap select { font: 13px var(--font-ui); padding: 5px 8px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); color: var(--text); }
 .bmap .mctl .btn { padding: 5px 12px; font-size: 13px; }
 .bmap .banner { padding: 7px 24px; font-size: 13px; color: var(--muted); background: var(--raised); border-bottom: 1px solid var(--line-soft); display: flex; gap: 10px; align-items: center; }
 .bmap .banner .btn { padding: 3px 10px; font-size: 12.5px; }
 .bmap .mbody { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 340px; }
-.bmap .stage { position: relative; overflow: hidden; min-width: 0; cursor: grab; touch-action: none; }
+.bmap .mleft { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.bmap .mlayers { display: flex; align-items: baseline; gap: 4px 6px; flex-wrap: wrap; padding: 10px 24px 9px; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+.bmap .mlayers button { padding: 2px 4px; border: 0; background: none; font: inherit; color: var(--muted); }
+.bmap .mlayers button i { font-style: normal; color: var(--faint); margin-right: 5px; font-variant-numeric: tabular-nums; }
+.bmap .mlayers button.on { color: var(--text); font-weight: 650; } /* weight, not colour */
+.bmap .mlayers .sep { color: var(--faint); }
+.bmap .mlayers .mabout { flex-basis: 100%; padding: 0 4px; font-size: 12.5px; color: var(--muted); }
+.bmap .stage { flex: 1; min-height: 0; position: relative; overflow: hidden; min-width: 0; cursor: grab; touch-action: none; }
 .bmap .stage.panning { cursor: grabbing; user-select: none; }
 .bmap .mzoom { position: absolute; left: 16px; bottom: 16px; display: flex; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); overflow: hidden; cursor: default; }
 .bmap .mzoom button { min-width: 30px; padding: 4px 8px; border: 0; background: none; font: 13px var(--font-ui); color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -45,6 +51,16 @@ const CSS = `
 .bmap .mn.kind-actor { border-radius: 20px; padding-left: 16px; padding-right: 16px; }
 .bmap .mn.kind-store { border-bottom-width: 2px; }
 .bmap .mn.kind-external, .bmap .mn.kind-infra { border-style: dashed; }
+.bmap .mn.kind-step, .bmap .mn.kind-outcome { width: max-content; min-width: 104px; max-width: ${W}px; text-align: center; }
+.bmap .mn.kind-step .ml { margin: 0; }
+.bmap .mn.kind-outcome { border-color: transparent; background: var(--bg); }
+.bmap .mn.kind-outcome .ml { margin: 0; font-weight: 500; color: var(--muted); }
+.bmap .mp { list-style: none; margin: 6px 0 0; padding: 0; font-size: 12px; line-height: 1.45; color: var(--muted); text-align: left; }
+.bmap .mp li::before { content: "· "; color: var(--faint); }
+.bmap .mps { display: grid; }
+.bmap .mps > .mp { grid-area: 1 / 1; }
+.bmap .mps > .was { opacity: calc(1 - var(--t)); }
+.bmap .mps > .now { opacity: var(--t); }
 .bmap .mk { display: flex; gap: 6px; align-items: baseline; font: 500 11px var(--font-ui); color: var(--faint); white-space: nowrap; min-width: 0; }
 .bmap .mk .kd { flex: none; }
 .bmap .mk .g { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
@@ -99,10 +115,6 @@ const CSS = `
 .bmap .mfootrow { display: flex; align-items: center; gap: 12px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line-soft); font-size: 12.5px; color: var(--faint); }
 .bmap .mfootrow .mel { font-variant-numeric: tabular-nums; color: var(--muted); }
 .bmap .mfootrow .btn { margin-left: auto; padding: 4px 12px; font-size: 13px; }
-.bmap .lvls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 18px 0 18px; }
-.bmap .lvls button { padding: 6px 11px; border: 1px solid var(--line); border-radius: 3px; background: none; font-size: 13px; color: var(--muted); text-align: left; }
-.bmap .lvls button small { display: block; font-size: 11px; color: var(--faint); }
-.bmap .lvls button.on { color: var(--text); font-weight: 650; background: var(--raised); }
 .bmap .merr { margin-top: 12px !important; color: var(--risk) !important; }
 `;
 
@@ -122,7 +134,7 @@ export default {
   mount(el, app) {
     injectCss("map", CSS);
     const root = el.appendChild(Object.assign(document.createElement("div"), { className: "bmap" }));
-    let tick = 0, data = null, t = 1, sel = -1, want = "", dead = false, timer = 0, plane = null, size = null, drawn = "";
+    let tick = 0, data = null, t = 1, sel = -1, layer = 0, dead = false, timer = 0, plane = null, size = null, drawn = "";
     // the camera: framed to fit the map until you pan or zoom; then yours until another map is drawn
     let cam = { tx: 0, ty: 0, s: 1 }, mine = false;
 
@@ -133,42 +145,45 @@ export default {
       render();
       if (data.running) timer = setTimeout(load, 1500);
     }
-    async function draw(level) {
-      const r = await api("/api/map/start", level ? { level } : {}).catch((e) => ({ ok: false, error: e.message }));
+    async function draw() {
+      const r = await api("/api/map/start", {}).catch((e) => ({ ok: false, error: e.message }));
       if (!r.ok) { data = { ...data, error: r.error }; return render(); }
-      sel = -1;
+      sel = -1; layer = 0;
       load();
     }
 
     function render() {
       const m = data?.map;
       if (!m) return intro();
-      const lvl = LEVELS.find((l) => l[0] === m.level) ?? LEVELS[1];
+      layer = Math.min(layer, m.layers.length - 1);
+      const L = m.layers[layer];
       const banner = data.running ? `<div class="banner">Redrawing the map: ${esc(data.steps.at(-1) ?? "starting")}… <button class="btn quiet" data-cancel>Stop</button></div>`
         : data.error ? `<div class="banner">Couldn't redraw it: ${esc(data.error)}</div>`
         : data.stale ? `<div class="banner">Drawn for an earlier commit of this PR. <button class="btn" data-redraw>Redraw it</button></div>` : "";
       root.innerHTML = `
         <div class="mhd">
-          <div><div class="mlevel"><b>${lvl[1]}</b> · ${lvl[2]}</div><h2 title="${esc(m.summary)}">${esc(m.summary)}</h2><p class="mwhy" title="${esc(m.why)}">${esc(m.why)}</p></div>
+          <div class="mtitle"><h2 title="${esc(m.summary)}">${esc(m.summary)}</h2><p class="mwhy" title="${esc(m.scope)}"><span>Changes</span>${esc(m.scope)}</p><p class="mwhy" title="${esc(m.effect)}"><span>Affects</span>${esc(m.effect)}</p></div>
           <div class="mctl">
             <div class="slide"><button data-end="0">Before</button><input type="range" min="0" max="1" step="0.01" value="${t}" aria-label="Before or after the PR"><button data-end="1">After</button></div>
-            <select data-level title="The level to draw it at"><option value="">Claude picks the level</option>${LEVELS.map(([id, name, sub]) => `<option value="${id}"${want === id ? " selected" : ""}>${name}: ${sub}</option>`).join("")}</select>
             <button class="btn" data-redraw ${data.running ? "disabled" : ""}>Redraw</button>
           </div>
         </div>
         ${banner}
         <div class="mbody">
-          <div class="stage"><div class="plane${sel >= 0 ? " lit" : ""}"></div>
-            <div class="mzoom"><button data-zoom="-1" title="Zoom out">−</button><button data-zoom="fit" title="Fit the map to the canvas"></button><button data-zoom="1" title="Zoom in">+</button></div></div>
+          <div class="mleft">
+            <nav class="mlayers">${m.layers.length > 1 ? m.layers.map((x, i) => `${i ? `<span class="sep">›</span>` : ""}<button data-layer="${i}" class="${i === layer ? "on" : ""}" title="${esc(x.about)}"><i>${i + 1}</i>${esc(x.name)}</button>`).join("") : `<button class="on">${esc(L.name)}</button>`}<span class="mabout">${esc(L.about)}</span></nav>
+            <div class="stage"><div class="plane${sel >= 0 ? " lit" : ""}"></div>
+              <div class="mzoom"><button data-zoom="-1" title="Zoom out">−</button><button data-zoom="fit" title="Fit the map to the canvas"></button><button data-zoom="1" title="Zoom in">+</button></div></div>
+          </div>
           <aside class="mrail">
             <h4>What changes</h4>
             <ol>${m.changes.map((c, i) => `<li data-change="${i}" class="${sel === i ? "on" : ""}"><div class="ct"><i>${i + 1}</i>${esc(c.title)}</div><div class="cd">${md(c.detail)}</div></li>`).join("")}</ol>
-            <div class="mkeys">← → before, after · ↑ ↓ step through the changes · drag or scroll to pan, pinch or ctrl+scroll to zoom</div>
+            <div class="mkeys">← → before, after · ↑ ↓ step through the changes · enter / esc a layer deeper or higher · drag or scroll to pan, pinch or ctrl+scroll to zoom</div>
             <div class="mfoot">Drawn by Claude ${new Date(m.at).toLocaleString()}${m.cost ? ` · $${m.cost.toFixed(2)}` : ""}</div>
           </aside>
         </div>`;
       plane = root.querySelector(".plane");
-      if (drawn !== m.at) { drawn = m.at; mine = false; } // a new map: framed afresh
+      if (drawn !== `${m.at} ${layer}`) { drawn = `${m.at} ${layer}`; mine = false; } // a new map or layer: framed afresh
       root.querySelector(".mrail li.on")?.scrollIntoView({ block: "nearest" });
       diagram(m);
     }
@@ -178,10 +193,9 @@ export default {
       clearInterval(tick);
       root.innerHTML = `<div class="mintro"><div class="mcard">
         <h2>Map</h2>
-        <p>How this PR changes what the system does, as a diagram of before and after, at the level the change lives at: from one function calling another up to services, what users see, or how it runs.</p>
-        <p>Claude draws it from the PR and the code around it, reading only, in a minute or two.</p>
-        <div class="lvls"><button data-want="" class="${want ? "" : "on"}">Claude picks<small>the level of the change</small></button>${LEVELS.map(([id, name, sub]) => `<button data-want="${id}" class="${want === id ? "on" : ""}">${name}<small>${sub}</small></button>`).join("")}</div>
-        <button class="btn primary" data-draw>Draw the map</button>
+        <p>How this PR changes what the system does, drawn before and after. Claude works out what the change touches and how far its effect reaches, then draws it in layers: an overview in plain words first, then each layer opening up where the change is, down to the code.</p>
+        <p>It reads the PR and the code around it, reading only, in a minute or two.</p>
+        <p style="margin-top:18px"><button class="btn primary" data-draw>Draw the map</button></p>
         ${data?.error ? `<p class="merr">${esc(data.error)}</p>` : ""}
       </div></div>`;
     }
@@ -215,14 +229,18 @@ export default {
     }
 
     function diagram(m) {
-      const nodes = m.nodes, edges = m.edges.map((e, i) => ({ ...e, i })), change = m.changes[sel];
-      const litNodes = new Set(change ? [...change.nodes, ...change.edges.flatMap((i) => [m.edges[i]?.from, m.edges[i]?.to])] : []);
-      const litEdges = new Set(change?.edges ?? []);
+      const L = m.layers[layer], nodes = L.nodes, edges = L.edges.map((e, i) => ({ ...e, i })), change = m.changes[sel];
+      const litNodes = new Set(change?.nodes ?? []);
+      const litEdges = new Set(edges.filter((e) => litNodes.has(e.from) && litNodes.has(e.to)).map((e) => e.i));
+      const plain = (k) => k === "step" || k === "outcome"; // a box that's only its words
+      const list = (ps, cls = "") => `<ul class="mp${cls}">${ps.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`;
+      // the cases inside a part; a changed part's, fading from what they were into what they are
+      const points = (n) => (n.before ? `<div class="mps">${list(n.before, " was")}${list(n.points ?? [], " now")}</div>` : n.points?.length ? list(n.points) : "");
       const dim = (lit) => (change && !lit ? " dim" : "");
       // boxes and labels first, so the layout knows their sizes
       plane.innerHTML = nodes.map((n) => `<div class="mn kind-${esc(n.kind)} st-${n.status}${dim(litNodes.has(n.id))}" data-id="${esc(n.id)}"${n.ref ? ` data-ref="${esc(n.ref)}"` : ""} title="${esc([n.note, n.ref ? "Click to open its code" : ""].filter(Boolean).join("\n"))}">
-          <div class="mk"><span class="kd">${KIND[n.kind] ?? esc(n.kind)}</span>${n.group ? `<span class="g">${esc(n.group)}</span>` : ""}</div>
-          <div class="ml">${esc(n.label)}</div></div>`).join("") +
+          ${plain(n.kind) ? "" : `<div class="mk"><span class="kd">${KIND[n.kind] ?? esc(n.kind)}</span>${n.group ? `<span class="g">${esc(n.group)}</span>` : ""}</div>`}
+          <div class="ml">${esc(n.label)}</div>${points(n)}</div>`).join("") +
         edges.map((e, j) => {
           // a changed interaction: what it did, fading into what it does, in one place
           const two = e.status === "changed" && e.before && e.before !== e.label;
@@ -231,7 +249,7 @@ export default {
         }).join("");
       const box = new Map([...plane.querySelectorAll(".mn")].map((d) => [d.dataset.id, d]));
       const tag = new Map([...plane.querySelectorAll(".el")].map((d) => [Number(d.dataset.edge), d]));
-      const lay = mapLayout(nodes.map((n) => ({ id: n.id, w: W, h: box.get(n.id).offsetHeight })),
+      const lay = mapLayout(nodes.map((n) => ({ id: n.id, w: box.get(n.id).offsetWidth, h: box.get(n.id).offsetHeight })),
         edges.map((e, j) => ({ from: e.from, to: e.to, label: tag.has(j) ? { w: tag.get(j).offsetWidth, h: tag.get(j).offsetHeight } : null })));
       for (const [id, d] of box) { const p = lay.nodes.get(id); d.style.left = `${p.x}px`; d.style.top = `${p.y}px`; }
       const paths = [];
@@ -330,29 +348,34 @@ export default {
       root.querySelectorAll(".slide [data-end]").forEach((b) => b.classList.toggle("on", Math.round(t) === Number(b.dataset.end)));
     }
     root.addEventListener("input", (ev) => { if (ev.target.matches(".slide input")) slide(Number(ev.target.value), true); });
-    const pick = (i, toggle = true) => { sel = toggle && i === sel ? -1 : i; render(); };
+    const pick = (i, toggle = true) => {
+      sel = toggle && i === sel ? -1 : i;
+      const m = data?.map, on = new Set(m?.changes[sel]?.nodes ?? []);
+      if (on.size && !m.layers[layer].nodes.some((n) => on.has(n.id))) { const k = m.layers.findIndex((l) => l.nodes.some((n) => on.has(n.id))); if (k >= 0) layer = k; } // shown on another layer: go there
+      render();
+    };
     root.addEventListener("click", (ev) => {
       const t = ev.target;
       if (dragged) { dragged = false; return; } // the end of a pan, not a click
       const z = t.closest("[data-zoom]");
       if (z) { if (z.dataset.zoom === "fit") { cam = fitted(); mine = false; apply(true); } else zoom(z.dataset.zoom > 0 ? 1.25 : 0.8, undefined, undefined, true); return; }
       if (t.closest("a")) return; // a reference in a change: the viewer opens it (code.js)
-      const b = t.closest("[data-end],[data-want],[data-draw],[data-redraw],[data-cancel],[data-change],.mn[data-ref]");
+      const b = t.closest("[data-end],[data-layer],[data-draw],[data-redraw],[data-cancel],[data-change],.mn[data-ref]");
       if (!b) return;
       if (b.dataset.end) slide(Number(b.dataset.end));
-      else if (b.dataset.want !== undefined) { want = b.dataset.want; render(); }
-      else if (b.hasAttribute("data-draw")) draw(want);
-      else if (b.hasAttribute("data-redraw")) draw(want);
+      else if (b.dataset.layer) toLayer(Number(b.dataset.layer));
+      else if (b.hasAttribute("data-draw") || b.hasAttribute("data-redraw")) draw();
       else if (b.hasAttribute("data-cancel")) api("/api/map/cancel", {}).then(load);
       else if (b.dataset.change) pick(Number(b.dataset.change));
       else if (b.dataset.ref) { const r = parseRef(b.dataset.ref); if (r) openRef(app, r); }
     });
-    root.addEventListener("change", (ev) => { if (ev.target.matches("[data-level]")) want = ev.target.value; });
+    const toLayer = (i) => { const n = data?.map?.layers.length ?? 0; if (i >= 0 && i < n && i !== layer) { layer = i; render(); } };
 
     const step = (d) => { const n = data?.map?.changes.length ?? 0; if (n) pick(sel < 0 ? (d > 0 ? 0 : n - 1) : Math.max(0, Math.min(n - 1, sel + d)), false); };
     const keys = { // by action (keys.js)
       left: () => slide(0), right: () => slide(1), up: () => step(-1), down: () => step(1),
-      zoomOut: () => { if (sel >= 0) pick(sel); },
+      zoomIn: () => toLayer(layer + 1),
+      zoomOut: () => { if (sel >= 0) pick(sel); else toLayer(layer - 1); },
     };
 
     load();

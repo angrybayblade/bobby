@@ -4,7 +4,7 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
-- **Map**, a new view: how the PR changes what the system does, as a diagram of before and after, drawn by Claude at the level the change lives at (local, module, service, end user or infra). Slide between **Before** and **After**, and step through the behavioural changes, each lighting up its part of the diagram.
+- **Map**, a new view: how the PR changes what the system does, drawn by Claude before and after: it scopes the change and what it affects, then draws it in layers it defines for the PR, from an overview in plain words down to the code. Slide between **Before** and **After**, and step through the behavioural changes, each lighting up its part of the diagram.
 - **Open reviews from your agent.** `bobby mcp` is an MCP server for Claude Code (or any MCP client): `claude mcp add --scope user bobby -- bobby mcp`, then ask it to open a PR, or your branch, with Bobby. It opens in the Bobby already running, or one it starts in the background.
 - **`bobby start`** runs Bobby in the background (if it isn't running), for agents and scripts: `bobby <pr>` then hands its review to it and returns at once. **`bobby stop`** stops it.
 - **A skill for agents**, `skills/bobby/SKILL.md`: how to open PRs and branches in Bobby, with the tool or the CLI, and what to do when it can't.

@@ -3,7 +3,7 @@ import { embeddedAsset } from "./assets.ts";
 import { cancelLogin, claudeStatus, dismiss, INSTALL_TEXT, installClaude, startLogin, submitCode } from "./claude.ts";
 import { fileLines, fileLinesMany, forgetUnknownMe, git, parsePrArg, reactionsOf, run, whoAmI } from "./git.ts";
 import { type AgentJob, draftOf, runAgentReview } from "./agent.ts";
-import { LEVELS as MAP_LEVELS, runMap } from "./map.ts";
+import { runMap } from "./map.ts";
 import { runAsk } from "./ask.ts";
 import { handleMcp, mcpConfig, openMcp } from "./mcp.ts";
 import { catalog, parseSpec, resolveSpec, runWith, type Connected, type Selection } from "./connected.ts";
@@ -11,7 +11,7 @@ import { refsForGitHub } from "./refs.ts";
 import { cancelGhLogin, dismissGh, ghStatus, installGh, startGhLogin } from "./github.ts";
 import { REACTION_KINDS, type ReviewGraph } from "./graph.ts";
 import { home, loadSettings, saveSettings, saveState } from "./state.ts";
-import type { Ask, Comment, Definition, MapLevel, PrivateNote, ReviewState } from "./types.ts";
+import type { Ask, Comment, Definition, PrivateNote, ReviewState } from "./types.ts";
 import { type Inspector, insideRepo, inspectSyntax, referencesSyntax, type Uses } from "./inspect.ts";
 import { declineServer, inspectorFor, installServer, recheckServer, type ServerInfo, serverInfoFor } from "./servers.ts";
 import { Repo } from "./resolve.ts";
@@ -538,16 +538,14 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
       if (p === "/api/map" && req.method === "GET") {
         const job = s.mapJob, m = s.state.map;
         return json({ running: !!job && !job.done, steps: job?.steps.slice(-8) ?? [], startedAt: job?.startedAt ?? 0, error: job?.done ? job.error ?? null : null,
-          map: m ?? null, stale: !!m && m.headSha !== pr().headSha });
+          map: m?.layers ? m : null, stale: !!m && m.headSha !== pr().headSha }); // a map from before layers: drawn again
       }
       if (req.method === "POST" && p === "/api/map/start") {
         if (!s.cwd) return json({ ok: false, error: "There's no local clone to read the code from" }, 400);
         if (s.mapJob && !s.mapJob.done) return json({ ok: true });
-        const { level } = (await req.json().catch(() => ({}))) as { level?: unknown };
-        const asked = MAP_LEVELS.includes(level as MapLevel) ? (level as MapLevel) : undefined;
         const job: AgentJob = (s.mapJob = { steps: [], startedAt: Date.now() });
         const g = s.claudeGraph ?? s.staticGraph, tools = bobbyTools(s, app, g);
-        void runMap(s.cwd, g, job, (m) => { s.state.map = m; persist(); }, asked, tools.config).finally(tools.close);
+        void runMap(s.cwd, g, job, (m) => { s.state.map = m; persist(); }, tools.config).finally(tools.close);
         return json({ ok: true });
       }
       if (req.method === "POST" && p === "/api/map/cancel") {

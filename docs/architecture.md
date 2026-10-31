@@ -32,7 +32,7 @@ src/                     extraction, server and CLI (TypeScript, run directly by
   llm.ts                 Claude's change tree (headless `claude -p` with a JSON schema)
   graph.ts               packs everything into a ReviewGraph; wires edges; builds the walk
   server.ts              Bun HTTP server: one app of many reviews (/r/<id>), static files, the APIs
-  map.ts                 the behaviour map: Claude's diagram of the system before and after the change, for the Map view
+  map.ts                 the behaviour map: Claude's scope of the change and its layered diagrams, before and after, for the Map view
   mcp.ts                 Bobby's tools for its own runs of Claude, over MCP (/mcp/<token>)
   bridge.ts              bobby mcp: an MCP server over stdio for your agents, to open reviews in the running app
   running.ts             the app already running on this machine (by its lock), and the browser to show it in
