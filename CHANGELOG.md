@@ -8,6 +8,7 @@ What changed in each release, newest first. Each release's full notes, with inst
 - **Security:** the Claude run that organises a review into its tree no longer loads your own Claude Code setup: your MCP servers, claude.ai connectors, settings and permissions stay out of it, as they already did for Review with Claude, Ask and Map.
 - **Security:** no other site can show Bobby inside a frame, where it could dress a click on Approve up as something else.
 - A review Bobby closes (no page open on it for 15 minutes) no longer stays in memory, and ending Bobby with ctrl-c stops every review's language servers. The copies of a PR's code they read are cleared once their review is closed, rather than kept while Bobby runs.
+- A tab you've left in the background stops checking in with Bobby (unless Claude is at work or you've left words unsent in a comment box), so Bobby closes the review after 15 minutes and frees its language servers, often a GB each. Back on the tab, it reopens by itself. A tab opened before this update needs one reload.
 
 ## 0.1.0-rc15 (2026-10-30)
 

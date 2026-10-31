@@ -232,7 +232,7 @@ async function poll() {
   clearTimeout(pollTimer);
   // Unreachable (restarting, asleep): keep trying, slower, and say so once.
   const s = await api("/api/status").catch((e) => {
-    if (e.closed) return void location.reload(); // Bobby restarted, or closed it while no page asked: the page reopens it
+    if (e.closed && !unsent()) return void location.reload(); // Bobby restarted, or closed it while no page asked: the page reopens it
     if (!pollLost) chrome.toast(esc(e.message), 6000);
     pollLost = true;
     pollTimer = setTimeout(poll, 10_000);
@@ -253,9 +253,16 @@ async function poll() {
   if (JSON.stringify([app.llm, app.claudeReady, app.servers]) !== before) app.emit("llm");
   await keepCurrent(s);
   const reviewing = await agentPoll(app, s), answering = await askPoll(app, s);
-  // quickly while something's on its way, else slowly, to hear of new comments and new work (watch.ts)
-  pollTimer = setTimeout(poll, answering ? 700 : reviewing ? 1500 : s.llm === "pending" || busy(app.servers) ? 3000 : 10_000);
+  // quickly while something's on its way, else slowly, to hear of new comments and new work (watch.ts). A hidden tab
+  // stops asking unless something's on its way or you've left words unsent, so Bobby can close a review you've left
+  // (its language servers, often a GB, with it); back on the tab, it asks again, and reopens it if it was closed.
+  const working = answering || reviewing || s.llm === "pending" || busy(app.servers);
+  if (document.hidden && !working && !unsent()) return void (pollTimer = 0);
+  pollTimer = setTimeout(poll, document.hidden ? 60_000 : answering ? 700 : reviewing ? 1500 : working ? 3000 : 10_000);
 }
+/** Words typed into a comment box and not yet sent or saved: the page keeps them, so it mustn't be reloaded. */
+const unsent = () => [...document.querySelectorAll("textarea")].some((t) => t.value.trim());
+document.addEventListener("visibilitychange", () => { if (!document.hidden && !pollTimer) poll(); });
 // ---- keeping the review current: new comments on a PR appear by themselves; new work is offered, never swapped in
 let seenDiscussion = null, announced = "";
 async function keepCurrent(s) {
