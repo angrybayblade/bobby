@@ -266,6 +266,17 @@ export function startServer(app: App, port: number, { hostname = "127.0.0.1", al
 const pageLogs: number[] = []; // when the page last logged, for its limit
 /** Answers a request, and logs what went wrong: an error from the API (4xx, 5xx) with what it said, and anything thrown,
  *  which answers 500 instead of dropping the connection. */
+/** On every answer: no other site may frame Bobby's pages (to dress a click on Approve up as something else), and the
+ *  browser takes each file as the type it's served as. */
+const SAFE = { "x-frame-options": "DENY", "content-security-policy": "frame-ancestors 'none'", "x-content-type-options": "nosniff", "referrer-policy": "same-origin" };
+function safe(res: Response): Response {
+  try { for (const [k, v] of Object.entries(SAFE)) res.headers.set(k, v); return res; } catch { // a fetched answer's headers can't change: copy it
+    const out = new Response(res.body, res);
+    for (const [k, v] of Object.entries(SAFE)) out.headers.set(k, v);
+    return out;
+  }
+}
+
 async function logged(req: Request, answer: () => Promise<Response>): Promise<Response> {
   const { pathname } = new URL(req.url);
   try {
@@ -274,10 +285,10 @@ async function logged(req: Request, answer: () => Promise<Response>): Promise<Re
       const said = await res.clone().json().then((j: { error?: string }) => j.error ?? "", () => "");
       (res.status >= 500 ? log.error : log.warn)(`  ${req.method} ${pathname} → ${res.status}${said ? `: ${said}` : ""}`);
     }
-    return res;
+    return safe(res);
   } catch (e) {
     log.error(`  ${req.method} ${pathname} failed: ${(e as Error)?.message ?? e}`, (e as Error)?.stack);
-    return json({ ok: false, error: String((e as Error)?.message ?? e) }, 500);
+    return safe(json({ ok: false, error: String((e as Error)?.message ?? e) }, 500));
   }
 }
 

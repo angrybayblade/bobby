@@ -120,6 +120,6 @@ Position is stored as a **node id** (`chg:…` or `ctx:…`), which is stable ac
 
 ## Security notes
 
-- The server binds to `127.0.0.1` unless `--host` says otherwise, and has no authentication. Anything that can reach it can call it, including `/api/submit`, which posts as your `gh` user. `guard()` refuses a Host that isn't loopback or allowed (`hostAllowed`, against DNS rebinding) and a write whose Origin isn't the page at that Host.
+- The server binds to `127.0.0.1` unless `--host` says otherwise, and has no authentication. Anything that can reach it can call it, including `/api/submit`, which posts as your `gh` user. `guard()` refuses a Host that isn't loopback or allowed (`hostAllowed`, against DNS rebinding) and a write whose Origin isn't the page at that Host. Every answer forbids framing (`X-Frame-Options: DENY`, `frame-ancestors 'none'`), so another site can't lay Bobby under a decoy and steer a click onto Approve, and sends `nosniff` and `Referrer-Policy: same-origin` (`safe()`).
 - Static file paths are normalised, and anything escaping `public/` is a 404.
 - `/api/file` passes `path` to `git show <sha>:<path>`, so it can read any file in the repo at those two commits. That's fine for a local tool, but it's not meant to be exposed.
