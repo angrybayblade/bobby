@@ -2,7 +2,7 @@
 // they started on code) and pushes in time order, a box to comment, and at the end where it stands: reviews, CI checks
 // and whether it can merge. Read live from GitHub (/api/conversation), so it keeps up while you review; a PR only, never
 // a local branch. A thread's "View code" opens that code in the Diff view.
-import { api, esc } from "../core.js";
+import { api, esc, safeUrl } from "../core.js";
 import { ago, ghHtml, md, newLines } from "../comments.js";
 import { reactionClick, reactionsHtml } from "../reactions.js";
 import { hlBlock, langOf } from "../code.js";
@@ -182,7 +182,7 @@ export default {
         ${t.resolved ? `<span class="tag">Resolved</span>` : ""}${t.outdated ? `<span class="tag">Outdated</span>` : ""}<span class="grow"></span>
         ${isShut(t) ? `<span class="tag">${plural(t.comments.length, "comment")}</span>` : ""}
         ${canGo ? `<button class="go" data-go="${esc(t.id)}" title="Open this code in the Diff view">View code →</button>` : ""}</div>`;
-      const items = t.comments.map((c) => `<div class="tc">${avatar(c.author)}<div><div class="who"><b>${esc(c.author.login)}</b> ${when(c.createdAt)}<a href="${esc(c.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a>${ownButtons(`review:${c.id}`, c)}</div>
+      const items = t.comments.map((c) => `<div class="tc">${avatar(c.author)}<div><div class="who"><b>${esc(c.author.login)}</b> ${when(c.createdAt)}<a href="${safeUrl(c.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a>${ownButtons(`review:${c.id}`, c)}</div>
         ${bodyOf(`review:${c.id}`, c, t)}</div></div>`).join("");
       const key = `r:${t.comments[0]?.id}`;
       const resolve = `<button class="cbtn" data-resolve="${esc(t.id)}" data-to="${t.resolved ? "0" : "1"}">${t.resolved ? "Unresolve conversation" : "Resolve conversation"}</button>`;
@@ -203,9 +203,9 @@ export default {
           while (items[k + 1]?.kind === "commit") run.push(items[++k]);
           const who = [...new Set(run.map((c) => c.author.login))].join(", ");
           out.push(`<div class="item"><div class="event"><span class="ico">⎔</span><span><b>${esc(who)}</b> added ${plural(run.length, "commit")}</span>${when(run.at(-1).createdAt)}</div>
-            <div class="commits">${run.map((c) => `<a href="${esc(c.url)}" target="_blank" rel="noopener" title="${esc(c.subject)}"><span class="s">${esc(c.subject)}</span><code>${esc(c.sha.slice(0, 7))}</code></a>`).join("")}</div></div>`);
+            <div class="commits">${run.map((c) => `<a href="${safeUrl(c.url)}" target="_blank" rel="noopener" title="${esc(c.subject)}"><span class="s">${esc(c.subject)}</span><code>${esc(c.sha.slice(0, 7))}</code></a>`).join("")}</div></div>`);
         } else if (it.kind === "comment") {
-          out.push(`<div class="item card" data-item>${avatar(it.author)}<div class="box"><div class="hd"><b>${esc(it.author.login)}</b> commented ${when(it.createdAt)}<span class="grow"></span>${ownButtons(`issue:${it.id}`, it)}<a href="${esc(it.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a></div>
+          out.push(`<div class="item card" data-item>${avatar(it.author)}<div class="box"><div class="hd"><b>${esc(it.author.login)}</b> commented ${when(it.createdAt)}<span class="grow"></span>${ownButtons(`issue:${it.id}`, it)}<a href="${safeUrl(it.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a></div>
             <div class="bd">${bodyOf(`issue:${it.id}`, it)}</div></div></div>`);
         } else {
           const threads = byReview.get(it.id) ?? [];
@@ -213,7 +213,7 @@ export default {
           // A reply in an existing thread is a review of its own, with no text: the reply already shows in its thread.
           if (it.state === "COMMENTED" && !it.body.trim() && !threads.length) continue;
           const [cls, ico] = ICON[it.state] ?? ["", "◉"];
-          out.push(`<div class="item review" data-item><div class="event"><span class="ico ${cls}">${ico}</span>${avatar(it.author)}<span><b>${esc(it.author.login)}</b> ${VERB[it.state] ?? "reviewed"}</span>${when(it.createdAt)}<a href="${esc(it.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a></div>
+          out.push(`<div class="item review" data-item><div class="event"><span class="ico ${cls}">${ico}</span>${avatar(it.author)}<span><b>${esc(it.author.login)}</b> ${VERB[it.state] ?? "reviewed"}</span>${when(it.createdAt)}<a href="${safeUrl(it.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a></div>
             ${it.body.trim() || threads.length ? `<div class="body">${it.body.trim() ? `<div class="box"><div class="bd">${text(it)}${reactionsHtml(it.node, it.reactions)}</div></div>` : ""}${threads.map(threadHtml).join("")}</div>` : ""}</div>`);
         }
       }
@@ -236,7 +236,7 @@ export default {
       const n = (s) => by[s]?.length ?? 0;
       const [ccls, cico, ctitle] = !data.checks.length ? ["", "◌", "No checks"] : n("failure") ? ["bad", "✕", "Some checks failed"] : n("running") || n("queued") ? ["wait", "●", "Checks running"] : ["ok", "✓", "All checks passed"];
       const csub = ORDER.filter(n).map((s) => `${n(s)} ${s === "failure" ? "failing" : s === "success" ? "successful" : s}`).join(" · ");
-      const row = (c) => `<div class="chk"><span class="i ${c.status}">${CHECK[c.status]}</span><span class="n" title="${esc(c.description ?? "")}">${c.workflow ? `<small>${esc(c.workflow)} / </small>` : ""}${esc(c.name)}</span><span class="d">${esc(dur(c))}</span>${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">Details</a>` : "<span></span>"}</div>`;
+      const row = (c) => `<div class="chk"><span class="i ${c.status}">${CHECK[c.status]}</span><span class="n" title="${esc(c.description ?? "")}">${c.workflow ? `<small>${esc(c.workflow)} / </small>` : ""}${esc(c.name)}</span><span class="d">${esc(dur(c))}</span>${c.url ? `<a href="${safeUrl(c.url)}" target="_blank" rel="noopener">Details</a>` : "<span></span>"}</div>`;
       const loud = ORDER.slice(0, 4).flatMap((s) => by[s] ?? []), quiet = ORDER.slice(4).flatMap((s) => by[s] ?? []);
       const checks = `<section><div class="sh"><span class="dot ${ccls}">${cico}</span>${ctitle}<span class="sub">${esc(csub)}</span></div>
         ${data.checks.length ? `<div class="checks">${loud.map(row).join("")}${quiet.length ? `<details${loud.length ? "" : " open"}><summary>${plural(quiet.length, "other check")}</summary>${quiet.map(row).join("")}</details>` : ""}</div>` : ""}</section>`;

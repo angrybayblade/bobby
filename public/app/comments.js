@@ -1,7 +1,7 @@
 // Comments in place, like GitHub: threads (other reviewers' comments, and your drafts) under the line they're on, and
 // private notes floating beside it. Any of them can be collapsed to a slim marker that stays put: one thread, every
 // comment in a file, or every comment in the PR (settings.comments, the default for all of them).
-import { LOW, api, esc, live } from "./core.js";
+import { LOW, api, esc, live, safeUrl } from "./core.js";
 import { MOD } from "./palette.js";
 import { askHtml } from "./ask.js";
 import { reactionsHtml } from "./reactions.js";
@@ -274,7 +274,7 @@ function threadHtml(app, t) {
   const sug = (i) => (t.side === "RIGHT" && /```suggestion\b/.test(i.body ?? "") && newLines(app, t.path, t.startLine ?? t.line, t.line)) || null;
   const items = t.items.map((i, k) => `<div class="citem">${avatar(i)}<div class="cmain">
       <div class="cwho"${k === 0 ? ` data-tid="${esc(t.id)}" data-tpath="${esc(t.path)}" title="Collapse${n > 1 ? " this thread" : ""}"` : ""}><b>${esc(i.author)}</b>${i.draft ? `<span class="ctag">${i.wip ? "unfinished draft" : "draft"}</span>` : ""}${i.pending ? PENDING : ""}<span class="cwhen" title="${esc(i.createdAt ?? "")}">${ago(i.createdAt)}</span>
-        ${k === 0 ? range(t) : ""}${k === 0 && t.resolved ? `<span class="ctag">resolved</span>` : ""}${i.url ? `<a class="clink" href="${esc(i.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a>` : ""}<span class="cgrow"></span>
+        ${k === 0 ? range(t) : ""}${k === 0 && t.resolved ? `<span class="ctag">resolved</span>` : ""}${i.url ? `<a class="clink" href="${safeUrl(i.url)}" target="_blank" rel="noopener" title="Open on GitHub">↗</a>` : ""}<span class="cgrow"></span>
         ${i.wip ? `<button class="cact" data-wip="${esc(i.cid)}" title="Open it again to finish">Continue</button>` : ""}${i.cid ? `<button class="cact" data-del="${esc(i.cid)}" title="Discard this draft">Delete</button>` : ""}${own(i)}
         ${k === 0 ? `<button class="cfold" data-tid="${esc(t.id)}" data-tpath="${esc(t.path)}" title="Collapse${n > 1 ? " this thread" : ""}">${bubble(true)}</button>` : ""}</div>
       ${body(i, k)}${i.gid && !i.pending && !s.edits?.has(i.gid) ? reactionsHtml(i.node, i.reactions) : ""}</div></div>`).join("");

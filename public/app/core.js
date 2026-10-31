@@ -42,6 +42,8 @@ export const DEFAULT_SETTINGS = {
  *  another (content-visibility: hidden keeps its layout, so offsetParent alone says yes). */
 export const live = (el) => !!el?.offsetParent && !el.closest(".parked");
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+/** A link someone else gave (a check run's Details, a comment's): only a web address, escaped for an attribute; else "#". */
+export const safeUrl = (u) => esc(/^https?:\/\//i.test(String(u ?? "")) ? u : "#");
 /** Escaped text with `backtick` spans as <code>, for model-written prose like hooks. */
 export const inline = (s) => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
 /** This page's review, as the app addresses it: /r/<id>, an id being three segments; its API is under it, and so is
