@@ -110,7 +110,7 @@ export default {
       update(reason) {},      // "focus" | "level" | "marks" | "comments" | "graph" | "settings" | "resize" | "resume"
       destroy() {},
       hide() {},              // optional, kept views only: switched away from; "resume" follows when shown again
-      where() {},             // optional, apart views: { crumbs: [html], controls?: html, layout?: tooltip } for the crumb bar,
+      where() {},             // optional, apart views: { crumbs: [html], controls?: html, layout?: tooltip, levels?: { names, about?, at, label } } for the crumb bar,
                               // after the PR's crumb (and beside the shell's Inline / Split when layout is set); app.renderWhere() redraws it
     };
   },

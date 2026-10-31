@@ -258,7 +258,9 @@ function renderWhere() {
   // A view apart from the walk (Map) can have crumbs and controls of its own here, beside the same layout switch.
   const own = app.view?.where?.();
   if (own) {
-    $("#where").innerHTML = `${crumbs[0]}<span class="sep">›</span>${own.crumbs.join(`<span class="sep">›</span>`)}${note}<span class="wctl">${own.controls ?? ""}</span>${own.layout ? layout(own.layout) : ""}`;
+    // its levels, as Diff's zoom: a bar for each (lit up to where you are), each a button with its name as a tooltip
+    const lv = own.levels?.names.length > 1 ? `<span class="levels own">${own.levels.names.map((n, i) => `<button data-wlevel="${i}" class="${i <= own.levels.at ? "on" : ""}" aria-label="${esc(n)}" data-tip="${esc(n)}"${own.levels.about?.[i] ? ` data-tip-more="${esc(own.levels.about[i])}"` : ""}></button>`).join("")}<span style="margin-left:6px">${esc(own.levels.label)}</span></span>` : "";
+    $("#where").innerHTML = `${crumbs[0]}<span class="sep">›</span>${own.crumbs.join(`<span class="sep">›</span>`)}${note}<span class="wctl">${own.controls ?? ""}</span>${own.layout ? layout(own.layout) : ""}${lv}`;
     return;
   }
   $("#where").innerHTML = `${crumbs.join(`<span class="sep">›</span>`)}${note}

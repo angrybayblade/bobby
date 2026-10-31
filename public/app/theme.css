@@ -576,6 +576,10 @@ body.inspecting .ln[data-side="RIGHT"] code, body.inspecting .inspector .pl code
 #where .seg.lay { margin-left: auto; padding: 2px; }
 #where .wctl { margin-left: auto; display: flex; align-items: center; gap: 14px; }
 #where .wctl + .seg.lay { margin-left: 14px; }
+#where .seg.lay + .levels { margin-left: 18px; }
+#where .levels.own button { width: 16px; height: 12px; padding: 4px 0; border-radius: 0; background: var(--raised); background-clip: content-box; max-width: none; }
+#where .levels.own button.on { background-color: var(--signal); }
+#where .levels.own button:hover { background-color: var(--muted); }
 /* a switch for what every view shows: an icon, struck through and faint while it's off */
 .iconbtn.tog { position: relative; }
 .iconbtn.tog[aria-pressed="false"] { color: var(--faint); }

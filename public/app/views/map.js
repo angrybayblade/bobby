@@ -70,7 +70,6 @@ const CSS = `
 #where .mslide { display: flex; align-items: center; gap: 8px; }
 #where .mslide button { padding: 2px 2px; }
 #where .mslide input { width: 120px; accent-color: var(--text); }
-#where .mi { font-style: normal; color: var(--faint); margin-right: 5px; font-variant-numeric: tabular-nums; }
 /* before there's a map, or while Claude draws it: one card, anchored near the top at a set width, that never resizes */
 .bmap .mintro { position: absolute; inset: 0; overflow: auto; display: grid; place-items: start center; padding: 12vh 24px 40px; }
 .bmap .mcard { width: min(600px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 22px 26px; box-sizing: border-box; }
@@ -154,7 +153,8 @@ export default {
       const m = data?.map;
       if (!m) return { crumbs: [`<button class="here">Map</button>`] };
       return {
-        crumbs: m.layers.map((x, i) => `<button data-mlayer="${i}" class="${i === layer ? "here" : ""}" title="${esc(x.about)}">${m.layers.length > 1 ? `<i class="mi">${i + 1}</i>` : ""}${esc(x.name)}</button>`),
+        crumbs: m.layers.slice(0, layer + 1).map((x, i) => `<button data-mlayer="${i}" class="${i === layer ? "here" : ""}" title="${esc(x.about)}">${esc(x.name)}</button>`), // the path down to this layer
+        levels: { names: m.layers.map((x) => x.name), about: m.layers.map((x) => x.about), at: layer, label: `Layer ${layer + 1} of ${m.layers.length}` }, // as Diff's zoom
         controls: `${split ? "" : `<span class="mslide"><button data-mend="0" class="${t < 0.5 ? "here" : ""}">Before</button><input type="range" min="0" max="1" step="0.01" value="${t}" aria-label="Before or after the PR"><button data-mend="1" class="${t >= 0.5 ? "here" : ""}">After</button></span>`}
           <button data-mredraw ${data.running ? "disabled" : ""} title="${esc(`Drawn by Claude ${new Date(m.at).toLocaleString()}${m.cost ? `, $${m.cost.toFixed(2)}` : ""}. Click to draw it again`)}">Redraw</button>`,
         layout: "Before and after: inline on a slider, or side by side",
@@ -324,10 +324,10 @@ export default {
     const whereEl = document.getElementById("where"), off = new AbortController();
     whereEl.addEventListener("input", (ev) => { if (ev.target.matches(".mslide input")) slide(Number(ev.target.value), true); }, { signal: off.signal });
     whereEl.addEventListener("click", (ev) => {
-      const b = ev.target.closest("[data-mend],[data-mlayer],[data-mredraw]");
+      const b = ev.target.closest("[data-mend],[data-mlayer],[data-wlevel],[data-mredraw]");
       if (!b) return;
       if (b.dataset.mend) slide(Number(b.dataset.mend));
-      else if (b.dataset.mlayer) toLayer(Number(b.dataset.mlayer));
+      else if (b.dataset.mlayer || b.dataset.wlevel) toLayer(Number(b.dataset.mlayer ?? b.dataset.wlevel));
       else draw();
     }, { signal: off.signal });
     root.addEventListener("click", (ev) => {
