@@ -6,18 +6,18 @@
 import { api, esc } from "../core.js";
 import { md } from "../comments.js";
 import { openRef } from "../code.js";
-import { layered } from "./layered.js";
+import { mapLayout } from "./maplayout.js";
 import { injectCss } from "./flow.js";
 
 const LEVELS = [["local", "Local", "function to function"], ["module", "Module", "module to module"], ["service", "Service", "service to service"], ["user", "End user", "what users see"], ["infra", "Infra", "how it runs"]];
 const KIND = { function: "function", module: "module", service: "service", actor: "person", screen: "screen", store: "data store", queue: "queue", external: "outside system", infra: "infra" };
 const MODES = [["before", "Before"], ["changes", "Changes"], ["after", "After"]];
-const W = 210, COL = 130; // a node's width; the gap between columns, where the edges' labels go
+const W = 236; // a box's width
 
 const CSS = `
 .bmap { position: absolute; inset: 0; display: flex; flex-direction: column; min-height: 0; }
 .bmap .mhd { display: flex; gap: 24px; align-items: flex-start; justify-content: space-between; padding: 14px 24px 12px; border-bottom: 1px solid var(--line-soft); }
-.bmap .mhd h2 { margin: 3px 0 3px; font: 600 calc(var(--size) * .95)/1.45 var(--font-prose); max-width: 100ch; }
+.bmap .mhd h2 { margin: 3px 0 3px; font: 600 calc(var(--size) * .95)/1.45 var(--font-prose); max-width: 100ch; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .bmap .mlevel { font: 600 10.5px var(--font-ui); letter-spacing: .09em; text-transform: uppercase; color: var(--faint); }
 .bmap .mlevel b { color: var(--text); font-weight: 650; }
 .bmap .mwhy { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--muted); max-width: 100ch; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -34,38 +34,41 @@ const CSS = `
 .bmap .stage { overflow: auto; display: flex; min-width: 0; }
 .bmap .stage.pans { cursor: grab; }
 .bmap .stage.panning { cursor: grabbing; user-select: none; }
-.bmap .fit { margin: auto; padding: 28px; flex: none; box-sizing: content-box; }
+.bmap .stage { background-image: radial-gradient(var(--line-soft) 1px, transparent 1.2px); background-size: 18px 18px; }
+.bmap .fit { margin: auto; padding: 36px; flex: none; box-sizing: content-box; }
 .bmap .plane { position: relative; transform-origin: 0 0; }
 .bmap .plane > svg { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
-.bmap .mn { position: absolute; width: ${W}px; box-sizing: border-box; padding: 9px 12px 10px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); transition: opacity var(--dur, .2s); }
+.bmap .mn { position: absolute; width: ${W}px; box-sizing: border-box; padding: 9px 12px 11px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); box-shadow: 0 1px 2px rgba(0, 0, 0, .06); transition: opacity var(--dur, .2s), border-color var(--dur, .2s); }
 .bmap .mn[data-ref] { cursor: pointer; }
 .bmap .mn[data-ref]:hover { border-color: var(--muted); }
-.bmap .mn.kind-actor { border-radius: 18px; }
+.bmap .mn.kind-actor { border-radius: 20px; padding-left: 16px; padding-right: 16px; }
 .bmap .mn.kind-store { border-bottom-width: 3px; }
-.bmap .mn.kind-external { border-style: dashed; }
-.bmap .mk { display: flex; gap: 6px; align-items: baseline; font: 600 9.5px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--faint); white-space: nowrap; overflow: hidden; }
-.bmap .mk .g { overflow: hidden; text-overflow: ellipsis; text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 11px; }
-.bmap .mk .st { margin-left: auto; letter-spacing: .06em; }
-.bmap .ml { margin-top: 3px; font: 600 13.5px/1.3 var(--font-prose); overflow-wrap: anywhere; }
-.bmap .mn.kind-function .ml, .bmap .mn.kind-module .ml { font: 600 12.5px/1.35 var(--font-code); }
-.bmap .mo { margin-top: 4px; font-size: 12px; line-height: 1.4; color: var(--muted); }
-.bmap .changes .mn.st-added { border-color: var(--ok); border-width: 1.5px; }
+.bmap .mn.kind-external, .bmap .mn.kind-infra { border-style: dashed; }
+.bmap .mk { display: flex; gap: 6px; align-items: baseline; font: 500 11px var(--font-ui); color: var(--faint); white-space: nowrap; min-width: 0; }
+.bmap .mk .kd { flex: none; }
+.bmap .mk .g { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.bmap .mk .g::before { content: "· "; }
+.bmap .mk .st { margin-left: auto; flex: none; font-weight: 650; font-size: 10px; letter-spacing: .07em; text-transform: uppercase; }
+.bmap .ml { margin-top: 3px; font: 600 13.5px/1.3 var(--font-prose); color: var(--text); overflow-wrap: break-word; }
+.bmap .mn.kind-function .ml, .bmap .mn.kind-module .ml { font: 600 12px/1.35 var(--font-code); overflow-wrap: anywhere; }
+.bmap .mo { margin-top: 5px; font-size: 12px; line-height: 1.4; color: var(--muted); }
+.bmap .changes .mn.st-added { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 9%, var(--surface)); }
 .bmap .changes .mn.st-added .st { color: var(--ok); }
-.bmap .changes .mn.st-removed { border-color: var(--risk); border-style: dashed; opacity: .75; }
-.bmap .changes .mn.st-removed .ml { text-decoration: line-through; text-decoration-color: var(--risk); }
+.bmap .changes .mn.st-removed { border-color: var(--risk); border-style: dashed; background: var(--bg); box-shadow: none; }
+.bmap .changes .mn.st-removed .ml { text-decoration: line-through; text-decoration-color: var(--risk); color: var(--muted); }
 .bmap .changes .mn.st-removed .st { color: var(--risk); }
-.bmap .changes .mn.st-changed { border-color: var(--signal); border-width: 1.5px; }
+.bmap .changes .mn.st-changed { border-color: var(--signal); background: color-mix(in srgb, var(--signal) 9%, var(--surface)); }
 .bmap .changes .mn.st-changed .st { color: var(--signal); }
-.bmap .plane path { fill: none; stroke: var(--muted); stroke-width: 1.4; transition: opacity var(--dur, .2s); }
-.bmap .changes path.st-added { stroke: var(--ok); stroke-width: 2; }
-.bmap .changes path.st-removed { stroke: var(--risk); stroke-dasharray: 5 4; }
-.bmap .changes path.st-changed { stroke: var(--signal); stroke-width: 2; }
-.bmap .el { position: absolute; transform: translate(-50%, -50%); max-width: ${COL - 14}px; width: max-content; padding: 1px 5px; border-radius: 2px; background: var(--bg); font: 11.5px/1.3 var(--font-ui); color: var(--muted); text-align: center; text-wrap: balance; transition: opacity var(--dur, .2s); }
-.bmap .changes .el.st-added { color: var(--ok); }
-.bmap .changes .el.st-removed { color: var(--risk); text-decoration: line-through; }
-.bmap .changes .el.st-changed { color: var(--text); }
+.bmap .plane path { fill: none; stroke: var(--faint); stroke-width: 1.3; transition: opacity var(--dur, .2s); }
+.bmap .changes path.st-added { stroke: var(--ok); stroke-width: 1.8; }
+.bmap .changes path.st-removed { stroke: var(--risk); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.bmap .changes path.st-changed { stroke: var(--signal); stroke-width: 1.8; }
+.bmap .el { position: absolute; transform: translate(-50%, -50%); max-width: 168px; width: max-content; padding: 2px 7px; border-radius: 3px; background: var(--bg); border: 1px solid var(--line-soft); font: 11.5px/1.35 var(--font-ui); color: var(--muted); text-align: center; text-wrap: balance; transition: opacity var(--dur, .2s); }
+.bmap .changes .el.st-added { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+.bmap .changes .el.st-removed { color: var(--risk); text-decoration: line-through; border-style: dashed; border-color: color-mix(in srgb, var(--risk) 40%, transparent); }
+.bmap .changes .el.st-changed { color: var(--text); border-color: color-mix(in srgb, var(--signal) 45%, transparent); }
 .bmap .el s { display: block; color: var(--faint); }
-.bmap .plane.lit .dim { opacity: .18; }
+.bmap .plane.lit .dim { opacity: .15; }
 .bmap .mrail { border-left: 1px solid var(--line-soft); overflow: auto; padding: 16px 18px 40px; }
 .bmap .mrail h4 { margin: 0 0 10px; font: 600 10.5px var(--font-ui); letter-spacing: .09em; text-transform: uppercase; color: var(--faint); }
 .bmap .mrail ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -132,7 +135,7 @@ export default {
         : data.stale ? `<div class="banner">Drawn for an earlier commit of this PR. <button class="btn" data-redraw>Redraw it</button></div>` : "";
       root.innerHTML = `
         <div class="mhd">
-          <div><div class="mlevel"><b>${lvl[1]}</b> · ${lvl[2]}</div><h2>${esc(m.summary)}</h2><p class="mwhy" title="${esc(m.why)}">${esc(m.why)}</p></div>
+          <div><div class="mlevel"><b>${lvl[1]}</b> · ${lvl[2]}</div><h2 title="${esc(m.summary)}">${esc(m.summary)}</h2><p class="mwhy" title="${esc(m.why)}">${esc(m.why)}</p></div>
           <div class="mctl">
             <div class="seg">${MODES.map(([id, name]) => `<button data-mode="${id}" class="${mode === id ? "on" : ""}">${name}</button>`).join("")}</div>
             <select data-level title="The level to draw it at"><option value="">Claude picks the level</option>${LEVELS.map(([id, name, sub]) => `<option value="${id}"${want === id ? " selected" : ""}>${name}: ${sub}</option>`).join("")}</select>
@@ -183,67 +186,36 @@ export default {
       const litEdges = new Set(change?.edges ?? []);
       const dim = (lit) => (change && !lit ? " dim" : "");
       const badge = (st) => (mode === "changes" && st !== "same" ? `<span class="st">${st}</span>` : "");
+      // boxes and labels first, so the layout knows their sizes
       plane.innerHTML = nodes.map((n) => `<div class="mn kind-${esc(n.kind)} st-${n.status}${dim(litNodes.has(n.id))}" data-id="${esc(n.id)}"${n.ref ? ` data-ref="${esc(n.ref)}" title="Open its code"` : ""}>
-          <div class="mk">${KIND[n.kind] ?? esc(n.kind)}${n.group ? `<span class="g">· ${esc(n.group)}</span>` : ""}${badge(n.status)}</div>
-          <div class="ml">${esc(n.label)}</div>${n.note ? `<div class="mo">${esc(n.note)}</div>` : ""}</div>`).join("");
+          <div class="mk"><span class="kd">${KIND[n.kind] ?? esc(n.kind)}</span>${n.group ? `<span class="g">${esc(n.group)}</span>` : ""}${badge(n.status)}</div>
+          <div class="ml">${esc(n.label)}</div>${n.note ? `<div class="mo">${esc(n.note)}</div>` : ""}</div>`).join("") +
+        edges.map((e, j) => {
+          const was = mode === "changes" && e.status === "changed" && e.before ? `<s>${esc(e.before)}</s>` : "";
+          const label = mode === "before" && e.status === "changed" && e.before ? e.before : e.label;
+          return label || was ? `<div class="el st-${e.status}${dim(litEdges.has(e.i))}" data-edge="${j}">${esc(label)}${was}</div>` : "";
+        }).join("");
       const box = new Map([...plane.querySelectorAll(".mn")].map((d) => [d.dataset.id, d]));
-      const h = (id) => box.get(id)?.offsetHeight ?? 60;
-      const lay = layered(nodes.map((n) => n.id), edges.map((e) => [e.from, e.to]), { h, gap: 30, compGap: 56, wrap: 3 });
-      const at = new Map(nodes.map((n) => [n.id, { x: lay.rank.get(n.id) * (W + COL), y: lay.y.get(n.id), h: h(n.id) }]));
-      for (const [id, d] of box) { const p = at.get(id); d.style.left = `${p.x}px`; d.style.top = `${p.y}px`; }
-
-      // Edges: forward ones from the right side to the left side; one that goes back (or within a column) loops under
-      // both. Edges between the same two nodes fan out, so each label has its own place.
-      const seen = new Map(), paths = [], labels = [];
-      let bottom = Math.max(0, ...[...at.values()].map((p) => p.y + p.h));
-      for (const e of edges) {
-        const a = at.get(e.from), b = at.get(e.to), pair = [e.from, e.to].sort().join(" "), k = seen.get(pair) ?? 0;
-        seen.set(pair, k + 1);
-        const off = (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 16;
-        let d, mx, my;
-        if (b.x > a.x) {
-          const x1 = a.x + W, y1 = a.y + a.h / 2 + off, x2 = b.x, y2 = b.y + b.h / 2 + off, c = Math.max(40, Math.min(COL, (x2 - x1) / 2));
-          d = `M${x1},${y1} C${x1 + c},${y1} ${x2 - c},${y2} ${x2},${y2}`;
-          // the label goes in the gap after the source, where no node can be, on the curve there
-          const bez = (t, p0, p1, p2, p3) => (1 - t) ** 3 * p0 + 3 * (1 - t) ** 2 * t * p1 + 3 * (1 - t) * t ** 2 * p2 + t ** 3 * p3;
-          mx = x1 + COL / 2;
-          let lo = 0, hi = 1;
-          for (let i = 0; i < 24; i++) { const t = (lo + hi) / 2; if (bez(t, x1, x1 + c, x2 - c, x2) < mx) lo = t; else hi = t; }
-          my = bez(lo, y1, y1, y2, y2);
-        } else {
-          const x1 = a.x + W / 2 + off, y1 = a.y + a.h, x2 = b.x + W / 2 + off, y2 = b.y + b.h, dip = Math.max(y1, y2) + 46 + Math.abs(off);
-          d = `M${x1},${y1} C${x1},${dip} ${x2},${dip} ${x2},${y2}`;
-          mx = (x1 + 3 * x1 + 3 * x2 + x2) / 8; my = (y1 + 3 * dip + 3 * dip + y2) / 8;
-          bottom = Math.max(bottom, my + 20);
-        }
-        const cls = `st-${e.status}${dim(litEdges.has(e.i))}`;
-        paths.push(`<path class="${cls}" d="${d}" marker-end="url(#mapArrow-${mode === "changes" ? e.status : "same"})"/>`);
-        const was = mode === "changes" && e.status === "changed" && e.before ? `<s>${esc(e.before)}</s>` : "";
-        const label = mode === "before" && e.status === "changed" && e.before ? e.before : e.label;
-        if (label || was) labels.push(`<div class="el ${cls}" style="left:${mx}px;top:${my}px">${esc(label)}${was}</div>`);
-      }
+      const tag = new Map([...plane.querySelectorAll(".el")].map((d) => [Number(d.dataset.edge), d]));
+      const lay = mapLayout(nodes.map((n) => ({ id: n.id, w: W, h: box.get(n.id).offsetHeight })),
+        edges.map((e, j) => ({ from: e.from, to: e.to, label: tag.has(j) ? { w: tag.get(j).offsetWidth, h: tag.get(j).offsetHeight } : null })));
+      for (const [id, d] of box) { const p = lay.nodes.get(id); d.style.left = `${p.x}px`; d.style.top = `${p.y}px`; }
+      const paths = [];
+      edges.forEach((e, j) => {
+        const at = lay.edges[j];
+        if (!at) return;
+        // through each point in turn, leaving and arriving upright, so each bend is a soft S
+        const [p0, ...rest] = at.points;
+        let d = `M${p0[0]},${p0[1]}`, prev = p0;
+        for (const q of rest) { const my = (prev[1] + q[1]) / 2; d += ` C${prev[0]},${my} ${q[0]},${my} ${q[0]},${q[1]}`; prev = q; }
+        paths.push(`<path class="st-${e.status}${dim(litEdges.has(e.i))}" d="${d}" marker-end="url(#mapArrow-${mode === "changes" ? e.status : "same"})"/>`);
+        const lb = tag.get(j);
+        if (lb && at.label) { lb.style.left = `${at.label.x}px`; lb.style.top = `${at.label.y}px`; }
+      });
       const colour = { same: "var(--muted)", added: "var(--ok)", removed: "var(--risk)", changed: "var(--signal)" };
-      const width = Math.max(W, ...[...at.values()].map((p) => p.x + W));
-      plane.insertAdjacentHTML("afterbegin", `<svg width="${width}" height="${bottom}"><defs>${Object.entries(colour).map(([st, c]) =>
-        `<marker id="mapArrow-${st}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" style="fill:${c};stroke:none"/></marker>`).join("")}</defs>${paths.join("")}</svg>`);
-      plane.insertAdjacentHTML("beforeend", labels.join(""));
-      // labels that land on each other (several edges leaving one node) move apart, down the gap
-      const placed = [];
-      for (const lb of [...plane.querySelectorAll(".el")].sort((p, q) => parseFloat(p.style.top) - parseFloat(q.style.top))) {
-        const w = lb.offsetWidth, hh = lb.offsetHeight, x = parseFloat(lb.style.left);
-        let y = parseFloat(lb.style.top);
-        for (let moved = true; moved;) {
-          moved = false;
-          for (const o of placed) { // overlapping by more than half a pixel: below it (always further down, so it ends)
-            const below = o.y + (o.h + hh) / 2 + 3;
-            if (Math.abs(o.x - x) < (o.w + w) / 2 && Math.abs(o.y - y) < (o.h + hh) / 2 + 2.5 && below > y + 0.5) { y = below; moved = true; }
-          }
-        }
-        lb.style.top = `${y}px`;
-        placed.push({ x, y, w, h: hh });
-        bottom = Math.max(bottom, y + hh);
-      }
-      size = { w: width, h: bottom };
+      plane.insertAdjacentHTML("afterbegin", `<svg width="${lay.width}" height="${lay.height}"><defs>${Object.entries(colour).map(([st, c]) =>
+        `<marker id="mapArrow-${st}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" style="fill:${c};stroke:none"/></marker>`).join("")}</defs>${paths.join("")}</svg>`);
+      size = { w: lay.width, h: lay.height };
       const s = fit();
       if (change) { // bring the change's part of the diagram into view
         const lit = [...plane.querySelectorAll(".mn:not(.dim)")], stage = root.querySelector(".stage");
