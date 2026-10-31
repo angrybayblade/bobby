@@ -26,7 +26,7 @@ export const DEFAULT_SETTINGS = {
   drift: "on", // on | off: after 90s idle on a page, offer to park a thought
   comments: "open", // open | collapsed: comments and notes in place, open or as a slim marker (per file and thread too)
   resolved: "collapsed", // collapsed | hidden: GitHub threads resolved there, as a slim marker or not shown at all
-  untouched: "hide", // hide | show: untouched code the changes rely on or affect, in every view (the top bar's switch)
+  untouched: "hide", // hide | show: unchanged code the changes rely on or affect, in every view (the top bar's Unchanged switch)
   tests: "hide", // hide | show: test files, in every view (the top bar's switch)
   generated: "hide", // hide | show: generated files, in every view (the top bar's switch)
   fileTree: "show", // show | hide: the file tree beside the view (t)

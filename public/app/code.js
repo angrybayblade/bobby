@@ -487,7 +487,7 @@ function donePage(app) {
   return `<div style="text-align:center;margin-top:12vh">
     <h1 style="font-family:var(--font-ui)">${!total ? "Nothing to walk" : done === total ? "All reviewed ✓" : "End of the walk"}</h1>
     <p class="why" style="margin:0 auto 24px">${!total
-      ? "No pages to review here: the PR has no changes Bobby can show, or the Tests and Untouched switches in the top bar hide them all."
+      ? "No pages to review here: the PR has no changes Bobby can show, or the Tests and Unchanged switches in the top bar hide them all."
       : done === total
       ? `${app.state.comments.length} draft comment(s). Press ${keyHtml(app.settings, "submit")} to submit your review.`
       : `${total - done} page(s) still unreviewed. Press ${keyHtml(app.settings, "nextUnreviewed")} to jump to the next one.`}</p>

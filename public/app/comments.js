@@ -242,7 +242,7 @@ export function setReactions(app, node, reactions, clicked) {
   keepPlace(app, clicked);
 }
 export const fileCount = (app, path) => (commentIndex(app).byPath.get(path) ?? []).reduce((n, x) => n + (x.items?.length ?? 1), 0);
-/** The PR's comments and notes in files on screen: one hidden by Tests or Untouched isn't counted, as its comments aren't shown. */
+/** The PR's comments and notes in files on screen: one hidden by Tests or Unchanged isn't counted, as its comments aren't shown. */
 export const prCount = (app) => [...commentIndex(app).byPath].filter(([path]) => !path || shown(app, path)).flatMap(([, xs]) => xs).filter((x) => x.kind !== "agent" && x.kind !== "ask").reduce((n, x) => n + (x.items?.length ?? 1), 0);
 const shown = (app, path) => app.filePages(path).length > 0 || app.hunksOf(LOW).some((h) => h.file === path);
 

@@ -108,7 +108,7 @@ function show(f) {
   const app = w.app;
   close();
   const pid = app.pidAt(f.path, f.line);
-  if (!pid) return app.toast?.("That file is hidden by a filter (Tests, Generated or Untouched).", 5000);
+  if (!pid) return app.toast?.("That file is hidden by a filter (Tests, Generated or Unchanged).", 5000);
   if (app.settings.view !== "diff") app.switchView("diff");
   app.setFocus(pid, { level: 2 });
   app.emit("comments");

@@ -59,7 +59,7 @@ function focusAgain() {
 // ---------------------------------------------------------------- file tree
 // The PR's files as a folder tree (single-child folder chains merged, like GitHub's), with +/− counts, comments and
 // notes, and ✓ once every page in the file is reviewed. The file you're on is highlighted; a click goes to its first
-// unreviewed page. Follows the Tests and Untouched switches: it lists the files the walk has.
+// unreviewed page. Follows the Tests and Unchanged switches: it lists the files the walk has.
 const closedDirs = new Set();
 let fileFilter = "";
 export function toggleFiles() {
@@ -198,7 +198,7 @@ function renderTop() {
     ${commentsButton()}${unresolvedButton()}
     ${toggle("tests", "Tests", "Test files", app.settings.tests === "show", ICONS.tests)}
     ${toggle("generated", "Generated", "Generated files (openapi specs, __generated__/, @generated, DO NOT EDIT…)", app.settings.generated === "show", ICONS.generated)}
-    ${toggle("untouched", "Untouched", "Untouched code the changes rely on or affect", app.settings.untouched !== "hide", ICONS.untouched)}
+    ${toggle("untouched", "Unchanged", "Unchanged code the changes rely on or affect", app.settings.untouched !== "hide", ICONS.untouched)}
     <button class="iconbtn${app.state.notes.length ? " counted" : ""}" data-act="notes" aria-label="Notes" ${tip("Notes", "Your private notes. Never posted to GitHub.", "notes")}>${ICONS.notes}${app.state.notes.length ? `<i>${app.state.notes.length}</i>` : ""}</button>
     ${agentPill(app)}
     <button class="iconbtn" data-act="files" aria-pressed="${app.settings.fileTree !== "hide"}" aria-label="File tree" ${tip("File tree", app.settings.fileTree !== "hide" ? "Shown. Click to hide" : "Hidden. Click to show", "files")}>${ICONS.files}</button>
@@ -389,7 +389,7 @@ const SETTINGS = [
   ["comments", "Comments", [["open", "Open"], ["collapsed", "Collapsed"]]],
   ["resolved", "Resolved threads", [["collapsed", "Collapsed"], ["hidden", "Hidden"]]],
   ["updates", "Tell me about new versions", [["on", "On"], ["off", "Off"]]],
-  ["untouched", "Untouched code", [["hide", "Hidden"], ["show", "Shown"]]],
+  ["untouched", "Unchanged code", [["hide", "Hidden"], ["show", "Shown"]]],
   ["fileTree", "File tree", [["show", "Shown"], ["hide", "Hidden"]]],
   ["fileTreeSide", "File tree side", [["right", "Right"], ["left", "Left"]]],
   ["tests", "Test files", [["hide", "Hidden"], ["show", "Shown"]]],

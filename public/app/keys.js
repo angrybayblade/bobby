@@ -32,7 +32,7 @@ export const ACTIONS = [
   { id: "files", group: "Reading", title: "Show or hide the file tree", keys: ["t"] },
   { id: "tests", group: "Reading", title: "Show or hide test files, in every view", keys: ["T"] },
   { id: "generated", group: "Reading", title: "Show or hide generated files, in every view", keys: ["G"] },
-  { id: "untouched", group: "Reading", title: "Show or hide untouched code the changes rely on or affect, in every view", keys: ["U"] },
+  { id: "untouched", group: "Reading", title: "Show or hide unchanged code the changes rely on or affect, in every view", keys: ["U"] },
   { id: "comments", group: "Reading", title: "Show or collapse every comment in the PR", keys: ["C"] },
   // reviewing
   { id: "reviewed", group: "Reviewing", title: "Looks good: mark reviewed and move on", keys: ["a"] },

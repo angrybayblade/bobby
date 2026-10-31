@@ -105,7 +105,7 @@ export function showAsk(app, id) {
   if (!a) return;
   document.querySelector(`#notices [data-qnote="${CSS.escape(id)}"]`)?.remove();
   const pid = app.pidAt(a.path, a.line);
-  if (!pid) return app.toast?.("<span>Those lines are hidden by a filter (Tests, Generated or Untouched).</span>", 5000);
+  if (!pid) return app.toast?.("<span>Those lines are hidden by a filter (Tests, Generated or Unchanged).</span>", 5000);
   const mine = (els) => els.find((el) => el.closest(".dfocus")) ?? els[0]; // the focused page's, not the canvas behind it
   const reveal = (tries = 0) => {
     const els = threadEls(a), open = mine(els.filter((el) => !el.classList.contains("slim")));
