@@ -4,7 +4,7 @@
 // commit (trees/<repo>/<sha>-src) with only Read, Grep and Glob, none of your settings, MCP servers or session, and
 // Claude Code doesn't let it read outside that folder. What it's doing streams to the page as it goes.
 import * as log from "./log.ts";
-import { existsSync, mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Subprocess } from "bun";
 import { claudeBin, claudeBusy, claudeStatus, claudeTurn, SPEND } from "./claude.ts";
@@ -121,10 +121,11 @@ export function prContext(g: ReviewGraph, tools = false): string {
   return parts.join("\n");
 }
 
+const TREE_MARK = "src links-checked"; // what a finished export says; one that says less is exported again
 /** The whole head commit, exported once per commit for Claude to read (beside the language servers' partial trees). */
 async function sourceTree(cwd: string, g: ReviewGraph, step: (m: string) => void): Promise<string> {
   const dir = join(home(), "trees", `${g.pr.owner}_${g.pr.repo}`, `${g.pr.headSha.slice(0, 12)}-src`), done = join(dir, ".bobby-tree");
-  if (existsSync(done)) { keepTree(dir); return dir; }
+  if (existsSync(done) && readFileSync(done, "utf8") === TREE_MARK) { keepTree(dir); return dir; }
   step("Exporting the code at the PR's head");
   const tmp = `${dir}.${process.pid}.tmp`;
   rmSync(tmp, { recursive: true, force: true });
@@ -136,7 +137,8 @@ async function sourceTree(cwd: string, g: ReviewGraph, step: (m: string) => void
     throw new Error(`couldn't export ${g.pr.headSha.slice(0, 7)}: ${(await new Response(archive.stderr).text()).trim()}`);
   }
   await dropOutsideLinks(cwd, g.pr.headSha, tmp);
-  writeFileSync(join(tmp, ".bobby-tree"), "src");
+  writeFileSync(join(tmp, ".bobby-tree"), TREE_MARK);
+  if (existsSync(dir)) rmSync(dir, { recursive: true, force: true }); // an export from before links were checked
   try { renameSync(tmp, dir); } catch { rmSync(tmp, { recursive: true, force: true }); } // another Bobby got there first
   return dir;
 }

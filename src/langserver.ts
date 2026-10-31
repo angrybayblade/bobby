@@ -85,7 +85,7 @@ const IN_USE = 24 * 3_600_000; // a running Bobby marks its tree hourly, so a tr
  *  stubbing has no business in a TypeScript review of a repo with Go in it). */
 export async function headTree(cwd: string, pr: { owner: string; repo: string; headSha: string }, servers: LanguageServer[], prepare = servers): Promise<string> {
   const specs = [...new Set(servers.flatMap((s) => s.treeFiles))].sort();
-  const stamp = `${pr.headSha}\n${specs.join(" ")}\n${prepare.filter((s) => s.prepareTree).map((s) => s.id).sort().join(" ")}`;
+  const stamp = `${pr.headSha}\n${specs.join(" ")}\n${prepare.filter((s) => s.prepareTree).map((s) => s.id).sort().join(" ")}\nlinks-checked`; // an older export, without dropOutsideLinks, is redone
   const base = join(home(), "trees", `${pr.owner}_${pr.repo}`), dir = join(base, pr.headSha.slice(0, 12)), done = join(dir, ".bobby-tree");
   if (existsSync(done) && readFileSync(done, "utf8") === stamp) { keepTree(dir); return dir; }
   // Exported beside, then moved into place: another Bobby on the same commit never sees, or deletes, half a tree.
