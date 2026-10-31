@@ -128,9 +128,9 @@ function mount(id) {
   el.className = `view-${view.id}`;
   currentId = app.viewId = view.id;
   const kept = alive.get(view.id);
-  if (kept) { kept.slot.classList.remove("parked"); current = kept.inst; current.update?.("resume"); return; }
+  if (kept) { kept.slot.classList.remove("parked"); current = app.view = kept.inst; current.update?.("resume"); return; }
   const slot = el.appendChild(Object.assign(document.createElement("div"), { className: "vslot" }));
-  current = view.mount(slot, app);
+  current = app.view = view.mount(slot, app);
   alive.set(view.id, { inst: current, slot });
 }
 app.switchView = (id, { push = true } = {}) => {

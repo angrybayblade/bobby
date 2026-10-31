@@ -574,6 +574,8 @@ body.inspecting .ln[data-side="RIGHT"] code, body.inspecting .inspector .pl code
 .code .fh .lay { margin-left: 4px; padding: 0 7px; font: 500 11px/18px var(--font-ui); color: var(--faint); border: 1px solid var(--line-soft); border-radius: 1px; }
 .code .fh .lay:hover { color: var(--text); border-color: var(--muted); }
 #where .seg.lay { margin-left: auto; padding: 2px; }
+#where .wctl { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+#where .wctl + .seg.lay { margin-left: 14px; }
 /* a switch for what every view shows: an icon, struck through and faint while it's off */
 .iconbtn.tog { position: relative; }
 .iconbtn.tog[aria-pressed="false"] { color: var(--faint); }

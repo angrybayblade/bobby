@@ -15,6 +15,7 @@ let app, views;
 
 export function init(a, viewList) {
   app = a; views = viewList;
+  app.renderWhere = renderWhere; // a view with crumbs of its own redraws them when they change
   for (const r of ["focus", "level", "marks", "graph", "settings", "comments", "llm", "view"]) app.on((why) => why === r && render());
   render();
   // Stepping into a new core: lead with its hook, so you know what to look for before reading.
@@ -253,8 +254,15 @@ function renderWhere() {
   } else if (pid === LOW) crumbs.push(`<button data-level="2" class="here">Low-signal changes</button>`);
   else if (pid === DONE) crumbs.push(`<button class="here">End</button>`);
   const note = app.state.note ? `<button data-act="note" title="Your parked thought (${esc(keyName(app.settings, "park"))})" style="color:var(--signal)">📌 ${esc(app.state.note.slice(0, 48))}${app.state.note.length > 48 ? "…" : ""}</button>` : "";
+  const layout = (what) => `<span class="seg lay" role="group" aria-label="Layout" title="${esc(what)} (${esc(keyName(app.settings, "layout"))})">${[["inline", "Inline"], ["split", "Split"]].map(([v, t]) => `<button data-act="layout" data-val="${v}" aria-pressed="${app.settings.diffLayout === v}">${t}</button>`).join("")}</span>`;
+  // A view apart from the walk (Map) can have crumbs and controls of its own here, beside the same layout switch.
+  const own = app.view?.where?.();
+  if (own) {
+    $("#where").innerHTML = `${crumbs[0]}<span class="sep">›</span>${own.crumbs.join(`<span class="sep">›</span>`)}${note}<span class="wctl">${own.controls ?? ""}</span>${own.layout ? layout(own.layout) : ""}`;
+    return;
+  }
   $("#where").innerHTML = `${crumbs.join(`<span class="sep">›</span>`)}${note}
-    <span class="seg lay" role="group" aria-label="Diff layout" title="Diff layout for every file (${esc(keyName(app.settings, "layout"))})">${[["inline", "Inline"], ["split", "Split"]].map(([v, t]) => `<button data-act="layout" data-val="${v}" aria-pressed="${app.settings.diffLayout === v}">${t}</button>`).join("")}</span>
+    ${layout("Diff layout for every file")}
     <span class="levels" title="Zoom: ${LEVELS[app.level]} (enter / esc)">${LEVELS.map((_, i) => `<i class="${i <= app.level ? "on" : ""}"></i>`).join("")}<span style="margin-left:6px">${LEVELS[app.level]}</span></span>`;
 }
 

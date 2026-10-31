@@ -14,23 +14,10 @@ const STEPS = 8; // the steps the loader shows, the latest last (the server keep
 
 const CSS = `
 .bmap { position: absolute; inset: 0; display: flex; flex-direction: column; min-height: 0; }
-.bmap .mctl { display: flex; gap: 14px; align-items: center; flex: none; margin-left: auto; }
-.bmap .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
-.bmap .seg button { padding: 3px 10px; font-size: 12.5px; color: var(--muted); background: none; border: 0; }
-.bmap .seg button + button { border-left: 1px solid var(--line); }
-.bmap .seg button.on { color: var(--text); font-weight: 650; background: var(--raised); } /* weight, not colour */
-.bmap .mctl .btn { padding: 3px 10px; font-size: 12.5px; }
 .bmap .banner { padding: 7px 24px; font-size: 13px; color: var(--muted); background: var(--raised); border-bottom: 1px solid var(--line-soft); display: flex; gap: 10px; align-items: center; }
 .bmap .banner .btn { padding: 3px 10px; font-size: 12.5px; }
 .bmap .mbody { flex: 1; min-height: 0; display: flex; }
 .bmap .mleft { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-.bmap .mlayers { display: flex; align-items: center; gap: 16px; padding: 8px 16px 8px 20px; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
-.bmap .mtabs { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; white-space: nowrap; }
-.bmap .mtabs button { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; padding: 2px 4px; border: 0; background: none; font: inherit; color: var(--muted); }
-.bmap .mtabs button.on { flex: none; }
-.bmap .mtabs button i { font-style: normal; color: var(--faint); margin-right: 5px; font-variant-numeric: tabular-nums; }
-.bmap .mtabs button.on { color: var(--text); font-weight: 650; } /* weight, not colour */
-.bmap .mtabs .sep { color: var(--faint); }
 .bmap .stage { flex: 1; min-height: 0; position: relative; display: flex; min-width: 0; cursor: grab; touch-action: none; }
 .bmap .pane { position: relative; flex: 1; min-width: 0; overflow: hidden; }
 .bmap .pane + .pane { border-left: 1px solid var(--line-soft); }
@@ -79,10 +66,11 @@ const CSS = `
 .bmap .st-added { --o: var(--t); }
 .bmap .st-removed { --o: calc(1 - var(--t)); }
 .bmap .plane.at-before .st-added, .bmap .plane.at-after .st-removed { pointer-events: none; }
-.bmap .slide { display: flex; align-items: center; gap: 10px; }
-.bmap .slide button { padding: 4px 2px; border: 0; background: none; font-size: 13px; color: var(--muted); }
-.bmap .slide button.on { color: var(--text); font-weight: 650; } /* weight, not colour */
-.bmap .slide input { width: 120px; accent-color: var(--text); }
+/* in the shell's crumb bar (chrome.js), beside its layout switch */
+#where .mslide { display: flex; align-items: center; gap: 8px; }
+#where .mslide button { padding: 2px 2px; }
+#where .mslide input { width: 120px; accent-color: var(--text); }
+#where .mi { font-style: normal; color: var(--faint); margin-right: 5px; font-variant-numeric: tabular-nums; }
 /* before there's a map, or while Claude draws it: one card, anchored near the top at a set width, that never resizes */
 .bmap .mintro { position: absolute; inset: 0; overflow: auto; display: grid; place-items: start center; padding: 12vh 24px 40px; }
 .bmap .mcard { width: min(600px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 22px 26px; box-sizing: border-box; }
@@ -117,8 +105,8 @@ export default {
   mount(el, app) {
     injectCss("map", CSS);
     const root = el.appendChild(Object.assign(document.createElement("div"), { className: "bmap" }));
-    let split = false;
-    try { split = localStorage.getItem("bobby.map.split") === "1"; } catch {}
+    const isSplit = () => app.settings.diffLayout === "split"; // the shell's Inline / Split, as for Diff
+    let split = isSplit();
     let planes = [];
     let tick = 0, data = null, t = 1, layer = 0, dead = false, timer = 0, plane = null, size = null, drawn = "";
     // the camera: framed to fit the map until you pan or zoom; then yours until another map is drawn
@@ -150,23 +138,31 @@ export default {
         ${banner}
         <div class="mbody">
           <div class="mleft">
-            <nav class="mlayers"><div class="mtabs">${m.layers.map((x, i) => `${i ? `<span class="sep">›</span>` : ""}<button data-layer="${i}" class="${i === layer ? "on" : ""}" title="${esc(x.about)}">${m.layers.length > 1 ? `<i>${i + 1}</i>` : ""}${esc(x.name)}</button>`).join("")}</div>
-              <div class="mctl">
-                ${split ? "" : `<div class="slide"><button data-end="0">Before</button><input type="range" min="0" max="1" step="0.01" value="${t}" aria-label="Before or after the PR"><button data-end="1">After</button></div>`}
-                <div class="seg"><button data-split="0" class="${split ? "" : "on"}" title="One diagram, a slider from before to after">Inline</button><button data-split="1" class="${split ? "on" : ""}" title="Before and after side by side">Split</button></div>
-                <button class="btn" data-redraw ${data.running ? "disabled" : ""} title="${esc(`Drawn by Claude ${new Date(m.at).toLocaleString()}${m.cost ? `, $${m.cost.toFixed(2)}` : ""}. Draw it again`)}">Redraw</button>
-              </div></nav>
             <div class="stage">${(split ? [["before", "Before"], ["after", "After"]] : [["", ""]]).map(([side, name]) => `<div class="pane">${name ? `<span class="ptag">${name}</span>` : ""}<div class="plane" data-side="${side}"></div></div>`).join("")}
               <div class="mzoom"><button data-zoom="-1" title="Zoom out">−</button><button data-zoom="fit" title="Fit the map to the canvas"></button><button data-zoom="1" title="Zoom in">+</button></div></div>
           </div>
         </div>`;
       planes = [...root.querySelectorAll(".plane")];
       plane = planes[0];
+      app.renderWhere?.();
       if (drawn !== `${m.at} ${layer} ${split}`) { drawn = `${m.at} ${layer} ${split}`; mine = false; } // a new map, layer or mode: framed afresh
       diagram(m);
     }
 
+    /** The shell's crumb bar, while Map is open (chrome.js): its layers as crumbs, the slider and Redraw. */
+    function where() {
+      const m = data?.map;
+      if (!m) return { crumbs: [`<button class="here">Map</button>`] };
+      return {
+        crumbs: m.layers.map((x, i) => `<button data-mlayer="${i}" class="${i === layer ? "here" : ""}" title="${esc(x.about)}">${m.layers.length > 1 ? `<i class="mi">${i + 1}</i>` : ""}${esc(x.name)}</button>`),
+        controls: `${split ? "" : `<span class="mslide"><button data-mend="0" class="${t < 0.5 ? "here" : ""}">Before</button><input type="range" min="0" max="1" step="0.01" value="${t}" aria-label="Before or after the PR"><button data-mend="1" class="${t >= 0.5 ? "here" : ""}">After</button></span>`}
+          <button data-mredraw ${data.running ? "disabled" : ""} title="${esc(`Drawn by Claude ${new Date(m.at).toLocaleString()}${m.cost ? `, $${m.cost.toFixed(2)}` : ""}. Click to draw it again`)}">Redraw</button>`,
+        layout: "Before and after: inline on a slider, or side by side",
+      };
+    }
+
     function intro() {
+      app.renderWhere?.();
       if (data?.running) return drawing();
       clearInterval(tick);
       root.innerHTML = `<div class="mintro"><div class="mcard">
@@ -320,31 +316,31 @@ export default {
       plane.style.setProperty("--t", t);
       plane.classList.toggle("at-before", t < 0.5);
       plane.classList.toggle("at-after", t >= 0.5);
-      const input = root.querySelector(".slide input");
+      const input = whereEl.querySelector(".mslide input");
       if (input && Number(input.value) !== t) input.value = t;
-      root.querySelectorAll(".slide [data-end]").forEach((b) => b.classList.toggle("on", Math.round(t) === Number(b.dataset.end)));
+      whereEl.querySelectorAll(".mslide [data-mend]").forEach((b) => b.classList.toggle("here", Math.round(t) === Number(b.dataset.mend)));
     }
-    root.addEventListener("input", (ev) => { if (ev.target.matches(".slide input")) slide(Number(ev.target.value), true); });
+    // the controls in the shell's crumb bar
+    const whereEl = document.getElementById("where"), off = new AbortController();
+    whereEl.addEventListener("input", (ev) => { if (ev.target.matches(".mslide input")) slide(Number(ev.target.value), true); }, { signal: off.signal });
+    whereEl.addEventListener("click", (ev) => {
+      const b = ev.target.closest("[data-mend],[data-mlayer],[data-mredraw]");
+      if (!b) return;
+      if (b.dataset.mend) slide(Number(b.dataset.mend));
+      else if (b.dataset.mlayer) toLayer(Number(b.dataset.mlayer));
+      else draw();
+    }, { signal: off.signal });
     root.addEventListener("click", (ev) => {
       const t = ev.target;
       if (dragged) { dragged = false; return; } // the end of a pan, not a click
       const z = t.closest("[data-zoom]");
       if (z) { if (z.dataset.zoom === "fit") { cam = fitted(); mine = false; apply(true); } else zoom(z.dataset.zoom > 0 ? 1.25 : 0.8, undefined, undefined, true); return; }
-      const b = t.closest("[data-end],[data-split],[data-layer],[data-draw],[data-redraw],[data-cancel],.mn[data-ref]");
+      const b = t.closest("[data-draw],[data-redraw],[data-cancel],.mn[data-ref]");
       if (!b) return;
-      if (b.dataset.end) slide(Number(b.dataset.end));
-      else if (b.dataset.split) setSplit(b.dataset.split === "1");
-      else if (b.dataset.layer) toLayer(Number(b.dataset.layer));
-      else if (b.hasAttribute("data-draw") || b.hasAttribute("data-redraw")) draw();
+      if (b.hasAttribute("data-draw") || b.hasAttribute("data-redraw")) draw();
       else if (b.hasAttribute("data-cancel")) api("/api/map/cancel", {}).then(load);
       else if (b.dataset.ref) { const r = parseRef(b.dataset.ref); if (r) openRef(app, r); }
     });
-    const setSplit = (on) => {
-      if (on === split) return;
-      split = on;
-      try { localStorage.setItem("bobby.map.split", on ? "1" : "0"); } catch {}
-      render();
-    };
     const toLayer = (i) => { const n = data?.map?.layers.length ?? 0; if (i >= 0 && i < n && i !== layer) { layer = i; render(); } };
 
     const keys = { // by action (keys.js)
@@ -355,9 +351,10 @@ export default {
 
     load();
     return {
-      update(why) { if (why === "resize") { if (plane && size && !mine) { cam = fitted(); apply(); } } else if (why === "settings" && data) render(); },
+      update(why) { if (why === "resize") { if (plane && size && !mine) { cam = fitted(); apply(); } } else if (why === "settings" && data) { split = isSplit(); render(); } },
       keys,
-      destroy() { dead = true; clearTimeout(timer); clearInterval(tick); root.remove(); },
+      where,
+      destroy() { dead = true; off.abort(); clearTimeout(timer); clearInterval(tick); root.remove(); },
     };
   },
 };
