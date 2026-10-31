@@ -12,6 +12,7 @@ import { injectCss } from "./flow.js";
 const LEVELS = [["local", "Local", "function to function"], ["module", "Module", "module to module"], ["service", "Service", "service to service"], ["user", "End user", "what users see"], ["infra", "Infra", "how it runs"]];
 const KIND = { function: "function", module: "module", service: "service", actor: "person", screen: "screen", store: "data store", queue: "queue", external: "outside system", infra: "infra" };
 const W = 236; // a box's width
+const STEPS = 8; // the steps the loader shows, the latest last (the server keeps as many)
 
 const CSS = `
 .bmap { position: absolute; inset: 0; display: flex; flex-direction: column; min-height: 0; }
@@ -80,16 +81,26 @@ const CSS = `
 .bmap .mrail li .cd p { margin: 0 0 6px; }
 .bmap .mfoot { margin-top: 18px; font-size: 12px; color: var(--faint); }
 .bmap .mkeys { margin-top: 6px; font-size: 12px; color: var(--faint); }
-.bmap .mintro { max-width: 620px; margin: auto; padding: 40px 24px; }
-.bmap .mintro h2 { margin: 0 0 10px; font: 650 calc(var(--size) * 1.5)/1.3 var(--font-prose); }
-.bmap .mintro p { font: calc(var(--size) * .98)/1.6 var(--font-prose); color: var(--muted); margin: 0 0 14px; }
-.bmap .lvls { display: flex; flex-wrap: wrap; gap: 6px; margin: 18px 0 20px; }
+/* before there's a map, or while Claude draws it: one card, anchored near the top at a set width, that never resizes */
+.bmap .mintro { position: absolute; inset: 0; overflow: auto; display: grid; place-items: start center; padding: 12vh 24px 40px; }
+.bmap .mcard { width: min(600px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 22px 26px; box-sizing: border-box; }
+.bmap .mcard h2 { margin: 0; font: 600 16px var(--font-ui); }
+.bmap .mcard p { margin: 6px 0 0; font-size: 14px; line-height: 1.55; color: var(--muted); }
+.bmap .msteps { list-style: none; margin: 18px 0 0; padding: 0; height: calc(${STEPS} * 24px); display: grid; grid-auto-rows: 24px; align-content: start; font: 12.5px var(--font-code); }
+.bmap .msteps li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; align-items: center; color: var(--faint); }
+.bmap .msteps li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bmap .msteps li.now { color: var(--text); }
+.bmap .msteps li i { width: 6px; height: 6px; margin-left: 4px; border-radius: 50%; background: var(--line); }
+.bmap .msteps li.now i { width: 12px; height: 12px; margin-left: 1px; background: none; box-sizing: border-box; border: 2px solid var(--line); border-top-color: var(--text); animation: spin .8s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .bmap .msteps li.now i { animation: none; } }
+.bmap .mfootrow { display: flex; align-items: center; gap: 12px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line-soft); font-size: 12.5px; color: var(--faint); }
+.bmap .mfootrow .mel { font-variant-numeric: tabular-nums; color: var(--muted); }
+.bmap .mfootrow .btn { margin-left: auto; padding: 4px 12px; font-size: 13px; }
+.bmap .lvls { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 18px 0 18px; }
 .bmap .lvls button { padding: 6px 11px; border: 1px solid var(--line); border-radius: 3px; background: none; font-size: 13px; color: var(--muted); text-align: left; }
 .bmap .lvls button small { display: block; font-size: 11px; color: var(--faint); }
 .bmap .lvls button.on { color: var(--text); font-weight: 650; background: var(--raised); }
-.bmap .merr { color: var(--risk); font-size: 13.5px; }
-.bmap .msteps { list-style: none; padding: 0; margin: 14px 0 20px; font: 13px/1.7 var(--font-ui); color: var(--muted); }
-.bmap .msteps li:last-child { color: var(--text); }
+.bmap .merr { margin-top: 12px !important; color: var(--risk) !important; }
 `;
 
 /** ref://head/path#L12-L20 (map.ts) → what openRef takes. */
@@ -108,7 +119,7 @@ export default {
   mount(el, app) {
     injectCss("map", CSS);
     const root = el.appendChild(Object.assign(document.createElement("div"), { className: "bmap" }));
-    let data = null, t = 1, sel = -1, want = "", dead = false, timer = 0, plane = null, fitEl = null, size = null;
+    let tick = 0, data = null, t = 1, sel = -1, want = "", dead = false, timer = 0, plane = null, fitEl = null, size = null;
 
     async function load() {
       clearTimeout(timer);
@@ -157,17 +168,44 @@ export default {
     }
 
     function intro() {
-      const running = data?.running;
-      root.innerHTML = `<div class="mintro">${running
-        ? `<h2>Drawing the map…</h2><p>Claude is reading the PR and the code around it.</p>
-           <ul class="msteps">${(data.steps.length ? data.steps : ["Starting"]).map((s) => `<li>${esc(s)}</li>`).join("")}</ul>
-           <button class="btn" data-cancel>Stop</button>`
-        : `<h2>Map</h2>
-           <p>How this PR changes what the system does: a diagram of before and after, at the level the change lives at, from one function calling another up to services, what users see, or how it runs.</p>
-           <p>Claude draws it from the PR and the code around it, reading only. It takes a minute or two.</p>
-           <div class="lvls"><button data-want="" class="${want ? "" : "on"}">Claude picks<small>the level of the change</small></button>${LEVELS.map(([id, name, sub]) => `<button data-want="${id}" class="${want === id ? "on" : ""}">${name}<small>${sub}</small></button>`).join("")}</div>
-           <button class="btn primary" data-draw>Draw the map</button>
-           ${data?.error ? `<p class="merr">${esc(data.error)}</p>` : ""}`}</div>`;
+      if (data?.running) return drawing();
+      clearInterval(tick);
+      root.innerHTML = `<div class="mintro"><div class="mcard">
+        <h2>Map</h2>
+        <p>How this PR changes what the system does, as a diagram of before and after, at the level the change lives at: from one function calling another up to services, what users see, or how it runs.</p>
+        <p>Claude draws it from the PR and the code around it, reading only, in a minute or two.</p>
+        <div class="lvls"><button data-want="" class="${want ? "" : "on"}">Claude picks<small>the level of the change</small></button>${LEVELS.map(([id, name, sub]) => `<button data-want="${id}" class="${want === id ? "on" : ""}">${name}<small>${sub}</small></button>`).join("")}</div>
+        <button class="btn primary" data-draw>Draw the map</button>
+        ${data?.error ? `<p class="merr">${esc(data.error)}</p>` : ""}
+      </div></div>`;
+    }
+
+    /** While Claude draws it: the card is drawn once, then only its steps and its clock change, so nothing moves. */
+    function drawing() {
+      if (!root.querySelector(".mrun")) {
+        root.innerHTML = `<div class="mintro"><div class="mcard mrun">
+          <h2>Drawing the map</h2>
+          <p>Claude is reading the PR and the code around it.</p>
+          <ol class="msteps"></ol>
+          <div class="mfootrow"><span class="mel"></span><span>usually a minute or two</span><button class="btn" data-cancel>Stop</button></div>
+        </div></div>`;
+        clearInterval(tick);
+        tick = setInterval(clock, 1000);
+      }
+      const steps = (data.steps.length ? data.steps : ["Starting"]).slice(-STEPS);
+      root.querySelector(".msteps").innerHTML = steps.map((x, k) => {
+        const now = k === steps.length - 1;
+        return `<li class="${now ? "now" : ""}" style="opacity:${now ? 1 : Math.max(0.35, 1 - (steps.length - 1 - k) * 0.09)}"><i></i><span title="${esc(x)}">${esc(middle(x))}</span></li>`;
+      }).join("");
+      clock();
+    }
+    /** A long step loses its middle, not its end, which is usually the file it's on. */
+    const middle = (x, max = 68) => (x.length <= max ? x : `${x.slice(0, 26)}…${x.slice(x.length - (max - 27))}`);
+    function clock() {
+      const el = root.querySelector(".mel");
+      if (!el || !data?.running) return clearInterval(tick);
+      const secs = Math.max(0, Math.round((Date.now() - (data.startedAt || Date.now())) / 1000));
+      el.textContent = secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m ${String(secs % 60).padStart(2, "0")}s`;
     }
 
     function diagram(m) {
@@ -279,7 +317,7 @@ export default {
     return {
       update(why) { if (why === "resize") fit(); else if (why === "settings" && data) render(); },
       keys,
-      destroy() { dead = true; clearTimeout(timer); root.remove(); },
+      destroy() { dead = true; clearTimeout(timer); clearInterval(tick); root.remove(); },
     };
   },
 };
