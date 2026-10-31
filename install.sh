@@ -62,15 +62,13 @@ say "Installing bobby $tag ($os-$arch) into $INSTALL_DIR"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 curl -fsSL --retry 2 -o "$tmp/$asset" "$base/$asset" || die "Download failed: $base/$asset"
-if curl -fsSL -o "$tmp/SHA256SUMS" "$base/SHA256SUMS" 2>/dev/null; then
-  want="$(grep " $asset\$" "$tmp/SHA256SUMS" | cut -d' ' -f1)"
-  if command -v sha256sum >/dev/null 2>&1; then got="$(sha256sum "$tmp/$asset" | cut -d' ' -f1)"
-  else got="$(shasum -a 256 "$tmp/$asset" | cut -d' ' -f1)"; fi
-  [ -n "$want" ] && [ "$want" = "$got" ] || die "Checksum mismatch for $asset"
-  say "✓ checksum verified"
-else
-  say "! no SHA256SUMS in this release; skipping the checksum"
-fi
+# every release has its checksums: without them (or with a failed download of them), nothing is installed unchecked
+curl -fsSL --retry 2 -o "$tmp/SHA256SUMS" "$base/SHA256SUMS" 2>/dev/null || die "Couldn't download $base/SHA256SUMS to check $asset against; not installing it"
+want="$(grep " $asset\$" "$tmp/SHA256SUMS" | cut -d' ' -f1)"
+if command -v sha256sum >/dev/null 2>&1; then got="$(sha256sum "$tmp/$asset" | cut -d' ' -f1)"
+else got="$(shasum -a 256 "$tmp/$asset" | cut -d' ' -f1)"; fi
+[ -n "$want" ] && [ "$want" = "$got" ] || die "Checksum mismatch for $asset"
+say "✓ checksum verified"
 
 # ---- install
 tar -xzf "$tmp/$asset" -C "$tmp"

@@ -82,11 +82,11 @@ export async function selfUpdate(want: string | undefined, say: (m: string) => v
   if (res.status === 404) throw new Error(`there's no release ${version} with ${name}: see https://github.com/${REPO}/releases`);
   if (!res.ok) throw new Error(`downloading ${name} failed (${res.status})`);
   const bytes = await res.arrayBuffer();
-  if (sums.ok) {
-    const sum = (await sums.text()).split("\n").find((l) => l.trim().endsWith(` ${name}`))?.split(/\s+/)[0];
-    if (!sum || sum !== new Bun.CryptoHasher("sha256").update(bytes).digest("hex")) throw new Error(`${name} doesn't match the release's SHA256SUMS`);
-    say("  ✓ checksum verified");
-  } else say("  ! this release has no SHA256SUMS; skipping the checksum");
+  // every release has its checksums: one without (or a failed download of them) isn't installed unchecked
+  if (!sums.ok) throw new Error(`couldn't read the release's SHA256SUMS (${sums.status}), so ${name} can't be checked; not installing it`);
+  const sum = (await sums.text()).split("\n").find((l) => l.trim().endsWith(` ${name}`))?.split(/\s+/)[0];
+  if (!sum || sum !== new Bun.CryptoHasher("sha256").update(bytes).digest("hex")) throw new Error(`${name} doesn't match the release's SHA256SUMS`);
+  say("  ✓ checksum verified");
   const denied = (e: unknown) => ["EACCES", "EPERM"].includes((e as NodeJS.ErrnoException).code ?? "")
     ? new Error(`can't write to ${dir}: run it with the rights to, or reinstall with the install script`) : e;
   let tmp: string;

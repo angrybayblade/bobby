@@ -10,6 +10,7 @@ What changed in each release, newest first. Each release's full notes, with inst
 - **Security:** Bobby's pages carry a Content-Security-Policy: only Bobby's own scripts run, and the page talks only to Bobby.
 - **Security:** a symlink in a PR that points outside the repository (say, at `~/.aws/credentials`) is removed from the copies of its code that Claude and the language servers read.
 - **Security:** with your connected tools on, "Read" no longer lets through tools that reach any address (`fetch_url`, `http_request`, `browse`), and Claude can't read where secrets usually live (`~/.ssh`, `~/.aws`, `.env` files…) whatever your own permission rules allow.
+- **Security:** `bobby update` and the install script refuse a download they can't check against the release's SHA256SUMS, rather than install it unchecked.
 - A review Bobby closes (no page open on it for 15 minutes) no longer stays in memory, and ending Bobby with ctrl-c stops every review's language servers. The copies of a PR's code they read are cleared once their review is closed, rather than kept while Bobby runs.
 - A tab you've left in the background stops checking in with Bobby (unless Claude is at work or you've left words unsent in a comment box), so Bobby closes the review after 15 minutes and frees its language servers, often a GB each. Back on the tab, it reopens by itself. A tab opened before this update needs one reload.
 - The first open of a repo clones only the PR's base branch, not every branch: a quarter less on disk for a busy repo, and a little faster.
