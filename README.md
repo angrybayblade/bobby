@@ -6,6 +6,8 @@
 
 Install
 
+<sub>Prerequisites: macOS or Linux (Windows builds exist but get the least use), `git`, `curl` and `tar`, a browser, and a GitHub account (github.com only, not Enterprise; Bobby installs and signs in GitHub's CLI, `gh`, for you). Optional: a Claude Code login for Claude's tree, reviews, questions and the Map (Bobby offers to install the `claude` CLI); Node.js 18+, which makes the TypeScript and Python language servers faster on large projects; Go and `gopls` for Go's.</sub>
+
 ```sh
 curl -fsSL https://raw.githubusercontent.com/angrybayblade/bobby/main/install.sh | bash
 ```
@@ -23,7 +25,7 @@ bobby home       # or bobby outside a repo: pick a PR from your recents, review 
 
 One Bobby holds every review you open: running `bobby <PR>` again adds it to the one already running.
 
-You'll need `git`; the release binary carries everything else, and Bobby offers to install GitHub's CLI, `gh`, and sign you in the first time it runs. On a cloud VM, open it through an SSH tunnel, or with `--host 0.0.0.0 --allow-host <its name>` (see [on a remote machine](docs/getting-started.md#on-a-remote-machine)). With the `claude` CLI installed, Claude organises the PR into a smarter tree in the background, using your Claude Code login; Bobby offers to install it and sign you in the first time it runs.
+The release binary carries everything else, and Bobby offers to install GitHub's CLI, `gh`, and sign you in the first time it runs. On a cloud VM, open it through an SSH tunnel, or with `--host 0.0.0.0 --allow-host <its name>` (see [on a remote machine](docs/getting-started.md#on-a-remote-machine)). With the `claude` CLI installed, Claude organises the PR into a smarter tree in the background, using your Claude Code login; Bobby offers to install it and sign you in the first time it runs.
 
 In the UI: `j`/`k` to step, arrow keys to move up and down in the tree, `enter`/`esc` to zoom, `a` for looks good, `c` to comment, `N` for the next unresolved thread, `v` to switch view, `s` to submit, and `?` for every key. Reply to, resolve, edit and delete GitHub threads where they sit.
 
