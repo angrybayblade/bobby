@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import type { ReviewGraph } from "./graph.ts";
 import type { ChangeTree, PrInfo, ReviewState } from "./types.ts";
 
@@ -13,6 +13,12 @@ let migrated = false;
 export function home() {
   if (!migrated && !process.env.BOBBY_HOME && !existsSync(ROOT) && existsSync(LEGACY)) {
     try { renameSync(LEGACY, ROOT); console.error(`  moved ${LEGACY} to ${ROOT}`); } catch { /* keep going with a fresh ~/.bobby */ }
+  }
+  if (!migrated) { // yours alone: it holds clones of private repos, their reviews and your drafts
+    try {
+      mkdirSync(ROOT, { recursive: true, mode: 0o700 });
+      if (statSync(ROOT).mode & 0o077) chmodSync(ROOT, 0o700); // one made before Bobby did this
+    } catch { /* read-only, or not ours: keep going */ }
   }
   migrated = true;
   return ROOT;
