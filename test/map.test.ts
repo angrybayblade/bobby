@@ -12,7 +12,6 @@ const raw = {
       edges: [edge("worker", "odd", { status: "added", before: "ignored" })] },
     { name: "Empty", about: "", nodes: [], edges: [] },
   ],
-  changes: [{ title: "Charges retry", detail: "Before, a failure was final.", nodes: ["charge", "worker", "ghost"] }, { title: "", detail: "x", nodes: [] }],
 };
 
 test("a map is made safe to draw, layer by layer", () => {
@@ -28,6 +27,5 @@ test("a map is made safe to draw, layer by layer", () => {
     { from: "charge", to: "done", label: "after retries", status: "changed", before: "at once" },
   ]);
   expect(inside.edges).toEqual([{ from: "worker", to: "odd", label: "", status: "added" }]);
-  expect(m.changes).toEqual([{ title: "Charges retry", detail: "Before, a failure was final.", nodes: ["charge", "worker"] }]);
   expect(m).toMatchObject({ scope: "Where charges are retried.", effect: "Customers whose card fails once." });
 });

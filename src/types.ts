@@ -139,8 +139,7 @@ export type MapStatus = "same" | "added" | "removed" | "changed";
 export interface MapNode { id: string; label: string; kind: string; status: MapStatus; group?: string; note?: string; points?: string[]; before?: string[]; ref?: string }
 export interface MapEdge { from: string; to: string; label: string; status: MapStatus; before?: string } // before: a changed edge's label before the PR
 export interface MapLayer { name: string; about: string; nodes: MapNode[]; edges: MapEdge[] } // one level of detail, drawn before and after
-export interface MapChange { title: string; detail: string; nodes: string[] } // nodes: ids, from any layer
-export interface BehaviourMap { headSha: string; at: string; summary: string; scope: string; effect: string; layers: MapLayer[]; changes: MapChange[]; cost?: number }
+export interface BehaviourMap { headSha: string; at: string; summary: string; scope: string; effect: string; layers: MapLayer[]; cost?: number }
 
 export interface AgentReview { headSha: string; at: string; summary: string; findings: Finding[]; focus?: string; left?: number; cost?: number } // focus: what you asked it to look at
 

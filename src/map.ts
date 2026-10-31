@@ -2,17 +2,17 @@
 // layers of abstraction this PR is best understood at, which it defines for the PR: an overview in plain words, then
 // each layer opening up the part of the one above where the change is, down to functions and data where that helps.
 // Each layer is one graph whose nodes and edges are marked same, added, removed or changed, so the view draws it
-// before and after from the same data; the behavioural changes each point at their parts, on any layer. Claude runs as
+// before and after from the same data. Claude runs as
 // for a review (agent.ts): in the head commit's export, read-only, with Bobby's tools when it has them, and what it's
 // doing streams to the page.
 import { type AgentJob, prContext, runClaude, TOOLS_NOTE } from "./agent.ts";
 import type { ReviewGraph } from "./graph.ts";
 import { refContext, resolveRefs } from "./refs.ts";
-import type { BehaviourMap, MapChange, MapEdge, MapLayer, MapNode, MapStatus } from "./types.ts";
+import type { BehaviourMap, MapEdge, MapLayer, MapNode, MapStatus } from "./types.ts";
 
 const STATUSES: MapStatus[] = ["same", "added", "removed", "changed"];
 export const KINDS = ["step", "outcome", "actor", "function", "module", "service", "screen", "store", "queue", "external", "infra"];
-const MAX_LAYERS = 4, MAX_NODES = 14, MAX_CHANGES = 6, MAX_POINTS = 3;
+const MAX_LAYERS = 4, MAX_NODES = 14, MAX_POINTS = 3;
 
 const str = { type: "string" }, strs = { type: "array", items: str };
 const NODE = { type: "object", properties: { id: str, label: str, kind: { type: "string", enum: KINDS }, status: { type: "string", enum: STATUSES }, group: str, note: str, points: strs, before: strs, ref: str }, required: ["id", "label", "kind", "status", "group", "note", "points", "before", "ref"] };
@@ -24,9 +24,8 @@ const SCHEMA = {
     effect: str,
     summary: str,
     layers: { type: "array", items: { type: "object", properties: { name: str, about: str, nodes: { type: "array", items: NODE }, edges: { type: "array", items: EDGE } }, required: ["name", "about", "nodes", "edges"] } },
-    changes: { type: "array", items: { type: "object", properties: { title: str, detail: str, nodes: strs }, required: ["title", "detail", "nodes"] } },
   },
-  required: ["scope", "effect", "summary", "layers", "changes"],
+  required: ["scope", "effect", "summary", "layers"],
 };
 
 function instructions(tools = false) {
@@ -62,8 +61,7 @@ Nodes, 3 to ${MAX_NODES} per layer:
 - ref: where it's defined on a detailed layer, as path#L12, or path#base-L12 for removed code; "" on the overview and for people and outside systems.
 Edges: from and to (ids on the same layer), label (a short verb phrase, "POST /charges", "retries ×3"; usually "" on the overview, where an arrow between steps says enough), status, before (what a changed edge's label was; else ""). Point each the way control or data flows.
 
-# THE CHANGES
-changes: the behavioural changes, 1 to ${MAX_CHANGES}, the most important first. Each: title (at most 10 words: what now behaves differently), detail (two to four sentences: what happened before, what happens now, and what it means for a caller or a user; cite the code as Markdown links, [what it is](path/to/file.ts#L12), or path/to/file.ts#base-L12 for the code before the PR, only lines you've read), nodes (the ids of its parts on every layer where it shows).
+# THE SUMMARY
 summary: one sentence, the change in behaviour as a reviewer would say it.
 
 # HOW TO WORK
@@ -75,13 +73,13 @@ export function buildMapPrompt(g: ReviewGraph, tools = false): string {
   return [instructions(tools), ...(tools ? ["", TOOLS_NOTE] : []), "", prContext(g, tools)].join("\n");
 }
 
-type Raw = Record<string, unknown> & { layers?: Array<Record<string, unknown>>; changes?: Array<Record<string, unknown>> };
+type Raw = Record<string, unknown> & { layers?: Array<Record<string, unknown>> };
 const text = (v: unknown, max = 400) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 const list = (v: unknown, max = MAX_POINTS) => (Array.isArray(v) ? v.map((x) => text(x, 100)).filter(Boolean).slice(0, max) : []);
 const status = (v: unknown): MapStatus => (STATUSES.includes(v as MapStatus) ? (v as MapStatus) : "same");
 
 /** Claude's answer, made safe to draw: known statuses and kinds, ids unique across the map, edges between nodes on
- *  their layer, changes pointing at what's left. Its code references are resolved to real lines (refs.ts) or dropped. */
+ *  their layer. Its code references are resolved to real lines (refs.ts) or dropped. */
 export function normalize(raw: Raw): Omit<BehaviourMap, "headSha" | "at"> {
   const ids = new Set<string>(), layers: MapLayer[] = [];
   for (const l of (Array.isArray(raw.layers) ? raw.layers : []).slice(0, MAX_LAYERS)) {
@@ -104,10 +102,7 @@ export function normalize(raw: Raw): Omit<BehaviourMap, "headSha" | "at"> {
     }
     layers.push({ name: text(l.name, 40) || `Layer ${layers.length + 1}`, about: text(l.about, 240), nodes, edges });
   }
-  const changes: MapChange[] = (Array.isArray(raw.changes) ? raw.changes : []).slice(0, MAX_CHANGES).map((c) => ({
-    title: text(c.title, 120), detail: text(c.detail, 1500), nodes: list(c.nodes, 40).filter((x) => ids.has(x)),
-  })).filter((c) => c.title);
-  return { summary: text(raw.summary, 400), scope: text(raw.scope, 300), effect: text(raw.effect, 400), layers, changes };
+  return { summary: text(raw.summary, 400), scope: text(raw.scope, 300), effect: text(raw.effect, 400), layers };
 }
 
 /** Draws the map; job says how it's going, and the map is handed to done. */
@@ -116,7 +111,6 @@ export async function runMap(cwd: string, g: ReviewGraph, job: AgentJob, done: (
     const result = await runClaude(cwd, g, job, buildMapPrompt(g, !!tools), { schema: SCHEMA, ...(tools ? { tools } : {}), minutes: 15 });
     const m = normalize(result.structured_output as Raw), refs = refContext(cwd, g);
     if (!m.layers.length) throw new Error("Claude drew nothing to show");
-    for (const c of m.changes) c.detail = await resolveRefs(c.detail, refs);
     for (const n of m.layers.flatMap((l) => l.nodes)) { // a node's code: the target of its reference, once it's checked, else none
       if (!n.ref) continue;
       const to = /\]\((ref:\/\/[^)]+)\)/.exec(await resolveRefs(`[x](${n.ref.replace(/^\[.*\]\((.*)\)$/, "$1")})`, refs))?.[1];
@@ -124,7 +118,7 @@ export async function runMap(cwd: string, g: ReviewGraph, job: AgentJob, done: (
     }
     done({ headSha: g.pr.headSha, at: new Date().toISOString(), ...m, ...(result.total_cost_usd ? { cost: result.total_cost_usd } : {}) });
     const parts = m.layers.reduce((s, l) => s + l.nodes.length, 0);
-    job.steps.push(`Done: ${m.layers.length} layer${m.layers.length === 1 ? "" : "s"}, ${parts} parts, ${m.changes.length} change${m.changes.length === 1 ? "" : "s"}`);
+    job.steps.push(`Done: ${m.layers.length} layer${m.layers.length === 1 ? "" : "s"}, ${parts} parts`);
   } catch (e) {
     job.error ??= (e as Error).message;
   } finally {

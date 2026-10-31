@@ -2,10 +2,8 @@
 // /api/map): it scopes the change and what it affects, then draws it at layers of abstraction it defines for the PR,
 // from an overview in plain words down to the code. Each layer is one graph whose parts are marked same, added, removed
 // or changed, laid out once: a slider runs from before to after, fading out what the PR removes and in what it adds,
-// so nothing moves as you compare. The rail lists the behavioural changes, and picking one lights up its parts. A
-// part's code, and the code a change cites, open in the code viewer.
+// so nothing moves as you compare; or split, before and after side by side. A part's code opens in the code viewer.
 import { api, esc } from "../core.js";
-import { md } from "../comments.js";
 import { openRef } from "../code.js";
 import { mapLayout } from "./maplayout.js";
 import { injectCss } from "./flow.js";
@@ -24,8 +22,8 @@ const CSS = `
 .bmap .mctl .btn { padding: 3px 10px; font-size: 12.5px; }
 .bmap .banner { padding: 7px 24px; font-size: 13px; color: var(--muted); background: var(--raised); border-bottom: 1px solid var(--line-soft); display: flex; gap: 10px; align-items: center; }
 .bmap .banner .btn { padding: 3px 10px; font-size: 12.5px; }
-.bmap .mbody { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 340px; }
-.bmap .mleft { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.bmap .mbody { flex: 1; min-height: 0; display: flex; }
+.bmap .mleft { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .bmap .mlayers { display: flex; align-items: center; gap: 16px; padding: 8px 16px 8px 20px; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
 .bmap .mtabs { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; white-space: nowrap; }
 .bmap .mtabs button { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; padding: 2px 4px; border: 0; background: none; font: inherit; color: var(--muted); }
@@ -85,20 +83,6 @@ const CSS = `
 .bmap .slide button { padding: 4px 2px; border: 0; background: none; font-size: 13px; color: var(--muted); }
 .bmap .slide button.on { color: var(--text); font-weight: 650; } /* weight, not colour */
 .bmap .slide input { width: 120px; accent-color: var(--text); }
-.bmap .plane.lit .dim { --d: .15; }
-.bmap .mrail { border-left: 1px solid var(--line-soft); overflow: auto; padding: 16px 18px 40px; }
-.bmap .mrail h4 { margin: 0 0 10px; font: 600 10.5px var(--font-ui); letter-spacing: .09em; text-transform: uppercase; color: var(--faint); }
-.bmap .mrail ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.bmap .mrail li { padding: 9px 11px; border: 1px solid transparent; border-radius: 3px; cursor: pointer; }
-.bmap .mrail li:hover { background: var(--raised); }
-.bmap .mrail li.on { background: var(--raised); border-color: var(--line); }
-.bmap .mrail li .ct { font: 500 13.5px/1.4 var(--font-prose); }
-.bmap .mrail li.on .ct { font-weight: 650; }
-.bmap .mrail li .ct i { font-style: normal; color: var(--faint); margin-right: 6px; }
-.bmap .mrail li .cd { margin-top: 6px; font-size: 13px; line-height: 1.5; color: var(--muted); }
-.bmap .mrail li .cd p { margin: 0 0 6px; }
-.bmap .mfoot { margin-top: 18px; font-size: 12px; color: var(--faint); }
-.bmap .mkeys { margin-top: 6px; font-size: 12px; color: var(--faint); }
 /* before there's a map, or while Claude draws it: one card, anchored near the top at a set width, that never resizes */
 .bmap .mintro { position: absolute; inset: 0; overflow: auto; display: grid; place-items: start center; padding: 12vh 24px 40px; }
 .bmap .mcard { width: min(600px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 22px 26px; box-sizing: border-box; }
@@ -136,7 +120,7 @@ export default {
     let split = false;
     try { split = localStorage.getItem("bobby.map.split") === "1"; } catch {}
     let planes = [];
-    let tick = 0, data = null, t = 1, sel = -1, layer = 0, dead = false, timer = 0, plane = null, size = null, drawn = "";
+    let tick = 0, data = null, t = 1, layer = 0, dead = false, timer = 0, plane = null, size = null, drawn = "";
     // the camera: framed to fit the map until you pan or zoom; then yours until another map is drawn
     let cam = { tx: 0, ty: 0, s: 1 }, mine = false;
 
@@ -150,7 +134,7 @@ export default {
     async function draw() {
       const r = await api("/api/map/start", {}).catch((e) => ({ ok: false, error: e.message }));
       if (!r.ok) { data = { ...data, error: r.error }; return render(); }
-      sel = -1; layer = 0;
+      layer = 0;
       load();
     }
 
@@ -170,22 +154,15 @@ export default {
               <div class="mctl">
                 ${split ? "" : `<div class="slide"><button data-end="0">Before</button><input type="range" min="0" max="1" step="0.01" value="${t}" aria-label="Before or after the PR"><button data-end="1">After</button></div>`}
                 <div class="seg"><button data-split="0" class="${split ? "" : "on"}" title="One diagram, a slider from before to after">Inline</button><button data-split="1" class="${split ? "on" : ""}" title="Before and after side by side">Split</button></div>
-                <button class="btn" data-redraw ${data.running ? "disabled" : ""} title="Have Claude draw it again">Redraw</button>
+                <button class="btn" data-redraw ${data.running ? "disabled" : ""} title="${esc(`Drawn by Claude ${new Date(m.at).toLocaleString()}${m.cost ? `, $${m.cost.toFixed(2)}` : ""}. Draw it again`)}">Redraw</button>
               </div></nav>
-            <div class="stage">${(split ? [["before", "Before"], ["after", "After"]] : [["", ""]]).map(([side, name]) => `<div class="pane">${name ? `<span class="ptag">${name}</span>` : ""}<div class="plane${sel >= 0 ? " lit" : ""}" data-side="${side}"></div></div>`).join("")}
+            <div class="stage">${(split ? [["before", "Before"], ["after", "After"]] : [["", ""]]).map(([side, name]) => `<div class="pane">${name ? `<span class="ptag">${name}</span>` : ""}<div class="plane" data-side="${side}"></div></div>`).join("")}
               <div class="mzoom"><button data-zoom="-1" title="Zoom out">−</button><button data-zoom="fit" title="Fit the map to the canvas"></button><button data-zoom="1" title="Zoom in">+</button></div></div>
           </div>
-          <aside class="mrail">
-            <h4>What changes</h4>
-            <ol>${m.changes.map((c, i) => `<li data-change="${i}" class="${sel === i ? "on" : ""}"><div class="ct"><i>${i + 1}</i>${esc(c.title)}</div><div class="cd">${md(c.detail)}</div></li>`).join("")}</ol>
-            <div class="mkeys">← → before, after (inline) · ↑ ↓ step through the changes · enter / esc a layer deeper or higher · drag or scroll to pan, pinch or ctrl+scroll to zoom</div>
-            <div class="mfoot">Drawn by Claude ${new Date(m.at).toLocaleString()}${m.cost ? ` · $${m.cost.toFixed(2)}` : ""}</div>
-          </aside>
         </div>`;
       planes = [...root.querySelectorAll(".plane")];
       plane = planes[0];
       if (drawn !== `${m.at} ${layer} ${split}`) { drawn = `${m.at} ${layer} ${split}`; mine = false; } // a new map, layer or mode: framed afresh
-      root.querySelector(".mrail li.on")?.scrollIntoView({ block: "nearest" });
       diagram(m);
     }
 
@@ -242,30 +219,24 @@ export default {
       }
       size = { w: Math.max(...sizes.map((x) => x.w)), h: Math.max(...sizes.map((x) => x.h)) };
       if (!split) slide(t);
-      const change = m.changes[sel];
       if (!mine) cam = fitted();
-      if (change && !split) frame([...plane.querySelectorAll(".mn:not(.dim)")]); // split: both sides stay as they are, the change lit on each
       apply();
     }
 
     function drawPlane(plane, m, nodes, edges) {
-      const change = m.changes[sel];
-      const litNodes = new Set(change?.nodes ?? []);
-      const litEdges = new Set(edges.filter((e) => litNodes.has(e.from) && litNodes.has(e.to)).map((e) => e.i));
       const plain = (k) => k === "step" || k === "outcome"; // a box that's only its words
       const list = (ps, cls = "") => `<ul class="mp${cls}">${ps.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`;
       // the cases inside a part; a changed part's, fading from what they were into what they are
       const points = (n) => (n.before ? `<div class="mps">${list(n.before, " was")}${list(n.points ?? [], " now")}</div>` : n.points?.length ? list(n.points) : "");
-      const dim = (lit) => (change && !lit ? " dim" : "");
       // boxes and labels first, so the layout knows their sizes
-      plane.innerHTML = nodes.map((n) => `<div class="mn kind-${esc(n.kind)} st-${n.status}${dim(litNodes.has(n.id))}" data-id="${esc(n.id)}"${n.ref ? ` data-ref="${esc(n.ref)}"` : ""} title="${esc([n.note, n.ref ? "Click to open its code" : ""].filter(Boolean).join("\n"))}">
+      plane.innerHTML = nodes.map((n) => `<div class="mn kind-${esc(n.kind)} st-${n.status}" data-id="${esc(n.id)}"${n.ref ? ` data-ref="${esc(n.ref)}"` : ""} title="${esc([n.note, n.ref ? "Click to open its code" : ""].filter(Boolean).join("\n"))}">
           ${plain(n.kind) ? "" : `<div class="mk"><span class="kd">${KIND[n.kind] ?? esc(n.kind)}</span>${n.group ? `<span class="g">${esc(n.group)}</span>` : ""}</div>`}
           <div class="ml">${esc(n.label)}</div>${points(n)}</div>`).join("") +
         edges.map((e, j) => {
           // a changed interaction: what it did, fading into what it does, in one place
           const two = e.status === "changed" && e.before && e.before !== e.label;
           const inner = two ? `<span class="was">${esc(e.before)}</span><span class="now">${esc(e.label)}</span>` : esc(e.label);
-          return e.label || two ? `<div class="el st-${e.status}${two ? " two" : ""}${dim(litEdges.has(e.i))}" data-edge="${j}">${inner}</div>` : "";
+          return e.label || two ? `<div class="el st-${e.status}${two ? " two" : ""}" data-edge="${j}">${inner}</div>` : "";
         }).join("");
       const box = new Map([...plane.querySelectorAll(".mn")].map((d) => [d.dataset.id, d]));
       const tag = new Map([...plane.querySelectorAll(".el")].map((d) => [Number(d.dataset.edge), d]));
@@ -280,7 +251,7 @@ export default {
         const [p0, ...rest] = at.points;
         let d = `M${p0[0]},${p0[1]}`, prev = p0;
         for (const q of rest) { const my = (prev[1] + q[1]) / 2; d += ` C${prev[0]},${my} ${q[0]},${my} ${q[0]},${q[1]}`; prev = q; }
-        paths.push(`<path class="st-${e.status}${dim(litEdges.has(e.i))}" d="${d}" marker-end="url(#mapArrow)"/>`);
+        paths.push(`<path class="st-${e.status}" d="${d}" marker-end="url(#mapArrow)"/>`);
         const lb = tag.get(j);
         if (lb && at.label) { lb.style.left = `${at.label.x}px`; lb.style.top = `${at.label.y}px`; }
       });
@@ -302,15 +273,6 @@ export default {
     function fitted() {
       const st = stageEl(), s = Math.max(MIN, Math.min(1, (st.clientWidth - 2 * PAD) / size.w, (st.clientHeight - 2 * PAD) / size.h));
       return { s, tx: (st.clientWidth - size.w * s) / 2, ty: Math.max(PAD, (st.clientHeight - size.h * s) / 2) };
-    }
-    /** Brings these boxes into view, centred, zooming out only if they don't fit as it is. */
-    function frame(els) {
-      if (!els.length) return;
-      const st = stageEl(), xs = els.map((d) => [d.offsetLeft, d.offsetLeft + d.offsetWidth]), ys = els.map((d) => [d.offsetTop, d.offsetTop + d.offsetHeight]);
-      const x0 = Math.min(...xs.map((v) => v[0])), x1 = Math.max(...xs.map((v) => v[1])), y0 = Math.min(...ys.map((v) => v[0])), y1 = Math.max(...ys.map((v) => v[1]));
-      const s = Math.max(MIN, Math.min(cam.s, (st.clientWidth - 2 * PAD) / (x1 - x0), (st.clientHeight - 2 * PAD) / (y1 - y0)));
-      cam = { s, tx: st.clientWidth / 2 - ((x0 + x1) / 2) * s, ty: st.clientHeight / 2 - ((y0 + y1) / 2) * s };
-      mine = true;
     }
     /** Zooms by k around a point of the stage (its centre by default). */
     function zoom(k, px, py, glide = false) {
@@ -363,26 +325,18 @@ export default {
       root.querySelectorAll(".slide [data-end]").forEach((b) => b.classList.toggle("on", Math.round(t) === Number(b.dataset.end)));
     }
     root.addEventListener("input", (ev) => { if (ev.target.matches(".slide input")) slide(Number(ev.target.value), true); });
-    const pick = (i, toggle = true) => {
-      sel = toggle && i === sel ? -1 : i;
-      const m = data?.map, on = new Set(m?.changes[sel]?.nodes ?? []);
-      if (on.size && !m.layers[layer].nodes.some((n) => on.has(n.id))) { const k = m.layers.findIndex((l) => l.nodes.some((n) => on.has(n.id))); if (k >= 0) layer = k; } // shown on another layer: go there
-      render();
-    };
     root.addEventListener("click", (ev) => {
       const t = ev.target;
       if (dragged) { dragged = false; return; } // the end of a pan, not a click
       const z = t.closest("[data-zoom]");
       if (z) { if (z.dataset.zoom === "fit") { cam = fitted(); mine = false; apply(true); } else zoom(z.dataset.zoom > 0 ? 1.25 : 0.8, undefined, undefined, true); return; }
-      if (t.closest("a")) return; // a reference in a change: the viewer opens it (code.js)
-      const b = t.closest("[data-end],[data-split],[data-layer],[data-draw],[data-redraw],[data-cancel],[data-change],.mn[data-ref]");
+      const b = t.closest("[data-end],[data-split],[data-layer],[data-draw],[data-redraw],[data-cancel],.mn[data-ref]");
       if (!b) return;
       if (b.dataset.end) slide(Number(b.dataset.end));
       else if (b.dataset.split) setSplit(b.dataset.split === "1");
       else if (b.dataset.layer) toLayer(Number(b.dataset.layer));
       else if (b.hasAttribute("data-draw") || b.hasAttribute("data-redraw")) draw();
       else if (b.hasAttribute("data-cancel")) api("/api/map/cancel", {}).then(load);
-      else if (b.dataset.change) pick(Number(b.dataset.change));
       else if (b.dataset.ref) { const r = parseRef(b.dataset.ref); if (r) openRef(app, r); }
     });
     const setSplit = (on) => {
@@ -393,11 +347,10 @@ export default {
     };
     const toLayer = (i) => { const n = data?.map?.layers.length ?? 0; if (i >= 0 && i < n && i !== layer) { layer = i; render(); } };
 
-    const step = (d) => { const n = data?.map?.changes.length ?? 0; if (n) pick(sel < 0 ? (d > 0 ? 0 : n - 1) : Math.max(0, Math.min(n - 1, sel + d)), false); };
     const keys = { // by action (keys.js)
-      left: () => slide(0), right: () => slide(1), // inline only: split shows both up: () => step(-1), down: () => step(1),
+      left: () => slide(0), right: () => slide(1), // inline only: split shows both
       zoomIn: () => toLayer(layer + 1),
-      zoomOut: () => { if (sel >= 0) pick(sel); else toLayer(layer - 1); },
+      zoomOut: () => toLayer(layer - 1),
     };
 
     load();
