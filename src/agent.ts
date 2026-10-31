@@ -9,7 +9,7 @@ import { join } from "node:path";
 import type { Subprocess } from "bun";
 import { claudeBin, claudeBusy, claudeStatus, claudeTurn, SPEND } from "./claude.ts";
 import type { ReviewGraph } from "./graph.ts";
-import { keepTree } from "./langserver.ts";
+import { dropOutsideLinks, keepTree } from "./langserver.ts";
 import { home } from "./state.ts";
 
 import type { Connected } from "./connected.ts";
@@ -135,6 +135,7 @@ async function sourceTree(cwd: string, g: ReviewGraph, step: (m: string) => void
     rmSync(tmp, { recursive: true, force: true });
     throw new Error(`couldn't export ${g.pr.headSha.slice(0, 7)}: ${(await new Response(archive.stderr).text()).trim()}`);
   }
+  await dropOutsideLinks(cwd, g.pr.headSha, tmp);
   writeFileSync(join(tmp, ".bobby-tree"), "src");
   try { renameSync(tmp, dir); } catch { rmSync(tmp, { recursive: true, force: true }); } // another Bobby got there first
   return dir;

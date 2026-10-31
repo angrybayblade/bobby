@@ -143,7 +143,7 @@ Click the pill to go through the findings one at a time, worst first; **New revi
 
 Findings also sit on their lines in the diff as dashed suggestions, with the same Add to review and Dismiss. Nothing Claude writes is posted unless you add it and submit. Findings are kept with your review for that head commit; after new commits, **Review again**.
 
-Claude runs in a copy of the head commit with only its read-only file tools (Read, Grep, Glob), none of your Claude Code settings or MCP servers, and can't read outside that copy. `BOBBY_REVIEW_MODEL` (else `BOBBY_MODEL`) picks the model. Each run has a ceiling on what it may spend, far above what one usually costs ($5 for a review or a map, $2 for a question, $3 for the change tree), so only a run that's gone round in circles is stopped; and at most three Claude runs go at once, across your reviews, the rest waiting their turn.
+Claude runs in a copy of the head commit with only its read-only file tools (Read, Grep, Glob), none of your Claude Code settings or MCP servers, and can't read outside that copy (a symlink in the PR that leads out of it is removed from the copy). `BOBBY_REVIEW_MODEL` (else `BOBBY_MODEL`) picks the model. Each run has a ceiling on what it may spend, far above what one usually costs ($5 for a review or a map, $2 for a question, $3 for the change tree), so only a run that's gone round in circles is stopped; and at most three Claude runs go at once, across your reviews, the rest waiting their turn.
 
 ## Asking Claude about code (preview)
 

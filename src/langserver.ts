@@ -1,8 +1,8 @@
 // Language servers, plug and play: each language is one LanguageServer (typescript.ts, python.ts, go.ts), and
 // everything else (starting it, placing names, the inspector) is shared. Here: the interface, installing from npm,
 // and the code a server reads, a PR's head commit exported to ~/.bobby/trees, since Bobby never checks out a PR.
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, realpathSync, renameSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { git } from "./git.ts";
 import { home } from "./state.ts";
 
@@ -104,6 +104,7 @@ export async function headTree(cwd: string, pr: { owner: string; repo: string; h
       throw new Error(`couldn't export ${pr.headSha.slice(0, 7)}: ${(await new Response(archive.stderr).text()) || (await new Response(tar.stderr).text())}`.trim());
     }
   }
+  await dropOutsideLinks(cwd, pr.headSha, tmp); // before anything reads it, or links its own (prepareTree)
   for (const s of prepare) await s.prepareTree?.(tmp);
   writeFileSync(join(tmp, ".bobby-tree"), stamp);
   if (existsSync(dir) && (!existsSync(done) || readFileSync(done, "utf8") !== stamp)) rmSync(dir, { recursive: true, force: true }); // half a tree, or an older export
@@ -111,6 +112,25 @@ export async function headTree(cwd: string, pr: { owner: string; repo: string; h
   if (!existsSync(done)) throw new Error(`couldn't export ${pr.headSha.slice(0, 7)} to ${dir}`);
   prune(base);
   return dir;
+}
+/** Removes the symlinks a commit has (git's mode 120000) that point outside the tree it was exported to: a PR could add
+ *  `notes.md -> ~/.aws/credentials`, and whatever reads the tree (Claude, a language server, the inspector) would read
+ *  that file instead. Links within the tree stay. */
+export async function dropOutsideLinks(cwd: string, sha: string, root: string): Promise<string[]> {
+  const links = (await git(cwd, ["ls-tree", "-r", "-z", sha])).split("\0").filter((l) => l.startsWith("120000 ")).map((l) => l.slice(l.indexOf("\t") + 1));
+  const top = realpathSync(root), dropped: string[] = [];
+  const inside = (p: string) => { const r = relative(top, p); return r === "" || (!r.startsWith("..") && !isAbsolute(r)); };
+  for (const rel of links) {
+    const at = join(root, rel);
+    if (!lstatSync(at, { throwIfNoEntry: false })?.isSymbolicLink()) continue; // not exported
+    const points = resolve(realpathSync(dirname(at)), readlinkSync(at));
+    let leads = points; // where it leads through any other links; a dangling one, where it points
+    try { leads = realpathSync(points); } catch { /* dangling */ }
+    if (inside(points) && inside(leads)) continue;
+    rmSync(at, { force: true });
+    dropped.push(rel);
+  }
+  return dropped;
 }
 /** A git pathspec ("*.go", "*go.mod"), as git matches it without magic: * crosses directories. */
 const globRe = (spec: string) => new RegExp(`^${spec.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, ".")}$`);
