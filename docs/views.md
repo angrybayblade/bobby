@@ -30,7 +30,7 @@ How the PR changes what the system does, as a diagram you read before the code: 
 - **Before and after, on a slider.** It's one graph whose parts are marked **same**, **added**, **removed** or **changed**, laid out once. Slide from **Before** to **After** and what the PR removes fades out, what it adds fades in, and a changed interaction's label turns from what it did into what it does, while nothing else moves. Click either end to go there, or `←` / `→`.
 - **Read top to bottom.** Each part sits below what leads to it; an edge's label has a place of its own in the row under where it leaves, and a long edge goes round the parts in its way, so nothing is drawn over anything else (`views/maplayout.js`). A diagram taller than the stage scrolls, and one wider can be dragged.
 - **What changes**, in the rail: the behavioural changes, most important first, each saying what happened before, what happens now and what it means, with links to the code. Click one (or `↑` / `↓`) to light up its part of the diagram; again, or `esc`, to see it all.
-- A part's code opens in the code viewer when you click it, as do the links in a change.
+- **Drawn plainly**: one ink, no colour for what's added, removed or changed (the slider and the rail show that). Hover a part for a note on what it does; click it to open its code in the code viewer, as the links in a change do.
 
 ## Flow
 

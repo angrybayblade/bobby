@@ -33,38 +33,23 @@ const CSS = `
 .bmap .stage { overflow: auto; display: flex; min-width: 0; }
 .bmap .stage.pans { cursor: grab; }
 .bmap .stage.panning { cursor: grabbing; user-select: none; }
-.bmap .stage { background-image: radial-gradient(var(--line-soft) 1px, transparent 1.2px); background-size: 18px 18px; }
 .bmap .fit { margin: auto; padding: 36px; flex: none; box-sizing: content-box; }
 .bmap .plane { position: relative; transform-origin: 0 0; }
 .bmap .plane > svg { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
-.bmap .mn { position: absolute; width: ${W}px; box-sizing: border-box; padding: 9px 12px 11px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); box-shadow: 0 1px 2px rgba(0, 0, 0, .06); transition: opacity var(--dur, .2s), border-color var(--dur, .2s); }
+.bmap .mn { position: absolute; width: ${W}px; box-sizing: border-box; padding: 8px 12px 9px; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); transition: opacity var(--dur, .2s), border-color var(--dur, .2s); }
 .bmap .mn[data-ref] { cursor: pointer; }
 .bmap .mn[data-ref]:hover { border-color: var(--muted); }
 .bmap .mn.kind-actor { border-radius: 20px; padding-left: 16px; padding-right: 16px; }
-.bmap .mn.kind-store { border-bottom-width: 3px; }
+.bmap .mn.kind-store { border-bottom-width: 2px; }
 .bmap .mn.kind-external, .bmap .mn.kind-infra { border-style: dashed; }
 .bmap .mk { display: flex; gap: 6px; align-items: baseline; font: 500 11px var(--font-ui); color: var(--faint); white-space: nowrap; min-width: 0; }
 .bmap .mk .kd { flex: none; }
 .bmap .mk .g { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .bmap .mk .g::before { content: "· "; }
-.bmap .mk .st { margin-left: auto; flex: none; font-weight: 650; font-size: 10px; letter-spacing: .07em; text-transform: uppercase; }
 .bmap .ml { margin-top: 3px; font: 600 13.5px/1.3 var(--font-prose); color: var(--text); overflow-wrap: break-word; }
 .bmap .mn.kind-function .ml, .bmap .mn.kind-module .ml { font: 600 12px/1.35 var(--font-code); overflow-wrap: anywhere; }
-.bmap .mo { margin-top: 5px; font-size: 12px; line-height: 1.4; color: var(--muted); }
-.bmap .mn.st-added { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 9%, var(--surface)); }
-.bmap .mn.st-added .st { color: var(--ok); }
-.bmap .mn.st-removed { border-color: var(--risk); border-style: dashed; background: var(--bg); box-shadow: none; }
-.bmap .mn.st-removed .st { color: var(--risk); }
-.bmap .mn.st-changed { border-color: var(--signal); background: color-mix(in srgb, var(--signal) 9%, var(--surface)); }
-.bmap .mn.st-changed .st { color: var(--signal); }
-.bmap .plane path { fill: none; stroke: var(--faint); stroke-width: 1.3; transition: opacity var(--dur, .2s); }
-.bmap path.st-added { stroke: var(--ok); stroke-width: 1.8; }
-.bmap path.st-removed { stroke: var(--risk); stroke-width: 1.5; stroke-dasharray: 5 4; }
-.bmap path.st-changed { stroke: var(--signal); stroke-width: 1.8; }
-.bmap .el { position: absolute; transform: translate(-50%, -50%); max-width: 168px; width: max-content; padding: 2px 7px; border-radius: 3px; background: var(--bg); border: 1px solid var(--line-soft); font: 11.5px/1.35 var(--font-ui); color: var(--muted); text-align: center; text-wrap: balance; transition: opacity var(--dur, .2s); }
-.bmap .el.st-added { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
-.bmap .el.st-removed { color: var(--risk); border-style: dashed; border-color: color-mix(in srgb, var(--risk) 40%, transparent); }
-.bmap .el.st-changed { color: var(--text); border-color: color-mix(in srgb, var(--signal) 45%, transparent); }
+.bmap .plane path { fill: none; stroke: var(--faint); stroke-width: 1.2; transition: opacity var(--dur, .2s); }
+.bmap .el { position: absolute; transform: translate(-50%, -50%); max-width: 168px; width: max-content; padding: 1px 6px; border-radius: 3px; background: var(--bg); font: 11.5px/1.35 var(--font-ui); color: var(--muted); text-align: center; text-wrap: balance; transition: opacity var(--dur, .2s); }
 .bmap .el.two { display: grid; }
 .bmap .el.two > span { grid-area: 1 / 1; align-self: center; }
 .bmap .el .was { opacity: calc(1 - var(--t)); }
@@ -190,11 +175,10 @@ export default {
       const litNodes = new Set(change ? [...change.nodes, ...change.edges.flatMap((i) => [m.edges[i]?.from, m.edges[i]?.to])] : []);
       const litEdges = new Set(change?.edges ?? []);
       const dim = (lit) => (change && !lit ? " dim" : "");
-      const badge = (st) => (st !== "same" ? `<span class="st">${st}</span>` : "");
       // boxes and labels first, so the layout knows their sizes
-      plane.innerHTML = nodes.map((n) => `<div class="mn kind-${esc(n.kind)} st-${n.status}${dim(litNodes.has(n.id))}" data-id="${esc(n.id)}"${n.ref ? ` data-ref="${esc(n.ref)}" title="Open its code"` : ""}>
-          <div class="mk"><span class="kd">${KIND[n.kind] ?? esc(n.kind)}</span>${n.group ? `<span class="g">${esc(n.group)}</span>` : ""}${badge(n.status)}</div>
-          <div class="ml">${esc(n.label)}</div>${n.note ? `<div class="mo">${esc(n.note)}</div>` : ""}</div>`).join("") +
+      plane.innerHTML = nodes.map((n) => `<div class="mn kind-${esc(n.kind)} st-${n.status}${dim(litNodes.has(n.id))}" data-id="${esc(n.id)}"${n.ref ? ` data-ref="${esc(n.ref)}"` : ""} title="${esc([n.note, n.ref ? "Click to open its code" : ""].filter(Boolean).join("\n"))}">
+          <div class="mk"><span class="kd">${KIND[n.kind] ?? esc(n.kind)}</span>${n.group ? `<span class="g">${esc(n.group)}</span>` : ""}</div>
+          <div class="ml">${esc(n.label)}</div></div>`).join("") +
         edges.map((e, j) => {
           // a changed interaction: what it did, fading into what it does, in one place
           const two = e.status === "changed" && e.before && e.before !== e.label;
@@ -214,13 +198,11 @@ export default {
         const [p0, ...rest] = at.points;
         let d = `M${p0[0]},${p0[1]}`, prev = p0;
         for (const q of rest) { const my = (prev[1] + q[1]) / 2; d += ` C${prev[0]},${my} ${q[0]},${my} ${q[0]},${q[1]}`; prev = q; }
-        paths.push(`<path class="st-${e.status}${dim(litEdges.has(e.i))}" d="${d}" marker-end="url(#mapArrow-${e.status})"/>`);
+        paths.push(`<path class="st-${e.status}${dim(litEdges.has(e.i))}" d="${d}" marker-end="url(#mapArrow)"/>`);
         const lb = tag.get(j);
         if (lb && at.label) { lb.style.left = `${at.label.x}px`; lb.style.top = `${at.label.y}px`; }
       });
-      const colour = { same: "var(--muted)", added: "var(--ok)", removed: "var(--risk)", changed: "var(--signal)" };
-      plane.insertAdjacentHTML("afterbegin", `<svg width="${lay.width}" height="${lay.height}"><defs>${Object.entries(colour).map(([st, c]) =>
-        `<marker id="mapArrow-${st}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" style="fill:${c};stroke:none"/></marker>`).join("")}</defs>${paths.join("")}</svg>`);
+      plane.insertAdjacentHTML("afterbegin", `<svg width="${lay.width}" height="${lay.height}"><defs><marker id="mapArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" style="fill:var(--faint);stroke:none"/></marker></defs>${paths.join("")}</svg>`);
       size = { w: lay.width, h: lay.height };
       slide(t);
       const s = fit();
