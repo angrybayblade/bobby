@@ -28,6 +28,12 @@ type Log = (m: string) => void;
 /** The servers for the languages a review's files are in. */
 export const serversFor = (g: ReviewGraph) => SERVERS.filter((s) => g.files.some((f) => f.status !== "deleted" && s.languageId(f.path)));
 
+// The reviews with servers started, until they're stopped. One handler stops them all when Bobby is ended (ctrl-c, a
+// closed terminal, a kill), a few seconds at most; a review that's closed leaves the set, so nothing keeps it in memory.
+const live = new Set<Session>();
+for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"] as const)
+  process.once(sig, () => void Promise.race([Promise.all([...live].map(stopServers)), Bun.sleep(3000)]).finally(() => process.exit(130)));
+
 /** Decides, for each language in the review, whether its server runs, waits for a yes, or needs something installed;
  *  starts those that can run. Resolves when every started server is done or failed. ask: whether a server Bobby can
  *  install waits for a yes (the UI asks), or is skipped with a hint (extract). */
@@ -38,7 +44,7 @@ export async function startServers(s: Session, opts: { ask: boolean; off?: boole
   const wanted = serversFor(s.staticGraph);
   for (const srv of wanted) s.servers[srv.id] = { id: srv.id, title: srv.title, state: opts.off || !s.cwd ? "off" : "pending" }; // pending until decided: the page polls
   if (opts.off || !s.cwd) return;
-  process.once("SIGINT", () => void stopServers(s).finally(() => process.exit(130)));
+  live.add(s);
   await Promise.all(wanted.map((srv) => decide(s, srv, opts.ask).catch((e) => { // never takes the review down: that language just has no server
     Object.assign(s.servers![srv.id], { state: "failed", error: String((e as Error).message ?? e) });
     warn(`  ✗ ${srv.title} language server: ${s.servers![srv.id].error}`);
@@ -149,6 +155,7 @@ function merge(s: Session, placed: Record<string, Definition[]>) {
 }
 
 export async function stopServers(s: Session) {
+  live.delete(s);
   await Promise.all(Object.values(s.inspectors ?? {}).map((i) => i.stop()));
 }
 /** The inspector for a file, if its language's server is up. */

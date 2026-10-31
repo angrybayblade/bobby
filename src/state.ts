@@ -95,7 +95,7 @@ export function hold(port: number, name = "app") {
   const path = lockPath(name);
   writeJson(path, { pid: process.pid, port });
   // ctrl-c, a closed terminal or a kill end the process without "exit" unless something listens (the language
-  // servers' handler exits for SIGINT already)
+  // servers' handler, servers.ts, stops them and exits when it's loaded)
   for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"] as const) if (!process.listenerCount(sig)) process.once(sig, () => process.exit(130));
   process.once("exit", () => { try { if (JSON.parse(readFileSync(path, "utf8")).pid === process.pid) unlinkSync(path); } catch { /* gone already */ } });
 }
