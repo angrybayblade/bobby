@@ -29,12 +29,12 @@ Then open `http://127.0.0.1:8080/`. `j` / `k` (or the arrows) step through it. B
   never skips), touch and keys snap to each step, and the footer is one more stop after the last. The transitions are
   time-based, so a step plays the same however fast you scroll.
 
-The story walks Bobby's own views, Diff (steps 3 and 4, then the inspector on the same file in 5 and 6), Lens (7)
-and Conversation (18), to show it keeps the GitHub review you know. Steps 13 to 16 bring in Claude, once you've walked
-the PR: a question answered on its lines (13), one of its references opened in the code viewer (14), Review with
-Claude's prompt with your own tools (15), and its findings one at a time (16). Claude's side is the story's too
-(`capture.mjs`'s `story`: the answer, the findings, the tools), so the capture needs no login and says the same every
-time. To add a step: add a caption with the next `data-cap` and a `data-slug` of its own, then tag what leaves and what arrives with that
+The story walks Bobby's own views, Diff (steps 3 and 4, then the inspector on the same file in 5 and 6), Map (7, Before
+and After side by side), Lens (8) and Conversation (19), to show it keeps the GitHub review you know. Steps 14 to 17
+bring in Claude, once you've walked the PR: a question answered on its lines (14), one of its references opened in the
+code viewer (15), Review with Claude's prompt with your own tools (16), and its findings one at a time (17). Claude's
+side is the story's too (`capture.mjs`'s `story`: the map, the answer, the findings, the tools), so the capture needs
+no login and says the same every time. To add a step: add a caption with the next `data-cap` and a `data-slug` of its own, then tag what leaves and what arrives with that
 number. Keep each step to one GitHub piece out and one Bobby piece in, and name both in the caption's **Out** / **In**
 lines.
 

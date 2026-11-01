@@ -173,7 +173,7 @@ function measureFly() {
 const dockAt = new Map();
 function measureDock() {
   for (const bl of pieces(".bl.is-where")) {
-    const lay = bl.querySelector(".seg.lay");
+    const own = bl.querySelector(".wctl"), lay = own?.children.length ? own : bl.querySelector(".seg.lay"); // a view's own controls (Map's Redraw) come first
     if (lay) still([bl], () => dockAt.set(bl, W - boxIn(lay).x + 12));
   }
 }

@@ -1,5 +1,5 @@
 // Captures the real Bobby app, state by state, as DOM + CSS for the marketing mock: drives a running Bobby through the
-// story (Diff, Lens, a draft and a note, progress, park, welcome back, submit, Conversation) and writes each state's
+// story (Diff, Map, Lens, a draft and a note, progress, park, welcome back, submit, Conversation) and writes each state's
 // regions (#top, #where, #view, #files, #keys, #overlay, #toast) with their boxes, plus the app's CSS.
 // usage: PAGE=../index.html node capture.mjs <review url> <out.js> [screenshots dir]   (run.sh does it all)
 import puppeteer from "puppeteer-core";
@@ -67,6 +67,45 @@ const story = {
       { id: "f2", path: "src/payments/worker.ts", side: "RIGHT", line: 6, severity: "question", status: "open", title: "Is the key saved before the first charge?",
         body: `\`payment.retryKey ??= randomUUID()\` sets it in memory. If the worker stops after the processor has seen the key but before the payment is saved, the next run mints a new one. Is the payment stored with its key before [the charge](${ref("src/payments/worker.ts", 8)})?` },
     ] },
+  // the Map: the retry path before and after, then inside the retry, as Claude would draw it for this PR (map.ts)
+  map: { headSha: "", at: at(3), scope: "How a failed charge is retried, and the key each attempt carries.", effect: "Every retried charge: the retry endpoint answers at once, and the processor charges at most once.",
+    summary: "Retries move off the request into a worker that retries three times with one idempotency key.",
+    layers: [
+      { name: "Retrying a charge", about: "What happens when a client retries a failed charge.",
+        nodes: [
+          { id: "client", label: "Client", kind: "actor", status: "same" },
+          { id: "endpoint", label: "Retry endpoint", kind: "step", status: "changed", points: ["queues a job", "answers 202"], before: ["charges inline", "answers the result"] },
+          { id: "queue", label: "Retry queue", kind: "queue", status: "added" },
+          { id: "worker", label: "Payment worker", kind: "step", status: "changed", points: ["one key per payment"], before: ["no key"] },
+          { id: "charge", label: "Charge the card", kind: "step", status: "changed", points: ["3 tries, 200 → 800ms", "same key every try"], before: ["one try"] },
+          { id: "processor", label: "Card processor", kind: "external", status: "same" },
+          { id: "result", label: "Charge result", kind: "outcome", status: "changed", points: ["charged at most once"], before: ["may charge twice"] },
+        ],
+        edges: [
+          { from: "client", to: "endpoint", label: "", status: "same" },
+          { from: "endpoint", to: "charge", label: "", status: "removed" },
+          { from: "endpoint", to: "queue", label: "enqueue", status: "added" },
+          { from: "queue", to: "worker", label: "", status: "added" },
+          { from: "worker", to: "charge", label: "with its key", status: "changed", before: "no key" },
+          { from: "charge", to: "processor", label: "", status: "same" },
+          { from: "processor", to: "result", label: "", status: "same" },
+        ] },
+      { name: "Inside the retry", about: "The functions behind one retried charge.",
+        nodes: [
+          { id: "process-payment", label: "processPayment", kind: "function", status: "changed", group: "worker.ts", points: ["mints retryKey once"], ref: ref("src/payments/worker.ts", 5, 13) },
+          { id: "retry-key", label: "payment.retryKey", kind: "store", status: "added", group: "types.ts", ref: ref("src/payments/types.ts", 7, 8) },
+          { id: "retry-charge", label: "retryCharge", kind: "function", status: "changed", group: "retry.ts", points: ["takes the key", "wraps withRetry"], before: ["charges once"], ref: ref("src/payments/retry.ts", 6, 14) },
+          { id: "with-retry", label: "withRetry", kind: "function", status: "added", group: "policy.ts", points: ["3 attempts", "backs off 200, 400, 800ms"], ref: ref("src/payments/policy.ts", 11, 22) },
+          { id: "gateway-charge", label: "gateway.charge", kind: "function", status: "same", group: "gateway.ts", ref: ref("src/payments/gateway.ts", 9) },
+        ],
+        edges: [
+          { from: "process-payment", to: "retry-key", label: "reads or mints", status: "added" },
+          { from: "process-payment", to: "retry-charge", label: "payment, key", status: "changed", before: "payment" },
+          { from: "retry-charge", to: "with-retry", label: "", status: "added" },
+          { from: "with-retry", to: "gateway-charge", label: "same key", status: "added" },
+          { from: "retry-charge", to: "gateway-charge", label: "once", status: "removed" },
+        ] },
+    ] },
   tools: { ok: true, source: "launch", spec: "linear", selection: { "claude.ai Linear": "read" }, launch: { "claude.ai Linear": "read" },
     servers: [["claude.ai Linear", 44, 39], ["claude.ai Notion", 33, 32], ["claude.ai Slack", 14, 13], ["claude.ai Datadog", 269, 212]].map(([name, read, write]) => ({ name, status: "connected", read, write })) },
 };
@@ -75,6 +114,7 @@ await p.setRequestInterception(true);
 p.on("request", (r) => {
   const u = new URL(r.url());
   if (u.pathname.endsWith("/api/avatar")) return r.respond({ contentType: "image/svg+xml", body: avatar(u.searchParams.get("u") ?? "?") });
+  if (u.pathname.endsWith("/api/map") && r.method() === "GET") return r.respond({ contentType: "application/json", body: JSON.stringify({ running: false, steps: [], startedAt: 0, error: null, map: story.map, stale: false }) });
   if (u.pathname.endsWith("/api/conversation")) return r.respond({ contentType: "application/json", body: JSON.stringify(conversation) });
   if (u.pathname.endsWith("/api/agent/tools") && r.method() === "GET") return r.respond({ contentType: "application/json", body: JSON.stringify(story.tools) });
   if (u.pathname.endsWith("/api/agent") && reviewed) return r.respond({ contentType: "application/json", body: JSON.stringify({ running: false, open: 2, review: story.review }) });
@@ -202,10 +242,16 @@ await p.waitForSelector(".inspector .uview [data-uopen]", { timeout: 8000 });
 await wait(400);
 await snap("uses");
 await key("Escape", 500);
+// M: the Map view, what the PR changes in behaviour, before and after side by side (Split)
+await p.evaluate(() => bobby.saveSettings({ diffLayout: "split" }));
+await view("Map"); await wait(1200);
+await closeToast();
+await snap("map");
+await p.evaluate(() => bobby.saveSettings({ diffLayout: "inline" })); await wait(300);
 // L: the Lens view, the core's card and the hook
 await view("Lens"); await wait(400);
-// untouched code on: the webhook that still calls retryCharge without a key is the story's bug
-console.log("untouched", await p.evaluate(() => { const b = [...document.querySelectorAll("#top .pill.tog")].find((b) => b.textContent.includes("Untouched")); b?.click(); return !!b; }));
+// unchanged code on: the webhook that still calls retryCharge without a key is the story's bug
+await p.evaluate(() => bobby.saveSettings({ untouched: "show" }));
 await wait(900);
 await p.evaluate(async () => (await import("/app/chrome.js")).coreIntro(bobby.get(bobby.focus))); await wait(400);
 await snap("lens");
