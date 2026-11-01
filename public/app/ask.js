@@ -86,7 +86,7 @@ function notify(app, a) {
   el.setAttribute("role", "status");
   el.innerHTML = `<span class="cav agav" aria-hidden="true">✦</span><b>${failed ? "Claude couldn't answer" : "Claude answered"}</b>
     <button class="x" aria-label="Dismiss">✕</button><span class="qn-q" title="${esc(turn?.q ?? "")}">${esc(turn?.q ?? "")}</span>
-    <span class="qn-at">${esc(a.path.split("/").pop())}:${a.startLine ? `${a.startLine}–` : ""}${a.line}</span>
+    <span class="qn-at" title="${esc(a.path)}">${esc(a.path.split("/").pop())}:${a.startLine ? `${a.startLine}–` : ""}${a.line}</span>
     <div class="qn-acts"><button class="cbtn primary" data-show>Show answer</button></div>`;
   el.querySelector(".x").onclick = () => el.remove();
   el.querySelector("[data-show]").onclick = () => { el.remove(); showAsk(app, a.id); };

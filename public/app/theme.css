@@ -748,20 +748,24 @@ mark.wd { background: var(--del-word); color: inherit; border-radius: 0; }
 .corner > *, #notices > * { pointer-events: auto; }
 #notices { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
 #notices:empty { display: none; }
-.qnote { width: 340px; max-width: 100%; display: grid; grid-template-columns: auto 1fr auto; gap: 2px 10px; align-items: start; padding: 11px 12px 11px 14px; border-radius: 4px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); font-size: 13.5px; animation: qnote-in .2s var(--ease, ease); }
+.qnote { width: 340px; max-width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 2px 10px; align-items: start; padding: 11px 12px 11px 14px; border-radius: 4px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); font-size: 13.5px; animation: qnote-in .2s var(--ease, ease); }
 @keyframes qnote-in { from { opacity: 0; transform: translateY(6px); } }
 .qnote .agav { grid-row: 1 / 3; margin-top: 1px; }
 .qnote b { font-weight: 600; }
 .qnote .qn-q { grid-column: 2; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.qnote .qn-at { grid-column: 2; color: var(--faint); font: 11.5px var(--font-code); }
+.qnote .qn-at { grid-column: 2; color: var(--faint); font: 11.5px var(--font-code); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .qnote .x { grid-column: 3; grid-row: 1; color: var(--faint); padding: 0 2px; }
 .qnote .x:hover { color: var(--text); }
 .qnote .qn-acts { grid-column: 2 / 4; display: flex; gap: 6px; margin-top: 8px; }
 .qnote .qn-acts .cbtn { margin: 0; }
 .qnote.err b { color: var(--risk); }
-#toast { max-width: 360px; padding: 12px 16px; border-radius: 4px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); font-size: 14px; display: flex; gap: 12px; align-items: center; }
+#toast { max-width: min(360px, 100%); padding: 12px 16px; border-radius: 4px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); font-size: 14px; display: flex; gap: 12px; align-items: center; }
 #toast[hidden] { display: none; }
-#toast .x { color: var(--faint); margin-left: auto; }
+#toast .x { flex: none; color: var(--faint); margin-left: auto; }
+/* Long text wraps anywhere and stops after a few lines, so a message never outgrows its box; toast() titles what's cut. */
+#toast > span { min-width: 0; overflow-wrap: anywhere; }
+#toast > span:not(.intro), #toast .intro > span:not(.acts) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
+#toast .intro > b { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 
 /* ---------- tour: callouts pointing at the interface. The ring dims around what it points at but takes no clicks. ---------- */
 .tour-ring {

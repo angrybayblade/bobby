@@ -534,6 +534,7 @@ export function toast(html, ms = 0) {
   const t = $("#toast");
   t.innerHTML = `${html}<button class="x" data-act="toast-close" aria-label="Dismiss">✕</button>`;
   t.hidden = false;
+  for (const el of t.querySelectorAll(":scope > span, .intro > b, .intro > span")) if (el.scrollHeight > el.clientHeight + 1) el.title = el.textContent.trim().replace(/\s+/g, " ");
   clearTimeout(toast._t);
   if (ms) toast._t = setTimeout(() => (t.hidden = true), ms);
 }
