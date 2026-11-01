@@ -6,6 +6,7 @@ import { BAND_TEXT, DONE, LOW, api, esc, live } from "./core.js";
 import { MOD } from "./palette.js";
 import { keyHtml, keyName } from "./keys.js";
 import { reactionClick } from "./reactions.js";
+import { stackChip, stackNote } from "./stack.js";
 import { bubble, cancelEdit, closeReply, deletePosted, fileKey, newLines, notesFor, outside, setReactions, placeNotes, postReply, resolveThread, saveEdit, showFull, startEdit, startReply, threadsAt, toggleItem, typeEdit, typeReply } from "./comments.js";
 
 const EXT = {
@@ -517,6 +518,7 @@ export function renderNode(app, el, pid, { head = true } = {}) {
     body = `<div class="band"><i class="glyph ${glyph}"></i>${BAND_TEXT[pl.band]}</div>
       <h1>${esc(pl.title)}${badges ? `<span class="badges">${badges}</span>` : ""}</h1>
       <p class="why">${esc(pl.why)}</p>
+      ${stackNote(app, pid)}
       ${fileNotesHtml(app, pathOf(node))}
       ${node.kind === "change" ? app.hunksOf(pid).map((h) => hunkBox(app, h, rerender)).join("") : contextBox(app, node, rerender)}`;
   }
@@ -550,7 +552,7 @@ export function renderFile(app, el, pids) {
     const { pl } = app.get(pid), node = app.nodeOf(pid), done = app.isReviewed(pid);
     const code = node.kind === "change" ? app.hunksOf(pid).map((h) => hunkBox(app, h, rerender, opts)).join("") : contextBox(app, node, rerender, opts);
     return `<section class="sec ${pid === app.focus ? "cur" : ""} ${done ? "done" : ""}" data-pid="${pid}">
-      <div class="sech"><i class="glyph ${pl.band === "core" ? "core" : node.kind}"></i><span>${esc(pl.title)}</span>${pl.risk === "high" ? `<i class="riskdot"></i>` : ""}${app.isFlagged(pid) ? `<span class="status flag">⚑</span>` : ""}<button class="vw" data-viewed="${pid}" title="Mark viewed: tracks your progress here only, not on GitHub"><span class="on"><i class="cb">✓</i>Viewed</span><span class="off"><i class="cb"></i>Viewed</span></button></div>
+      <div class="sech"><i class="glyph ${pl.band === "core" ? "core" : node.kind}"></i><span>${esc(pl.title)}</span>${pl.risk === "high" ? `<i class="riskdot"></i>` : ""}${app.isFlagged(pid) ? `<span class="status flag">⚑</span>` : ""}${stackChip(app, pid)}<button class="vw" data-viewed="${pid}" title="Mark viewed: tracks your progress here only, not on GitHub"><span class="on"><i class="cb">✓</i>Viewed</span><span class="off"><i class="cb"></i>Viewed</span></button></div>
       ${code}</section>`;
   }).join("")}</div>`;
   const ta = el.querySelector("textarea[data-composer]");

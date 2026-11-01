@@ -682,6 +682,15 @@ mark.wd { background: var(--del-word); color: inherit; border-radius: 0; }
 #where .stk { display: inline-flex; align-items: center; margin-right: 6px; padding-right: 8px; border-right: 1px solid var(--line); }
 #where .stk .stk-go { padding: 2px 5px; }
 #where .stk .stk-go:disabled { visibility: hidden; }
+/* What the stack's other PRs do with this code: a note on its page, a chip on its section in file views. */
+.stk-note { margin: 0 0 16px; padding: 10px 14px; border-left: 2px solid var(--signal); background: var(--signal-soft); border-radius: 0 3px 3px 0; font: 13.5px/1.5 var(--font-prose); color: var(--muted); max-width: 90ch; }
+.stk-note b { color: var(--text); font-weight: 600; }
+.stk-note ul { margin: 6px 0 8px; padding-left: 18px; }
+.stk-note li { margin: 2px 0; overflow-wrap: anywhere; }
+.stk-note li span { color: var(--faint); font: 12px var(--font-code); }
+.stk-note code { font: 12px var(--font-code); color: var(--text); }
+.stk-note .cbtn { margin: 6px 6px 0 0; }
+.stk-chip { flex: none; margin-left: 8px; padding: 0 6px; border-radius: 2px; background: var(--signal-soft); color: var(--signal); font: 11.5px/18px var(--font-ui); white-space: nowrap; }
 .stack-dlg .slist { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; }
 .stack-dlg .slist li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-left: 2px solid var(--line); margin-left: 5px; min-width: 0; }
 .stack-dlg .slist li.here { border-left-color: var(--signal); background: var(--signal-soft); }

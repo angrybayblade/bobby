@@ -10,13 +10,59 @@ export function initStack(a, ui) {
   app = a;
   ({ dialog, close, toast, render } = ui);
   app.stack = null;
+  app.stackContext = null;
   if (app.graph.pr.provider !== "local") load();
 }
 async function load(fresh = false) {
   const r = await api(`/api/stack${fresh ? "?fresh" : ""}`).catch(() => null);
   if (!r) return;
+  const moved = JSON.stringify(r.stack?.layers.map((l) => [l.number, l.headSha])) !== JSON.stringify(app.stack?.layers.map((l) => [l.number, l.headSha]));
   app.stack = r.stack;
   render();
+  if (moved) loadContext();
+}
+
+// ---------------------------------------------------------------- what the neighbours do with this PR's code
+// From /api/stack/context (stackctx.ts): unchanged code a PR below wrote, and where PRs above change or use this one's
+// changes. Shown on each page it's about, and as a chip on its section in file views. A big repo answers pending first.
+async function loadContext(tries = 0) {
+  if (!app.stack) { app.stackContext = null; return; }
+  const r = await api("/api/stack/context").catch(() => null);
+  if (r?.pending && tries < 20) return void setTimeout(() => loadContext(tries + 1), 3000);
+  if (!r || r.pending || r.error) return;
+  app.stackContext = r;
+  if (Object.keys(r.below).length || Object.keys(r.above).length) app.emit("comments"); // the code re-renders, as for comments
+}
+const layer = (n) => app.stack?.layers.find((l) => l.number === n);
+const where = (path, line) => `<code title="${esc(path)}:${line}">${esc(path.split("/").pop())}:${line}</code>`;
+const span = (lines) => (lines.length > 1 ? `lines ${lines[0]}–${lines.at(-1)}` : `line ${lines[0]}`);
+const isOpenLayer = (l) => l && l.state !== "MERGED" && l.state !== "CLOSED";
+
+/** For a page's head: where this code stands in the stack, or "". */
+export function stackNote(a, pid) {
+  const c = a.stackContext, node = c && a.nodeOf(pid);
+  if (!node) return "";
+  const below = c.below[node.id];
+  if (below) {
+    const l = layer(below.layer);
+    return `<div class="stk-note"><b>From #${below.layer}</b>, ${isOpenLayer(l) ? "lower in the stack and still open" : "lower in the stack"}: ${span(below.lines)} of this code are that PR's, ${isOpenLayer(l) ? `so they're under review there, not on ${esc(a.stack.trunk)} yet.` : "already merged."} <button class="cbtn" data-stack-go="${below.layer}">Open #${below.layer}</button></div>`;
+  }
+  const above = c.above[node.id];
+  if (!above?.length) return "";
+  const rows = above.map((h) => h.kind === "changes"
+    ? `<li><b>#${h.layer}</b> changes this further, at ${where(h.path, h.line)}${h.text ? ` <span>${esc(h.text)}</span>` : ""}</li>`
+    : `<li><b>#${h.layer}</b> uses <code>${esc(h.name ?? "")}</code> in ${where(h.path, h.line)} <span>${esc(h.text)}</span></li>`).join("");
+  const layers = [...new Set(above.map((h) => h.layer))];
+  return `<div class="stk-note"><b>Later in the stack</b><ul>${rows}</ul>${layers.map((n) => `<button class="cbtn" data-stack-go="${n}">Open #${n}</button>`).join("")}</div>`;
+}
+/** For a section's header in a file view: a short chip, or "". */
+export function stackChip(a, pid) {
+  const c = a.stackContext, node = c && a.nodeOf(pid);
+  if (!node) return "";
+  const below = c.below[node.id], above = c.above[node.id];
+  if (below) return `<span class="stk-chip" title="${esc(`${span(below.lines)} of this code are #${below.layer}'s, lower in the stack`)}">from #${below.layer}</span>`;
+  if (above?.length) return `<span class="stk-chip" title="${esc(above.map((h) => `#${h.layer} ${h.kind === "changes" ? "changes this further" : `uses ${h.name}`} at ${h.path}:${h.line}`).join("\n"))}">#${[...new Set(above.map((h) => h.layer))].join(", #")} builds on this</span>`;
+  return "";
 }
 
 /** Its place in the stack, for the where-bar: ‹ the PR below, the stack's dialog, the PR above ›. */
