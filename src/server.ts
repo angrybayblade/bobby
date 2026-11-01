@@ -18,6 +18,7 @@ import { Repo } from "./resolve.ts";
 import { refreshDiscussion, type Update } from "./watch.ts";
 import { approvedOf, loadRecents, noteRecent, prLists } from "./recents.ts";
 import { type Conversation, conversation } from "./conversation.ts";
+import { type Stack, defineStack, stackOf } from "./stack.ts";
 import { type ReviewEvent, submitReview } from "./submit.ts";
 import * as log from "./log.ts";
 import pkg from "../package.json" with { type: "json" };
@@ -44,6 +45,7 @@ export interface Session {
   // Keeping it current (watch.ts): when the PR's comments last changed; new work to move to, if any; moving to it.
   discussionAt?: number;
   conversation?: { at: number; value: Promise<Conversation> }; // the Conversation view's, read at most every 15 s
+  stack?: { at: number; value: Promise<Stack | null> }; // the PR's stack, read at most every 60 s
   update?: Update;
   rebuild?: () => Promise<void>;
   rebuilding?: boolean;
@@ -388,6 +390,27 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
           value.catch(() => { if (s.conversation?.value === value) s.conversation = undefined; }); // a failure isn't kept
         }
         try { return json(await s.conversation.value); } catch (e) { return json({ error: String((e as Error).message) }, 502); }
+      }
+      // The PR's stack, each layer with how far you got in its own review; POST sets the stack you define (a list of PR
+      // numbers, bottom first; one or none removes it), which GitHub's own stack, when there is one, still comes before.
+      if (p === "/api/stack") {
+        if (pr().provider === "local") return json({ error: "A local review has no PR, so no stack." }, 404);
+        if (req.method === "POST") {
+          const { numbers } = (await req.json().catch(() => ({}))) as { numbers?: unknown };
+          if (!Array.isArray(numbers)) return json({ error: "numbers: the stack's PRs, bottom first" }, 400);
+          try { await defineStack(pr(), numbers as number[]); } catch (e) { return json({ error: String((e as Error).message) }, 400); }
+          s.stack = undefined;
+        }
+        if (!s.stack || url.searchParams.has("fresh") || Date.now() - s.stack.at > 60_000) {
+          const value = stackOf(pr());
+          s.stack = { at: Date.now(), value };
+          value.catch(() => { if (s.stack?.value === value) s.stack = undefined; });
+        }
+        try {
+          const stack = await s.stack.value, recents = stack ? await loadRecents() : [];
+          const mine = (n: number) => recents.find((r) => r.kind === "pr" && r.owner === pr().owner && r.repo === pr().repo && r.number === n);
+          return json({ stack: stack && { ...stack, layers: stack.layers.map((l) => ({ ...l, progress: mine(l.number)?.progress ?? null, drafts: mine(l.number)?.drafts ?? 0 })) } });
+        } catch (e) { return json({ error: String((e as Error).message) }, 502); }
       }
       // Writing in the conversation: a comment on the PR, or a reply in a review thread. Each posts at once, as GitHub's
       // Comment and Reply buttons do (a review, with its drafts on lines, still goes through /api/submit).
