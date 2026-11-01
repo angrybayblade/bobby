@@ -4,7 +4,12 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
-- **Stacked PRs:** a PR in a stack shows its place in the where-bar, **‹ Stack 2/3 ›**, with the PRs below and above a click away, and a list of every layer with its state and how far you got in its review. Bobby takes the stack from GitHub's own stacked PRs, follows it through branches when there's none, or lets you define one in Bobby for PRs that belong together.
+- **Stacked PRs (preview):** each PR in a stack is still its own review, and now knows its neighbours.
+  - The where-bar shows its place, **‹ Stack 2/3 ›**, with the PRs below and above a click away, and a list of every layer: its state, your progress in its review, its verdict, unresolved threads and checks, whether it needs a restack, and which PR merges next.
+  - Bobby takes the stack from GitHub's own stacked PRs, follows it through branches when there's none, or lets you define one in Bobby for PRs that belong together.
+  - Each page says what the rest of the stack does with its code: unchanged code a PR below wrote (**From #101**, still under review there), and where PRs above change this one's changes further or use what it adds.
+  - Claude's tree, Review with Claude, Ask and the Map know the stack: they say what comes from a PR below, and name the PR above that finishes something rather than report it missing.
+  - A restack that leaves the PR's own changes as they were is told apart from new work: **Restacked · same changes**, and refreshing keeps every mark.
 - Long text in a notification (a URL in an error, a long file name) stays inside it: it wraps and stops after a few lines, with the rest in its tooltip.
 
 ## 0.1.0-rc16 (2026-10-31)
