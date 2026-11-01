@@ -4,9 +4,10 @@
 
 **Bobby** turns a GitHub pull request into a short walk of focused pages. It finds the core changes and, around each one, the code they rely on and the code they affect and generates an easy to consume tree. You can zoom out to see the whole tree, or walk it page by page. Mark pages as you go, draft comments, and submit them to GitHub as one review. Your place and progress survive interruptions and force-pushes.
 
+<sub>Prerequisites: macOS or Linux (Windows builds exist but get the least use), `git`, `curl` and `tar`, a browser, and a GitHub account (github.com only, not Enterprise; Bobby installs and signs in GitHub's CLI, `gh`, for you). Optional: a Claude Code login for Claude's tree, reviews, questions and the Map (Bobby offers to install the `claude` CLI); Node.js 18+, which makes the TypeScript and Python language servers faster on large projects; Go and `gopls` for Go's.</sub>
+
 Install
 
-<sub>Prerequisites: macOS or Linux (Windows builds exist but get the least use), `git`, `curl` and `tar`, a browser, and a GitHub account (github.com only, not Enterprise; Bobby installs and signs in GitHub's CLI, `gh`, for you). Optional: a Claude Code login for Claude's tree, reviews, questions and the Map (Bobby offers to install the `claude` CLI); Node.js 18+, which makes the TypeScript and Python language servers faster on large projects; Go and `gopls` for Go's.</sub>
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/angrybayblade/bobby/main/install.sh | bash
