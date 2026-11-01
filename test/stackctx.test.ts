@@ -50,3 +50,25 @@ test("above: the lowest layer that changes a change further, and where layers us
   ]);
   expect(hits["chg:a.ts#router"]).toBeUndefined(); // too common a name to mean this code
 });
+
+test("a restack keeps the same patch; a new commit on top doesn't", async () => {
+  const { mkdtempSync, writeFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const { samePatch } = await import("../src/stackctx.ts");
+  const root = mkdtempSync(join(tmpdir(), "bobby-restack-"));
+  const g = async (...a: string[]) => (await new Response(Bun.spawn(["git", "-c", "user.name=t", "-c", "user.email=t@t", ...a], { cwd: root, stdout: "pipe" }).stdout).text()).trim();
+  const put = (f: string, t: string) => writeFileSync(join(root, f), t);
+  await g("init", "-q", "-b", "main");
+  put("a.txt", "one\n"); put("b.txt", "base\n"); await g("add", "."); await g("commit", "-qm", "base");
+  await g("checkout", "-qb", "below"); put("a.txt", "one\ntwo\n"); await g("commit", "-qam", "below");
+  await g("checkout", "-qb", "mine"); put("b.txt", "base\nmine\n"); await g("commit", "-qam", "mine");
+  const was: [string, string] = [await g("rev-parse", "below"), await g("rev-parse", "mine")];
+  await g("checkout", "-q", "below"); put("a.txt", "one\ntwo, fixed\n"); await g("commit", "-q", "--amend", "-am", "below, fixed"); // the PR below moves
+  await g("checkout", "-q", "mine"); await g("rebase", "-q", "--onto", "below", was[0]); // and this one is restacked on it
+  const now: [string, string] = [await g("rev-parse", "below"), await g("rev-parse", "mine")];
+  expect(now[1]).not.toBe(was[1]);
+  expect(await samePatch(root, was, now)).toBe(true);
+  put("b.txt", "base\nmine\nmore\n"); await g("commit", "-qam", "more");
+  expect(await samePatch(root, was, [now[0], await g("rev-parse", "mine")])).toBe(false);
+});

@@ -5,11 +5,13 @@ import { reviewComments, run, git } from "./git.ts";
 import { snapshot } from "./local.ts";
 import type { Session } from "./server.ts";
 import { type Discussion, setDiscussion } from "./graph.ts";
+import { sameOwnChanges } from "./stackctx.ts";
 
 export interface Update {
   headSha: string; // what the review would move to: a commit, or for uncommitted work, a tree
   detail: string; // for the UI: "new commits", "uncommitted changes"…
   refresh: boolean; // false: a change the review can't follow (you switched branches)
+  same?: boolean; // its own changes are as they were: rebased or restacked, nothing new to review
 }
 
 // what changed: a comment's line or text, a thread resolved or not, a thread gone outdated, a thread's id first read (a
@@ -34,6 +36,7 @@ export async function refreshDiscussion(s: Session): Promise<Discussion | null> 
 // see what a check finds, so it waits until a page is back, rather than spending git and the GitHub rate limit.
 const unseen = (s: Session) => Date.now() - (s.seenAt ?? 0) > 3 * 60_000;
 
+const restacks = new WeakMap<Session, { head: string; same: boolean }>();
 /** A PR: its comments, and whether its head or base moved on. Every minute; a failed check (offline) waits for the next.
  *  Returns what stops watching. */
 export function watchPr(s: Session, every = 60_000) {
@@ -49,9 +52,13 @@ export function watchPr(s: Session, every = 60_000) {
     if (!out.trim()) return;
     const meta = JSON.parse(out) as { headRefOid: string; baseRefName: string };
     const moved = meta.headRefOid !== pr.headSha, retargeted = !!s.baseRef && meta.baseRefName !== s.baseRef;
-    s.update = moved || retargeted
-      ? { headSha: meta.headRefOid, detail: retargeted ? `now based on ${meta.baseRefName}` : "new commits", refresh: true }
-      : undefined;
+    if (!moved && !retargeted) return void (s.update = undefined);
+    // A restack (a PR below it moved, or merged) rewrites the PR's commits without changing what it does: say so, as
+    // its own changes are the same and refreshing keeps every mark. Worked out once per new head.
+    const known = restacks.get(s);
+    const same = !moved || !s.cwd ? false : known?.head === meta.headRefOid ? known.same : await sameOwnChanges(s.cwd, pr, meta.headRefOid, meta.baseRefName).catch(() => false);
+    if (moved) restacks.set(s, { head: meta.headRefOid, same });
+    s.update = { headSha: meta.headRefOid, detail: same ? "restacked" : retargeted ? `now based on ${meta.baseRefName}` : "new commits", refresh: true, ...(same ? { same: true } : {}) };
   };
   const timer = setInterval(() => void tick().catch(() => {}), every);
   return () => clearInterval(timer);

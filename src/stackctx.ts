@@ -3,7 +3,7 @@
 // has it), so you know it's still under review there, not settled code. Above: where the PRs built on this one change
 // its changes further, or use what it adds (their own diffs, read against this PR's head). Read from the clone, after
 // fetching each layer's head; nothing here goes to GitHub.
-import { ghCredentials, git, remoteFor } from "./git.ts";
+import { ghCredentials, git, remoteFor, run } from "./git.ts";
 import type { ReviewGraph } from "./graph.ts";
 import type { Stack } from "./stack.ts";
 import type { PrInfo } from "./types.ts";
@@ -166,4 +166,25 @@ async function aboveOf(cwd: string, head: string, baseSha: string, stack: Stack,
   if (!names.length) return hits;
   const before = await git(cwd, ["grep", "-h", "-o", "-w", "-F", ...names.flatMap((x) => ["-e", x]), baseSha, "--"], true);
   return aboveHits(graphs, layers, new Set(before.split("\n").map((l) => l.trim()).filter(Boolean)));
+}
+
+// ---------------------------------------------------------------- restacks
+/** Whether moving to newHead (based on baseRef) leaves this PR's own changes as they were: the same patch from its
+ *  merge-base, as after a restack on a moved PR below, or a rebase. Fetches the new head and base; false when unsure. */
+export async function sameOwnChanges(cwd: string, pr: PrInfo, newHead: string, baseRef: string): Promise<boolean> {
+  const remote = (await remoteFor(cwd, pr.owner, pr.repo)) ?? "origin", ns = `refs/bobby/${pr.number}`;
+  await git(cwd, [...ghCredentials(), "fetch", "--quiet", "--no-tags", remote, `+refs/pull/${pr.number}/head:${ns}/next`, `+refs/heads/${baseRef}:${ns}/nextbase`], true);
+  const next = (await git(cwd, ["rev-parse", "--verify", "--quiet", `${ns}/next^{commit}`], true)).trim();
+  if (next !== newHead) return false; // moved again meanwhile: the next check looks
+  const base = (await git(cwd, ["merge-base", `${ns}/nextbase`, next], true)).trim();
+  return !!base && samePatch(cwd, [pr.baseSha, pr.headSha], [base, next]);
+}
+/** Whether two ranges make the same change (git patch-id: the same diff, wherever it sits). */
+export async function samePatch(cwd: string, was: [string, string], now: [string, string]): Promise<boolean> {
+  const id = async ([a, b]: [string, string]) => {
+    const diff = await git(cwd, ["diff", "--no-color", "--no-ext-diff", a, b], true);
+    return diff.trim() ? (await run(["git", "patch-id", "--stable"], { cwd, input: diff, allowFail: true })).split(" ")[0] : "";
+  };
+  const [x, y] = await Promise.all([id(was), id(now)]);
+  return !!x && x === y;
 }
