@@ -15,6 +15,7 @@ import { home } from "./state.ts";
 import type { Connected } from "./connected.ts";
 import { refContext, refsForGitHub, resolveRefs } from "./refs.ts";
 import type { AgentReview, Finding } from "./types.ts";
+import { briefNow } from "./stack.ts";
 
 /** The review running now, in memory. */
 export interface AgentJob { proc?: Subprocess<"pipe", "pipe", "pipe">; steps: string[]; startedAt: number; focus?: string; error?: string; done?: boolean }
@@ -95,7 +96,8 @@ function buildPrompt(g: ReviewGraph, focus?: string, tools = false): string {
 /** The PR for Claude: its title, description and parts, then its files (with Bobby's tools, to read with pr_diff) or
  *  its diff. */
 export function prContext(g: ReviewGraph, tools = false): string {
-  const parts = [`# PR: ${g.pr.title}`, g.pr.body.slice(0, 4000), "", `What it does: ${g.intent}`];
+  const brief = g.pr.provider === "local" || g.pr.commit ? "" : briefNow(g.pr);
+  const parts = [`# PR: ${g.pr.title}`, g.pr.body.slice(0, 4000), "", `What it does: ${g.intent}`, ...(brief ? ["", brief] : [])];
   if (g.generator.tree === "claude" && g.cores.length) parts.push("", "Its parts:", ...g.cores.map((c) => `- ${c.title}: ${c.summary}`));
   if (tools) { // the files, not their diffs: Claude reads each with pr_diff, and investigates from there
     parts.push("", `# ITS FILES (${g.files.length}): read each one that matters with mcp__bobby__pr_diff`,

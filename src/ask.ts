@@ -7,6 +7,7 @@ import type { ReviewGraph } from "./graph.ts";
 import type { Connected } from "./connected.ts";
 import { refContext, resolveRefs } from "./refs.ts";
 import type { Ask } from "./types.ts";
+import { briefNow } from "./stack.ts";
 
 const INSTRUCTIONS = `A reviewer is reading this pull request and has selected some lines to ask you about. Answer their question directly, for them (not for the PR's author).
 
@@ -22,7 +23,8 @@ export function askPrompt(g: ReviewGraph, ask: Ask, tools = false): string {
   const diff = hunks.map((h) => [h.header, ...h.lines.slice(0, 600).map((l) => `${picked(l) ? ">>" : "  "} ${l.t === "-" ? `L${l.o}` : `R${l.n}`}\t${l.t}${l.s}`)].join("\n")).join("\n").slice(0, 120_000);
   const selected = hunks.flatMap((h) => h.lines.filter(picked).map((l) => `${l.t}${l.s}`)).join("\n");
   const turns = ask.turns.slice(0, -1);
-  const parts = [INSTRUCTIONS, ...(tools ? ["", TOOLS_NOTE] : []), "", `# PR: ${g.pr.title}`, `What it does: ${g.intent}`, "",
+  const brief = g.pr.provider === "local" || g.pr.commit ? "" : briefNow(g.pr);
+  const parts = [INSTRUCTIONS, ...(tools ? ["", TOOLS_NOTE] : []), "", `# PR: ${g.pr.title}`, `What it does: ${g.intent}`, "", ...(brief ? [brief, ""] : []),
     `# The diff of ${ask.path} (R<n>: the new file's lines, L<n>: the old file's; >> marks the selected ones)`, diff || "(not in the diff)", "",
     `# The selected lines: ${ask.path}, ${ask.side === "LEFT" ? "old" : "new"} file, ${lo === hi ? `line ${hi}` : `lines ${lo}–${hi}`}`, selected || "(see the file)"];
   if (turns.length) parts.push("", "# Earlier in this conversation", ...turns.flatMap((t) => [`Reviewer: ${t.q}`, `You: ${t.a ?? "(no answer)"}`]));

@@ -3,6 +3,7 @@ import { claudeBin, claudeTurn, SPEND } from "./claude.ts";
 import { run } from "./git.ts";
 import { emptyBands, finalize, refNode, type Analysis } from "./analyze.ts";
 import type { ChangeTree, Core, FileDiff, PrInfo, TreeNode } from "./types.ts";
+import { stackBrief } from "./stack.ts";
 
 const unitEdge = {
   type: "object",
@@ -70,7 +71,8 @@ Rules:
 - Use only the ids given below, and only in the id fields. Never mention ids like "u3" or "r12" in labels, why, title, summary or intent; name the code instead.`;
 
 export async function claudeTree(pr: PrInfo, a: Analysis, files: FileDiff[]): Promise<ChangeTree> {
-  const prompt = buildPrompt(pr, a);
+  const brief = pr.provider === "local" || pr.commit ? "" : await Promise.race([stackBrief(pr), new Promise<string>((r) => setTimeout(() => r(""), 8_000))]); // a slow GitHub doesn't hold the tree up
+  const prompt = buildPrompt(pr, a, brief);
   const cmd = [claudeBin() ?? "claude", "-p", "--output-format", "json", "--tools", "", "--no-session-persistence",
     "--strict-mcp-config", "--setting-sources", "", "--disable-slash-commands", "--max-budget-usd", String(SPEND.tree), "--json-schema", JSON.stringify(SCHEMA)]; // none of your own setup: no MCP servers, settings or permissions
   const model = process.env.BOBBY_MODEL ?? process.env.PRFOCUS_MODEL; // PRFOCUS_MODEL: the old name
@@ -81,9 +83,9 @@ export async function claudeTree(pr: PrInfo, a: Analysis, files: FileDiff[]): Pr
   return toTree(out.structured_output, a, files);
 }
 
-function buildPrompt(pr: PrInfo, a: Analysis): string {
+function buildPrompt(pr: PrInfo, a: Analysis, brief = ""): string {
   let budget = 160_000;
-  const parts = [INSTRUCTIONS, "", `# PR #${pr.number}: ${pr.title}`, pr.body.slice(0, 3000), "", "# UNITS (changed code)"];
+  const parts = [INSTRUCTIONS, "", `# PR #${pr.number}: ${pr.title}`, pr.body.slice(0, 3000), ...(brief ? ["", brief] : []), "", "# UNITS (changed code)"];
   for (const u of a.units) {
     parts.push(`## ${u.id} — ${u.file} — symbols: ${u.symbols.join(", ")}`);
     for (const hid of u.hunkIds) {

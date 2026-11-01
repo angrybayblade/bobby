@@ -87,7 +87,8 @@
 <li>the PR's title and the first 3,000 characters of its description;</li>
 <li>each changed unit: its file and symbols, and its hunks' lines (up to 120 per hunk, and about 160,000 characters in all);</li>
 <li>how the units depend on each other;</li>
-<li>unchanged lines that declare or use what the changes touch: each one's file, line and up to 160 characters of its text.</li>
+<li>unchanged lines that declare or use what the changes touch: each one's file, line and up to 160 characters of its text;</li>
+<li>for a PR in a <a href="reviewing.html#stacked-prs">stack</a>, the stack's other PRs: each one's number, title, state, the first 500 characters of its description and up to 40 of its file paths. Review with Claude, Ask and the Map get the same.</li>
 </ul>
 <p>It runs <code>claude -p</code> with no tools and no saved session, from a temporary directory, so Claude reads only what's in the prompt. It uses your Claude Code login and its data terms. The answer is cached in <code>~/.bobby/cache</code>, so the same head commit isn't sent twice.</p>
 <h2 id="what-stays-local"><a class="anchor" href="#what-stays-local" aria-hidden="true">#</a>What stays local</h2>

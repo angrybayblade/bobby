@@ -193,6 +193,8 @@ While a review is open, Bobby keeps it current, the way GitHub does:
 
 A PR built on another PR (its base is that PR's branch) is part of a **stack**: each PR is still its own review, against its own base, so you review only its layer. The where-bar starts with its place in the stack, **‹ Stack 2/3 ›**: the arrows open the PR below and the PR above, and **Stack 2/3** opens every layer, top first, with its state and how far you got in its own review (**Open** reviews it). The palette has them too (**Stack…**, **Open the PR below in the stack**, **Open the PR above in the stack**).
 
+**Claude knows the stack too.** Its tree, Review with Claude, Ask and the Map are told the other PRs (each one's title, state, the start of its description and its files), so Claude says when something comes from a PR below, and names the PR above that finishes or fixes something rather than reporting it as missing.
+
 **Each page says what the rest of the stack does with its code.** Unchanged code a PR lower in the stack wrote says so, **From #101**: it's still under review there (or already merged), not settled code on the trunk. A change that PRs above build on lists where: **#103 changes this further** (its own diff touches these lines), or **#103 uses `retryKey`** (its new lines name something this PR adds; names the code already had before it don't count). In file views, the section's header carries the same as a chip, **from #101** or **#103 builds on this**. Bobby reads this from the clone, fetching each PR's head (`refs/bobby/stack/<n>`); a stack you defined of PRs that aren't built on each other has none of it. Unchanged code is hidden until you switch on **Unchanged** in the top bar.
 
 Bobby finds the stack in this order:

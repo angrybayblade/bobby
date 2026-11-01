@@ -25,7 +25,8 @@ With `claude` available and no `--no-llm`, Bobby asks Claude to group the PR's c
 - the PR's title and the first 3,000 characters of its description;
 - each changed unit: its file and symbols, and its hunks' lines (up to 120 per hunk, and about 160,000 characters in all);
 - how the units depend on each other;
-- unchanged lines that declare or use what the changes touch: each one's file, line and up to 160 characters of its text.
+- unchanged lines that declare or use what the changes touch: each one's file, line and up to 160 characters of its text;
+- for a PR in a [stack](reviewing.md#stacked-prs), the stack's other PRs: each one's number, title, state, the first 500 characters of its description and up to 40 of its file paths. Review with Claude, Ask and the Map get the same.
 
 It runs `claude -p` with no tools and no saved session, from a temporary directory, so Claude reads only what's in the prompt. It uses your Claude Code login and its data terms. The answer is cached in `~/.bobby/cache`, so the same head commit isn't sent twice.
 

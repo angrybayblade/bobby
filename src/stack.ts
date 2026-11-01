@@ -129,3 +129,53 @@ export async function defineStack(pr: Repo & { number: number }, numbers: number
   await Bun.write(tmp, JSON.stringify(next, null, 1));
   renameSync(tmp, savedPath());
 }
+
+// ---------------------------------------------------------------- the stack, for Claude
+// A few lines on each other PR in the stack (title, the start of its description, its files) for every Claude run on
+// this PR: the tree, Review with Claude, Ask and the Map. Read once per PR and kept a while; a prompt built before it
+// arrives goes without (briefNow), and the tree, which waits for it a few seconds, rarely does.
+const briefs = new Map<string, { at: number; value: Promise<string>; text?: string }>();
+const briefKey = (pr: Repo & { number: number }) => `${pr.owner}/${pr.repo}#${pr.number}`.toLowerCase();
+const SOURCE_NOTE: Record<Stack["source"], string> = {
+  github: "GitHub's own stack: each PR is built on the one below it, so the code of the PRs below is already in this PR's base",
+  branches: "each PR's base is the branch of the one below it, so the code of the PRs below is already in this PR's base",
+  yours: "the reviewer put these PRs together as related work; they may not be built on one another",
+};
+
+/** The stack as text for a prompt, or "" when the PR stands alone. */
+export function stackBrief(pr: Repo & { number: number }): Promise<string> {
+  const k = briefKey(pr), had = briefs.get(k);
+  if (had && Date.now() - had.at < 10 * 60_000) return had.value;
+  const entry: { at: number; value: Promise<string>; text?: string } = { at: Date.now(), value: Promise.resolve("") };
+  entry.value = briefOf(pr).catch(() => "").then((t) => { entry.text = t; return t; });
+  briefs.set(k, entry);
+  return entry.value;
+}
+/** The brief if it's been read, else "" (and it's read for next time). */
+export function briefNow(pr: Repo & { number: number }): string {
+  const e = briefs.get(briefKey(pr));
+  if (!e || Date.now() - e.at >= 10 * 60_000) void stackBrief(pr);
+  return e?.text ?? "";
+}
+
+async function briefOf(pr: Repo & { number: number }): Promise<string> {
+  const stack = await stackOf(pr);
+  if (!stack) return "";
+  const others = stack.layers.filter((l) => l.number !== pr.number).map((l) => l.number);
+  const d = await graphql(`query($owner: String!, $repo: String!) { repository(owner: $owner, name: $repo) {
+    ${others.map((n) => `p${n}: pullRequest(number: ${n}) { body files(first: 40) { totalCount nodes { path } } }`).join("\n")} } }`, { owner: pr.owner, repo: pr.repo }).catch(() => null);
+  const lines = [`# THE STACK THIS PR IS IN`,
+    `This PR (#${pr.number}) is ${stack.at + 1} of ${stack.layers.length} in a stack of PRs on ${stack.trunk}, bottom first below: ${SOURCE_NOTE[stack.source]}. Each PR is reviewed on its own.`];
+  stack.layers.forEach((l, i) => {
+    if (l.number === pr.number) return void lines.push(`- #${l.number}: THIS PR`);
+    const more = d?.repository?.[`p${l.number}`];
+    const where = i < stack.at ? "below" : "above", state = l.state === "OPEN" ? (l.draft ? "draft" : "open") : l.state.toLowerCase();
+    lines.push(`- #${l.number} (${where}, ${state}): ${l.title}`);
+    const body = String(more?.body ?? "").replace(/<!--[\s\S]*?-->/g, "").replace(/\s+/g, " ").trim().slice(0, 500);
+    if (body) lines.push(`  ${body}`);
+    const files = (more?.files?.nodes ?? []).map((f: Raw) => f.path);
+    if (files.length) lines.push(`  Files: ${files.join(", ")}${more.files.totalCount > files.length ? `, and ${more.files.totalCount - files.length} more` : ""}`);
+  });
+  lines.push("Use this to place what you see: say when something comes from a PR below (it's reviewed there), and when a PR above clearly finishes, uses or fixes something here, say so (naming it) rather than reporting it as missing.");
+  return lines.join("\n");
+}

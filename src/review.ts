@@ -9,6 +9,7 @@ import { resolveLocal } from "./local.ts";
 import { pairMoves, parseDiff } from "./diff.ts";
 import { analyze, heuristicTree, type Analysis } from "./analyze.ts";
 import { claudeTree } from "./llm.ts";
+import { stackBrief } from "./stack.ts";
 import { buildGraph, type Discussion, VERSION, type ReviewGraph } from "./graph.ts";
 import { loadCachedGraphs, loadCachedTree, loadState, saveCachedGraphs, saveCachedTree } from "./state.ts";
 import { startServers, stopServers } from "./servers.ts";
@@ -84,6 +85,7 @@ export async function resolve(arg: string | undefined, o: ReviewOptions): Promis
     title = `#${key.number} ${resolved.meta.title}`;
     log(`  ${title}`);
     getPr = () => fetchPr(resolved);
+    if (!resolved.commit) void stackBrief(key); // read meanwhile, for Claude's runs on it (stack.ts)
     if (resolved.commit) {
       const one = await fetchPr(resolved);
       key = { ...key, headSha: one.headSha, commit: one.commit };
