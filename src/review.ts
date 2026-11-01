@@ -9,7 +9,8 @@ import { resolveLocal } from "./local.ts";
 import { pairMoves, parseDiff } from "./diff.ts";
 import { analyze, heuristicTree, type Analysis } from "./analyze.ts";
 import { claudeTree } from "./llm.ts";
-import { stackBrief } from "./stack.ts";
+import { savedBelow, stackBrief } from "./stack.ts";
+import { layerOnto } from "./stackctx.ts";
 import { buildGraph, type Discussion, VERSION, type ReviewGraph } from "./graph.ts";
 import { loadCachedGraphs, loadCachedTree, loadState, saveCachedGraphs, saveCachedTree } from "./state.ts";
 import { startServers, stopServers } from "./servers.ts";
@@ -42,7 +43,7 @@ export interface ReviewOptions {
   ssh?: boolean; // cloning over SSH is allowed, if HTTPS (with gh's sign-in) fails
   log: (m: string) => void;
 }
-type Key = { owner: string; repo: string; number: number; branch?: string; headSha: string; baseSha?: string; baseRef?: string; commit?: PrInfo["commit"] };
+type Key = { owner: string; repo: string; number: number; branch?: string; headSha: string; baseSha?: string; baseRef?: string; commit?: PrInfo["commit"]; onto?: number };
 
 /** Where a review lives in the app: /r/<id>. owner/repo/number for a PR (@sha, or @from..to, for commits of it);
  *  local/<repo>/<branch> for a branch. */
@@ -84,7 +85,10 @@ export async function resolve(arg: string | undefined, o: ReviewOptions): Promis
     key = { owner: resolved.owner, repo: resolved.repo, number: resolved.meta.number, headSha: resolved.meta.headRefOid, baseRef: resolved.meta.baseRefName };
     title = `#${key.number} ${resolved.meta.title}`;
     log(`  ${title}`);
-    getPr = () => fetchPr(resolved);
+    // in a stack you defined, compared with the PR below it (stackctx.ts): its own layer, and its own cache
+    const onto = resolved.commit ? undefined : await savedBelow(key);
+    if (onto) key = { ...key, onto };
+    getPr = () => fetchPr(resolved).then((pr) => layerOnto(resolved.cwd, pr, onto));
     if (!resolved.commit) void stackBrief(key); // read meanwhile, for Claude's runs on it (stack.ts)
     if (resolved.commit) {
       const one = await fetchPr(resolved);
@@ -105,6 +109,8 @@ export async function resolve(arg: string | undefined, o: ReviewOptions): Promis
   const id = reviewId({ ...key, provider: arg ? "github" : "local", repo: arg ? key.repo : basename(cwd) });
   return { id, title, key, build: () => build(arg, cwd, key, getPr, o) };
 }
+
+const next0 = (r: { owner: string; repo: string; meta: { number: number } }) => ({ owner: r.owner, repo: r.repo, number: r.meta.number });
 
 async function build(arg: string | undefined, cwd: string, key: Key, getPr: () => Promise<PrInfo>, o: ReviewOptions): Promise<Prepared> {
   const log = o.log, t0 = Date.now(), secs = () => `${((Date.now() - t0) / 1000).toFixed(1)}s`;
@@ -190,12 +196,14 @@ export function start(p: Prepared, o: ReviewOptions): Session {
   // Moving to new work when you ask (watch.ts notices it): the same pipeline as a fresh start, on the new head. Marks
   // carry over by content, so what the push didn't touch stays reviewed; drafts stay as they are.
   session.baseRef = key.baseRef;
+  session.onto = key.onto;
   session.rebuild = async () => {
     const was: Discussion = { comments: session.staticGraph.discussion ?? [], outdated: session.staticGraph.outdated ?? [] };
     let next: PrInfo, comments = Promise.resolve(was);
     if (arg) {
       const resolved = await resolvePr(arg, o.repo, o.cwd, o.ssh);
-      next = await fetchPr(resolved);
+      session.onto = resolved.commit ? undefined : await savedBelow(next0(resolved));
+      next = await layerOnto(cwd, await fetchPr(resolved), session.onto);
       comments = reviewComments(next, true).catch(() => was); // alongside the diff and analysis
       session.baseRef = resolved.meta.baseRefName;
     } else {
@@ -207,7 +215,7 @@ export function start(p: Prepared, o: ReviewOptions): Session {
     const analysis = await analyze(cwd, next, files);
     const disc = await comments;
     const g = await buildGraph(cwd, next, files, analysis, heuristicTree(next, analysis, files), disc);
-    const nextKey = arg ? { ...key, headSha: next.headSha, baseRef: session.baseRef } : { ...next };
+    const nextKey = arg ? { ...key, headSha: next.headSha, baseRef: session.baseRef, onto: next.onto } : { ...next };
     saveCachedGraphs(nextKey, { static: g });
     await stopServers(session);
     Object.assign(session, { staticGraph: g, claudeGraph: undefined, definitions: undefined, repo: undefined, root: undefined, llmError: undefined });

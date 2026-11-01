@@ -95,6 +95,9 @@ export interface PrInfo {
   // One commit of the PR (or a range of them) rather than all of it: headSha is that commit, baseSha its parent (or the
   // range's start), so the diff is what those commits changed.
   commit?: { sha: string; from?: string; subject: string };
+  // In a stack you defined in Bobby, built on the PR below though its base on GitHub is still the trunk: compared with
+  // that PR's head (baseSha is where the two meet), so the diff is this PR's own layer.
+  onto?: number;
 }
 
 export interface Comment {

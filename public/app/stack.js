@@ -138,10 +138,44 @@ function draw() {
     : `<p>#${me} isn't in a stack: GitHub has none for it, and no open PR's branch leads to or from it. If it belongs with other PRs, define its stack: Bobby then shows each PR beside its neighbours.</p>`;
   const next = s && nextToMerge(s);
   const how = !s ? "" : s.source === "github" ? "From GitHub's stack. Change it on GitHub, or with <code>gh stack</code>."
-    : s.source === "yours" ? "Defined by you, in Bobby only: GitHub doesn't see it." : "Followed through branches: each PR's base is the branch of the one below.";
+    : s.source === "yours" ? `Defined by you, in Bobby only: GitHub doesn't see it. ${layering(s)}` : "Followed through branches: each PR's base is the branch of the one below.";
+  const moves = s?.source === "yours" ? retargets(s) : [];
   dialog(`<div class="stack-dlg"><h2>Stack</h2>${body}${next ? `<p class="snext">${next}</p>` : ""}${how ? `<p class="shint">${how}</p>` : ""}
     <div class="row">${s?.source === "github" ? "" : `<button class="btn" data-act="stack-edit">${s ? "Edit stack" : "Define a stack"}</button>`}
+      ${moves.length ? `<button class="btn" data-act="stack-retarget">Retarget on GitHub…</button>` : ""}
       ${s?.source === "yours" ? `<button class="btn" data-act="stack-clear">Remove</button>` : ""}<button class="btn primary" data-act="close" style="margin-left:auto">Done</button></div></div>`, "stack");
+}
+/** How this PR's review reads a stack you defined: its own layer, compared with the PR below it, or as on GitHub. */
+function layering(s) {
+  const pr = app.graph.pr, below = s.layers[s.at - 1];
+  if (below && below.head === s.layers[s.at].base) return ""; // GitHub has it on the PR below already
+  if (pr.onto) return `#${pr.number} is compared with the head of #${pr.onto}, the PR below it, so you review only its own layer; on GitHub it still targets <code>${esc(app.stack.layers[s.at].base)}</code>.`;
+  if (below && below.head !== s.layers[s.at].base) return `#${pr.number} isn't built on #${below.number}'s commits, so it's compared with its base, as on GitHub.`;
+  return "";
+}
+/** The PRs whose base on GitHub isn't the branch of the PR below them, as retargeting would set it. */
+const retargets = (s) => s.layers.flatMap((l, i) => {
+  const below = s.layers[i - 1];
+  return below && l.state === "OPEN" && below.state === "OPEN" && l.base !== below.head ? [{ number: l.number, from: l.base, to: below.head }] : [];
+});
+/** Retargeting, asked first: it changes the PRs on GitHub for everyone. */
+function drawRetarget(result) {
+  const s = app.stack, moves = retargets(s);
+  const done = result ? `${result.done.map((d) => `<li><b>#${d.number}</b> now targets <code>${esc(d.to)}</code></li>`).join("")}${result.failed.map((f) => `<li class="bad"><b>#${f.number}</b> couldn't be changed: ${esc(f.error)}</li>`).join("")}` : "";
+  dialog(`<div class="stack-dlg"><h2>Retarget on GitHub</h2>
+    ${result ? `<ul class="smoves">${done}</ul>` : `<p>Sets each PR's base on GitHub to the branch of the PR below it, so GitHub too shows each one's own changes, and merges them in order. Everyone sees the change; you need write access to each PR.</p>
+    <ul class="smoves">${moves.map((m) => `<li><b>#${m.number}</b> <code>${esc(m.from)}</code> → <code>${esc(m.to)}</code></li>`).join("")}</ul>
+    <p class="shint">Once they all are, the branches are the stack: Bobby follows them, and the stack you defined goes.</p>`}
+    <div class="row">${result ? `<button class="btn primary" data-act="stack-back">Done</button>` : `<button class="btn primary" data-act="stack-retarget-go">Retarget ${moves.length} PR${moves.length > 1 ? "s" : ""}</button><button class="btn" data-act="stack-back">Cancel</button>`}</div></div>`, "stack");
+}
+async function doRetarget(btn) {
+  btn.disabled = true;
+  btn.textContent = "Retargeting…";
+  try {
+    const r = await api("/api/stack/retarget", {});
+    await load(true);
+    drawRetarget(r);
+  } catch (e) { btn.disabled = false; btn.textContent = "Try again"; toast(`<span>Couldn't retarget: ${esc(e.message)}</span>`, 8000); }
 }
 
 /** Where a layer stands on GitHub: its verdict, unresolved threads, CI, and whether it needs rebasing onto the PR below. */
@@ -158,7 +192,7 @@ function flags(l) {
 /** The stack merges bottom up: the lowest open PR is next, and what's in its way. Only for a stack built on branches:
  *  one you defined of unrelated PRs merges in any order. */
 function nextToMerge(s) {
-  if (s.source === "yours") return "";
+  if (s.source === "yours" && !app.graph.pr.onto) return "";
   const l = s.layers.find((x) => x.state === "OPEN");
   if (!l) return "";
   const block = [l.draft && "it's a draft", l.restack && "it needs a restack", l.decision === "CHANGES_REQUESTED" && "changes were requested", l.decision === "REVIEW_REQUIRED" && "it needs a review", l.unresolved && `${l.unresolved} thread${l.unresolved > 1 ? "s are" : " is"} unresolved`, l.checks === "FAILURE" && "its checks fail", l.checks === "PENDING" && "its checks are running"].filter(Boolean);
@@ -217,6 +251,9 @@ export function stackClick(ev) {
   else if (ds.act === "stack-cancel") { editing = null; draw(); }
   else if (ds.act === "stack-save") save([...editing].reverse());
   else if (ds.act === "stack-clear") save([]);
+  else if (ds.act === "stack-retarget") drawRetarget();
+  else if (ds.act === "stack-retarget-go") doRetarget(t);
+  else if (ds.act === "stack-back") draw();
   else return false;
   return true;
 }

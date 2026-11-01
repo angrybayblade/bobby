@@ -36,6 +36,8 @@ PR ─┬─ files ── hunks                        (the raw diff)
 
 `pr.provider` is `"github"` for a pull request, or `"local"` for a branch reviewed in its repo without one. A local graph has `number: 0`, an empty `url`, plus `branch` and `baseRef` (what it's compared with); `headSha` may be a tree id when it includes uncommitted changes. v1 consumers that only expect `"github"` should treat any other provider as having no PR page to link to.
 
+`pr.onto` is optional: the PR is built on PR `onto` in a stack its reviewer defined, though its base on GitHub is still the trunk, so `baseSha` is where it meets that PR's head rather than its merge-base with the base branch, and the diff is this PR's own layer.
+
 `pr.commit` is optional: the graph covers one commit of the PR, `{ sha, subject }`, diffed against its parent, or with `from`, the commits after `from` up to `sha`. `headSha` is then `sha` and `baseSha` the parent or `from`, rather than the PR's head and merge-base. Discussion holds only comments written on that commit.
 
 ### Node vs. placement

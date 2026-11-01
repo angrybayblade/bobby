@@ -52,7 +52,8 @@ export function watchPr(s: Session, every = 60_000) {
     if (!out.trim()) return;
     const meta = JSON.parse(out) as { headRefOid: string; baseRefName: string };
     const moved = meta.headRefOid !== pr.headSha, retargeted = !!s.baseRef && meta.baseRefName !== s.baseRef;
-    if (!moved && !retargeted) return void (s.update = undefined);
+    if (!moved && !retargeted) return void (s.update?.detail === "stack changed" || (s.update = undefined)); // a stack you changed in Bobby is no news to GitHub
+
     // A restack (a PR below it moved, or merged) rewrites the PR's commits without changing what it does: say so, as
     // its own changes are the same and refreshing keeps every mark. Worked out once per new head.
     const known = restacks.get(s);

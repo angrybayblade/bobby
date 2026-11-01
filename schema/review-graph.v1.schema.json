@@ -39,7 +39,8 @@
           "required": ["sha", "subject"],
           "properties": { "sha": { "type": "string" }, "from": { "type": "string" }, "subject": { "type": "string" } },
           "description": "Optional. The graph covers one commit of the PR (against its parent) or, with from, the commits after from up to sha; headSha is sha and baseSha its parent or from."
-        }
+        },
+        "onto": { "type": "integer", "description": "Optional. The PR is built on PR number onto in a stack its reviewer defined, though its base on GitHub is still the trunk: baseSha is where it meets that PR's head, so the diff is this PR's own layer." }
       }
     },
     "intent": { "type": "string", "description": "One sentence: what the PR does." },

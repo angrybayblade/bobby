@@ -18,7 +18,7 @@ import { Repo } from "./resolve.ts";
 import { refreshDiscussion, type Update } from "./watch.ts";
 import { approvedOf, loadRecents, noteRecent, prLists } from "./recents.ts";
 import { type Conversation, conversation } from "./conversation.ts";
-import { type Stack, defineStack, markRestacks, stackOf } from "./stack.ts";
+import { type Stack, defineStack, markRestacks, retarget, savedBelow, stackOf } from "./stack.ts";
 import { type StackContext, stackContext } from "./stackctx.ts";
 import { type ReviewEvent, submitReview } from "./submit.ts";
 import * as log from "./log.ts";
@@ -48,6 +48,7 @@ export interface Session {
   conversation?: { at: number; value: Promise<Conversation> }; // the Conversation view's, read at most every 15 s
   stack?: { at: number; value: Promise<Stack | null> }; // the PR's stack, read at most every 60 s
   stackContext?: { key: string; value: Promise<StackContext> }; // what its neighbours have to do with its code, per head and stack
+  onto?: number; // the PR below it in a stack you defined, which its diff was asked to start from (review.ts)
   update?: Update;
   rebuild?: () => Promise<void>;
   rebuilding?: boolean;
@@ -402,6 +403,15 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
           if (!Array.isArray(numbers)) return json({ error: "numbers: the stack's PRs, bottom first" }, 400);
           try { await defineStack(pr(), numbers as number[]); } catch (e) { return json({ error: String((e as Error).message) }, 400); }
           s.stack = undefined;
+          // a PR whose PR below changed (this one, or another in either stack) is compared with another head now:
+          // its open review offers to refresh, as for new commits
+          for (const o of app.reviews.values()) {
+            const g = o.staticGraph.pr;
+            if (g.provider === "local" || g.commit || g.owner !== pr().owner || g.repo !== pr().repo) continue;
+            o.stack = undefined;
+            const below = await savedBelow(g);
+            if (below !== o.onto && !o.update) o.update = { headSha: g.headSha, detail: "stack changed", refresh: true };
+          }
         }
         if (!s.stack || url.searchParams.has("fresh") || Date.now() - s.stack.at > 60_000) {
           const value = stackOf(pr()).then((st) => (st ? markRestacks(pr(), st) : null));
@@ -413,6 +423,20 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
           const mine = (n: number) => recents.find((r) => r.kind === "pr" && r.owner === pr().owner && r.repo === pr().repo && r.number === n);
           return json({ stack: stack && { ...stack, layers: stack.layers.map((l) => ({ ...l, progress: mine(l.number)?.progress ?? null, drafts: mine(l.number)?.drafts ?? 0 })) } });
         } catch (e) { return json({ error: String((e as Error).message) }, 502); }
+      }
+      // Makes a stack you defined real on GitHub: each PR's base set to the branch of the PR below it, for the PRs you
+      // can edit. A GitHub write, asked for in the stack's dialog; each PR's review notices its new base by itself.
+      if (req.method === "POST" && p === "/api/stack/retarget") {
+        if (pr().provider === "local") return json({ error: "A local review has no PR, so no stack." }, 404);
+        const stack = await stackOf(pr()).catch(() => null);
+        if (!stack) return json({ error: "This PR isn't in a stack" }, 400);
+        const out = await retarget(pr(), stack);
+        // every PR on the branch of the one below: the branches are the stack now, so the one you defined goes (Bobby
+        // follows them, as for any stack built that way)
+        if (!out.failed.length && stack.source === "yours") await defineStack(pr(), []).catch(() => {});
+        s.stack = undefined;
+        for (const o of app.reviews.values()) if (o.staticGraph.pr.owner === pr().owner && o.staticGraph.pr.repo === pr().repo) o.stack = undefined;
+        return json(out);
       }
       // What the stack's other PRs have to do with this one's code (stackctx.ts): the unchanged code a PR below wrote, and
       // where PRs above change this one's changes further or use them. Read again when the stack or a head moves.

@@ -7,6 +7,7 @@ What changed in each release, newest first. Each release's full notes, with inst
 - **Stacked PRs (preview):** each PR in a stack is still its own review, and now knows its neighbours.
   - The where-bar shows its place, **‹ Stack 2/3 ›**, with the PRs below and above a click away, and a list of every layer: its state, your progress in its review, its verdict, unresolved threads and checks, whether it needs a restack, and which PR merges next.
   - Bobby takes the stack from GitHub's own stacked PRs, follows it through branches when there's none, or lets you define one in Bobby for PRs that belong together.
+  - In a stack you define, each PR is compared with the head of the PR below it, though on GitHub it still targets `main`: you review only its own layer. **Retarget on GitHub…** sets each PR's base to the branch below it, after asking.
   - Each page says what the rest of the stack does with its code: unchanged code a PR below wrote (**From #101**, still under review there), and where PRs above change this one's changes further or use what it adds.
   - Claude's tree, Review with Claude, Ask and the Map know the stack: they say what comes from a PR below, and name the PR above that finishes something rather than report it missing.
   - A restack that leaves the PR's own changes as they were is told apart from new work: **Restacked · same changes**, and refreshing keeps every mark.

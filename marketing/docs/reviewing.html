@@ -231,7 +231,12 @@
 <p>Bobby finds the stack in this order:</p>
 <ul>
 <li><strong>GitHub's own stack</strong>, when the PR is in one (GitHub's stacked pull requests, or <code>gh stack</code>). Change it on GitHub.</li>
-<li><strong>One you defined.</strong> For PRs that belong together without a stack on GitHub, <strong>Stack… › Define a stack</strong> (or <strong>Edit stack</strong>) lists the PRs in order: add each by its number or link, on top or below, and move or take them out. It's kept in Bobby only (<code>~/.bobby/stacks.json</code>); GitHub never sees it. <strong>Remove</strong> takes it away again.</li>
+<li><strong>One you defined.</strong> For PRs that belong together without a stack on GitHub, <strong>Stack… › Define a stack</strong> (or <strong>Edit stack</strong>) lists the PRs in order: add each by its number or link, on top or below, and move or take them out. It's kept in Bobby only (<code>~/.bobby/stacks.json</code>); GitHub never sees it. <strong>Remove</strong> takes it away again.
+<ul>
+<li><strong>Each PR's own layer.</strong> PRs built on one another often all still target <code>main</code> on GitHub, so each one's diff there holds the PRs below it too. In a stack you defined, Bobby compares each PR with the head of the PR below it instead (when it's built on that PR's commits), so you review only its own layer; the stack's dialog says so. Changing the stack changes what a PR is compared with: its open review offers <strong>Stack changed · Refresh</strong>. Comments still go to the PR on GitHub, on the same lines of its head; one on a removed line that GitHub's diff against <code>main</code> doesn't have can't be posted there.</li>
+<li><strong>Retarget on GitHub…</strong> makes it real: after asking, it sets each PR's base on GitHub to the branch of the PR below it (you need write access to each), so GitHub too shows each one's own changes and merges them in order. Once they all are, the branches are the stack: Bobby follows them, and the stack you defined goes.</li>
+</ul>
+</li>
 <li><strong>Branches.</strong> Otherwise, Bobby follows them: the open PR whose branch is this one's base sits below it, and the one open PR based on this one's branch sits above. Where several PRs are based on the same branch, the stack forks, and Bobby stops there. It never goes below the repo's default branch. <strong>Edit stack</strong> keeps it as one you defined.</li>
 </ul>
 <h2 id="submitting"><a class="anchor" href="#submitting" aria-hidden="true">#</a>Submitting</h2>

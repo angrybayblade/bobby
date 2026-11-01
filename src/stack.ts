@@ -74,6 +74,24 @@ export async function markRestacks(r: Repo, stack: Stack): Promise<Stack> {
   return { ...stack, layers };
 }
 
+/** What retargeting would change: each open PR whose base isn't the branch of the open PR below it, and that branch. */
+export const retargets = (stack: Stack) => stack.layers.flatMap((l, i) => {
+  const below = stack.layers[i - 1];
+  return below && l.state === "OPEN" && below.state === "OPEN" && l.base !== below.head ? [{ number: l.number, from: l.base, to: below.head }] : [];
+});
+/** Sets each of those PRs' base on GitHub (as gh pr edit --base does), one by one; what failed says why (no write
+ *  access, the branch gone). */
+export async function retarget(r: Repo, stack: Stack): Promise<{ done: Array<{ number: number; to: string }>; failed: Array<{ number: number; error: string }> }> {
+  const done: Array<{ number: number; to: string }> = [], failed: Array<{ number: number; error: string }> = [];
+  for (const m of retargets(stack)) {
+    try {
+      await run(["gh", "api", "-X", "PATCH", `repos/${r.owner}/${r.repo}/pulls/${m.number}`, "-f", `base=${m.to}`]);
+      done.push({ number: m.number, to: m.to });
+    } catch (e) { failed.push({ number: m.number, error: String((e as Error).message).split("\n")[0].slice(0, 200) }); }
+  }
+  return { done, failed };
+}
+
 /** Each of these PRs, in this order, in one query; any that's gone is left out. */
 async function layersOf(r: Repo, numbers: number[]): Promise<Layer[]> {
   const d = await graphql(`query($owner: String!, $repo: String!) { repository(owner: $owner, name: $repo) {
@@ -132,6 +150,13 @@ export function withChain(saved: Saved, r: Repo, n: number, numbers: number[]): 
   return out;
 }
 
+/** The PR below this one in the stack you defined for it, if any: its review is compared with that PR's head. */
+export async function savedBelow(pr: Repo & { number: number }): Promise<number | undefined> {
+  const chain = savedChain(await loadSaved(), pr, pr.number);
+  const at = chain?.indexOf(pr.number) ?? -1;
+  return at > 0 ? chain![at - 1] : undefined;
+}
+
 /** Sets this PR's stack to these PRs, bottom first; an empty or one-PR list removes it. Throws, saying why, for a list
  *  that leaves this PR out, repeats one, or names a PR the repo doesn't have. */
 export async function defineStack(pr: Repo & { number: number }, numbers: number[]): Promise<void> {
@@ -159,7 +184,7 @@ const briefKey = (pr: Repo & { number: number }) => `${pr.owner}/${pr.repo}#${pr
 const SOURCE_NOTE: Record<Stack["source"], string> = {
   github: "GitHub's own stack: each PR is built on the one below it, so the code of the PRs below is already in this PR's base",
   branches: "each PR's base is the branch of the one below it, so the code of the PRs below is already in this PR's base",
-  yours: "the reviewer put these PRs together as related work; they may not be built on one another",
+  yours: "the reviewer put these PRs together; where one is built on the one below, its diff here is only its own layer, though on GitHub it may still target the trunk",
 };
 
 /** The stack as text for a prompt, or "" when the PR stands alone. */

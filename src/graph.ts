@@ -26,6 +26,7 @@ export interface ReviewGraph {
     title: string; body: string; author: string;
     baseSha: string; headSha: string;
     commit?: { sha: string; from?: string; subject: string }; // one commit (or a range) of the PR: see SPEC.md
+    onto?: number; // compared with this PR's head, below it in a stack you defined: see SPEC.md
   };
   intent: string;
   files: GFile[];
@@ -194,7 +195,7 @@ export async function buildGraph(cwd: string | null, pr: PrInfo, files: FileDiff
     generator: { name: "bobby", version: pkg.version, extraction: VERSION, tree: tree.source === "claude" ? "claude" : "static" },
     pr: {
       provider: pr.provider ?? "github", ...(pr.branch ? { branch: pr.branch, baseRef: pr.baseRef } : {}), owner: pr.owner, repo: pr.repo, number: pr.number, url: pr.url,
-      title: pr.title, body: pr.body, author: pr.author, baseSha: pr.baseSha, headSha: pr.headSha, ...(pr.commit ? { commit: pr.commit } : {}),
+      title: pr.title, body: pr.body, author: pr.author, baseSha: pr.baseSha, headSha: pr.headSha, ...(pr.commit ? { commit: pr.commit } : {}), ...(pr.onto ? { onto: pr.onto } : {}),
     },
     intent: tree.intent,
     files: files.map((f) => ({

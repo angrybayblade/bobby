@@ -188,3 +188,16 @@ export async function samePatch(cwd: string, was: [string, string], now: [string
   const [x, y] = await Promise.all([id(was), id(now)]);
   return !!x && x === y;
 }
+
+// ---------------------------------------------------------------- a stack you defined, reviewed layer by layer
+/** The PR compared with the head of the PR below it (n) rather than with its base on GitHub, when it's built on that PR:
+ *  where the two meet comes after where it meets its base. Otherwise, as it was. */
+export async function layerOnto(cwd: string, pr: PrInfo, n: number | undefined): Promise<PrInfo> {
+  if (!n || pr.commit || pr.provider === "local") return pr;
+  const remote = (await remoteFor(cwd, pr.owner, pr.repo)) ?? "origin";
+  await git(cwd, [...ghCredentials(), "fetch", "--quiet", "--no-tags", remote, `+refs/pull/${n}/head:${ref(n)}`], true);
+  const meet = (await git(cwd, ["merge-base", ref(n), pr.headSha], true)).trim();
+  if (!meet || meet === pr.baseSha) return pr;
+  const later = (await Bun.spawn(["git", "merge-base", "--is-ancestor", pr.baseSha, meet], { cwd, stderr: "ignore" }).exited) === 0;
+  return later ? { ...pr, baseSha: meet, onto: n } : pr;
+}

@@ -176,7 +176,7 @@ function reviewPill() {
   if (!u) return "";
   if (!u.refresh) return `<span class="pill" title="${esc(u.detail)}">Branch switched</span>`;
   if (u.same) return `<button class="pill" data-act="refresh" title="The PR was rebased or restacked, but its own changes are the same: nothing new to review. Refresh to move to it; your marks all stay."${u.rebuilding ? " disabled" : ""}>${u.rebuilding ? "Refreshing…" : "Restacked · same changes"}</button>`;
-  const what = u.detail === "new commits" ? "New commits" : u.detail === "changed files" ? "Files changed" : "Base changed";
+  const what = u.detail === "new commits" ? "New commits" : u.detail === "changed files" ? "Files changed" : u.detail === "stack changed" ? "Stack changed" : "Base changed";
   return `<button class="pill signal" data-act="refresh" title="${esc(u.detail)}: refresh to review them"${u.rebuilding ? " disabled" : ""}>${u.rebuilding ? "Refreshing…" : `${what} · Refresh`}</button>`;
 }
 function renderTop() {
