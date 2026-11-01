@@ -30,6 +30,7 @@ const shadows = [];
     .bl > * { position: relative !important; inset: auto !important; width: 100% !important; height: 100% !important; margin: 0 !important; }
     .bl.is-overlay, .bl.is-toast, .bl.is-inspector, .bl.is-dialog, .bl.is-walk { background: none; }
     .bl:is(.is-top, .is-where, .is-files, .is-keys) { z-index: 1; } /* the frame stays over the view, as a zoom spills past it */
+    .bl.is-toast { z-index: 2; } /* and a toast over the frame, as in the app */
     .bl.is-overlay > *, .bl.is-toast > *, .bl.is-inspector > *, .bl.is-dialog > *, .bl.is-walk > * { position: absolute !important; inset: 0 !important; }
     .bl[data-in]:not(.shown), .bl[data-at]:not(.shown) { opacity: 0; pointer-events: none; transform: translateY(8px) scale(.985); }
     .bl.gone { opacity: 0 !important; transform: scale(.985); }
