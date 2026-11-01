@@ -223,6 +223,14 @@
 <li><strong>New commits</strong> on the PR, or a new base branch, aren't swapped in under you. A <strong>New commits · Refresh</strong> prompt appears in the top bar instead. Refresh rebuilds the review on them, on the same node. What the push didn't change keeps its marks; what it changed shows as unreviewed.</li>
 <li><strong>A local review</strong> has no comments, but notices your new commits and edits (every 10 seconds) and offers <strong>Files changed · Refresh</strong> the same way. Switching branches can't be followed: run <code>bobby</code> again to review the other branch.</li>
 </ul>
+<h2 id="stacked-prs"><a class="anchor" href="#stacked-prs" aria-hidden="true">#</a>Stacked PRs</h2>
+<p>A PR built on another PR (its base is that PR's branch) is part of a <strong>stack</strong>: each PR is still its own review, against its own base, so you review only its layer. The where-bar starts with its place in the stack, <strong>‹ Stack 2/3 ›</strong>: the arrows open the PR below and the PR above, and <strong>Stack 2/3</strong> opens every layer, top first, with its state and how far you got in its own review (<strong>Open</strong> reviews it). The palette has them too (<strong>Stack…</strong>, <strong>Open the PR below in the stack</strong>, <strong>Open the PR above in the stack</strong>).</p>
+<p>Bobby finds the stack in this order:</p>
+<ul>
+<li><strong>GitHub's own stack</strong>, when the PR is in one (GitHub's stacked pull requests, or <code>gh stack</code>). Change it on GitHub.</li>
+<li><strong>One you defined.</strong> For PRs that belong together without a stack on GitHub, <strong>Stack… › Define a stack</strong> (or <strong>Edit stack</strong>) lists the PRs in order: add each by its number or link, on top or below, and move or take them out. It's kept in Bobby only (<code>~/.bobby/stacks.json</code>); GitHub never sees it. <strong>Remove</strong> takes it away again.</li>
+<li><strong>Branches.</strong> Otherwise, Bobby follows them: the open PR whose branch is this one's base sits below it, and the one open PR based on this one's branch sits above. Where several PRs are based on the same branch, the stack forks, and Bobby stops there. It never goes below the repo's default branch. <strong>Edit stack</strong> keeps it as one you defined.</li>
+</ul>
 <h2 id="submitting"><a class="anchor" href="#submitting" aria-hidden="true">#</a>Submitting</h2>
 <p>Press <code>s</code>. Add an optional summary, then choose <strong>Comment</strong>, <strong>Approve</strong> or <strong>Request changes</strong>. Only drafts are posted; private notes and review marks stay in Bobby (whole files viewed also tick GitHub's Viewed boxes). All drafts are posted together as one GitHub review on the PR's current head commit, and you get a link to it. Each draft leaves Bobby once it's on GitHub, so a submit that fails halfway can be tried again without posting anything twice.</p>
 <ul>
@@ -275,6 +283,7 @@
       <a href="#asking-claude-about-code-preview">Asking Claude about code (preview)</a>
       <a href="#private-notes">Private notes</a>
       <a href="#when-the-pr-moves-on">When the PR moves on</a>
+      <a href="#stacked-prs">Stacked PRs</a>
       <a href="#submitting">Submitting</a>
       <a href="#staying-focused">Staying focused</a>
       <a href="#the-two-trees">The two trees</a>

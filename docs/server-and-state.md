@@ -32,6 +32,8 @@ Paths are under `/r/<id>`.
 | `GET /api/graph` | → `ReviewGraph` | Claude's graph if ready, else the static one. `?tree=static` forces static. |
 | `GET /api/session` | → `{ state, settings, llm, llmError, servers, caps: { files, inspect } }` | Everything the UI needs at boot. `servers`: a language server per language in the review, `{ id, title, state, error?, hint?, command?, offer? }`, `state` one of `consent`, `missing`, `installing`, `pending`, `done`, `failed`, `off`. `caps.files` and `caps.inspect` are true when there's a local clone. |
 | `GET /api/conversation` | → `Conversation` (`src/conversation.ts`) | The PR's description, timeline, review threads, verdicts, requested reviewers and CI checks, from one GitHub GraphQL query; read at most every 15 s, `?fresh` to read now. 404 for a local review. |
+| `GET /api/stack` | → `{ stack: Stack \| null }` (`src/stack.ts`) | The PR's stack, bottom first, each layer with your progress in its own review (from recents): GitHub's own stack, else one you defined, else one followed through branches; read at most every 60 s, `?fresh` to read now. 404 for a local review. |
+| `POST /api/stack` | `{ numbers }` → `{ stack }` | Sets the stack you define for this PR (PR numbers, bottom first; one or none removes it), in `~/.bobby/stacks.json`. 400, saying why, for a list without this PR, with a PR twice, or with one the repo doesn't have. |
 | `POST /api/conversation/comment` | `{ body }` → `{ ok, url }` | Posts a comment on the PR. |
 | `POST /api/conversation/reply` | `{ body, to }` → `{ ok, url }` | Replies in the review thread whose first comment is `to`, and re-reads the inline discussion. |
 | `POST /api/posted/edit`, `/api/posted/delete` | `{ kind, id, body? }` → `{ ok, comments, outdated }` | Edits (or deletes) a comment already on GitHub: `kind` `review` for one on a line, `issue` for one on the PR. A review comment's change re-reads the inline discussion. |
@@ -87,6 +89,7 @@ Everything is JSON under `~/.bobby/` (from `os.homedir()`):
 ```
 ~/.bobby/
   settings.json                                  UI preferences (free-form; views may add keys)
+  stacks.json                                    stacks you defined: { "owner/repo": [[<n>, …], …] }, each bottom first
   state/<owner>_<repo>_<n>.json                  ReviewState for one PR
   cache/<owner>_<repo>_<n>_<sha12>.graphs.json   built graphs for one head commit
   cache/<owner>_<repo>_<n>_<sha12>.tree.<v>.json Claude's raw change tree for one head commit and extraction version

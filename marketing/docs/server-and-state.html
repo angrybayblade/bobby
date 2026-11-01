@@ -85,6 +85,8 @@
 <tr><td><code>GET /api/graph</code></td><td>→ <code>ReviewGraph</code></td><td>Claude's graph if ready, else the static one. <code>?tree=static</code> forces static.</td></tr>
 <tr><td><code>GET /api/session</code></td><td>→ <code>{ state, settings, llm, llmError, servers, caps: { files, inspect } }</code></td><td>Everything the UI needs at boot. <code>servers</code>: a language server per language in the review, <code>{ id, title, state, error?, hint?, command?, offer? }</code>, <code>state</code> one of <code>consent</code>, <code>missing</code>, <code>installing</code>, <code>pending</code>, <code>done</code>, <code>failed</code>, <code>off</code>. <code>caps.files</code> and <code>caps.inspect</code> are true when there's a local clone.</td></tr>
 <tr><td><code>GET /api/conversation</code></td><td>→ <code>Conversation</code> (<code>src/conversation.ts</code>)</td><td>The PR's description, timeline, review threads, verdicts, requested reviewers and CI checks, from one GitHub GraphQL query; read at most every 15 s, <code>?fresh</code> to read now. 404 for a local review.</td></tr>
+<tr><td><code>GET /api/stack</code></td><td>→ <code>{ stack: Stack | null }</code> (<code>src/stack.ts</code>)</td><td>The PR's stack, bottom first, each layer with your progress in its own review (from recents): GitHub's own stack, else one you defined, else one followed through branches; read at most every 60 s, <code>?fresh</code> to read now. 404 for a local review.</td></tr>
+<tr><td><code>POST /api/stack</code></td><td><code>{ numbers }</code> → <code>{ stack }</code></td><td>Sets the stack you define for this PR (PR numbers, bottom first; one or none removes it), in <code>~/.bobby/stacks.json</code>. 400, saying why, for a list without this PR, with a PR twice, or with one the repo doesn't have.</td></tr>
 <tr><td><code>POST /api/conversation/comment</code></td><td><code>{ body }</code> → <code>{ ok, url }</code></td><td>Posts a comment on the PR.</td></tr>
 <tr><td><code>POST /api/conversation/reply</code></td><td><code>{ body, to }</code> → <code>{ ok, url }</code></td><td>Replies in the review thread whose first comment is <code>to</code>, and re-reads the inline discussion.</td></tr>
 <tr><td><code>POST /api/posted/edit</code>, <code>/api/posted/delete</code></td><td><code>{ kind, id, body? }</code> → <code>{ ok, comments, outdated }</code></td><td>Edits (or deletes) a comment already on GitHub: <code>kind</code> <code>review</code> for one on a line, <code>issue</code> for one on the PR. A review comment's change re-reads the inline discussion.</td></tr>
@@ -135,6 +137,7 @@
 <p>Everything is JSON under <code>~/.bobby/</code> (from <code>os.homedir()</code>):</p>
 <pre><code>~/.bobby/
   settings.json                                  UI preferences (free-form; views may add keys)
+  stacks.json                                    stacks you defined: { &quot;owner/repo&quot;: [[&lt;n&gt;, …], …] }, each bottom first
   state/&lt;owner&gt;_&lt;repo&gt;_&lt;n&gt;.json                  ReviewState for one PR
   cache/&lt;owner&gt;_&lt;repo&gt;_&lt;n&gt;_&lt;sha12&gt;.graphs.json   built graphs for one head commit
   cache/&lt;owner&gt;_&lt;repo&gt;_&lt;n&gt;_&lt;sha12&gt;.tree.&lt;v&gt;.json Claude's raw change tree for one head commit and extraction version

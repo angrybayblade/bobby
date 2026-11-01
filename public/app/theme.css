@@ -678,6 +678,32 @@ mark.wd { background: var(--del-word); color: inherit; border-radius: 0; }
 .modal h2 { margin: 0 0 6px; font-size: 18px; }
 .modal p { color: var(--muted); margin: 0 0 16px; font-family: var(--font-prose); }
 .modal .row { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; align-items: center; }
+/* The stack (stack.js): in the where-bar, the PR below, its place, the PR above; in its dialog, each layer, top first. */
+#where .stk { display: inline-flex; align-items: center; margin-right: 6px; padding-right: 8px; border-right: 1px solid var(--line); }
+#where .stk .stk-go { padding: 2px 5px; }
+#where .stk .stk-go:disabled { visibility: hidden; }
+.stack-dlg .slist { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; }
+.stack-dlg .slist li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-left: 2px solid var(--line); margin-left: 5px; min-width: 0; }
+.stack-dlg .slist li.here { border-left-color: var(--signal); background: var(--signal-soft); }
+.stack-dlg .slist li.trunk { color: var(--faint); font-size: 12.5px; padding-top: 6px; }
+.stack-dlg .slist code { font: 12px var(--font-code); }
+.stack-dlg .stitle { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.stack-dlg .stitle small { display: block; margin-top: 2px; color: var(--faint); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stack-dlg .sdot { flex: none; width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--faint); margin-left: -15px; background: var(--surface); }
+.stack-dlg .sdot.open { border-color: var(--ok, #3fb950); background: var(--ok, #3fb950); }
+.stack-dlg .sdot.draft { border-color: var(--faint); }
+.stack-dlg .sdot.merged { border-color: #a371f7; background: #a371f7; }
+.stack-dlg .sdot.closed { border-color: var(--risk); background: var(--risk); }
+.stack-dlg .slist .btn { flex: none; padding: 3px 10px; font-size: 12.5px; }
+.stack-dlg .sbtns { flex: none; display: flex; gap: 2px; }
+.stack-dlg .sbtns .iconbtn:disabled { opacity: .3; }
+.stack-dlg .shint { margin: 12px 0 0; font-size: 13px; }
+.stack-dlg.editing .shint { margin: 0 0 10px; }
+.stack-dlg .sadd { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+.stack-dlg .sadd input[type=text], .stack-dlg #stack-add { flex: 1; min-width: 160px; padding: 6px 9px; border-radius: 2px; border: 1px solid var(--line); background: var(--bg); color: inherit; font: 13px var(--font-ui); }
+.stack-dlg .sadd-at { display: flex; gap: 10px; font-size: 12.5px; color: var(--muted); }
+.stack-dlg .sadd .btn { padding: 5px 12px; font-size: 13px; }
+.stack-dlg .why { margin: 8px 0 0; font-size: 13px; color: var(--risk); }
 .modal.reentry .row { flex-direction: column; align-items: stretch; } /* three long choices: a column, not a ragged wrap */
 .modal .rdrafts { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; font-size: 13px; color: var(--muted); }
 .modal .rdraft { display: flex; align-items: baseline; gap: 8px; min-width: 0; }

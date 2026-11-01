@@ -8,6 +8,7 @@ import { ACTIONS, action, bind, bindable, kbdHtml, keyHtml, keyName, keyOfEvent,
 import { bubble, nextUnresolved, prCount, togglePR, unresolved } from "./comments.js";
 import { offerClaude } from "./claude-setup.js";
 import { offerGh } from "./gh-setup.js";
+import { initStack, stackClick, stackCrumb } from "./stack.js";
 
 const $ = (q) => document.querySelector(q);
 const PALETTE_KEY = MOD === "⌘" ? "⌘K" : "ctrl k";
@@ -39,6 +40,7 @@ export function init(a, viewList) {
     if (ev.target.id === "gnote" && ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); addGlobalNote(); }
   });
   startTimebox();
+  initStack(app, { dialog: open, close, toast, render });
 }
 
 export function render() {
@@ -248,7 +250,7 @@ function watchCores() {
 function renderWhere() {
   const pid = app.focus;
   const loc = app.get(pid);
-  const crumbs = [`<button data-level="0" class="${app.level === 0 ? "here" : ""}">${esc(app.graph.pr.repo)} ${app.graph.pr.provider === "local" ? `⎇ ${esc(app.graph.pr.branch)}` : `#${app.graph.pr.number}${app.graph.pr.commit ? ` @ ${esc(app.graph.pr.commit.sha.slice(0, 7))}` : ""}`}</button>`];
+  const crumbs = [`${stackCrumb()}<button data-level="0" class="${app.level === 0 ? "here" : ""}">${esc(app.graph.pr.repo)} ${app.graph.pr.provider === "local" ? `⎇ ${esc(app.graph.pr.branch)}` : `#${app.graph.pr.number}${app.graph.pr.commit ? ` @ ${esc(app.graph.pr.commit.sha.slice(0, 7))}` : ""}`}</button>`];
   if (loc) {
     crumbs.push(`<button data-level="1" class="${app.level === 1 ? "here" : ""}">${loc.ci + 1} · ${esc(loc.core.title)}</button>`);
     crumbs.push(`<button data-level="2" class="${app.level === 2 ? "here" : ""}"><i class="glyph ${loc.pl.band === "core" ? "core" : app.nodeOf(pid).kind}" style="margin-right:6px"></i>${esc(loc.pl.title)}</button>`);
@@ -651,6 +653,7 @@ async function serverAction(act, id) {
 
 // ---------------------------------------------------------------- clicks
 function onClick(ev) {
+  if (stackClick(ev)) return;
   const lay = ev.target.closest("[data-flayout]");
   if (lay) return app.toggleLayout(lay.dataset.flayout);
   const t = ev.target.closest("[data-act],[data-view],[data-level],[data-set],[data-submit],[data-gdel],[data-gonote],[data-ddel]");

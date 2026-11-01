@@ -10,6 +10,7 @@ import { offerClaude } from "./claude-setup.js";
 import { offerGh } from "./gh-setup.js";
 import * as palette from "./palette.js";
 import * as tour from "./tour.js";
+import { goTo, openStack } from "./stack.js";
 import { ACTIONS, actionFor, keyHtml, keyOfEvent, keysOf, keyText } from "./keys.js";
 import allViews from "./views/index.js";
 
@@ -425,6 +426,8 @@ function commands() {
     { id: "tour", title: "Take the tour", sub: "how the walk, the views and the keys fit together", run: () => tour.start() },
     { id: "gh", title: "Set up GitHub CLI", sub: "install gh and sign in to GitHub, for PRs and posting reviews", run: () => offerGh({ force: true }) },
     ...(app.since ? [{ id: "since", title: "Review changes since your last review", sub: `${app.since.commits} commit${app.since.commits > 1 ? "s" : ""} since ${new Date(app.since.at).toLocaleDateString()}: just what they changed`, run: () => chrome.openSince() }] : []),
+    ...(app.graph.pr.provider === "local" ? [] : [{ id: "stack", title: app.stack ? "Stack…" : "Define this PR's stack…", sub: app.stack ? `${app.stack.layers.length} PRs on ${app.stack.trunk}: each one's state and your progress in it` : "the PRs it sits on and the ones built on it, kept in Bobby", run: () => openStack() },
+      ...[[-1, "below"], [1, "above"]].flatMap(([d, w]) => { const l = app.stack?.layers[app.stack.at + d]; return l ? [{ id: `stack:${w}`, title: `Open the PR ${w} in the stack`, sub: `#${l.number} ${l.title}`, run: () => goTo(l.number) }] : []; })]),
     { id: "agent-tools", title: "Claude's tools for this PR…", sub: "which of your MCP servers and connectors (Linear, Notion, Slack…) Claude may use", run: () => openAsk(app, { tools: true }) },
     { id: "agent-next", title: "Go through Claude's findings", sub: "one at a time, with the code each is about", run: () => nextFinding(app) || chrome.toast("No open findings from Claude.", 4000) },
     { id: "claude", title: "Set up Claude Code", sub: "install it and sign in, for Claude's tree of the change", run: () => offerClaude({ force: true }) },

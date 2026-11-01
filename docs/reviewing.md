@@ -189,6 +189,16 @@ While a review is open, Bobby keeps it current, the way GitHub does:
 - **New commits** on the PR, or a new base branch, aren't swapped in under you. A **New commits · Refresh** prompt appears in the top bar instead. Refresh rebuilds the review on them, on the same node. What the push didn't change keeps its marks; what it changed shows as unreviewed.
 - **A local review** has no comments, but notices your new commits and edits (every 10 seconds) and offers **Files changed · Refresh** the same way. Switching branches can't be followed: run `bobby` again to review the other branch.
 
+## Stacked PRs
+
+A PR built on another PR (its base is that PR's branch) is part of a **stack**: each PR is still its own review, against its own base, so you review only its layer. The where-bar starts with its place in the stack, **‹ Stack 2/3 ›**: the arrows open the PR below and the PR above, and **Stack 2/3** opens every layer, top first, with its state and how far you got in its own review (**Open** reviews it). The palette has them too (**Stack…**, **Open the PR below in the stack**, **Open the PR above in the stack**).
+
+Bobby finds the stack in this order:
+
+- **GitHub's own stack**, when the PR is in one (GitHub's stacked pull requests, or `gh stack`). Change it on GitHub.
+- **One you defined.** For PRs that belong together without a stack on GitHub, **Stack… › Define a stack** (or **Edit stack**) lists the PRs in order: add each by its number or link, on top or below, and move or take them out. It's kept in Bobby only (`~/.bobby/stacks.json`); GitHub never sees it. **Remove** takes it away again.
+- **Branches.** Otherwise, Bobby follows them: the open PR whose branch is this one's base sits below it, and the one open PR based on this one's branch sits above. Where several PRs are based on the same branch, the stack forks, and Bobby stops there. It never goes below the repo's default branch. **Edit stack** keeps it as one you defined.
+
 ## Submitting
 
 Press `s`. Add an optional summary, then choose **Comment**, **Approve** or **Request changes**. Only drafts are posted; private notes and review marks stay in Bobby (whole files viewed also tick GitHub's Viewed boxes). All drafts are posted together as one GitHub review on the PR's current head commit, and you get a link to it. Each draft leaves Bobby once it's on GitHub, so a submit that fails halfway can be tried again without posting anything twice.
