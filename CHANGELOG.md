@@ -4,6 +4,9 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- **Stacked PRs:** a PR in a stack shows its place in the where-bar, **‹ Stack 2/3 ›**, with the PRs below and above a click away, and a list of every layer with its state and how far you got in its review. Bobby takes the stack from GitHub's own stacked PRs, follows it through branches when there's none, or lets you define one in Bobby for PRs that belong together.
+- Long text in a notification (a URL in an error, a long file name) stays inside it: it wraps and stops after a few lines, with the rest in its tooltip.
+
 ## 0.1.0-rc16 (2026-10-31)
 
 Security and performance ahead of a public release: another site can't drive Bobby, Claude's runs keep your own setup out and have a spending ceiling, reviews reopen in under a second, and closed ones free their memory.
