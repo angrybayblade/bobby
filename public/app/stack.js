@@ -5,21 +5,45 @@ import { api, esc } from "./core.js";
 
 let app, dialog, close, toast, render;
 let editing = null; // the numbers being edited, top first, while the dialog is in its editing state
+let contextOf = ""; // the stack (its PRs and heads) the code notes were read for
 
 export function initStack(a, ui) {
   app = a;
   ({ dialog, close, toast, render } = ui);
-  app.stack = null;
+  app.stack = app.graph.pr.provider === "local" ? null : cached(); // drawn at once, then read afresh
   app.stackContext = null;
   if (app.graph.pr.provider !== "local") load();
 }
 async function load(fresh = false) {
   const r = await api(`/api/stack${fresh ? "?fresh" : ""}`).catch(() => null);
   if (!r) return;
-  const moved = JSON.stringify(r.stack?.layers.map((l) => [l.number, l.headSha])) !== JSON.stringify(app.stack?.layers.map((l) => [l.number, l.headSha]));
-  app.stack = r.stack;
+  set(r.stack);
+}
+/** The stack as the server read it: shown, kept for next time, and its code notes read again if its PRs moved. */
+function set(stack) {
+  app.stack = stack;
+  remember(stack);
   render();
-  if (moved) loadContext();
+  const heads = JSON.stringify(stack?.layers.map((l) => [l.number, l.headSha]) ?? null);
+  if (heads !== contextOf) { contextOf = heads; loadContext(); }
+}
+
+// Stacks seen, kept in this browser (they're only a convenience): a review opens with its stack drawn at once, from
+// its own last visit or a neighbour's, as when you step along the stack, rather than the bar appearing a moment later.
+const CACHE = "bobby.stacks";
+const repoKey = () => `${app.graph.pr.owner}/${app.graph.pr.repo}`.toLowerCase();
+const has = (s, n) => s.layers.some((l) => l.number === n);
+function readCache() { try { return JSON.parse(localStorage.getItem(CACHE) || "{}"); } catch { return {}; } }
+function cached() {
+  const me = app.graph.pr.number, s = (readCache()[repoKey()] ?? []).find((x) => has(x, me));
+  return s ? { ...s, at: s.layers.findIndex((l) => l.number === me) } : null;
+}
+function remember(stack) {
+  const me = app.graph.pr.number, all = readCache(), k = repoKey();
+  const rest = (all[k] ?? []).filter((x) => !has(x, me) && !(stack && stack.layers.some((l) => has(x, l.number)))); // one stack per PR
+  all[k] = (stack ? [stack, ...rest] : rest).slice(0, 20);
+  if (!all[k].length) delete all[k];
+  try { localStorage.setItem(CACHE, JSON.stringify(all)); } catch { /* private window, or full */ }
 }
 
 // ---------------------------------------------------------------- what the neighbours do with this PR's code
@@ -171,8 +195,7 @@ function prNumber(text) {
 async function save(numbers) {
   try {
     const r = await api("/api/stack", { numbers });
-    app.stack = r.stack;
-    render();
+    set(r.stack);
     editing = null;
     draw();
   } catch (e) { why(e.message); }
