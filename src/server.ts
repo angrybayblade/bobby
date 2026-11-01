@@ -19,6 +19,7 @@ import { refreshDiscussion, type Update } from "./watch.ts";
 import { approvedOf, loadRecents, noteRecent, prLists } from "./recents.ts";
 import { type Conversation, conversation } from "./conversation.ts";
 import { type Stack, defineStack, stackOf } from "./stack.ts";
+import { type StackContext, stackContext } from "./stackctx.ts";
 import { type ReviewEvent, submitReview } from "./submit.ts";
 import * as log from "./log.ts";
 import pkg from "../package.json" with { type: "json" };
@@ -46,6 +47,7 @@ export interface Session {
   discussionAt?: number;
   conversation?: { at: number; value: Promise<Conversation> }; // the Conversation view's, read at most every 15 s
   stack?: { at: number; value: Promise<Stack | null> }; // the PR's stack, read at most every 60 s
+  stackContext?: { key: string; value: Promise<StackContext> }; // what its neighbours have to do with its code, per head and stack
   update?: Update;
   rebuild?: () => Promise<void>;
   rebuilding?: boolean;
@@ -411,6 +413,25 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
           const mine = (n: number) => recents.find((r) => r.kind === "pr" && r.owner === pr().owner && r.repo === pr().repo && r.number === n);
           return json({ stack: stack && { ...stack, layers: stack.layers.map((l) => ({ ...l, progress: mine(l.number)?.progress ?? null, drafts: mine(l.number)?.drafts ?? 0 })) } });
         } catch (e) { return json({ error: String((e as Error).message) }, 502); }
+      }
+      // What the stack's other PRs have to do with this one's code (stackctx.ts): the unchanged code a PR below wrote, and
+      // where PRs above change this one's changes further or use them. Read again when the stack or a head moves.
+      if (p === "/api/stack/context") {
+        const empty: StackContext = { below: {}, above: {} };
+        if (pr().provider === "local" || pr().commit || !s.cwd) return json(empty);
+        if (!s.stack || Date.now() - s.stack.at > 60_000) { const value = stackOf(pr()); s.stack = { at: Date.now(), value }; value.catch(() => { if (s.stack?.value === value) s.stack = undefined; }); }
+        const stack = await s.stack.value.catch(() => null);
+        if (!stack) return json(empty);
+        const key = `${pr().headSha}:${!!s.claudeGraph}:${stack.layers.map((l) => `${l.number}@${l.headSha}`).join(",")}`;
+        if (s.stackContext?.key !== key) {
+          const graphs = [s.staticGraph, ...(s.claudeGraph ? [s.claudeGraph] : [])];
+          const value = stackContext(s.cwd, pr(), stack, graphs);
+          s.stackContext = { key, value };
+          value.catch(() => { if (s.stackContext?.value === value) s.stackContext = undefined; });
+        }
+        // a big repo can take longer than a request may wait: the page asks again
+        const late = new Promise<null>((r) => setTimeout(() => r(null), 8_000));
+        try { return json((await Promise.race([s.stackContext.value, late])) ?? { pending: true }); } catch (e) { return json({ error: String((e as Error).message) }, 502); }
       }
       // Writing in the conversation: a comment on the PR, or a reply in a review thread. Each posts at once, as GitHub's
       // Comment and Reply buttons do (a review, with its drafts on lines, still goes through /api/submit).

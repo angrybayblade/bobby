@@ -93,7 +93,7 @@ function githubAlias(host: string): Promise<boolean> {
 }
 /** The remote in cwd for owner/repo on GitHub: one whose URL's path is owner/repo, at github.com or at an SSH alias of
  *  it. Any remote name: origin, upstream, a fork's. */
-async function remoteFor(cwd: string, owner: string, repo: string): Promise<string | null> {
+export async function remoteFor(cwd: string, owner: string, repo: string): Promise<string | null> {
   const out = await git(cwd, ["remote", "-v"], true);
   const want = `${owner}/${repo}`.toLowerCase();
   const maybe: Array<[string, string]> = []; // the right path at another host: GitHub only if it's an alias of it
@@ -116,7 +116,7 @@ export interface ResolvedPr {
 
 /** git, signed in to github.com with gh's login for this one command (as gh does for its own): a private repo on a
  *  machine whose git was never given credentials. Your git config is left alone. */
-function ghCredentials(): string[] {
+export function ghCredentials(): string[] {
   const gh = ghBin();
   return gh ? ["-c", "credential.https://github.com.helper=", "-c", `credential.https://github.com.helper=!'${gh.replaceAll("'", "'\\''")}' auth git-credential`] : [];
 }
