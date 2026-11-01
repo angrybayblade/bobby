@@ -30,7 +30,7 @@
       <button class="theme" type="button" data-theme-toggle aria-label="Switch to dark mode"><svg class="moon" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M6.2 1.2a.6.6 0 0 1 .1.7 5.6 5.6 0 0 0 7.8 7.8.6.6 0 0 1 .8.8A7 7 0 1 1 5.4 1.1a.6.6 0 0 1 .8.1Z"/></svg><svg class="sun" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="3"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3 3l1 1M12 12l1 1M3 13l1-1M12 4l1-1"/></g></svg></button>
       <a class="cta" href="../#install">Install</a>
       <a href="./" class="on">Docs</a>
-      <a href="https://github.com/angrybayblade/focus-bobby">GitHub ↗</a>
+      <a href="https://github.com/angrybayblade/bobby">GitHub ↗</a>
     </nav>
   </header>
   <div class="shell">
@@ -189,7 +189,7 @@ bobby mcp                             # an MCP server for your agents: see below
 </code></pre>
 <p>It has one tool, <code>open_review</code>: a PR (its URL, <code>owner/repo#number</code>, or its number in the repo you're in), or with none, the branch in the folder the agent works in, as a bare <code>bobby</code> there would. It opens it in the Bobby already running on this machine, with your other reviews, or starts one in the background (on the home page, without opening the browser), then shows the review. If <code>gh</code> isn't set up, it shows the page that sets it up, then opens the PR. If cloning over HTTPS fails, the agent asks you before trying SSH.</p>
 <p>A Bobby started this way has no terminal: <code>bobby stop</code> stops it.</p>
-<p>To teach an agent all of it, the tool and the CLI's way when it doesn't have the tool (<code>bobby start</code>, then <code>bobby &lt;pr&gt;</code>), give it Bobby's skill, <a href="https://github.com/angrybayblade/focus-bobby/blob/main/skills/bobby/SKILL.md"><code>skills/bobby/SKILL.md</code></a>. For Claude Code:</p>
+<p>To teach an agent all of it, the tool and the CLI's way when it doesn't have the tool (<code>bobby start</code>, then <code>bobby &lt;pr&gt;</code>), give it Bobby's skill, <a href="https://github.com/angrybayblade/bobby/blob/main/skills/bobby/SKILL.md"><code>skills/bobby/SKILL.md</code></a>. For Claude Code:</p>
 <pre><code class="language-sh">mkdir -p ~/.claude/skills/bobby &amp;&amp; curl -fsSL https://raw.githubusercontent.com/angrybayblade/bobby/main/skills/bobby/SKILL.md -o ~/.claude/skills/bobby/SKILL.md
 </code></pre>
 <h2 id="on-a-remote-machine"><a class="anchor" href="#on-a-remote-machine" aria-hidden="true">#</a>On a remote machine</h2>
@@ -234,7 +234,7 @@ bobby &lt;pr-url&gt; --no-open --host 0.0.0.0 --allow-host bobby.dev.internal   
         <a class="prev" href="./"><small>Previous</small>Overview</a>
         <a class="next" href="reviewing.html"><small>Next</small>Reviewing a PR</a>
       </footer>
-      <p class="edit"><a href="https://github.com/angrybayblade/focus-bobby/blob/main/docs/getting-started.md">Edit this page on GitHub ↗</a></p>
+      <p class="edit"><a href="https://github.com/angrybayblade/bobby/blob/main/docs/getting-started.md">Edit this page on GitHub ↗</a></p>
     </main>
     <aside class="toc" aria-label="On this page">
       <h4>On this page</h4>

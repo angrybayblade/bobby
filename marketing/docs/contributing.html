@@ -30,7 +30,7 @@
       <button class="theme" type="button" data-theme-toggle aria-label="Switch to dark mode"><svg class="moon" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M6.2 1.2a.6.6 0 0 1 .1.7 5.6 5.6 0 0 0 7.8 7.8.6.6 0 0 1 .8.8A7 7 0 1 1 5.4 1.1a.6.6 0 0 1 .8.1Z"/></svg><svg class="sun" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="3"/><path d="M8 1v1.5M8 13.5V15M1 8h1.5M13.5 8H15M3 3l1 1M12 12l1 1M3 13l1-1M12 4l1-1"/></g></svg></button>
       <a class="cta" href="../#install">Install</a>
       <a href="./" class="on">Docs</a>
-      <a href="https://github.com/angrybayblade/focus-bobby">GitHub ↗</a>
+      <a href="https://github.com/angrybayblade/bobby">GitHub ↗</a>
     </nav>
   </header>
   <div class="shell">
@@ -76,7 +76,7 @@ bun run check     # the build gate: tsc --noEmit for src/, node --check for ever
 <li><strong>Binaries:</strong> <code>bun run build --all</code> writes <code>dist/bobby-&lt;os&gt;-&lt;arch&gt;</code> for macOS, Linux and Windows. <code>scripts/build.ts</code> generates an entry that embeds every file under <code>public/</code> (<code>src/assets.ts › embed</code>) before loading the CLI, then runs <code>bun build --compile</code>. Cross-compiling downloads each target's Bun runtime the first time.</li>
 </ul>
 <h2 id="commits"><a class="anchor" href="#commits" aria-hidden="true">#</a>Commits</h2>
-<p>Read <a href="https://github.com/angrybayblade/focus-bobby/blob/main/COMMITS.md">COMMITS.md</a>. In short:</p>
+<p>Read <a href="https://github.com/angrybayblade/bobby/blob/main/COMMITS.md">COMMITS.md</a>. In short:</p>
 <ul>
 <li><strong>Micro</strong>: one logical change per commit. Refactors, formatting and behaviour changes go separately.</li>
 <li><strong>Incremental</strong>: every commit passes <code>bun run check</code>. Build bottom-up: types → logic → wiring → UI → docs. Land a new view as its own module first and register it last.</li>
@@ -113,7 +113,7 @@ bobby open /tmp/pr.json --repo &lt;clone&gt; --no-open
         <a class="prev" href="spec.html"><small>Previous</small>Review graph v1</a>
         <span></span>
       </footer>
-      <p class="edit"><a href="https://github.com/angrybayblade/focus-bobby/blob/main/docs/contributing.md">Edit this page on GitHub ↗</a></p>
+      <p class="edit"><a href="https://github.com/angrybayblade/bobby/blob/main/docs/contributing.md">Edit this page on GitHub ↗</a></p>
     </main>
     <aside class="toc" aria-label="On this page">
       <h4>On this page</h4>

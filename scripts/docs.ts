@@ -6,7 +6,7 @@ import { dirname, join, normalize } from "node:path";
 
 const ROOT = join(import.meta.dir, "..");
 const OUT = join(ROOT, "marketing/docs");
-const REPO = "https://github.com/angrybayblade/focus-bobby";
+const REPO = "https://github.com/angrybayblade/bobby";
 const SITE = "https://bobby.viraj.computer";
 
 /** The sidebar, in reading order. `src` is the Markdown, relative to the repo. */
