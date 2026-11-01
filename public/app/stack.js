@@ -106,17 +106,39 @@ function draw() {
     const state = l.state === "MERGED" ? ["merged", "Merged"] : l.state === "CLOSED" ? ["closed", "Closed"] : l.draft ? ["draft", "Draft"] : ["open", "Open"];
     const how = here ? "you're here" : p ? `${p.done}/${p.total} reviewed${l.drafts ? ` · ${l.drafts} draft${l.drafts > 1 ? "s" : ""}` : ""}` : "not opened in Bobby";
     return `<li class="${here ? "here" : ""}"><span class="sdot ${state[0]}" title="${state[1]}"></span>
-      <span class="stitle"><b>#${l.number}</b> ${esc(l.title)}<small>${esc(l.author)} · <code>${esc(l.head)}</code> · ${how}</small></span>
+      <span class="stitle"><b>#${l.number}</b> ${esc(l.title)}<small>${esc(l.author)} · <code>${esc(l.head)}</code> · ${how}</small>${flags(l)}</span>
       ${here ? "" : `<button class="btn" data-stack-go="${l.number}">Open</button>`}</li>`;
   };
   const body = s
     ? `<ol class="slist">${[...s.layers].reverse().map(row).join("")}<li class="trunk"><span class="sdot"></span><code>${esc(s.trunk)}</code></li></ol>`
     : `<p>#${me} isn't in a stack: GitHub has none for it, and no open PR's branch leads to or from it. If it belongs with other PRs, define its stack: Bobby then shows each PR beside its neighbours.</p>`;
+  const next = s && nextToMerge(s);
   const how = !s ? "" : s.source === "github" ? "From GitHub's stack. Change it on GitHub, or with <code>gh stack</code>."
     : s.source === "yours" ? "Defined by you, in Bobby only: GitHub doesn't see it." : "Followed through branches: each PR's base is the branch of the one below.";
-  dialog(`<div class="stack-dlg"><h2>Stack</h2>${body}${how ? `<p class="shint">${how}</p>` : ""}
+  dialog(`<div class="stack-dlg"><h2>Stack</h2>${body}${next ? `<p class="snext">${next}</p>` : ""}${how ? `<p class="shint">${how}</p>` : ""}
     <div class="row">${s?.source === "github" ? "" : `<button class="btn" data-act="stack-edit">${s ? "Edit stack" : "Define a stack"}</button>`}
       ${s?.source === "yours" ? `<button class="btn" data-act="stack-clear">Remove</button>` : ""}<button class="btn primary" data-act="close" style="margin-left:auto">Done</button></div></div>`, "stack");
+}
+
+/** Where a layer stands on GitHub: its verdict, unresolved threads, CI, and whether it needs rebasing onto the PR below. */
+function flags(l) {
+  if (l.state !== "OPEN") return "";
+  const f = [
+    l.restack ? `<span class="sflag bad" title="It isn't on the latest head of the PR below any more: rebase it onto that (gh stack rebase)">needs restack</span>` : "",
+    l.decision === "APPROVED" ? `<span class="sflag ok">approved</span>` : l.decision === "CHANGES_REQUESTED" ? `<span class="sflag bad">changes requested</span>` : l.decision === "REVIEW_REQUIRED" ? `<span class="sflag">review required</span>` : "",
+    l.unresolved ? `<span class="sflag">${l.unresolved} unresolved</span>` : "",
+    l.checks === "FAILURE" ? `<span class="sflag bad">checks failing</span>` : l.checks === "PENDING" ? `<span class="sflag">checks running</span>` : l.checks === "SUCCESS" ? `<span class="sflag ok">checks pass</span>` : "",
+  ].join("");
+  return f ? `<span class="sflags">${f}</span>` : "";
+}
+/** The stack merges bottom up: the lowest open PR is next, and what's in its way. Only for a stack built on branches:
+ *  one you defined of unrelated PRs merges in any order. */
+function nextToMerge(s) {
+  if (s.source === "yours") return "";
+  const l = s.layers.find((x) => x.state === "OPEN");
+  if (!l) return "";
+  const block = [l.draft && "it's a draft", l.restack && "it needs a restack", l.decision === "CHANGES_REQUESTED" && "changes were requested", l.decision === "REVIEW_REQUIRED" && "it needs a review", l.unresolved && `${l.unresolved} thread${l.unresolved > 1 ? "s are" : " is"} unresolved`, l.checks === "FAILURE" && "its checks fail", l.checks === "PENDING" && "its checks are running"].filter(Boolean);
+  return `<b>Next to merge: #${l.number}</b>, the lowest open PR. ${block.length ? `Waiting because ${block.join(", ")}.` : "Nothing in its way."}`;
 }
 
 function drawEdit() {

@@ -18,7 +18,7 @@ import { Repo } from "./resolve.ts";
 import { refreshDiscussion, type Update } from "./watch.ts";
 import { approvedOf, loadRecents, noteRecent, prLists } from "./recents.ts";
 import { type Conversation, conversation } from "./conversation.ts";
-import { type Stack, defineStack, stackOf } from "./stack.ts";
+import { type Stack, defineStack, markRestacks, stackOf } from "./stack.ts";
 import { type StackContext, stackContext } from "./stackctx.ts";
 import { type ReviewEvent, submitReview } from "./submit.ts";
 import * as log from "./log.ts";
@@ -404,7 +404,7 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
           s.stack = undefined;
         }
         if (!s.stack || url.searchParams.has("fresh") || Date.now() - s.stack.at > 60_000) {
-          const value = stackOf(pr());
+          const value = stackOf(pr()).then((st) => (st ? markRestacks(pr(), st) : null));
           s.stack = { at: Date.now(), value };
           value.catch(() => { if (s.stack?.value === value) s.stack = undefined; });
         }

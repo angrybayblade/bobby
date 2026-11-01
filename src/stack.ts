@@ -12,6 +12,10 @@ export interface Layer {
   number: number; title: string; url: string; author: string;
   state: "OPEN" | "CLOSED" | "MERGED"; draft: boolean;
   head: string; base: string; headSha: string; // branch names, and the head's commit
+  decision: "APPROVED" | "CHANGES_REQUESTED" | "REVIEW_REQUIRED" | null;
+  unresolved: number; // review threads not resolved (of the first 100)
+  checks: "SUCCESS" | "FAILURE" | "PENDING" | null; // CI on its head, as GitHub rolls it up
+  restack?: boolean; // it isn't on the head of the PR below any more: rebase it onto that
 }
 export interface Stack {
   source: "github" | "yours" | "branches";
@@ -22,10 +26,14 @@ export interface Stack {
 type Repo = { owner: string; repo: string };
 type Raw = any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
-const LAYER = "number title url state isDraft headRefName baseRefName headRefOid isCrossRepository author { login }";
+const LAYER = `number title url state isDraft headRefName baseRefName headRefOid isCrossRepository author { login } reviewDecision
+  reviewThreads(first: 100) { nodes { isResolved } } commits(last: 1) { nodes { commit { statusCheckRollup { state } } } }`;
+const ROLLUP: Record<string, Layer["checks"]> = { SUCCESS: "SUCCESS", FAILURE: "FAILURE", ERROR: "FAILURE", PENDING: "PENDING", EXPECTED: "PENDING" };
 const layerOf = (p: Raw): Layer => ({
   number: p.number, title: p.title, url: p.url, author: p.author?.login ?? "", state: p.state, draft: !!p.isDraft,
-  head: p.headRefName, base: p.baseRefName, headSha: p.headRefOid,
+  head: p.headRefName, base: p.baseRefName, headSha: p.headRefOid, decision: p.reviewDecision ?? null,
+  unresolved: (p.reviewThreads?.nodes ?? []).filter((t: Raw) => !t.isResolved).length,
+  checks: ROLLUP[p.commits?.nodes?.[0]?.commit?.statusCheckRollup?.state] ?? null,
 });
 const MAX = 12; // layers each way: past that it's not a stack anyone reviews
 
@@ -52,6 +60,18 @@ export async function stackOf(pr: Repo & { number: number }): Promise<Stack | nu
     if (layers.length > 1 && at >= 0) return { source: "yours", trunk: layers[0].base, layers, at };
   }
   return followBranches(pr, layerOf(me), d.repository.defaultBranchRef?.name ?? "");
+}
+
+/** Marks each open layer built on the branch of an open layer below that no longer sits on that one's head (it moved:
+ *  a fix, or a rebase of its own), so it needs rebasing onto it. One comparison per such pair. */
+export async function markRestacks(r: Repo, stack: Stack): Promise<Stack> {
+  const layers = await Promise.all(stack.layers.map(async (l, i) => {
+    const below = stack.layers[i - 1];
+    if (!below || l.state !== "OPEN" || below.state !== "OPEN" || l.base !== below.head) return l;
+    const status = (await run(["gh", "api", `repos/${r.owner}/${r.repo}/compare/${below.headSha}...${l.headSha}`, "--jq", ".status"], { allowFail: true })).trim();
+    return status === "diverged" || status === "behind" ? { ...l, restack: true } : l;
+  }));
+  return { ...stack, layers };
 }
 
 /** Each of these PRs, in this order, in one query; any that's gone is left out. */

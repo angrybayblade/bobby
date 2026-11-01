@@ -703,6 +703,12 @@ mark.wd { background: var(--del-word); color: inherit; border-radius: 0; }
 .stack-dlg .sdot.draft { border-color: var(--faint); }
 .stack-dlg .sdot.merged { border-color: #a371f7; background: #a371f7; }
 .stack-dlg .sdot.closed { border-color: var(--risk); background: var(--risk); }
+.stack-dlg .sflags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.stack-dlg .sflag { padding: 0 6px; border: 1px solid var(--line); border-radius: 2px; font: 11.5px/18px var(--font-ui); color: var(--muted); }
+.stack-dlg .sflag.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+.stack-dlg .sflag.bad { color: var(--risk); border-color: color-mix(in srgb, var(--risk) 45%, transparent); }
+.stack-dlg .snext { margin: 12px 0 0; font-size: 13.5px; color: var(--muted); }
+.stack-dlg .snext b { color: var(--text); }
 .stack-dlg .slist .btn { flex: none; padding: 3px 10px; font-size: 12.5px; }
 .stack-dlg .sbtns { flex: none; display: flex; gap: 2px; }
 .stack-dlg .sbtns .iconbtn:disabled { opacity: .3; }
