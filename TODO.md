@@ -35,6 +35,16 @@ The CLI is the public release: it needs `git`, `gh` (logged in) and SSH access t
 ## After 0.1.0
 
 - PR actions from Bobby: merge (once checks pass, with GitHub's merge methods), request reviewers, mark ready for review, labels.
+- Whole-stack review: a stack's PRs in one review at `/s/<owner>/<repo>/<stack>`, entered from the stack bar, beside
+  the per-PR review rather than in its place. One graph merged from each layer's own (each still diffed against the
+  layer below; ids prefixed by layer, files tagged with it, a `stack` section with the cross-layer edges from
+  `stackctx.ts`), so views keep reading one document and only learn to group by layer. Diff and Flow: a lane per
+  layer, left to right from the trunk, with a labelled boundary between lanes and cross-layer edges styled apart.
+  Outline and Lens: grouped by layer. The walk crosses layers through a transition card ("End of #101 · next: #102,
+  which uses …"). Map: one run over the whole stack, drawn in vertical bands per layer. Conversation off for now.
+  Marks stay in each PR's state; drafts belong to the layer whose diff they're on, and submit sends one review per
+  PR. Layers come from the per-PR build cache and stream in as they build; one layer moving rebuilds only its part.
+  Risks: the frontend's single-PR assumptions (`app.graph.pr`, posting, routes), and drawing ~4× a PR's files in Diff.
 - GitHub Enterprise: the host (`GH_HOST`) threaded through `gh` and the clone URLs, in place of the github.com-only refusal.
 
 - Hosted Bobby as a GitHub App (per-repo install, scoped permissions, short-lived installation tokens, webhooks to
