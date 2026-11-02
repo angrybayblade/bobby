@@ -4,6 +4,10 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+## 0.1.0-rc17 (2026-11-02)
+
+Stacked PRs: each PR in a stack stays its own review, and now knows the layers around it.
+
 - **Stacked PRs (preview):** each PR in a stack is still its own review, and now knows its neighbours.
   - The where-bar shows its place, **‹ Stack 2/3 ›**, with the PRs below and above a click away, and a list of every layer: its state, your progress in its review, its verdict, unresolved threads and checks, whether it needs a restack, and which PR merges next.
   - Bobby takes the stack from GitHub's own stacked PRs, follows it through branches when there's none, or lets you define one in Bobby for PRs that belong together.
