@@ -259,7 +259,8 @@ kbd {
 /* On the left: the view's column and the tree's swap. */
 [data-files="left"] body { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "top top" "where where" "files view" "keys keys"; }
 [data-files="left"] #files { border-left: 0; border-right: 1px solid var(--line-soft); }
-#files .fhd { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line-soft); color: var(--faint); font-size: 11.5px; }
+:root { --subbar: 42px; } /* the strip under the top bar: the file tree's header and a view's banner line up across it */
+#files .fhd { display: flex; gap: 8px; align-items: center; min-height: var(--subbar); padding: 0 10px; border-bottom: 1px solid var(--line-soft); color: var(--faint); font-size: 11.5px; }
 #files .fhd input { flex: 1; min-width: 0; padding: 4px 8px; border-radius: 3px; border: 1px solid var(--line); background: var(--bg); color: inherit; font: 12px var(--font-ui); }
 #files .fhd .fside { width: auto; flex: none; padding: 0 4px; color: var(--faint); font-size: 13px; } #files .fhd .fside:hover { background: none; color: var(--text); }
 #files .fhd .fn { flex: none; white-space: nowrap; }

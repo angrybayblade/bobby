@@ -14,7 +14,7 @@ const STEPS = 8; // the steps the loader shows, the latest last (the server keep
 
 const CSS = `
 .bmap { position: absolute; inset: 0; display: flex; flex-direction: column; min-height: 0; }
-.bmap .banner { padding: 7px 24px; font-size: 13px; color: var(--muted); background: var(--raised); border-bottom: 1px solid var(--line-soft); display: flex; gap: 10px; align-items: center; }
+.bmap .banner { flex: none; min-height: var(--subbar); padding: 4px 24px; font-size: 13px; color: var(--muted); background: var(--raised); border-bottom: 1px solid var(--line-soft); display: flex; gap: 10px; align-items: center; }
 .bmap .banner .btn { padding: 3px 10px; font-size: 12.5px; }
 .bmap .mbody { flex: 1; min-height: 0; display: flex; }
 .bmap .mleft { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
