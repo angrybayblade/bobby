@@ -4,6 +4,8 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- **Writing a draft no longer moves things around:** saving or deleting one kept sending a long file back to its top, typing near the canvas's edge left the canvas off by a little until you reloaded, with zoom missing the point under the pointer, and a redraw put the caret at the start of what you were writing. A new comment box now opens fully in view, with its file growing to fit it.
+
 ## 0.1.0-rc19 (2026-11-03)
 
 Review just some of a PR's commits, picked from the breadcrumbs. Motion: Off now stops everything that moves, and local reviews of a branch with a slash in its name open again.
