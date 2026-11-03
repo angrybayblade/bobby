@@ -4,9 +4,8 @@
 // downloaded. And what could point it at something else never reaches the exported tree: .cargo/config.toml (a
 // rustc-wrapper), rust-toolchain.toml (a toolchain's path), rust-analyzer.toml (a check command), rust-project.json.
 // Names that a build script or a proc macro would generate aren't found.
-import { rmSync } from "node:fs";
-import { join, sep } from "node:path";
-import { dirsWith, type LanguageServer } from "./langserver.ts";
+import { sep } from "node:path";
+import { dirsWith, removeEverywhere, type LanguageServer } from "./langserver.ts";
 
 const LOCKED = { CARGO_NET_OFFLINE: "true", RUSTUP_AUTO_INSTALL: "0" };
 const INSTALL = "rustup component add rust-analyzer rust-src";
@@ -44,9 +43,7 @@ export const rust: LanguageServer = {
   languageId: (path) => (path.endsWith(".rs") ? "rust" : null),
   treeFiles: ["*.rs", "*Cargo.toml", "*Cargo.lock"],
   loads: true,
-  prepareTree(dir) { // *.json is exported for TypeScript, which brings rust-project.json along
-    for (const d of [dir, ...dirsWith(dir, "rust-project.json")]) rmSync(join(d, "rust-project.json"), { force: true });
-  },
+  prepareTree(dir) { removeEverywhere(dir, "rust-project.json"); }, // *.json is exported for TypeScript
   async missing() {
     if (!Bun.which("cargo")) return { hint: "Rust types need Rust and rust-analyzer on this machine. Until then, Rust names are found through imports." };
     if (!(await versionOf("rust-analyzer"))) return { hint: "Rust types need rust-analyzer. Install it, then check again:", command: INSTALL };

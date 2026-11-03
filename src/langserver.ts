@@ -144,6 +144,11 @@ function prune(base: string) {
   for (const old of trees.slice(KEEP_TREES)) if (Date.now() - used(old) > IN_USE) rmSync(old, { recursive: true, force: true });
 }
 
+/** Removes every file or link named `name` under root, however deep, for a server that would trust one a PR brought. */
+export function removeEverywhere(root: string, name: string) {
+  for (const e of readdirSync(root, { recursive: true, withFileTypes: true })) if (e.name === name && !e.isDirectory()) rmSync(join(e.parentPath, name), { force: true });
+}
+
 /** Directories under root holding a file named `name` (go.mod, tsconfig.json…), skipping dependencies and dot folders. */
 export function dirsWith(root: string, name: string, limit = 50): string[] {
   const out: string[] = [];
