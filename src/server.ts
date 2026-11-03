@@ -1,7 +1,7 @@
 import { join, normalize } from "node:path";
 import { embeddedAsset } from "./assets.ts";
 import { cancelLogin, claudeStatus, dismiss, INSTALL_TEXT, installClaude, startLogin, submitCode } from "./claude.ts";
-import { fileLines, fileLinesMany, forgetUnknownMe, git, parsePrArg, reactionsOf, run, whoAmI } from "./git.ts";
+import { fileLines, fileLinesMany, forgetUnknownMe, git, parsePrArg, prCommits, reactionsOf, run, whoAmI } from "./git.ts";
 import { type AgentJob, draftOf, runAgentReview } from "./agent.ts";
 import { runMap } from "./map.ts";
 import { runAsk } from "./ask.ts";
@@ -19,7 +19,7 @@ import { refreshDiscussion, type Update } from "./watch.ts";
 import { approvedOf, loadRecents, noteRecent, prLists } from "./recents.ts";
 import { type Conversation, conversation } from "./conversation.ts";
 import { type Stack, defineStack, markRestacks, retarget, savedBelow, stackOf } from "./stack.ts";
-import { type StackContext, stackContext } from "./stackctx.ts";
+import { layerOnto, type StackContext, stackContext } from "./stackctx.ts";
 import { type ReviewEvent, submitReview } from "./submit.ts";
 import * as log from "./log.ts";
 import pkg from "../package.json" with { type: "json" };
@@ -500,6 +500,19 @@ async function reviewApi(s: Session, app: App, req: Request, url: URL, p: string
           if (/\b(403|404)\b|not accessible|forbidden/i.test(msg)) return json({ ok: false, error: `GitHub won't let you ${edit ? "edit" : "delete"} it: only its author (or a repo admin) can` }, 403);
           return json({ ok: false, error: msg }, 400);
         }
+      }
+      // The PR's commits, oldest first, to choose which to review. A review of some of them still lists them all: from
+      // the PR's head as last fetched, and its own layer in a stack you defined, as the whole PR's review compares it.
+      if (p === "/api/commits") {
+        if (pr().provider === "local" || !s.cwd) return json({ commits: [] });
+        const cwd = s.cwd, { commit, ...whole } = pr();
+        try {
+          if (!commit) return json({ commits: await prCommits(cwd, whole.baseSha, whole.headSha) });
+          const ns = `refs/bobby/${whole.number}`, headSha = (await git(cwd, ["rev-parse", `${ns}/head`])).trim();
+          const baseSha = (await git(cwd, ["merge-base", `${ns}/base`, headSha])).trim();
+          const layer = await layerOnto(cwd, { ...whole, baseSha, headSha }, await savedBelow(whole));
+          return json({ commits: await prCommits(cwd, layer.baseSha, layer.headSha) });
+        } catch (e) { return json({ error: String((e as Error).message) }, 502); }
       }
       // What changed since your last review of this PR: its commit, if the head has moved on from it and it's still in
       // the PR's history (a force-push can drop it), how many commits since, and the review of just those to open.

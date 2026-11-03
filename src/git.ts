@@ -198,6 +198,18 @@ export async function fetchPr(resolved: ResolvedPr): Promise<PrInfo> {
   return { ...pr, baseSha, headSha, commit: { sha: headSha, ...(resolved.from ? { from: baseSha } : {}), subject } };
 }
 
+export interface PrCommit { sha: string; parent: string; subject: string; author: string; at: string; merge: boolean }
+/** The commits from base to head, oldest first, along each merge's first parent: a line, so any stretch of it is a diff
+ *  (a side branch merged in is its merge commit). */
+export async function prCommits(cwd: string, base: string, head: string): Promise<PrCommit[]> {
+  const out = await git(cwd, ["log", "--first-parent", "--reverse", "--format=%H%x00%P%x00%an%x00%aI%x00%s", `${base}..${head}`]);
+  return out.split("\n").filter(Boolean).map((line) => {
+    const [sha, parents, author, at, subject] = line.split("\0");
+    const [parent = "", ...more] = parents.split(" ");
+    return { sha, parent, subject, author, at, merge: more.length > 0 };
+  });
+}
+
 // Files read at a commit, the most recently used kept: a long session of inspecting and expanding mustn't hold every
 // file it ever opened.
 const fileCache = new Map<string, string[]>(), KEEP_FILES = 400;
