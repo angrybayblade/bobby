@@ -60,7 +60,7 @@ const USAGE = `bobby: review a PR one focused page at a time
   bobby extract [pr] [-o file.json]  write the review graph (${GRAPH_SCHEMA}) and exit
   bobby open <graph.json>            open the UI on an existing graph file
   bobby lsp                          the language servers behind the inspector, by language
-  bobby lsp install <language>       install one (typescript, python), or say how (go)
+  bobby lsp install <language>       install one (typescript, python), or say how (go, rust)
   bobby update [version]             install the newest release (or that one) in place of this one
   bobby clean [--repos]              remove caches and exported trees (and with --repos, the clones
                                      in ~/.bobby/repos); your reviews' progress stays

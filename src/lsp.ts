@@ -20,6 +20,8 @@ export class LspClient {
   private exitFns: Array<(why: string) => void> = [];
   private settings: Record<string, unknown> = {};
   private stopping = false;
+  private quiet = false;
+  private quietFns: Array<() => void> = [];
   exited = false;
 
   private constructor(cmd: string[], cwd: string, env: Record<string, string | undefined>) {
@@ -54,6 +56,7 @@ export class LspClient {
           synchronization: { didSave: false },
         },
         workspace: { configuration: true, workspaceFolders: true },
+        experimental: { serverStatusNotification: true }, // rust-analyzer's: whether it's done loading the project
       },
       initializationOptions: opts.init ?? {},
     }, opts.timeoutMs ?? 60_000);
@@ -109,6 +112,18 @@ export class LspClient {
     return parts.filter(Boolean).join("\n\n") || null;
   }
 
+  /** Resolves once the server says it has nothing left to load (rust-analyzer's serverStatus), or at the deadline, or
+   *  when it stops: the questions after that get what it has. */
+  settled(timeoutMs: number): Promise<void> {
+    if (this.quiet || this.exited) return Promise.resolve();
+    return new Promise((resolve) => {
+      const done = () => { clearTimeout(timer); this.quietFns = this.quietFns.filter((f) => f !== done); resolve(); };
+      const timer = setTimeout(done, timeoutMs);
+      this.quietFns.push(done);
+      void this.proc.exited.then(done);
+    });
+  }
+
   /** Called if the server stops without being asked to. */
   onExit(fn: (why: string) => void) { this.exitFns.push(fn); }
 
@@ -155,7 +170,8 @@ export class LspClient {
       if (start === end) start = end = 0;
     }
   }
-  private receive(msg: { id?: number; method?: string; params?: { items?: Array<{ section?: string }> }; result?: unknown; error?: { message: string } }) {
+  private receive(msg: { id?: number; method?: string; params?: { items?: Array<{ section?: string }>; quiescent?: boolean }; result?: unknown; error?: { message: string } }) {
+    if (msg.method === "experimental/serverStatus" && msg.params?.quiescent) { this.quiet = true; for (const fn of [...this.quietFns]) fn(); }
     if (msg.method && msg.id != null) { // a request from the server: answer so it doesn't wait on us
       const result = msg.method === "workspace/configuration" ? (msg.params?.items ?? []).map((i) => (i.section && this.settings[i.section]) ?? null) : null;
       return this.send({ jsonrpc: "2.0", id: msg.id, result });

@@ -30,6 +30,7 @@ export interface LanguageServer {
   version(): Promise<string>; // part of the cache key: other versions may place names differently
   command(root: string, log: (m: string) => void): Promise<ServerCommand>;
   folders?(root: string): string[]; // workspace folders; the root alone if absent
+  loads?: boolean; // it answers while the project is still loading, with nothing: wait until it says it's done before asking
   /** A declaration outside the repo, named: a package, a module, the standard library. Null: one of the repo's own. */
   outside(absPath: string): string | null;
   /** The server stopped at an import line (the package isn't installed): which package, "" for one of the repo's own

@@ -31,7 +31,9 @@ export class Inspector {
 
   static async start(server: LanguageServer, root: string, log: (m: string) => void) {
     const c = await server.command(root, log);
-    return new Inspector(server, root, await LspClient.start(c.cmd, root, { env: c.env, init: c.init, settings: c.settings, folders: server.folders?.(root) }));
+    const client = await LspClient.start(c.cmd, root, { env: c.env, init: c.init, settings: c.settings, folders: server.folders?.(root) });
+    if (server.loads) await client.settled(FIRST_TIMEOUT);
+    return new Inspector(server, root, client);
   }
   /** Whether this server reads a file. */
   reads(path: string) { return !!this.server.languageId(path); }
