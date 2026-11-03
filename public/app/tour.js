@@ -26,6 +26,8 @@ const NEWS = () => [
   { id: "inspect", title: "Inspect a name", body: `${MOD === "⌘" ? kbd("⌘") : kbd("ctrl")}-click a function, class or variable in the code to see where it's declared, its type and its code, in a window over the review. ${MOD === "⌘" ? kbd("⌘") : kbd("ctrl")}-click inside to go deeper, ${kbd("esc")} to come back.` },
   { id: "uses", title: "Where it's used", body: `${MOD === "⌘" ? kbd("⌘", "⇧") : kbd("ctrl", "shift")}-click a name to list everywhere it's used: in the diff first, then elsewhere in the PR's files, then the rest of the codebase. Click a use to go there, or to read it right in the window.` },
   { id: "keys", title: "Your own keys", body: `Bind any action to the keys you like: ${k("help")}, then <b>Customize keys</b>, or search "keyboard shortcuts" with ${PALETTE_KEY}.`, act: { label: "Customize keys", run: () => app.openKeys?.() } },
+  { id: "commits", title: "Review some of a PR's commits", body: `The commits under review sit in the bar under the top, as <code>4a16...c2dd</code>. Click them to pick one commit, or everything between two, as a review of its own.`, ...(app.graph.pr.provider === "local" ? {} : { act: { label: "Choose commits", run: () => app.openCommits?.() } }) },
+  { id: "motion", title: "Motion: Off, all of it", body: `Prefer nothing moving? Set Motion to Off in Settings, or search "motion" with ${PALETTE_KEY}. It now stops scrolls gliding too, so moving between files is instant.`, ...(app.settings.motion === "off" ? {} : { act: { label: "Turn motion off", run: () => app.saveSettings({ motion: "off" }) } }) },
 ];
 let news = null;
 

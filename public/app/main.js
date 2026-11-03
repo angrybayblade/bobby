@@ -332,6 +332,7 @@ app.toast = (html, ms) => chrome.toast(html, ms);
 app.toastUndo = (what) => chrome.toast(`<span>${esc(what)}.</span> <button class="btn" data-act="undo">Undo</button>`, 8000);
 window.addEventListener("unhandledrejection", (ev) => app.fail(ev.reason));
 app.openKeys = () => chrome.keysEditor(); // for the tour's news, which can't import chrome.js
+app.openCommits = openCommits;
 // The graph and the session are read at once: a server may have finished between them, leaving syntax-only definitions.
 if (!merged && !(app.llm === "pending" || busy(app.servers)) && app.servers.some((x) => x.state === "done")) api("/api/definitions").then((d) => { app.graph.definitions = d; }, () => {});
 poll(); // always: it also hears of new comments and new work
