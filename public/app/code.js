@@ -297,12 +297,22 @@ export function escapeCode(app) {
   return false;
 }
 const owner = (node) => { for (let n = node; n; n = n.parentElement) if (bound.has(n)) return n; return null; };
+/** After the composer opens, closes or changes: the code drawn again, its viewer sized to it, and an open box in full
+ *  view, through its scroller and then the canvas's camera. You shouldn't have to type to see what you're typing. */
+function composed(app, el) {
+  bound.get(el)?.();
+  app.view?.fitViewer?.(el);
+  const box = app.page.composing && el.querySelector(".ccompose");
+  if (!box) return;
+  box.scrollIntoView({ block: "nearest" });
+  app.view?.keepOnStage?.(box);
+}
 /** Closes the composer. Anything written in it is kept as an unfinished draft on the same lines, to continue later. */
 async function closeComposer(app, ta) {
   const el = owner(ta), c = app.page.composing;
   app.page.composing = null;
   if (c && !(await keepDraft(app, c, ta.value))) app.page.composing = { ...c, text: ta.value }; // still open, text and all
-  if (el) bound.get(el)?.();
+  if (el) composed(app, el);
 }
 /** What's written in a composer, kept as an unfinished draft on its lines (a note on the whole file, which has no
  *  lines, is saved as the note). False if it couldn't be saved. */
@@ -359,9 +369,7 @@ function ownNotesHtml(app, path) {
 /** Starts a private note on a whole file shown in el (a renderFile container). */
 export function startFileNote(app, el, path) {
   app.page.composing = { key: `file:${path}`, kind: "note", file: true, path };
-  bound.get(el)?.();
-  el.scrollTop = 0;
-  el.querySelector("textarea[data-composer]")?.focus();
+  composed(app, el);
 }
 
 function fileHead(path, extra = "", stat = "") {
@@ -985,7 +993,7 @@ function bind(app, el, rerender) {
     const od = ev.target.closest("[data-outdated]");
     if (od) { app.convTarget = od.dataset.outdated; return app.switchView("conversation"); } // it opens on that thread
     const chip = ev.target.closest("[data-qchip]");
-    if (chip) return saveComment(app, chip.dataset.qchip).then(() => bound.get(el)());
+    if (chip) return saveComment(app, chip.dataset.qchip).then(() => composed(app, el));
     const qa = ev.target.closest("[data-qact]");
     if (qa) return askAction(app, el, qa.dataset.qact, qa.dataset.qid, qa);
     const af = ev.target.closest("[data-afind]");
@@ -1016,7 +1024,7 @@ function bind(app, el, rerender) {
     if (!t || !el.contains(t)) return;
     const again = () => bound.get(el)();
     const ds = t.dataset;
-    if (ds.compose) { if (app.page.sel) { app.page.composing = { ...app.page.sel, kind: ds.compose }; app.page.kind = ds.compose; } return again(); }
+    if (ds.compose) { if (app.page.sel) { app.page.composing = { ...app.page.sel, kind: ds.compose }; app.page.kind = ds.compose; } return composed(app, el); }
     if (ds.wip) { // continue an unfinished draft: its lines selected, its text back in the composer
       const d = app.state.comments.find((c) => c.id === ds.wip);
       if (!d) return;
@@ -1024,15 +1032,15 @@ function bind(app, el, rerender) {
       app.page.sel = { ...(row?.dataset ?? { key, path: d.path, side: d.side, line: String(d.line), indiff: d.inDiff ? "1" : "0" }), ...(d.startLine ? { start: { line: String(d.startLine), side: d.startSide ?? d.side, key: `${d.path}|${d.startSide ?? d.side}|${d.startLine}`, indiff: d.inDiff ? "1" : "0" } } : {}) };
       app.page.selKeys = null;
       app.page.composing = { ...app.page.sel, kind: d.kind === "note" ? "note" : "comment", text: d.body, editing: d.id };
-      return again();
+      return composed(app, el);
     }
     if (ds.csuggest !== undefined) return insertSuggestion(app, el);
-    if (ds.csave !== undefined) return saveComment(app, el.querySelector("textarea[data-composer]")?.value ?? "").then(again);
-    if (ds.ccancel !== undefined) { app.page.composing = null; return again(); } // Cancel discards; esc keeps it as an unfinished draft
+    if (ds.csave !== undefined) return saveComment(app, el.querySelector("textarea[data-composer]")?.value ?? "").then(() => composed(app, el));
+    if (ds.ccancel !== undefined) { app.page.composing = null; return composed(app, el); } // Cancel discards; esc keeps it as an unfinished draft
     if (ds.ckind) { // switch the composer between a GitHub draft and a private note, keeping the text
       app.page.composing.text = el.querySelector("textarea[data-composer]")?.value ?? "";
       app.page.composing.kind = app.page.kind = ds.ckind;
-      return again();
+      return composed(app, el);
     }
     if (ds.delnote) return app.deleteNote(ds.delnote).then(again);
     if (ds.expto) { const [id, dir, n] = ds.expto.split(":"), e = (app.page.exp[id] ??= { above: 0, below: 0 }); e[dir] = Math.max(e[dir], Number(n)); return again(); }
@@ -1077,7 +1085,7 @@ function bind(app, el, rerender) {
     } else if (ds.key) {
       if (el._dragged) return; // the end of a drag across line numbers, not a click
       if (ev.shiftKey && app.page.anchor) return selectRange(app, el, app.page.anchor, { ...ds });
-      if (app.page.sel?.key === ds.key && !app.page.composing) { app.page.composing = { ...app.page.sel, kind: app.page.kind ?? "comment" }; return again(); }
+      if (app.page.sel?.key === ds.key && !app.page.composing) { app.page.composing = { ...app.page.sel, kind: app.page.kind ?? "comment" }; return composed(app, el); }
       app.page.anchor = { ...ds };
       selectRange(app, el, app.page.anchor, { ...ds });
     }
@@ -1138,7 +1146,7 @@ function bind(app, el, rerender) {
     if (!ev.target.matches("textarea[data-composer]")) return;
     ev.stopPropagation();
     if (ev.key === "Escape") { ev.preventDefault(); closeComposer(app, ev.target); }
-    if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); saveComment(app, ev.target.value).then(() => bound.get(el)()); }
+    if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); saveComment(app, ev.target.value).then(() => composed(app, el)); }
   });
 }
 
@@ -1163,7 +1171,7 @@ async function askAction(app, el, act, id, btn) {
     app.page.sel = { ...(row?.dataset ?? { key, path: a.path, side: a.side, line: String(a.line), indiff }), ...(a.startLine ? { start: { line: String(a.startLine), side: a.side, key: `${a.path}|${a.side}|${a.startLine}`, indiff } } : {}) };
     app.page.selKeys = null;
     app.page.composing = { ...app.page.sel, kind: "comment", text: answer };
-    return bound.get(el)?.();
+    return composed(app, el);
   }
 }
 
@@ -1198,7 +1206,7 @@ export function startComment(app, el, kind = "comment") {
     app.page.selKeys = new Set([pick.dataset.key]);
   }
   app.page.composing = { ...app.page.sel, kind };
-  bound.get(el)?.();
+  composed(app, el);
 }
 
 function foldIds(app, pid) {

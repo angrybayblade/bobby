@@ -994,6 +994,11 @@ export default {
       fullScreen: () => { if (app.level === 2) return app.setLevel(1); const act = activeFile(); if (act) openFocus(act.path); }, // details, and back
     };
 
-    return { update, keys, keepOnStage, hide() { away = { focus: app.focus, level: app.level }; }, destroy() { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); } };
+    // A viewer takes the height of what it shows, so a composer opening in a short file doesn't start off cut short.
+    function fitViewer(body) {
+      const v = [...views.values()].find((x) => x.body === body);
+      if (v) { remeasure([v.f.path], [body.scrollTop]); redraw(); }
+    }
+    return { update, keys, keepOnStage, fitViewer, hide() { away = { focus: app.focus, level: app.level }; }, destroy() { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); } };
   },
 };

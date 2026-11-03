@@ -473,6 +473,7 @@ kbd {
 .cprev { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--faint); }
 .cn { flex: none; color: var(--faint); }
 /* The comment box: a thread to be, in the thread's spot (code.js › composer). */
+.ccompose { scroll-margin: 12px; }
 .ccompose .cmain { display: flex; flex-direction: column; gap: 6px; }
 .ccompose .cwho { min-height: 24px; }
 .ccompose .ckind { display: inline-flex; padding: 2px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
