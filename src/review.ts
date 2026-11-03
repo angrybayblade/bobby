@@ -53,6 +53,13 @@ export function reviewId(pr: Pick<PrInfo, "owner" | "repo" | "number" | "branch"
   return `${pr.owner}/${pr.repo}/${pr.number}${c}`;
 }
 
+/** A review's id from the three segments of its address, as they arrive: reviewId's id, whatever a browser or a link
+ *  encoded along the way. A branch stays encoded in it, as its slashes would otherwise read as more segments. */
+export function idFromPath(seg: string[]): string {
+  const [a, b, c] = seg.map((x) => { try { return decodeURIComponent(x); } catch { return x; } });
+  return a === "local" ? `local/${b}/${encodeURIComponent(c ?? "")}` : `${a}/${b}/${c}`;
+}
+
 export interface Resolved {
   id: string;
   title: string;

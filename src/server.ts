@@ -19,6 +19,7 @@ import { refreshDiscussion, type Update } from "./watch.ts";
 import { approvedOf, loadRecents, noteRecent, prLists } from "./recents.ts";
 import { type Conversation, conversation } from "./conversation.ts";
 import { type Stack, defineStack, markRestacks, retarget, savedBelow, stackOf } from "./stack.ts";
+import { idFromPath } from "./review.ts";
 import { layerOnto, type StackContext, stackContext } from "./stackctx.ts";
 import { type ReviewEvent, submitReview } from "./submit.ts";
 import * as log from "./log.ts";
@@ -201,7 +202,7 @@ export function startServer(app: App, port: number, { hostname = "127.0.0.1", al
       if (p.startsWith("/r/")) {
         const seg = p.slice(3).split("/"), rest = `/${seg.slice(3).join("/")}`;
         if (!rest.startsWith("/api/")) return staticFile("/index.html");
-        const id = decodeURIComponent(seg.slice(0, 3).join("/")), s = app.reviews.get(id);
+        const id = idFromPath(seg.slice(0, 3)), s = app.reviews.get(id);
         if (s) return rest === "/api/open" ? json({ id }) : reviewApi(s, app, req, url, rest);
         // Not open. Only the page's POST opens it (guard checks its Origin): a GET from any other site (an <img>, a
         // frame) must not make Bobby clone a repo and hand its PR to Claude. The page opens one you've opened before by
