@@ -11,6 +11,7 @@ import { offerGh } from "./gh-setup.js";
 import * as palette from "./palette.js";
 import * as tour from "./tour.js";
 import { goTo, openStack } from "./stack.js";
+import { openCommits } from "./commits.js";
 import { ACTIONS, actionFor, keyHtml, keyOfEvent, keysOf, keyText } from "./keys.js";
 import allViews from "./views/index.js";
 
@@ -426,6 +427,7 @@ function commands() {
     { id: "tour", title: "Take the tour", sub: "how the walk, the views and the keys fit together", run: () => tour.start() },
     { id: "gh", title: "Set up GitHub CLI", sub: "install gh and sign in to GitHub, for PRs and posting reviews", run: () => offerGh({ force: true }) },
     ...(app.since ? [{ id: "since", title: "Review changes since your last review", sub: `${app.since.commits} commit${app.since.commits > 1 ? "s" : ""} since ${new Date(app.since.at).toLocaleDateString()}: just what they changed`, run: () => chrome.openSince() }] : []),
+    ...(app.graph.pr.provider === "local" ? [] : [{ id: "commits", title: "Choose commits to review…", sub: "one of this PR's commits, or a range of them", run: () => openCommits() }]),
     ...(app.graph.pr.provider === "local" ? [] : [{ id: "stack", title: app.stack ? "Stack…" : "Define this PR's stack…", sub: app.stack ? `${app.stack.layers.length} PRs on ${app.stack.trunk}: each one's state and your progress in it` : "the PRs it sits on and the ones built on it, kept in Bobby", run: () => openStack() },
       ...[[-1, "below"], [1, "above"]].flatMap(([d, w]) => { const l = app.stack?.layers[app.stack.at + d]; return l ? [{ id: `stack:${w}`, title: `Open the PR ${w} in the stack`, sub: `#${l.number} ${l.title}`, run: () => goTo(l.number) }] : []; })]),
     { id: "agent-tools", title: "Claude's tools for this PR…", sub: "which of your MCP servers and connectors (Linear, Notion, Slack…) Claude may use", run: () => openAsk(app, { tools: true }) },

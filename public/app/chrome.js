@@ -9,6 +9,7 @@ import { bubble, nextUnresolved, prCount, togglePR, unresolved } from "./comment
 import { offerClaude } from "./claude-setup.js";
 import { offerGh } from "./gh-setup.js";
 import { initStack, stackClick, stackCrumb } from "./stack.js";
+import { commitCrumb, commitsClick, initCommits } from "./commits.js";
 
 const $ = (q) => document.querySelector(q);
 const PALETTE_KEY = MOD === "⌘" ? "⌘K" : "ctrl k";
@@ -19,6 +20,7 @@ export function init(a, viewList) {
   app.renderWhere = renderWhere; // a view with crumbs of its own redraws them when they change
   for (const r of ["focus", "level", "marks", "graph", "settings", "comments", "llm", "view"]) app.on((why) => why === r && render());
   initStack(app, { dialog: open, close, toast, render }); // before the first render: a stack seen before is drawn with it
+  initCommits(app, { dialog: open, close, toast, render });
   render();
   // Stepping into a new core: lead with its hook, so you know what to look for before reading.
   watchCores();
@@ -191,7 +193,7 @@ function renderTop() {
     <a class="brand" href="/" title="Home: your PRs and recent reviews"><img src="/bobby.svg" alt="" width="22" height="22">bobby</a>
     ${g.pr.provider === "local" ? `<span class="prtitle" title="Local review: ${esc(g.pr.branch)} compared with ${esc(g.pr.baseRef)}">⎇ ${esc(g.pr.branch)} → ${esc(g.pr.baseRef)} · ${esc(g.pr.title)}</span>`
       : g.pr.commit // one commit (or a range) of the PR: which, with a link to it on GitHub
-        ? `<a class="prtitle" href="${esc(`${g.pr.url}/changes/${g.pr.commit.from ? `${g.pr.commit.from}..` : ""}${g.pr.commit.sha}`)}" target="_blank" rel="noopener" title="${esc(`#${g.pr.number} ${g.pr.title}`)}">#${g.pr.number} · ${g.pr.commit.from ? `${esc(g.pr.commit.from.slice(0, 7))}..` : ""}${esc(g.pr.commit.sha.slice(0, 7))} ${esc(g.pr.commit.subject)}</a>`
+        ? `<a class="prtitle" href="${esc(`${g.pr.url}/changes/${g.pr.commit.from ? `${g.pr.commit.from}..` : ""}${g.pr.commit.sha}`)}" target="_blank" rel="noopener" title="${esc(`#${g.pr.number} ${g.pr.title}`)}">#${g.pr.number} · ${g.pr.commit.from ? esc(g.pr.title) : `${esc(g.pr.commit.sha.slice(0, 7))} ${esc(g.pr.commit.subject)}`}</a>`
         : `<a class="prtitle" href="${esc(g.pr.url)}" target="_blank" rel="noopener">#${g.pr.number} ${esc(g.pr.title)}</a>`}
     ${updatePill()}${llm}${lsp}
     ${coreProgress()}
@@ -251,7 +253,10 @@ function watchCores() {
 function renderWhere() {
   const pid = app.focus;
   const loc = app.get(pid);
-  const crumbs = [`${stackCrumb()}<button data-level="0" class="${app.level === 0 ? "here" : ""}">${esc(app.graph.pr.repo)} ${app.graph.pr.provider === "local" ? `⎇ ${esc(app.graph.pr.branch)}` : `#${app.graph.pr.number}${app.graph.pr.commit ? ` @ ${esc(app.graph.pr.commit.sha.slice(0, 7))}` : ""}`}</button>`];
+  const crumbs = [`${stackCrumb()}<button data-level="0" class="${app.level === 0 ? "here" : ""}">${esc(app.graph.pr.repo)} ${app.graph.pr.provider === "local" ? `⎇ ${esc(app.graph.pr.branch)}` : `#${app.graph.pr.number}`}</button>`];
+  const range = commitCrumb();
+  if (range) crumbs.push(range);
+  const prCrumbs = crumbs.length;
   if (loc) {
     crumbs.push(`<button data-level="1" class="${app.level === 1 ? "here" : ""}">${loc.ci + 1} · ${esc(loc.core.title)}</button>`);
     crumbs.push(`<button data-level="2" class="${app.level === 2 ? "here" : ""}"><i class="glyph ${loc.pl.band === "core" ? "core" : app.nodeOf(pid).kind}" style="margin-right:6px"></i>${esc(loc.pl.title)}</button>`);
@@ -264,7 +269,7 @@ function renderWhere() {
   if (own) {
     // its levels, as Diff's zoom: a bar for each (lit up to where you are), each a button with its name as a tooltip
     const lv = own.levels?.names.length > 1 ? `<span class="levels own">${own.levels.names.map((n, i) => `<button data-wlevel="${i}" class="${i <= own.levels.at ? "on" : ""}" aria-label="${esc(n)}" data-tip="${esc(n)}"${own.levels.about?.[i] ? ` data-tip-more="${esc(own.levels.about[i])}"` : ""}></button>`).join("")}<span style="margin-left:6px">${esc(own.levels.label)}</span></span>` : "";
-    $("#where").innerHTML = `${crumbs[0]}<span class="sep">›</span>${own.crumbs.join(`<span class="sep">›</span>`)}${note}<span class="wctl">${own.controls ?? ""}</span>${own.layout ? layout(own.layout) : ""}${lv}`;
+    $("#where").innerHTML = `${crumbs.slice(0, prCrumbs).join(`<span class="sep">›</span>`)}<span class="sep">›</span>${own.crumbs.join(`<span class="sep">›</span>`)}${note}<span class="wctl">${own.controls ?? ""}</span>${own.layout ? layout(own.layout) : ""}${lv}`;
     return;
   }
   $("#where").innerHTML = `${crumbs.join(`<span class="sep">›</span>`)}${note}
@@ -654,7 +659,7 @@ async function serverAction(act, id) {
 
 // ---------------------------------------------------------------- clicks
 function onClick(ev) {
-  if (stackClick(ev)) return;
+  if (stackClick(ev) || commitsClick(ev)) return;
   const lay = ev.target.closest("[data-flayout]");
   if (lay) return app.toggleLayout(lay.dataset.flayout);
   const t = ev.target.closest("[data-act],[data-view],[data-level],[data-set],[data-submit],[data-gdel],[data-gonote],[data-ddel]");

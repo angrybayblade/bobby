@@ -683,6 +683,20 @@ mark.wd { background: var(--del-word); color: inherit; border-radius: 0; }
 #where .stk { display: inline-flex; align-items: center; margin-right: 6px; padding-right: 8px; border-right: 1px solid var(--line); }
 #where .stk .stk-go { padding: 2px 5px; }
 #where .stk .stk-go:disabled { visibility: hidden; }
+/* The commits under review (commits.js): in the where-bar, XXXX...XXXX; in its dialog, the PR's, oldest first. */
+#where .crange { font: 12px var(--font-code); flex: none; }
+.modal.commits { width: min(680px, calc(100vw - 32px)); }
+.commits-dlg .shint { margin: 0 0 10px; font-size: 13px; }
+.commits-dlg .cmts { list-style: none; margin: 0 0 12px; padding: 0; max-height: 52vh; overflow: hidden auto; border: 1px solid var(--line); }
+.commits-dlg .cmt { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px; text-align: left; font-size: 13px; color: var(--muted); }
+.commits-dlg .cmt:hover { background: var(--raised); }
+.commits-dlg .cmt.on { background: var(--signal-soft); color: var(--text); }
+.commits-dlg .cmt .tick { flex: none; width: 3px; align-self: stretch; margin: -7px 0 -7px -10px; }
+.commits-dlg .cmt.on .tick { background: var(--signal); }
+.commits-dlg .cmt code { flex: none; font: 12px var(--font-code); }
+.commits-dlg .csub { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.commits-dlg .cmt small { flex: none; color: var(--faint); font-size: 12px; }
+.commits-dlg .sflag { flex: none; padding: 0 6px; border: 1px solid var(--line); border-radius: 2px; font: 11.5px/18px var(--font-ui); color: var(--muted); }
 /* What the stack's other PRs do with this code: a note on its page, a chip on its section in file views. */
 .stk-note { margin: 0 0 16px; padding: 10px 14px; border-left: 2px solid var(--signal); background: var(--signal-soft); border-radius: 0 3px 3px 0; font: 13.5px/1.5 var(--font-prose); color: var(--muted); max-width: 90ch; }
 .stk-note b { color: var(--text); font-weight: 600; }
