@@ -4,10 +4,11 @@
 // camera that glides between overview → core → page.
 import { DONE, LOW, esc } from "../core.js";
 import { fileViewer, useViewerCss, viewerAction } from "./diff.js";
+import { nudge } from "../onstage.js";
 
 const CSS = `
 .flow { position: absolute; inset: 0; display: grid; grid-template-rows: 1fr; }
-.flow .stage { position: relative; overflow: hidden; transition: height var(--dur) var(--ease); height: 100%; cursor: grab; }
+.flow .stage { position: relative; overflow: clip; transition: height var(--dur) var(--ease); height: 100%; cursor: grab; }
 .flow .world { position: absolute; left: 0; top: 0; transform-origin: 0 0; transition: transform var(--dur) var(--ease); }
 .flow.dragging .world { transition: none; }
 .flow.dragging { user-select: none; }
@@ -425,6 +426,15 @@ export default {
       requestAnimationFrame(apply);
     }, { signal: off.signal });
     window.addEventListener("pointerup", () => { drag = null; root.classList.remove("dragging"); setTimeout(() => (moved = false)); }, { signal: off.signal });
+    // What you're writing stays on the stage: the camera moves for it, as little as it can, and it's yours from then on.
+    function keepOnStage(box) {
+      if (app.level === 2 || filled) return;
+      const { dx, dy } = nudge(box.getBoundingClientRect(), stage.getBoundingClientRect());
+      if (!dx && !dy) return;
+      view = { ...view, tx: view.tx - dx, ty: view.ty - dy }; mine = true;
+      apply();
+    }
+    stage.addEventListener("input", (ev) => { if (ev.target.matches("textarea")) keepOnStage(ev.target.closest(".cthread") ?? ev.target); });
     stage.addEventListener("wheel", (ev) => {
       if (app.level === 2) return;
       const r = stage.getBoundingClientRect();
@@ -525,7 +535,7 @@ export default {
     };
 
     update("mount");
-    return { update, keys, destroy() { ro.disconnect(); stageRo.disconnect(); off.abort(); } };
+    return { update, keys, keepOnStage, destroy() { ro.disconnect(); stageRo.disconnect(); off.abort(); } };
   },
 };
 

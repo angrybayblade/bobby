@@ -7,11 +7,12 @@ import { bubble, fileCount, fileStamp, fileState, toggleFile } from "../comments
 import { BANDS, esc, glide } from "../core.js";
 import { injectCss } from "./flow.js";
 import { layered } from "./layered.js";
+import { nudge } from "../onstage.js";
 import { keyName } from "../keys.js";
 
 const CSS = `
 .dv { position: absolute; inset: 0; }
-.dv .stage { position: absolute; inset: 0; overflow: hidden; cursor: grab; touch-action: pan-x pan-y; } /* two-finger gestures are ours */
+.dv .stage { position: absolute; inset: 0; overflow: clip; cursor: grab; touch-action: pan-x pan-y; } /* two-finger gestures are ours */
 .dv.dragging .stage { cursor: grabbing; }
 .dv.dragging { user-select: none; }
 .dv .world { position: absolute; left: 0; top: 0; transform-origin: 0 0; transition: transform var(--dur) var(--ease); }
@@ -739,6 +740,18 @@ export default {
       cam = { s, tx: px - wx * s - pan.x, ty: py - wy * s - pan.y };
       apply();
     }
+    // What you're writing stays on the stage: the camera moves for it, as little as it can. While the camera is on its
+    // way the box's place on screen isn't where it's going, so nothing more is asked of it until then.
+    let movingUntil = 0;
+    function keepOnStage(box) {
+      if (app.level === 2 || filled || performance.now() < movingUntil) return;
+      const { dx, dy } = nudge(box.getBoundingClientRect(), stage.getBoundingClientRect());
+      if (!dx && !dy) return;
+      pan = { x: pan.x - dx, y: pan.y - dy };
+      movingUntil = performance.now() + (world.classList.contains("still") ? 0 : parseFloat(getComputedStyle(world).transitionDuration) * 1000);
+      apply();
+    }
+    stage.addEventListener("input", (ev) => { if (ev.target.matches("textarea")) keepOnStage(ev.target.closest(".cthread") ?? ev.target); });
     const still = () => { world.classList.add("still"); clearTimeout(stage._w); stage._w = setTimeout(() => world.classList.remove("still"), 120); };
 
     // Leaving the canvas for a page (enter, ⤢, double-click) keeps the camera, and coming back restores it.
@@ -981,6 +994,6 @@ export default {
       fullScreen: () => { if (app.level === 2) return app.setLevel(1); const act = activeFile(); if (act) openFocus(act.path); }, // details, and back
     };
 
-    return { update, keys, hide() { away = { focus: app.focus, level: app.level }; }, destroy() { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); } };
+    return { update, keys, keepOnStage, hide() { away = { focus: app.focus, level: app.level }; }, destroy() { window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); } };
   },
 };
