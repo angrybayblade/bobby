@@ -531,14 +531,14 @@ export function renderNode(app, el, pid, { head = true } = {}) {
   placeNotes(el, app);
 }
 export const renderPage = (app, el, pid) => renderNode(app, el, pid);
-/** Before a render: if you're typing a reply (or editing a comment) in el, what puts you back in its box afterwards,
- *  caret and all. */
+/** Before a render: if you're typing in el (a comment, a reply, an edit), what puts you back in its box afterwards,
+ *  caret and all. A poll or a mark can redraw the code under you at any keystroke. */
 function replying(el) {
   const a = document.activeElement;
-  const attr = a?.matches?.("textarea[data-rbox]") ? "data-rbox" : a?.matches?.("textarea[data-gedit]") ? "data-gedit" : null;
+  const attr = ["data-composer", "data-rbox", "data-gedit"].find((x) => a?.matches?.(`textarea[${x}]`));
   if (!attr || !el.contains(a)) return null;
-  const sel = `textarea[${attr}="${CSS.escape(a.getAttribute(attr))}"]`, at = [a.selectionStart, a.selectionEnd];
-  return () => { const b = el.querySelector(sel); if (b) { b.focus({ preventScroll: true }); b.setSelectionRange(...at); } };
+  const sel = `textarea[${attr}="${CSS.escape(a.getAttribute(attr))}"]`, at = [a.selectionStart, a.selectionEnd], top = a.scrollTop;
+  return () => { const b = el.querySelector(sel); if (b) { b.focus({ preventScroll: true }); b.setSelectionRange(...at); b.scrollTop = top; } };
 }
 
 /** A whole file for file-level viewers: one section per node in file order, each with its comments, nothing collapsed. */
