@@ -2,7 +2,7 @@
 // they started on code) and pushes in time order, a box to comment, and at the end where it stands: reviews, CI checks
 // and whether it can merge. Read live from GitHub (/api/conversation), so it keeps up while you review; a PR only, never
 // a local branch. A thread's "View code" opens that code in the Diff view.
-import { api, esc, safeUrl } from "../core.js";
+import { api, esc, glide, safeUrl } from "../core.js";
 import { ago, ghHtml, md, newLines } from "../comments.js";
 import { reactionClick, reactionsHtml } from "../reactions.js";
 import { hlBlock, langOf } from "../code.js";
@@ -374,7 +374,7 @@ export default {
       const at = items.findIndex((x) => x.getBoundingClientRect().top > top + 1);
       const cur = at < 0 ? items.length : at;
       const to = items[Math.max(0, Math.min(items.length - 1, dir > 0 ? cur : cur - 2))];
-      if (to) root.scrollTo({ top: root.scrollTop + to.getBoundingClientRect().top - top, behavior: "smooth" });
+      if (to) root.scrollTo({ top: root.scrollTop + to.getBoundingClientRect().top - top, behavior: glide() });
     };
 
     render();

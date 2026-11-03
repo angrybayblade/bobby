@@ -4,7 +4,7 @@
 // sections in other files, and those viewers scroll so the other end is in view. Every other
 // relationship is a faint background line; ones whose ends are scrolled away merge into one.
 import { bubble, fileCount, fileStamp, fileState, toggleFile } from "../comments.js";
-import { BANDS, esc } from "../core.js";
+import { BANDS, esc, glide } from "../core.js";
 import { injectCss } from "./flow.js";
 import { layered } from "./layered.js";
 import { keyName } from "../keys.js";
@@ -363,7 +363,8 @@ export default {
     // A node you've read before opens where you left it; a new one at its section, unless that's already in view.
     const scrollKey = () => `diff${app.level === 2 ? 2 : 1}:${M.canon(app.focus)}`;
     const remember = (body) => app.scrolls.set(scrollKey(), body.scrollTop);
-    function reveal(smooth) {
+    function reveal(wanted) {
+      const smooth = wanted && glide() === "smooth";
       const body = readingBody(), cur = M.canon(app.focus);
       const sec = body?.querySelector(`.sec[data-pid="${cur}"]`);
       if (!sec) return;
@@ -371,7 +372,7 @@ export default {
       const inView = sec.offsetTop >= body.scrollTop && sec.offsetTop < body.scrollTop + body.clientHeight - 40;
       if (saved == null && inView) return;
       quietUntil = Date.now() + (smooth ? 700 : 200);
-      body.scrollTo({ top: saved ?? sec.offsetTop - 6, behavior: smooth ? "smooth" : "auto" });
+      body.scrollTo({ top: saved ?? sec.offsetTop - 6, behavior: smooth ? glide() : "auto" });
     }
     // Scrolling a viewer: the section under its top third becomes the focus.
     function readFocus(v) {
@@ -541,7 +542,7 @@ export default {
         if (done.has(l.to) || l.to.f === activeFile()) continue; // never scroll the file you're reading
         done.add(l.to);
         if (visible(l.to).includes(l.pid)) continue;
-        l.to.body.scrollTo({ top: secEl(l.to, l.pid).offsetTop - 6, behavior: "smooth" });
+        l.to.body.scrollTo({ top: secEl(l.to, l.pid).offsetTop - 6, behavior: glide() });
       }
     }
     let raf = 0;
@@ -767,7 +768,7 @@ export default {
       if (reason === "focus" && !selfFocus) engage(true); // j/k or a click elsewhere: you're reading that file
       if (reason === "comments") refresh(); // only the files whose comments or notes changed
       restyle();
-      if (reason === "focus" && !selfFocus) { reveal(true); track(); setTimeout(follow, 350); } // after the smooth scroll settles
+      if (reason === "focus" && !selfFocus) { reveal(true); track(); setTimeout(follow, glide() === "smooth" ? 350 : 0); } // after the smooth scroll settles
       if (reason === "level" && app.level === 1 && beforePage) { cam = beforePage.cam; pan = beforePage.pan; beforePage = null; apply(); }
       else if (reason === "resize" && M && Math.abs(capH() - builtCap) > 4) { // the stage changed shape: re-measure the viewers
         for (const v of views.values()) v.el.style.height = "";

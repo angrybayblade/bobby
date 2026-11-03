@@ -46,6 +46,8 @@ export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&a
 export const safeUrl = (u) => esc(/^https?:\/\//i.test(String(u ?? "")) ? u : "#");
 /** Escaped text with `backtick` spans as <code>, for model-written prose like hooks. */
 export const inline = (s) => esc(s).replace(/`([^`]+)`/g, "<code>$1</code>");
+/** How a scroll made for you moves: gliding, or at once with motion off. CSS can't turn off a scroll asked to be smooth. */
+export const glide = () => (document.documentElement.dataset.motion === "off" ? "auto" : "smooth");
 /** This page's review, as the app addresses it: /r/<id>, an id being three segments; its API is under it, and so is
  *  where you are in it (/r/<id>/<view>/<file path>). */
 export const reviewBase = location.pathname.match(/^\/r\/[^/]+\/[^/]+\/[^/]+/)?.[0] ?? "";

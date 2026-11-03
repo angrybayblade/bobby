@@ -2,7 +2,7 @@
 // Views show it as the level-2 page, or as the body of the focused card (no title block).
 import { findingAct } from "./agent.js";
 import { STARTERS, askAbout, askById, askFollowUp, deleteAsk, stopAsk, typeFollowUp } from "./ask.js";
-import { BAND_TEXT, DONE, LOW, api, esc, live } from "./core.js";
+import { BAND_TEXT, DONE, LOW, api, esc, glide, live } from "./core.js";
 import { MOD } from "./palette.js";
 import { keyHtml, keyName } from "./keys.js";
 import { reactionClick } from "./reactions.js";
@@ -742,7 +742,7 @@ function selectLine(app, key) {
   if (!el) return;
   app.page.anchor = { ...row.dataset };
   selectRange(app, el, app.page.anchor, { ...row.dataset });
-  scrollToRow(row, "smooth");
+  scrollToRow(row, glide());
 }
 /** `]` / `[`: select the next or previous line of the code in el, from the selection, else from the first line in view;
  *  extend (`}` / `{`) grows the selection from where it started instead, as shift-click does. */
@@ -1047,7 +1047,7 @@ function bind(app, el, rerender) {
       if (!ln) { unfoldAll(app); again(); ln = el.querySelector(`.ln[data-key="${CSS.escape(endKey)}"]`); }
       if (!ln) return;
       selectRange(app, el, { key: startKey }, { ...ln.dataset });
-      el.querySelector(`.ln[data-key="${CSS.escape(startKey)}"]`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+      el.querySelector(`.ln[data-key="${CSS.escape(startKey)}"]`)?.scrollIntoView({ block: "center", behavior: glide() });
     } else if (ds.exp) {
       const i = ds.exp.lastIndexOf(":"), id = ds.exp.slice(0, i), dir = ds.exp.slice(i + 1);
       if (id.startsWith("ctx:")) {

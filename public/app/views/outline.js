@@ -1,7 +1,7 @@
 // Outline: a document-like rail (the open core as a tree: each page nested under the page it attaches to, distant
 // cores folded) beside a reading pane that shows the PR story, the core's story, or the code page.
 import { keyHtml } from "../keys.js";
-import { BANDS, BAND_TEXT, DONE, LOW, esc, inline } from "../core.js";
+import { BAND_TEXT, BANDS, DONE, LOW, esc, glide, inline } from "../core.js";
 
 const BAND_CHIP = { upUnchanged: "relies on · untouched", upChanged: "relies on · changed", core: "core", downChanged: "affects · changed", downUnchanged: "affects · untouched" };
 import { injectCss } from "./flow.js";
@@ -175,7 +175,7 @@ export default {
         if (body) { app.renderFile(body, [app.focus]); app.pageEl = body; }
         if (key !== lastDoc) doc.scrollTop = 0;
         // to the current step only when you moved; anything else (a mark, a comment, a status or setting) keeps your place
-        if (key !== lastDoc || reason === "focus" || reason === "level" || reason === "graph") doc.querySelector(".step.cur")?.scrollIntoView({ block: "start", behavior: "smooth" });
+        if (key !== lastDoc || reason === "focus" || reason === "level" || reason === "graph") doc.querySelector(".step.cur")?.scrollIntoView({ block: "start", behavior: glide() });
         else doc.scrollTop = top;
       }
       lastDoc = key;

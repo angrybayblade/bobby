@@ -1,7 +1,7 @@
 // Comments in place, like GitHub: threads (other reviewers' comments, and your drafts) under the line they're on, and
 // private notes floating beside it. Any of them can be collapsed to a slim marker that stays put: one thread, every
 // comment in a file, or every comment in the PR (settings.comments, the default for all of them).
-import { LOW, api, esc, live, safeUrl } from "./core.js";
+import { LOW, api, esc, glide, live, safeUrl } from "./core.js";
 import { MOD } from "./palette.js";
 import { askHtml } from "./ask.js";
 import { reactionsHtml } from "./reactions.js";
@@ -178,7 +178,7 @@ export function nextUnresolved(app) {
   setTimeout(() => { // once the view has drawn it
     const el = [...document.querySelectorAll(`.cthread[data-thread="${CSS.escape(t.id)}"]`)].find(live);
     if (!el) return;
-    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    el.scrollIntoView({ block: "center", behavior: glide() });
     el.classList.remove("cflash"); void el.offsetWidth; el.classList.add("cflash");
   }, 60);
   return true;

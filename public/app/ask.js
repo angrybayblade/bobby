@@ -1,7 +1,7 @@
 // Asking Claude about some lines (ask.ts): the ✦ in a selection's popover, or `q`, opens the box as Ask Claude; the
 // question and Claude's answer then sit on those lines as a thread of their own, the answer filling in as it's written.
 // Ask a follow-up under it; turn the answer into a comment (a draft, to edit), or keep the exchange as a private note.
-import { api, esc, live } from "./core.js";
+import { api, esc, glide, live } from "./core.js";
 import { bubble, keepPlace, md } from "./comments.js";
 import { MOD } from "./palette.js";
 
@@ -111,7 +111,7 @@ export function showAsk(app, id) {
     const els = threadEls(a), open = mine(els.filter((el) => !el.classList.contains("slim")));
     if (!open && tries < 3) { mine(els)?.click(); return setTimeout(() => reveal(tries + 1), 80); } // collapsed, or not drawn yet
     if (!open) return;
-    open.scrollIntoView({ block: "center", behavior: "smooth" });
+    open.scrollIntoView({ block: "center", behavior: glide() });
     open.classList.remove("cflash"); void open.offsetWidth; open.classList.add("cflash");
   };
   if (app.focus !== pid || app.level !== 2) app.setFocus(pid, { level: 2 });

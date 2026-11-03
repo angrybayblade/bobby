@@ -1,7 +1,7 @@
 // Claude's findings, one at a time: each with the code it's about, Claude's comment as it would be posted, and the
 // choice of adding it to your review (as it is, or edited), dismissing it, or leaving it for later. The way through a
 // review's findings, as the walk is the way through the PR: no hunting for them in the diff.
-import { esc, live } from "./core.js";
+import { esc, glide, live } from "./core.js";
 import { closePeek, hlBlock, inspectorKey, inspectorOpen, langOf } from "./code.js";
 import { md } from "./comments.js";
 import { MOD } from "./palette.js";
@@ -116,7 +116,7 @@ function show(f) {
     const all = [...document.querySelectorAll(`.cthread[data-thread="a:${CSS.escape(f.id)}"]`)].filter(live);
     const el = all.find((e) => e.closest(".dfocus")) ?? all[0]; // the focused page's, not the canvas behind it
     if (!el) return;
-    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    el.scrollIntoView({ block: "center", behavior: glide() });
     el.classList.remove("cflash"); void el.offsetWidth; el.classList.add("cflash");
   }, 80);
 }
