@@ -4,6 +4,9 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- **Rust, C and C++ language servers:** the inspector now answers for them through rust-analyzer and clangd, which you install (`bobby lsp` says how): types on hover, jumps across files, and every use of a name.
+  - Bobby starts both locked down for a PR: a PR's build scripts, proc macros and compile flags are never run or trusted. Some names are out of reach because of it: what a build script generates, a crate you haven't downloaded, a header the build generates.
+- C and C++ files are read through their syntax trees, as other languages are, so a review knows their functions and the uses of them, and the inspector can answer through `#include`s without a language server.
 ## 0.1.0-rc17 (2026-11-02)
 
 Stacked PRs: each PR in a stack stays its own review, and now knows the layers around it.

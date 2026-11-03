@@ -34,7 +34,7 @@ How a PR becomes a review graph. The code lives in `src/`; the output format is 
 
 ## 3. Static analysis (`analyze.ts`, `syntax.ts`, `resolve.ts`)
 
-For **TypeScript, TSX, JavaScript, Python, Go, Java and Rust**, analysis reads code through its syntax tree and its imports. Other languages fall back to text search, described at the end of this section.
+For **TypeScript, TSX, JavaScript, Python, Go, Java, Rust, C and C++**, analysis reads code through its syntax tree and its imports. Other languages fall back to text search, described at the end of this section.
 
 ### Reading code (`syntax.ts`)
 
@@ -56,6 +56,7 @@ Each file is parsed with [tree-sitter](https://tree-sitter.github.io/), which ru
 | Go | Import paths through the repo's `go.mod` modules, to a package directory. |
 | Java | Fully qualified class names, and `a.b.*` packages. |
 | Rust | `crate::`, `super::` and `self::` paths, to module files. |
+| C, C++ | `#include`, beside the including file, else the file whose path ends with it (the build's include folders aren't known). An include hands on everything in the file, so a name is looked for through all a file includes, each header once. A `.h` is read with C++'s grammar. |
 
 `findDecl` follows re-exports (`export { x } from`, `export * from`) to the file that actually declares a name. Anything that resolves outside the repo, such as a library, resolves to nothing.
 
@@ -163,6 +164,8 @@ The names are then asked of a language server per language, in the background, s
 | TypeScript, JavaScript (`typescript.ts`) | typescript-language-server over a pinned TypeScript | Bobby, from npm, after you agree (about 24 MB) | Runs on Node 18+ when there's one: tsserver loads a large monorepo in about 3 s there, against minutes on Bun. Workspace packages are symlinked into the exported tree's `node_modules`, so imports between them resolve. The syntax-only mode is off (`useSyntaxServer: "never"`): it answers an import with the import line. |
 | Python (`python.ts`) | pyright | Bobby, from npm, after you agree (about 35 MB) | Never runs the code it reads. A declaration in the standard library, typeshed stubs or `site-packages` is named, not jumped to. |
 | Go (`go.ts`) | gopls | You (`go install golang.org/x/tools/gopls@latest`); found on PATH or in `$(go env GOPATH)/bin` | Started locked down: `GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off GOFLAGS=-mod=readonly CGO_ENABLED=0`, so nothing is downloaded and no cgo runs. Go loads a module's whole dependency graph or nothing, so in an exported tree each module missing from your module cache is replaced by an empty stub (`.bobby-stubs/`, found by asking `go list -m all` offline until it loads): the repo's own code resolves, and those modules' names aren't found. |
+| Rust (`rust.ts`) | rust-analyzer | You (`rustup component add rust-analyzer rust-src`); found on PATH | Started locked down: no build scripts, no proc macros, no `cargo check`, offline. A PR's `.cargo/config.toml`, `rust-toolchain.toml` and `rust-analyzer.toml` are never exported, and any `rust-project.json` is removed, since each can point it at something to run. It answers with nothing while a project loads, so Bobby waits until it says it's done. A crate missing from your Cargo cache isn't found, and neither is a name a build script or proc macro generates. |
+| C, C++ (`cpp.ts`) | clangd | You (Xcode's command line tools, LLVM, or your package manager); found on PATH or in Homebrew's LLVM | Runs nothing. In an exported tree it reads only Bobby's compile database, built from the tree (`.bobby-includes.rsp` holds include folders guessed from where the headers are): any `compile_commands.json` a PR brings is removed, and `.clangd` isn't exported or read. It indexes in the background there, so jumps reach a function's body in another file once that's done; early answers stop at its header. A local review reads your own `compile_commands.json` and writes no index into your working copy. A name behind a generated header or a flag only the real build sets isn't found. |
 
 How a review gets its servers (`servers.ts`):
 

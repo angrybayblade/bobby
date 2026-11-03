@@ -33,6 +33,7 @@ It runs `claude -p` with no tools and no saved session, from a temporary directo
 ## What stays local
 
 - **Language servers** read the PR's head commit exported to `~/.bobby/trees`, and never run the PR's code. Go's runs with module and toolchain downloads off (`GOPROXY=off`, `GOTOOLCHAIN=local`) and without cgo.
+- **Rust and C/C++:** rust-analyzer starts with build scripts, proc macros and `cargo check` off and Cargo offline, because the first two would run the PR's code. A PR's `.cargo/config.toml`, `rust-toolchain.toml`, `rust-analyzer.toml` and `rust-project.json` never reach it. clangd runs nothing, and reads Bobby's own compile database rather than one a PR brings. A **local** review is your own working copy: there both read your own configuration, as your editor does, with rust-analyzer's build scripts and proc macros still off.
 - **Bobby's tools for Claude** are served by Bobby at `/mcp/<token>`, a fresh token for each run of Claude, gone when it ends; they only read.
 - **Bobby's server** only answers its own page: requests must name `127.0.0.1` or `localhost` (or a name you allowed with `--allow-host`), and writes must come from the page at that same name.
 - **Private notes** are never posted. Drafts are posted only when you submit.

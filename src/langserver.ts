@@ -1,4 +1,4 @@
-// Language servers, plug and play: each language is one LanguageServer (typescript.ts, python.ts, go.ts), and
+// Language servers, plug and play: each language is one LanguageServer (typescript.ts, python.ts, go.ts, rust.ts, cpp.ts), and
 // everything else (starting it, placing names, the inspector) is shared. Here: the interface, installing from npm,
 // and the code a server reads, a PR's head commit exported to ~/.bobby/trees, since Bobby never checks out a PR.
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, realpathSync, renameSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";

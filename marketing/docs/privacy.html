@@ -94,6 +94,7 @@
 <h2 id="what-stays-local"><a class="anchor" href="#what-stays-local" aria-hidden="true">#</a>What stays local</h2>
 <ul>
 <li><strong>Language servers</strong> read the PR's head commit exported to <code>~/.bobby/trees</code>, and never run the PR's code. Go's runs with module and toolchain downloads off (<code>GOPROXY=off</code>, <code>GOTOOLCHAIN=local</code>) and without cgo.</li>
+<li><strong>Rust and C/C++:</strong> rust-analyzer starts with build scripts, proc macros and <code>cargo check</code> off and Cargo offline, because the first two would run the PR's code. A PR's <code>.cargo/config.toml</code>, <code>rust-toolchain.toml</code>, <code>rust-analyzer.toml</code> and <code>rust-project.json</code> never reach it. clangd runs nothing, and reads Bobby's own compile database rather than one a PR brings. A <strong>local</strong> review is your own working copy: there both read your own configuration, as your editor does, with rust-analyzer's build scripts and proc macros still off.</li>
 <li><strong>Bobby's tools for Claude</strong> are served by Bobby at <code>/mcp/&lt;token&gt;</code>, a fresh token for each run of Claude, gone when it ends; they only read.</li>
 <li><strong>Bobby's server</strong> only answers its own page: requests must name <code>127.0.0.1</code> or <code>localhost</code> (or a name you allowed with <code>--allow-host</code>), and writes must come from the page at that same name.</li>
 <li><strong>Private notes</strong> are never posted. Drafts are posted only when you submit.</li>

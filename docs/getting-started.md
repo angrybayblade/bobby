@@ -9,6 +9,8 @@
 | `claude` (Claude Code CLI), optional | Builds the smarter change tree. It uses your Claude Code login, so no API key is needed. Without it, or with `--no-llm`, you get the static tree. Bobby offers to install it and sign you in the first time it runs: see [Setting up Claude](#setting-up-claude). |
 | `node` 18+, optional | Runs the TypeScript and Python language servers behind the inspector. Bobby installs them itself, after asking; without Node it runs them on Bun, where a large project takes minutes rather than seconds to load. |
 | `gopls`, optional | The Go language server: `go install golang.org/x/tools/gopls@latest`. Bobby finds it on PATH or in `$(go env GOPATH)/bin`. |
+| `rust-analyzer`, optional | The Rust language server: `rustup component add rust-analyzer rust-src`. It needs `cargo`, and Bobby finds it on PATH. |
+| `clangd`, optional | The C and C++ language server: it comes with Xcode's command line tools (`xcode-select --install`) and LLVM, or `sudo apt install clangd`. |
 | [`bun`](https://bun.sh), only from source | The release binary carries its own runtime. Building it, installing Bobby as a package, or running a clone needs Bun 1.1+. |
 
 ## Install
@@ -122,7 +124,7 @@ bobby <pr-url | number>               # extract + open the review UI
 bobby extract [pr] [-o file.json]     # write the review graph and exit (stdout without -o); no pr = this branch
 bobby open <graph.json> [--repo dir]  # open the UI on an existing graph file
 bobby lsp                             # the language servers behind the inspector, by language
-bobby lsp install <language>          # install one (typescript, python), or say how (go)
+bobby lsp install <language>          # install one (typescript, python), or say how (go, rust, cpp)
 bobby logs [n]                        # the log's last n lines (default 80), and where the whole log is
 bobby start                           # start Bobby in the background, if it isn't running, for bobby <pr> to hand reviews to
 bobby stop                            # stop the Bobby running here (as one bobby start or bobby mcp started)
