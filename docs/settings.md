@@ -29,7 +29,7 @@ Open settings with `,` or the gear in the header. Changes apply immediately and 
 
 **Keyboard shortcuts** (**Keyboard shortcuts…** in settings, or **Customize keys** on the `?` sheet) are saved as `keys` in the same file: `{ "<action>": ["<key>", …] }` for each action you changed, replacing its defaults. Actions and their defaults are in `public/app/keys.js`; keys are `KeyboardEvent.key` values (`"j"`, `"J"`, `"Enter"`, `" "`, `"ArrowLeft"`, `"!"` for shift 1). An empty list leaves an action with no key.
 
-"System" follows your OS: light/dark preference for the theme, and the reduced-motion preference for motion. With motion off, every transition and animation is disabled.
+"System" follows your OS: light/dark preference for the theme, and the reduced-motion preference for motion. With motion off, every transition and animation is disabled, and scrolls Bobby makes for you jump instead of gliding: moving between files, say, is instant. The command palette has it too: **Motion: Off**.
 
 ## Design choices
 

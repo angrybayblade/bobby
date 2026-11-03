@@ -64,13 +64,14 @@ function askToOpen() {
   b.focus();
   return new Promise((res) => b.addEventListener("click", res, { once: true }));
 }
-/** The theme, the style and the text size, before the review's own chrome exists; remembered for the next page's first paint (index.html). */
+/** The theme, the style, motion and the text size, before the review's own chrome exists; remembered for the next page's first paint (index.html). */
 function look(s) {
   const root = document.documentElement;
   root.dataset.theme = (s.theme ?? "system") === "system" ? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark") : s.theme;
   root.dataset.palette = ["warm", "silverpoint"].includes(s.palette) ? s.palette : "github";
+  root.dataset.motion = (s.motion ?? "system") === "system" ? (matchMedia("(prefers-reduced-motion: reduce)").matches ? "off" : "on") : s.motion;
   if (s.size) root.style.setProperty("--size", `${s.size}px`);
-  try { localStorage.setItem("bobby.look", JSON.stringify({ theme: s.theme ?? "system", palette: s.palette ?? "github" })); } catch { /* private window */ }
+  try { localStorage.setItem("bobby.look", JSON.stringify({ theme: s.theme ?? "system", palette: s.palette ?? "github", motion: s.motion ?? "system" })); } catch { /* private window */ }
 }
 /** While a review builds: the top bar with the way home and what it is, and a card of the steps so far; or why it failed. */
 function bootCard({ title, steps = [], elapsed, error }) {
@@ -119,7 +120,7 @@ const FONTS = {
 const media = (q) => window.matchMedia(q).matches;
 function applySettings() {
   const s = app.settings, root = document.documentElement;
-  try { localStorage.setItem("bobby.look", JSON.stringify({ theme: s.theme, palette: s.palette })); } catch { /* private window */ }
+  try { localStorage.setItem("bobby.look", JSON.stringify({ theme: s.theme, palette: s.palette, motion: s.motion })); } catch { /* private window */ }
   root.dataset.theme = s.theme === "system" ? (media("(prefers-color-scheme: light)") ? "light" : "dark") : s.theme;
   root.dataset.files = s.fileTreeSide === "left" ? "left" : "right";
   root.dataset.palette = ["warm", "silverpoint"].includes(s.palette) ? s.palette : "github";
@@ -433,6 +434,7 @@ function commands() {
     { id: "agent-tools", title: "Claude's tools for this PR…", sub: "which of your MCP servers and connectors (Linear, Notion, Slack…) Claude may use", run: () => openAsk(app, { tools: true }) },
     { id: "agent-next", title: "Go through Claude's findings", sub: "one at a time, with the code each is about", run: () => nextFinding(app) || chrome.toast("No open findings from Claude.", 4000) },
     { id: "claude", title: "Set up Claude Code", sub: "install it and sign in, for Claude's tree of the change", run: () => offerClaude({ force: true }) },
+    ...[["system", "System"], ["on", "On"], ["off", "Off"]].filter(([v]) => v !== s.motion).map(([v, t]) => ({ id: `motion:${v}`, title: `Motion: ${t}`, sub: "transitions, animations and gliding scrolls, everywhere", run: () => app.saveSettings({ motion: v }) })),
     ...[["system", "System"], ["dark", "Dark"], ["light", "Light"]].filter(([v]) => v !== s.theme).map(([v, t]) => ({ id: `theme:${v}`, title: `Theme: ${t}`, run: () => app.saveSettings({ theme: v }) })),
   ];
 }

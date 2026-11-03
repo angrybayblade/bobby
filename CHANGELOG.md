@@ -4,6 +4,7 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- **Motion: Off now stops everything that moves:** scrolls Bobby makes for you, as when moving between files in Diff, kept gliding. It also holds from the first paint and on the home page, and is in the command palette.
 - **Local reviews of a branch with a slash in its name open again:** `srijan/some-feature`, or anything deeper, ended in "No review … is open".
 - **Choose which of a PR's commits to review:** the bar under the top now shows the commits under review, as `4a16...c2dd`. Click it to pick one commit, or a range, from the PR's list.
 
