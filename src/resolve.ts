@@ -10,7 +10,7 @@
 // Anything that resolves outside the repo (a library) resolves to nothing.
 import { dirname, join, normalize } from "node:path/posix";
 import { BlobReader, catFiles, git } from "./git.ts";
-import { family, type Lang, type Syntax, parseSyntax } from "./syntax.ts";
+import { family, type Lang, langOf, type Syntax, parseSyntax } from "./syntax.ts";
 
 const JS_EXT = ["", ".ts", ".tsx", ".d.ts", ".js", ".jsx", ".mjs", ".cjs", "/index.ts", "/index.tsx", "/index.js", "/index.jsx", "/index.mjs"];
 
@@ -262,6 +262,10 @@ export class Repo {
   // ---- names → declarations
   /** Where `name`, as exported by one of `files`, is declared: the file itself, or through its re-exports. */
   async findDecl(files: string[], name: string, depth = 0): Promise<{ path: string; line: number } | null> {
+    if (isC(files[0])) {
+      for (const f of files) { const d = (await this.included(f)).names.get(name); if (d) return d; }
+      return null;
+    }
     for (const f of files) {
       const s = await this.syntax(f);
       if (!s) continue;
@@ -280,9 +284,30 @@ export class Repo {
   private reach = new Map<string, Promise<boolean>>();
   reaches(files: string[], target: string, depth = 0): Promise<boolean> {
     if (files.includes(target)) return Promise.resolve(true);
+    if (isC(files[0])) return Promise.all(files.map((f) => this.included(f))).then((all) => all.some((i) => i.files.has(target)));
     const key = `${files.join(",")}>${target}`;
     let p = this.reach.get(key);
     if (!p) this.reach.set(key, (p = this.reachesOnce(files, target, depth)));
+    return p;
+  }
+  /** C and C++: a file and all it includes, and every name they declare at the top level. An #include hands on everything, and headers
+   *  include each other in circles, so following them name by name, as for an export, never ends on a large project:
+   *  this is walked once per file, each header once. */
+  private includes = new Map<string, Promise<Included>>();
+  private included(file: string): Promise<Included> {
+    let p = this.includes.get(file);
+    if (!p) this.includes.set(file, (p = (async () => {
+      const files = new Set([file]), names: Included["names"] = new Map();
+      for (const f of files) { // a Set walked while it grows: breadth first, so the nearest declaration wins
+        const s = await this.syntax(f);
+        for (const d of s?.decls ?? []) if (d.top && !names.has(d.name)) names.set(d.name, { path: f, line: d.line });
+        for (const r of s?.reexports ?? []) {
+          if (files.size >= MAX_INCLUDED) break;
+          for (const to of await this.resolve(f, r, s!.lang)) files.add(to);
+        }
+      }
+      return { files, names };
+    })()));
     return p;
   }
   private async reachesOnce(files: string[], target: string, depth: number): Promise<boolean> {
@@ -295,6 +320,9 @@ export class Repo {
   }
 }
 
+interface Included { files: Set<string>; names: Map<string, { path: string; line: number }> }
+const MAX_INCLUDED = 2000; // files a C or C++ file reaches through its includes
+const isC = (path: string | undefined) => { const l = path ? langOf(path) : null; return l === "c" || l === "cpp"; };
 interface TsPaths { base: string; baseUrl: string | null; paths: Array<[string, string[]]> }
 interface PkgInfo { dir: string; entries: string[] }
 const common = (a: string, b: string) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return i; };

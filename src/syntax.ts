@@ -372,6 +372,7 @@ function cName(n: N | null): N | null {
 /** What a declaration is inside, ignoring what doesn't change that (a namespace, extern "C", an #ifdef): "class", a
  *  function's "body", or neither at the file's top level. */
 function cScope(n: N): "class" | "body" | null {
+  if (n.type === "parameter_declaration") return "body";
   for (let p = n.parent; p; p = p.parent) {
     if (p.type === "compound_statement") return "body";
     if (p.type === "field_declaration_list") return "class";
@@ -393,6 +394,7 @@ function cNode(n: N, _depth: number, _imp: boolean, c: Ctx): Res {
     case "struct_specifier": case "union_specifier": case "enum_specifier": case "class_specifier":
       if (n.childForFieldName("body")) named(n.childForFieldName("name"), n); // not a use, struct foo *p
       return;
+    case "parameter_declaration": named(cName(n.childForFieldName("declarator")), n); return;
     case "enumerator": case "preproc_def": case "preproc_function_def": case "namespace_definition":
       named(n.childForFieldName("name"), n);
       return;

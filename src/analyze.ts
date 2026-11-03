@@ -297,6 +297,7 @@ export async function resolveDef(repo: Repo, path: string, syn: Syntax, r: Ref):
   }
   const own = syn.decls.find((d) => d.name === r.name && d.top);
   if (own) return { path, line: own.line };
+  if (fam === "c" && syn.decls.some((d) => d.name === r.name && !d.member)) return null; // a parameter or a local here: not the same name in a header
   if (fam === "go") return repo.findDecl(repo.goFilesIn(dirname(path)).filter((f) => f !== path), r.name);
   if (fam === "java") return repo.findDecl(repo.javaPackage(path).filter((f) => f !== path), r.name);
   for (const w of syn.imports.filter((i) => i.local === "*")) { const d = await repo.findDecl(await repo.resolve(path, w, syn.lang), r.name); if (d) return d; }

@@ -1,4 +1,9 @@
 import { expect, test } from "bun:test";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { resolveDef } from "../src/analyze.ts";
+import { Repo } from "../src/resolve.ts";
 import { langOf, parseSyntax } from "../src/syntax.ts";
 
 const C = `#include "util/a.h"
@@ -77,4 +82,28 @@ test("C++: a method defined outside its class, and a qualified use", async () =>
   expect(s!.refs.find((r) => r.name === "run")).toMatchObject({ qual: "other", line: 12 });
   expect(s!.refs.find((r) => r.name === "count")).toMatchObject({ qual: "inner", line: 12 });
   expect(s!.refs.some((r) => r.name === "other")).toBe(true);
+});
+
+test("includes are followed through a header, in circles, to the nearest declaration", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "bobby-c-"));
+  const files: Record<string, string> = {
+    "src/main.c": `#include "a.h"\nint main(void) { return from_b() + local(); }\nint local(void) { return 0; }\n`,
+    "src/a.h": `#include "b.h"\nint from_a(void);\n`,
+    "src/b.h": `#include "a.h"\n#include <proj/deep.h>\nint from_b(void);\n`, // back to a.h, and through an include folder
+    "include/proj/deep.h": `int from_deep(void);\n`,
+  };
+  for (const [f, text] of Object.entries(files)) { mkdirSync(join(dir, dirname(f)), { recursive: true }); writeFileSync(join(dir, f), text); }
+  const git = (...a: string[]) => Bun.spawnSync(["git", "-c", "user.name=t", "-c", "user.email=t@t", ...a], { cwd: dir });
+  git("init", "-q"); git("add", "-A"); git("commit", "-qm", "x");
+  const repo = await Repo.open(dir, Bun.spawnSync(["git", "rev-parse", "HEAD"], { cwd: dir }).stdout.toString().trim());
+  const main = "src/main.c";
+  expect(await repo.findDecl([main], "from_b")).toEqual({ path: "src/b.h", line: 3 });
+  expect(await repo.findDecl([main], "from_deep")).toEqual({ path: "include/proj/deep.h", line: 1 });
+  expect(await repo.findDecl([main], "nowhere")).toBeNull();
+  expect(await repo.reaches([main], "include/proj/deep.h")).toBe(true);
+  expect(await repo.reaches(["src/a.h"], main)).toBe(false);
+  const syn = (await repo.syntax(main))!;
+  expect(await resolveDef(repo, main, syn, syn.refs.find((r) => r.name === "from_b")!)).toEqual({ path: "src/b.h", line: 3 });
+  expect(await resolveDef(repo, main, syn, syn.refs.find((r) => r.name === "local")!)).toEqual({ path: main, line: 3 });
+  rmSync(dir, { recursive: true, force: true });
 });
