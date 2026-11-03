@@ -101,7 +101,7 @@ const CSS = `
 .dv .rail .none { color: var(--faint); font-size: 13px; }
 .dv .empty { position: absolute; inset: 0; display: grid; place-items: center; color: var(--faint); }
 .dv .fv.pinned { border: 0; border-radius: 0; box-shadow: none; z-index: 5; } /* filled: square, borderless, over edge labels */
-.dv .fv.pinned > .fvh, .dv .fv.pinned > .fvb { zoom: var(--fill, 1); }
+.dv .fv.pinned:not(.measuring) > .fvh, .dv .fv.pinned:not(.measuring) > .fvb { zoom: var(--fill, 1); }
 .dv .world .fv:not(.pinned):not(.measuring) > .fvh, .dv .world .fv:not(.pinned):not(.measuring) > .fvb { zoom: var(--clamp, 1); } /* past MAX_TEXT: more file, same text size */ /* filled: the viewer is zoomed up, its contents back down */
 /* Compact, GitHub-like code: one box per file, slim hunk rows, a tight gutter. */
 :is(.dv, .fvw) .fvh { gap: 8px; padding: 5px 6px 5px 10px; font-size: 12px; }
@@ -281,15 +281,22 @@ export default {
     /** Re-render only the viewers whose content changed, and re-measure only them. Returns the paths re-rendered. */
     function refresh() {
       const changed = M.files.filter((f) => fileSigs.get(f.path) !== fileSig(f.path)).map((f) => f.path);
+      const tops = changed.map((path) => views.get(path).body.scrollTop);
       for (const path of changed) {
-        const v = views.get(path), top = v.body.scrollTop;
+        const v = views.get(path);
         v.el.querySelector(".fvh").innerHTML = header(v.f);
         app.renderFile(v.body, v.f.sections.map((s) => s.pid));
-        v.body.scrollTop = top;
         fileSigs.set(path, fileSig(path));
       }
-      if (changed.length) { layout(new Set(changed)); if (filled && changed.includes(filled.path)) pin(views.get(filled.path)); }
+      if (changed.length) remeasure(changed, tops);
       return changed;
+    }
+    // Measures viewers whose content changed. That takes away a viewer's height, which scrolls its code to the top, so
+    // their scroll goes back only once they have their height again.
+    function remeasure(paths, tops) {
+      layout(new Set(paths));
+      if (filled && paths.includes(filled.path)) pin(views.get(filled.path));
+      paths.forEach((path, i) => { views.get(path).body.scrollTop = tops[i]; });
     }
 
     // Files are laid out as a graph: each one a column right of the files that lead into it, so a chain
