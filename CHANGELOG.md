@@ -4,6 +4,8 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- **Choose which of a PR's commits to review:** the bar under the top now shows the commits under review, as `4a16...c2dd`. Click it to pick one commit, or a range, from the PR's list.
+
 ## 0.1.0-rc18 (2026-11-02)
 
 Rust, C and C++ join the inspector: types on hover, jumps across files and every use of a name, through rust-analyzer and clangd, started locked down so a PR's code never runs.

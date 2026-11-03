@@ -190,6 +190,12 @@ While a review is open, Bobby keeps it current, the way GitHub does:
 - **A restack**, or a rebase, rewrites the PR's commits without changing what it does: when a PR lower in its [stack](#stacked-prs) moved or merged and this one was rebased onto it. Bobby compares the PR's own changes before and after (`git patch-id`), and when they're the same the prompt is a quiet **Restacked · same changes**: there's nothing new to review, and Refresh keeps every mark.
 - **A local review** has no comments, but notices your new commits and edits (every 10 seconds) and offers **Files changed · Refresh** the same way. Switching branches can't be followed: run `bobby` again to review the other branch.
 
+## Reviewing some of a PR's commits
+
+The bar under the top shows which commits you're reviewing, between the PR and where you are in it: `4a16...c2dd`, the first and the last, or one on its own. Click it (or **Choose commits to review…** in the palette) for the PR's commits, oldest first. Click one to review it alone, and click another to review everything between the two; **All** goes back to the whole PR.
+
+Each choice is a review of its own, with its own marks and drafts, and its own tree from Claude when Claude is set up. Commits follow each merge's first parent, so a branch merged into the PR's is its merge commit. A stretch that includes a merge shows what that merge brought in, so one that merged the base branch shows the base branch's changes too.
+
 ## Stacked PRs
 
 A PR built on another PR (its base is that PR's branch) is part of a **stack**: each PR is still its own review, against its own base, so you review only its layer. The where-bar starts with its place in the stack, **‹ Stack 2/3 ›**: the arrows open the PR below and the PR above, and **Stack 2/3** opens every layer, top first, with its state and how far you got in its own review (**Open** reviews it). Each open layer also says where it stands on GitHub, for the stack's author as much as its reviewers: **approved**, **changes requested** or **review required**, how many threads are unresolved, whether its checks pass, and **needs restack** when it no longer sits on the latest head of the PR below (rebase it onto that, as `gh stack rebase` does). Under the list, **Next to merge** names the lowest open PR and what it's waiting on, as a stack merges bottom up. The palette has them too (**Stack…**, **Open the PR below in the stack**, **Open the PR above in the stack**).
