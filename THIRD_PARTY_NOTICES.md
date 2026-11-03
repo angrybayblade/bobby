@@ -48,6 +48,8 @@ domain). The grammars themselves are each under the MIT License, copyright their
 - tree-sitter-python: <https://github.com/tree-sitter/tree-sitter-python>
 - tree-sitter-go: <https://github.com/tree-sitter/tree-sitter-go>
 - tree-sitter-java: <https://github.com/tree-sitter/tree-sitter-java>
+- tree-sitter-c: <https://github.com/tree-sitter/tree-sitter-c>
+- tree-sitter-cpp: <https://github.com/tree-sitter/tree-sitter-cpp>
 - tree-sitter-rust: <https://github.com/tree-sitter/tree-sitter-rust>
 
 The MIT License's terms are as in web-tree-sitter's notice above, with each grammar's own copyright line.

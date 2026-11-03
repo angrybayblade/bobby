@@ -12,7 +12,7 @@ import { bubble, cancelEdit, closeReply, deletePosted, fileKey, newLines, notesF
 const EXT = {
   ts: "typescript", tsx: "typescript", mts: "typescript", cts: "typescript", js: "javascript", jsx: "javascript", mjs: "javascript", cjs: "javascript",
   py: "python", go: "go", rs: "rust", java: "java", kt: "kotlin", rb: "ruby", php: "php", cs: "csharp", c: "c", h: "c",
-  cc: "cpp", cpp: "cpp", hpp: "cpp", swift: "swift", scala: "scala", sh: "bash", bash: "bash", zsh: "bash", yml: "yaml",
+  cc: "cpp", cpp: "cpp", cxx: "cpp", "c++": "cpp", hh: "cpp", hpp: "cpp", hxx: "cpp", ipp: "cpp", inl: "cpp", tpp: "cpp", swift: "swift", scala: "scala", sh: "bash", bash: "bash", zsh: "bash", yml: "yaml",
   yaml: "yaml", json: "json", md: "markdown", css: "css", scss: "scss", html: "xml", xml: "xml", vue: "xml", sql: "sql",
   toml: "ini", lua: "lua", ex: "elixir", exs: "elixir", dart: "dart",
 };

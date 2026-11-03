@@ -2,7 +2,7 @@
 // under bun and inside the compiled binary). Unlike grepping for a word, this knows a declaration from a use, never
 // counts a word in a comment or a string, and knows which module each imported name comes from (resolve.ts).
 //
-// Supported: TypeScript, TSX, JavaScript, Python, Go, Java and Rust. Other files get null, and extraction falls back to
+// Supported: TypeScript, TSX, JavaScript, Python, Go, Java, Rust, C and C++. Other files get null, and extraction falls back to
 // text search for them.
 import * as log from "./log.ts";
 import Parser from "web-tree-sitter";
@@ -14,21 +14,25 @@ import wasmPy from "tree-sitter-wasms/out/tree-sitter-python.wasm" with { type: 
 import wasmGo from "tree-sitter-wasms/out/tree-sitter-go.wasm" with { type: "file" };
 import wasmJava from "tree-sitter-wasms/out/tree-sitter-java.wasm" with { type: "file" };
 import wasmRust from "tree-sitter-wasms/out/tree-sitter-rust.wasm" with { type: "file" };
+import wasmC from "tree-sitter-wasms/out/tree-sitter-c.wasm" with { type: "file" };
+import wasmCpp from "tree-sitter-wasms/out/tree-sitter-cpp.wasm" with { type: "file" };
 
-export type Lang = "ts" | "tsx" | "js" | "py" | "go" | "java" | "rust";
+export type Lang = "ts" | "tsx" | "js" | "py" | "go" | "java" | "rust" | "c" | "cpp";
 /** Languages whose files can import each other (a .ts file may import a .js one). */
-export const family = (l: Lang) => (l === "ts" || l === "tsx" || l === "js" ? "js" : l);
+export const family = (l: Lang) => (l === "ts" || l === "tsx" || l === "js" ? "js" : l === "cpp" ? "c" : l);
 
 const BY_EXT: Record<string, Lang> = {
   ts: "ts", mts: "ts", cts: "ts", tsx: "tsx", js: "js", jsx: "js", mjs: "js", cjs: "js",
-  py: "py", pyi: "py", go: "go", java: "java", rs: "rust",
+  py: "py", pyi: "py", go: "go", java: "java", rs: "rust", c: "c",
+  // A .h can be either; C++'s grammar reads C too, and the other way round it would stop at every class.
+  h: "cpp", cc: "cpp", cpp: "cpp", cxx: "cpp", "c++": "cpp", hh: "cpp", hpp: "cpp", hxx: "cpp", ipp: "cpp", inl: "cpp", tpp: "cpp",
 };
 export function langOf(path: string): Lang | null {
   if (path.endsWith(".d.ts")) return "ts";
   const ext = path.slice(path.lastIndexOf(".") + 1).toLowerCase();
   return BY_EXT[ext] ?? null;
 }
-const WASM: Record<Lang, string> = { ts: wasmTs, tsx: wasmTsx, js: wasmJs, py: wasmPy, go: wasmGo, java: wasmJava, rust: wasmRust };
+const WASM: Record<Lang, string> = { ts: wasmTs, tsx: wasmTsx, js: wasmJs, py: wasmPy, go: wasmGo, java: wasmJava, rust: wasmRust, c: wasmC, cpp: wasmCpp };
 
 /** A name a file declares. Lines are 1-based; start..end spans the whole declaration. top: module level; member: a
  *  method or field of a class, struct, trait or interface (reached through a value, x.name). Neither: a local. */
@@ -94,7 +98,7 @@ function walk(lang: Lang, root: N): Syntax {
     if (declNames.has(n.id) || !n.text) return; // a zero-width node: what error recovery inserts for a missing name
     out.refs.push({ name: n.text, line: line(n), col: col(n), ...(qual ? { qual: qual.text } : {}) });
   };
-  const handlers = { ts: jsNode, tsx: jsNode, js: jsNode, py: pyNode, go: goNode, java: javaNode, rust: rustNode }[lang];
+  const handlers = { ts: jsNode, tsx: jsNode, js: jsNode, py: pyNode, go: goNode, java: javaNode, rust: rustNode, c: cNode, cpp: cNode }[lang];
   // Iterative pre-order walk. depth: nesting inside function/class bodies, so top-level declarations can be told apart.
   const stack: Array<{ n: N; depth: number; imp: boolean }> = [{ n: root, depth: 0, imp: false }];
   while (stack.length) {
@@ -111,7 +115,7 @@ function walk(lang: Lang, root: N): Syntax {
 const BODY = new Set([
   "statement_block", "class_body", "function_body", "block", "body", "declaration_list", "field_declaration_list",
   "interface_body", "enum_body", "object_type", "arrow_function", "function_expression", "lambda", "func_literal",
-  "constructor_body", "impl_item", "trait_item",
+  "constructor_body", "impl_item", "trait_item", "compound_statement",
 ]);
 interface Ctx { decl: (name: N | null, whole: N, top: boolean, member?: boolean) => void; ref: (n: N, qual?: N | null) => void; out: Syntax }
 type Res = void | "skip" | "import";
@@ -351,5 +355,70 @@ function rustUse(n: N, prefix: string, c: Ctx) {
     }
     case "use_list": for (const x of n.namedChildren) rustUse(x, prefix, c); return;
     case "use_wildcard": c.out.imports.push({ local: "*", name: "*", source: join(prefix, n.namedChildren[0]?.text ?? "") }); return;
+  }
+}
+
+// ---- C / C++
+const C_NAME = new Set(["identifier", "field_identifier", "type_identifier", "destructor_name", "operator_name"]);
+const C_DECLARATOR = new Set(["function_declarator", "init_declarator", "pointer_declarator", "reference_declarator", "array_declarator", "parenthesized_declarator", "attributed_declarator", "qualified_identifier", ...C_NAME]);
+/** The name inside a declarator, through what wraps it: *f, &f, (*f)(int), f[3], f = 1, Foo::f. */
+function cName(n: N | null): N | null {
+  for (let i = 0; n && i < 12; i++) {
+    if (C_NAME.has(n.type)) return n;
+    n = n.childForFieldName("declarator") ?? n.childForFieldName("name") ?? n.namedChildren.at(-1) ?? null;
+  }
+  return null;
+}
+/** What a declaration is inside, ignoring what doesn't change that (a namespace, extern "C", an #ifdef): "class", a
+ *  function's "body", or neither at the file's top level. */
+function cScope(n: N): "class" | "body" | null {
+  for (let p = n.parent; p; p = p.parent) {
+    if (p.type === "compound_statement") return "body";
+    if (p.type === "field_declaration_list") return "class";
+  }
+  return null;
+}
+function cNode(n: N, _depth: number, _imp: boolean, c: Ctx): Res {
+  const named = (name: N | null, whole: N) => {
+    const scope = cScope(whole), out = name?.parent?.type === "qualified_identifier"; // void Foo::bar() {}
+    c.decl(name, whole, scope === null, scope === "class" || out);
+  };
+  switch (n.type) {
+    case "function_definition": named(cName(n.childForFieldName("declarator")), n); return;
+    case "declaration": case "field_declaration": case "type_definition": { // int a, *b, f(void);
+      const type = n.childForFieldName("type")?.id;
+      for (const d of n.namedChildren) if (d.id !== type && C_DECLARATOR.has(d.type)) named(cName(d), n);
+      return;
+    }
+    case "struct_specifier": case "union_specifier": case "enum_specifier": case "class_specifier":
+      if (n.childForFieldName("body")) named(n.childForFieldName("name"), n); // not a use, struct foo *p
+      return;
+    case "enumerator": case "preproc_def": case "preproc_function_def": case "namespace_definition":
+      named(n.childForFieldName("name"), n);
+      return;
+    case "preproc_include": {
+      const source = n.childForFieldName("path")?.text.slice(1, -1); // "a.h" or <a.h>
+      if (source) { // everything it declares is in scope here, and for whoever includes this file
+        c.out.imports.push({ local: "*", name: "*", source });
+        c.out.reexports.push({ name: "*", local: "*", source });
+      }
+      return "skip";
+    }
+    case "field_expression": { // a.b, a->b
+      const v = n.childForFieldName("argument"), f = n.childForFieldName("field");
+      if (v?.type !== "identifier" || !f) return;
+      c.ref(f, v); c.ref(v);
+      return "skip";
+    }
+    case "qualified_identifier": { // a::b
+      const name = n.childForFieldName("name"), scope = n.childForFieldName("scope");
+      if (!name || !C_NAME.has(name.type)) return;
+      c.ref(name, scope);
+      if (scope?.type === "namespace_identifier" || scope?.type === "type_identifier") c.ref(scope);
+      return "skip";
+    }
+    case "identifier": case "type_identifier": case "field_identifier": case "namespace_identifier":
+      c.ref(n);
+      return;
   }
 }

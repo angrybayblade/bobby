@@ -6,6 +6,7 @@
 //   Go      import paths through the repo's go.mod modules, to a package directory
 //   Java    fully qualified class names (and a.b.* packages), to files
 //   Rust    crate::, super:: and self:: paths, to module files
+//   C, C++  #include, beside the including file, else the file whose path ends with it (an include folder)
 // Anything that resolves outside the repo (a library) resolves to nothing.
 import { dirname, join, normalize } from "node:path/posix";
 import { BlobReader, catFiles, git } from "./git.ts";
@@ -82,6 +83,7 @@ export class Repo {
       case "go": return this.goPackage(imp.source);
       case "java": return this.resolveJava(imp.source, imp.name);
       case "rust": return this.resolveRust(from, imp.source);
+      case "c": return this.resolveInclude(from, imp.source);
     }
     return [];
   }
@@ -247,6 +249,14 @@ export class Repo {
       file = next; dir = `${dir}/${s}`;
     }
     return [file ?? [`${dir}/mod.rs`, `${dir}.rs`, `${dir}/lib.rs`, `${dir}/main.rs`].find((p) => this.files.has(p)) ?? ""].filter(Boolean);
+  }
+
+  /** Without the build's include folders: beside the file, then any file whose path ends with it, the nearest first. */
+  private resolveInclude(from: string, source: string): string[] {
+    const beside = normalize(join(dirname(from), source));
+    if (this.files.has(beside)) return [beside];
+    const tail = source.replace(/^(\.\.?\/)+/, "");
+    return this.endingWith(tail).sort((a, b) => common(b, from) - common(a, from) || a.length - b.length).slice(0, 1);
   }
 
   // ---- names → declarations
