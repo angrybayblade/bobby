@@ -6,8 +6,9 @@ import { BAND_TEXT, DONE, LOW, api, esc, glide, live } from "./core.js";
 import { MOD } from "./palette.js";
 import { keyHtml, keyName } from "./keys.js";
 import { reactionClick } from "./reactions.js";
+import { edgeSpeed } from "./onstage.js";
 import { stackChip, stackNote } from "./stack.js";
-import { bubble, cancelEdit, closeReply, deletePosted, fileKey, newLines, notesFor, outside, setReactions, placeNotes, postReply, resolveThread, saveEdit, showFull, startEdit, startReply, threadsAt, toggleItem, typeEdit, typeReply } from "./comments.js";
+import { bubble, cancelEdit, closeReply, scrollerOf, deletePosted, fileKey, newLines, notesFor, outside, setReactions, placeNotes, postReply, resolveThread, saveEdit, showFull, startEdit, startReply, threadsAt, toggleItem, typeEdit, typeReply } from "./comments.js";
 
 const EXT = {
   ts: "typescript", tsx: "typescript", mts: "typescript", cts: "typescript", js: "javascript", jsx: "javascript", mjs: "javascript", cjs: "javascript",
@@ -981,6 +982,16 @@ if (window.CSS?.highlights) {
   document.documentElement.addEventListener("mouseleave", () => showSymbol(null)); // off the page
 }
 
+/** The part of a scroller you can see: what its clipping ancestors leave of it, on screen. */
+function seenBox(scroller) {
+  let { top, bottom, left, right } = scroller.getBoundingClientRect();
+  for (let e = scroller.parentElement; e && e !== document.documentElement; e = e.parentElement) {
+    if (getComputedStyle(e).overflowY === "visible") continue;
+    const r = e.getBoundingClientRect();
+    top = Math.max(top, r.top); bottom = Math.min(bottom, r.bottom); left = Math.max(left, r.left); right = Math.min(right, r.right);
+  }
+  return { top, bottom, left, right };
+}
 // One delegated listener per container.
 const bound = new WeakMap();
 function bind(app, el, rerender) {
@@ -1108,14 +1119,39 @@ function bind(app, el, rerender) {
     ev.preventDefault(); // a press on the numbers drags a range; it mustn't start a text selection
     const start = { ...row.dataset };
     let last = row.dataset.key;
-    const move = (e) => { // only a drag onto another line selects here; a plain click is the click handler's
-      const over = document.elementFromPoint(e.clientX, e.clientY)?.closest?.(".ln[data-key]");
+    const reach = (over) => { // only a drag onto another line selects here; a plain click is the click handler's
       if (!over || !el.contains(over) || over.dataset.key === last) return;
       last = over.dataset.key;
       if (!el._dragged) { el._dragged = true; app.page.anchor = start; }
       selectRange(app, el, start, { ...over.dataset });
     };
-    const up = () => { window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); setTimeout(() => (el._dragged = false)); };
+    const rowAt = (x, y) => { // split: the empty side of a line only one side has counts as that line
+      const hit = document.elementFromPoint(x, y)?.closest?.(".ln");
+      return hit?.dataset.key ? hit : hit?.closest(".srow")?.querySelector(".ln[data-key]");
+    };
+    // Held at the edge of the code you can see, the lines flow under the pointer and the selection goes on with them,
+    // however far the file runs: faster the further past the edge. Only the way you're dragging: a press near the
+    // bottom that moves up isn't asking for more below.
+    const scroller = scrollerOf(row), pressed = ev.clientY;
+    let at = null, frame = 0, then = 0;
+    const flow = (now) => {
+      frame = requestAnimationFrame(flow);
+      const dt = Math.min(50, now - then) / 1000, box = seenBox(scroller);
+      then = now;
+      const speed = edgeSpeed(at.y, box.top, box.bottom), wanted = (at.y - pressed) * speed > 0;
+      if (wanted) scroller.scrollTop += speed * dt * (scroller.clientHeight / scroller.getBoundingClientRect().height);
+      // inside what you can see, wherever the pointer's gone. A row's what's wanted: a file's sticky title or a short
+      // thread may be right at the edge, so look a little further in.
+      const x = Math.max(box.left + 1, Math.min(box.right - 2, at.x)), inward = at.y > (box.top + box.bottom) / 2 ? -1 : 1;
+      const y = Math.max(box.top + 1, Math.min(box.bottom - 2, at.y));
+      for (let d = 0; d <= 64; d += 8) { const r = rowAt(x, y + inward * d); if (r) return reach(r); }
+    };
+    const move = (e) => {
+      if (at || Math.hypot(e.clientX - ev.clientX, e.clientY - ev.clientY) >= 3) at = { x: e.clientX, y: e.clientY };
+      if (at && scroller && !frame) { then = performance.now(); frame = requestAnimationFrame(flow); }
+      if (!scroller) reach(rowAt(e.clientX, e.clientY));
+    };
+    const up = () => { cancelAnimationFrame(frame); window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); setTimeout(() => (el._dragged = false)); };
     window.addEventListener("mousemove", move);
     window.addEventListener("mouseup", up);
   });

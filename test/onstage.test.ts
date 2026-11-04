@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 // @ts-expect-error: a browser module without types
-import { nudge } from "../public/app/onstage.js";
+import { edgeSpeed, nudge } from "../public/app/onstage.js";
 
 const stage = { left: 0, right: 1000, top: 100, bottom: 900 };
 const box = (left: number, top: number, w = 200, h = 100) => ({ left, right: left + w, top, bottom: top + h });
@@ -26,4 +26,14 @@ test("a canvas's stage can't scroll itself", async () => {
     const css = (await Bun.file(`public/app/views/${file}.js`).text()).split("\n").find((l) => l.startsWith(`${rule} {`));
     expect(css).toContain("overflow: clip");
   }
+});
+
+test("holding a drag at the edge of the code scrolls it, faster past the edge", () => {
+  expect(edgeSpeed(500, 100, 900)).toBe(0); // in the middle
+  expect(edgeSpeed(860, 100, 900)).toBe(0); // just outside the zone at the bottom
+  expect(edgeSpeed(880, 100, 900)).toBeGreaterThan(0);
+  expect(edgeSpeed(120, 100, 900)).toBeLessThan(0);
+  expect(edgeSpeed(950, 100, 900)).toBeGreaterThan(edgeSpeed(880, 100, 900));
+  expect(edgeSpeed(50000, 100, 900)).toBe(1600); // however far: there's a limit
+  expect(edgeSpeed(-50000, 100, 900)).toBe(-1600);
 });

@@ -9,3 +9,10 @@ export const nudge = (box, stage, pad = 12) => ({
   dx: along(box.left, box.right, stage.left, stage.right, pad),
   dy: along(box.top, box.bottom, stage.top, stage.bottom, pad),
 });
+
+// How fast, in on-screen px a second, holding a pointer at y scrolls what's between lo and hi: nothing away from its ends,
+// then faster the further toward and past them. Minus is up.
+export const edgeSpeed = (y, lo, hi, zone = 40, slow = 120, max = 1600) => {
+  const past = y < lo + zone ? y - lo - zone : y > hi - zone ? y - hi + zone : 0;
+  return past && Math.sign(past) * Math.min(max, slow + (Math.abs(past) / zone) * 400);
+};

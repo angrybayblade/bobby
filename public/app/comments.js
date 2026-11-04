@@ -61,10 +61,11 @@ const pageState = (app) => (app.commentState ??= { files: new Map(), items: new 
 const prState = (app) => app.settings.comments ?? "open";
 export const fileState = (app, path) => pageState(app).files.get(path) ?? prState(app);
 const itemOpen = (app, id, path) => (pageState(app).items.get(id) ?? (commentIndex(app).threads.get(id)?.resolved ? "collapsed" : fileState(app, path))) === "open";
+/** What scrolls n up and down: itself or its nearest ancestor with somewhere to go. */
+export const scrollerOf = (n) => { for (let e = n; e && e !== document.body; e = e.parentElement) if (e.scrollHeight > e.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(e).overflowY)) return e; return null; };
 /** Re-renders after a comment change without moving what you're reading: each visible code scroller keeps the thread
  *  you clicked (if it's in it), else its first line on screen, where it was. */
 export function keepPlace(app, clicked) {
-  const scrollerOf = (n) => { for (let e = n; e && e !== document.body; e = e.parentElement) if (e.scrollHeight > e.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(e).overflowY)) return e; return null; };
   const marks = [];
   for (const sc of new Set([...document.querySelectorAll("[data-bound]")].filter(live).map((b) => scrollerOf(b) ?? b))) {
     const box = sc.getBoundingClientRect(), k = sc.clientHeight / (box.height || 1); // on-screen px to the scroller's own (zoom)
