@@ -7,6 +7,12 @@ describe("key bindings", () => {
     expect(keysOf({}, "next")).toEqual(["j", " "]);
     expect(actionFor({}, "k")).toBe("prev");
   });
+  test("arrows follow the graph, and shift + arrows the history", () => {
+    expect(actionFor({}, "ArrowLeft")).toBe("left");
+    expect(actionFor({}, "ArrowRight")).toBe("right");
+    expect(actionFor({}, "Shift+ArrowLeft")).toBe("back");
+    expect(actionFor({}, "Shift+ArrowRight")).toBe("forth");
+  });
   test("binding a key takes it from the action that had it", () => {
     const { from, keys } = bind({}, "flag", "j");
     expect(from).toBe("next");

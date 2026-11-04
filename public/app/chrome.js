@@ -289,7 +289,7 @@ const LEGACY = { next: "j", prev: "k", zoomIn: "enter", zoomOut: "esc", nextView
 function renderKeys() {
   const mode = app.settings.hints;
   const uses = app.settings.hintUses ?? {}, used = (id) => Math.max(uses[id] ?? 0, uses[LEGACY[id]] ?? 0);
-  const trail = app.viewId === "diff" && app.level < 2 ? [[["left", "right"], "back / forth"]] : []; // Diff's node history
+  const trail = app.viewId === "diff" && app.level < 2 ? [[["back", "forth"], "back / forth"]] : []; // Diff's node history
   const list = [...(HINTS_BY_LEVEL[app.level] ?? HINTS).slice(0, 1), ...trail, ...(HINTS_BY_LEVEL[app.level] ?? HINTS).slice(1)].filter(([ids]) => ids.every((id) => keysOf(app.settings, id).length) && (mode === "always" || (mode === "fade" && ids.some((id) => used(id) < 5))));
   const help = keyHtml(app.settings, "help");
   $("#keys").innerHTML = (mode === "never" ? `<span>${help} keys</span>`

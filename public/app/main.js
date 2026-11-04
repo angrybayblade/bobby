@@ -379,8 +379,8 @@ function press(k, { learn = true } = {}) {
   const id = actionFor(app.settings, k) ?? (k.startsWith("Shift+") ? actionFor(app.settings, k.slice(6)) : undefined);
   return id ? runAction(id, { learn }) : false;
 }
-// Moving along the layout is the Diff view's own (Shift + arrows); elsewhere it's what the plain arrow does.
-const ALONG = { treeLeft: "left", treeRight: "right", treeUp: "up", treeDown: "down" };
+// Back and forth through the nodes you've been on is the Diff view's own (Shift + arrows); elsewhere, and for ↑ ↓, it's what the plain arrow does.
+const ALONG = { back: "left", forth: "right", treeUp: "up", treeDown: "down" };
 function runAction(id, { learn = true } = {}) {
   const act = current?.keys?.[id] ?? current?.keys?.[ALONG[id]] ?? ACTS[id] ?? ACTS[ALONG[id]];
   if (!act) return false;

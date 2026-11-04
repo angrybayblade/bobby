@@ -944,7 +944,7 @@ export default {
     update("mount");
     // Arrows follow the graph: → to a file this one leads into, ← to one that leads into it (the nearest,
     // or failing that the nearest in the next column); ↑ ↓ to the file above or below in the same column.
-    function moveFile(dc, dr, going) { // going: told the node's path just before the focus moves there
+    function moveFile(dc, dr) {
       const act = activeFile();
       const ci = columns.findIndex((col) => col?.includes(act));
       if (ci < 0) return;
@@ -957,15 +957,13 @@ export default {
       } else {
         to = nearest(fileLinks[dc > 0 ? "next" : "prev"].get(act) ?? []) ?? (columns[ci + dc] && nearest(columns[ci + dc]));
       }
-      if (!to) return false;
-      going?.(to.path);
+      if (!to) return;
       const tv = views.get(to.path);
       app.setFocus((tv && visible(tv)[0]) ?? to.sections[0].pid); // what's showing there: its scroll stays
-      return true;
     }
-    // ---- history: every node you've had in focus, by a key or a click, so ← / → trace back and forth through them
-    // like a browser's back and forward, landing on the section you were reading. With nothing that way, they move
-    // along the layout instead, as Shift + arrows always do. Moving anywhere new after going back drops what was ahead.
+    // ---- history: every node you've had in focus, by a key or a click, so Shift + ← / → trace back and forth through them
+    // like a browser's back and forward, landing on the section you were reading. Moving anywhere new after going back
+    // drops what was ahead.
     // Kept in this browser per PR, so a reload (or tomorrow) can still go back: where you were last is one ← away.
     const pr = app.graph.pr, store = `bobby.trail:${pr.owner}/${pr.repo}#${pr.branch ?? pr.number}`;
     const saved = (() => { try { return JSON.parse(localStorage.getItem(store) ?? "null"); } catch { return null; } })();
@@ -993,19 +991,12 @@ export default {
         if (trail.at) to.push(trail.at);
         tracing = e.path;
         app.setFocus(pid);
-        return true;
+        return;
       }
-      return false;
-    }
-    // Nothing left that way in the history: the layout's neighbour, kept in the same direction. Going back past the
-    // start moves on back, and forth retraces it, rather than bouncing between two nodes.
-    function beyond(dc, to) {
-      return moveFile(dc, 0, (path) => { if (trail.at) to.push(trail.at); tracing = path; });
     }
     const keys = { // by action (keys.js): whichever keys you've bound to them
-      left: () => trace(trail.back, trail.fwd) || beyond(-1, trail.fwd), right: () => trace(trail.fwd, trail.back) || beyond(1, trail.back),
-      up: () => moveFile(0, -1), down: () => moveFile(0, 1),
-      treeLeft: () => moveFile(-1, 0), treeRight: () => moveFile(1, 0), treeUp: () => moveFile(0, -1), treeDown: () => moveFile(0, 1),
+      left: () => moveFile(-1, 0), right: () => moveFile(1, 0), up: () => moveFile(0, -1), down: () => moveFile(0, 1),
+      back: () => trace(trail.back, trail.fwd), forth: () => trace(trail.fwd, trail.back),
       focus: () => { if (app.level < 2) return fill(); app.setLevel(1); setTimeout(fill, 60); }, // from the page, back to the canvas, filled
       zoomOut: () => (filled && app.level < 2 ? fill() : app.setLevel(app.level - 1)), // focus mode: back to the canvas as it was
       fit: () => { if (app.level < 2) return fit(); app.setLevel(1); setTimeout(fit, 60); }, // from details, back to the canvas, fitted
