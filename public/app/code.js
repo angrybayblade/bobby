@@ -155,7 +155,7 @@ function row(app, { t, o, n }, html, target, half) {
   return `<div class="ln ${cls}${sel ? " sel" : ""}${!mirror && target.hi === n && t !== "-" ? " target" : ""}" data-key="${esc(key)}" data-path="${esc(target.path)}" data-line="${line}" data-side="${side}" data-indiff="${target.inDiff && t !== "x" ? 1 : 0}">
     <span class="bar"></span>${nums}<span class="sg">${t === "+" ? "+" : t === "-" ? "−" : ""}</span><code>${html}</code></div>`
     // inline: under the line, the width of the node; an unchanged line also carries what GitHub anchored to its old side
-    + (!half ? cmLine(threadsAt(app, key) + (t === " " ? threadsAt(app, `${target.path}|LEFT|${o}`) : "") + (composing ? composer(app, app.page.composing) : "")) : "");
+    + (!half ? cmLine((composing ? composer(app, app.page.composing) : "") + threadsAt(app, key) + (t === " " ? threadsAt(app, `${target.path}|LEFT|${o}`) : "")) : "");
 }
 /** Diff lines as rows: one column (inline), or old beside new (split), pairing each run of removals with the additions after it. */
 function diffRows(app, lines, html, target) {
@@ -167,7 +167,7 @@ function diffRows(app, lines, html, target) {
     // split: a thread sits on the side it was made on, as wide as that side (an unchanged line's old side: GitHub's LEFT)
     const lk = L == null ? null : lines[L].t === "-" ? keyAt(L) : lines[L].t === " " ? `${target.path}|LEFT|${lines[L].o}` : null;
     const rk = R != null && lines[R].t !== "-" ? keyAt(R) : null;
-    const side = (k) => (k ? threadsAt(app, k) + (composing && c.key === k ? composer(app, c) : "") : ""); // the box sits on its line's side
+    const side = (k) => (k ? (composing && c.key === k ? composer(app, c) : "") + threadsAt(app, k) : ""); // the box sits on its line's side, right under it
     const left = side(lk), right = side(rk);
     return `<div class="srow">${cell(L, "L")}${cell(R, "R")}</div>${left || right ? `<div class="srow cmrow"><div class="cmcell">${left}</div><div class="cmcell">${right}</div></div>` : ""}`;
   };
