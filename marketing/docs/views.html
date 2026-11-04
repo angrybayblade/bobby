@@ -172,11 +172,11 @@
 </ul>
 <p><strong>Arrow keys.</strong> In Diff the arrows move between files instead of walk pages (<code>j</code>/<code>k</code> still walk):</p>
 <ul>
-<li><strong>← / →</strong> go back and forth through the files you've had in focus, like a browser's back and forward: every file you moved to, by any key or a click, lands on the section you were reading. Moving to a new file after going back drops what was ahead. With nothing more that way, they move along the layout instead (as below), and that step is kept in the same direction, so going back past the start carries on back and → retraces it. The history is kept in your browser per PR, so after a reload ← goes back to where you were last.</li>
-<li><strong>Shift + → / ←</strong> move along the layout: → follows an edge to a file this one leads into, ← to a file that leads into it, picking the nearest; with no edge that way, the nearest file in the next column.</li>
+<li><strong>→ / ←</strong> follow the dependency graph: → an edge to a file this one leads into, ← an edge to a file that leads into it, picking the nearest; with no edge that way, the nearest file in the next column.</li>
+<li><strong>Shift + ← / →</strong> go back and forth through the files you've had in focus, like a browser's back and forward: every file you moved to, by any key or a click, lands on the section you were reading. Moving to a new file after going back drops what was ahead, and at either end of the history they stop. The history is kept in your browser per PR, so after a reload Shift + ← goes back to where you were last.</li>
 <li><strong>↑ / ↓</strong> (with or without Shift) move to the file above or below in the same column.</li>
 </ul>
-<p>Every move, these included, is added to the history; ← / → themselves just walk it.</p>
+<p>Every move, these included, is added to the history; Shift + ← / → themselves just walk it.</p>
 <p><strong>Moving around the canvas.</strong></p>
 <div class="table"><table>
 <thead>

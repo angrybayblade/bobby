@@ -4,6 +4,7 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- **In Diff, the arrows follow the graph again:** ← and → move along the dependencies between files, and Shift + ← / → go back and forth through where you've been. A key you'd bound to the old Shift + arrow actions needs binding again.
 - **Writing a draft no longer moves things around:** saving or deleting one kept sending a long file back to its top, typing near the canvas's edge left the canvas off by a little until you reloaded, with zoom missing the point under the pointer, and a redraw put the caret at the start of what you were writing. A new comment box now opens fully in view, right under its line, with its file growing to fit it and nothing else moving unless it has to.
 - **Select lines beyond what you can see:** drag along the line numbers to the edge of the code and the lines scroll under the pointer, faster the further past the edge you go. A drag down the old side of a split view also no longer stops at lines only the new side has.
 
