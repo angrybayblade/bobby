@@ -304,6 +304,7 @@ export default {
     // a → b → c reads left to right even inside one band. The band is a label on the file, not a column.
     let columns = [], fileLinks = { prev: new Map(), next: new Map() };
     function layout(only = null) { // only: the viewers whose content changed; the rest keep their measured height
+      if (only) { measure(M.files.map((f) => views.get(f.path)).filter((v) => only.has(v.f.path))); return settle(); }
       for (const el of world.querySelectorAll(".bhead")) el.remove();
       const prev = new Map(M.files.map((f) => [f, new Set()])), next = new Map(M.files.map((f) => [f, new Set()]));
       for (const { a, b } of M.pairs) {
@@ -312,15 +313,7 @@ export default {
       }
       fileLinks = { prev, next };
       const files = [...M.files].sort((a, b) => BANDS.indexOf(a.band) - BANDS.indexOf(b.band) || a.order - b.order);
-      // Measure every viewer in one layout: all writes, then all reads, then all writes. Interleaving them
-      // forced a full layout per file.
-      const vs = files.map((f) => views.get(f.path)).filter((v) => !only || only.has(v.f.path));
-      // At natural size with its code shown (.measuring lifts the text clamp and the engaged hiding), so a viewer's
-      // height never depends on the zoom it was built at or on whether you were in a file.
-      for (const v of vs) { v.el.style.height = ""; v.el.classList.add("measuring"); }
-      const maxH = capH();
-      for (const v of vs) v.h = Math.min(maxH, v.el.offsetHeight);
-      for (const v of vs) { v.el.style.height = `${v.h}px`; v.el.classList.remove("measuring"); }
+      measure(files.map((f) => views.get(f.path)));
       const edges = [...next].flatMap(([a, bs]) => [...bs].map((b) => [a.path, b.path]));
       const L = layered(files.map((f) => f.path), edges, { h: (p) => views.get(p).h, gap: GY, compGap: GY * 2 + TOP });
       columns = [];
@@ -328,7 +321,7 @@ export default {
         const v = views.get(f.path), r = L.rank.get(f.path);
         (columns[r] ??= []).push(f);
         const at = placedBy.get(f.path) ?? { x: r * (W + GX), y: L.y.get(f.path) + TOP };
-        v.x = at.x; v.y = at.y;
+        v.x = at.x; v.y = v.y0 = at.y;
         v.el.style.transform = `translate(${v.x}px, ${v.y}px)`;
       }
       // Each group of linked files is headed by the cores it holds.
@@ -344,6 +337,31 @@ export default {
         h.textContent = text;
         h.style.transform = `translate(4px, ${comp.top}px) scale(var(--k, 1))`;
         world.querySelector(".over").appendChild(h);
+      }
+    }
+
+    // Measure every viewer in one layout: all writes, then all reads, then all writes. Interleaving them forced a full
+    // layout per file. At natural size with its code shown (.measuring lifts the text clamp and the engaged hiding), so
+    // a viewer's height never depends on the zoom it was built at or on whether you were in a file.
+    function measure(vs) {
+      for (const v of vs) { v.el.style.height = ""; v.el.classList.add("measuring"); }
+      const maxH = capH();
+      for (const v of vs) v.h = Math.min(maxH, v.el.offsetHeight);
+      for (const v of vs) { v.el.style.height = `${v.h}px`; v.el.classList.remove("measuring"); }
+    }
+    // A viewer that changed size stays where it is, and so does the graph: laying it out again would move the file you're
+    // writing in, and files in every other column. Only what it would now cover, below it, makes room, and goes back
+    // once it needn't (y0: where the layout put it).
+    function settle() {
+      const cols = new Map();
+      for (const v of views.values()) (cols.get(v.x) ?? cols.set(v.x, []).get(v.x)).push(v);
+      for (const col of cols.values()) {
+        let floor = -Infinity;
+        for (const v of col.sort((a, b) => a.y0 - b.y0)) {
+          const y = Math.max(v.y0, floor);
+          floor = y + v.h + GY;
+          if (y !== v.y) { v.y = y; v.el.style.transform = `translate(${v.x}px, ${y}px)`; }
+        }
       }
     }
 
@@ -856,7 +874,7 @@ export default {
         held.moved = true;
         const v = held.v;
         v.el.classList.add("held");
-        v.x = held.ox + dx; v.y = held.oy + dy;
+        v.x = held.ox + dx; v.y = v.y0 = held.oy + dy;
         v.el.style.transform = `translate(${v.x}px, ${v.y}px)`;
         placedBy.set(v.f.path, { x: v.x, y: v.y });
         redraw();
