@@ -541,7 +541,7 @@ export function renderNode(app, el, pid, { head = true } = {}) {
 export const renderPage = (app, el, pid) => renderNode(app, el, pid);
 /** Before a render: if you're typing in el (a comment, a reply, an edit), what puts you back in its box afterwards,
  *  caret and all. A poll or a mark can redraw the code under you at any keystroke. */
-function replying(el) {
+export function replying(el) {
   const a = document.activeElement;
   const attr = ["data-composer", "data-rbox", "data-gedit"].find((x) => a?.matches?.(`textarea[${x}]`));
   if (!attr || !el.contains(a)) return null;

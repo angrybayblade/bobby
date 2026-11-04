@@ -172,12 +172,14 @@ export default {
       const sameNode = reason === "marks" || reason === "comments";
       const oldPane = root.querySelector(".pane, .nbody");
       const scroll = sameNode && oldPane ? oldPane.scrollTop : null;
+      const typing = app.keepTyping(root);
       root.innerHTML = ring(slide) + (paged ? `<div class="pane"></div>` : "");
       const codeEl = root.querySelector(".pane, .nbody");
       if (paged) app.renderPage(codeEl, app.focus);
       else app.renderNode(codeEl, app.focus);
       app.keepScroll(codeEl); // where you'd scrolled to on this node
       if (scroll != null) codeEl.scrollTop = scroll;
+      typing?.();
       ro.disconnect();
       ro.observe(root.querySelector(".focus")); // folding/composing resizes the card: redraw the connectors
       requestAnimationFrame(wire);

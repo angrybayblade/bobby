@@ -3,7 +3,7 @@ import { syncViewed } from "./viewed.js";
 import { report, reportErrors } from "./report.js";
 import { agentPillClick, agentPoll, nextFinding, openAsk } from "./agent.js";
 import { DONE, LOW, api, createApp, esc, reviewBase } from "./core.js";
-import { escapeCode, inspectorKey, inspectorOpen, wireRefs, expandAll, keepDraft, moveLine, renderFile, renderNode, renderPage, startComment, startFileNote } from "./code.js";
+import { escapeCode, inspectorKey, inspectorOpen, wireRefs, expandAll, keepDraft, moveLine, renderFile, replying, renderNode, renderPage, startComment, startFileNote } from "./code.js";
 import * as chrome from "./chrome.js";
 import { nextUnresolved, togglePR } from "./comments.js";
 import { offerClaude } from "./claude-setup.js";
@@ -107,6 +107,7 @@ app.renderPage = (el, pid) => { app.pageEl = el; renderPage(app, el, pid ?? app.
 app.renderNode = (el, pid) => { app.pageEl = el; renderNode(app, el, pid ?? app.focus, { head: false }); };
 // A whole file (sections = placement ids in file order) for file-level views.
 app.renderFile = (el, pids) => renderFile(app, el, pids);
+app.keepTyping = replying; // for a view that replaces what holds the code: called before, and what it returns after
 app.noteOnFile = (el, path) => startFileNote(app, el, path); // el: the renderFile container showing path
 app.keepDraft = (c) => keepDraft(app, c);
 
