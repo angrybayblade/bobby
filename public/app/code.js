@@ -6,6 +6,7 @@ import { BAND_TEXT, DONE, LOW, api, esc, glide, live } from "./core.js";
 import { MOD } from "./palette.js";
 import { keyHtml, keyName } from "./keys.js";
 import { reactionClick } from "./reactions.js";
+import { replying } from "./keepplace.js";
 import { edgeSpeed } from "./onstage.js";
 import { stackChip, stackNote } from "./stack.js";
 import { bubble, cancelEdit, closeReply, scrollerOf, deletePosted, fileKey, newLines, notesFor, outside, setReactions, placeNotes, postReply, resolveThread, saveEdit, showFull, startEdit, startReply, threadsAt, toggleItem, typeEdit, typeReply } from "./comments.js";
@@ -540,16 +541,6 @@ export function renderNode(app, el, pid, { head = true } = {}) {
   placeNotes(el, app);
 }
 export const renderPage = (app, el, pid) => renderNode(app, el, pid);
-/** Before a render: if you're typing in el (a comment, a reply, an edit), what puts you back in its box afterwards,
- *  caret and all. A poll or a mark can redraw the code under you at any keystroke. */
-export function replying(el) {
-  const a = document.activeElement;
-  const attr = ["data-composer", "data-rbox", "data-gedit"].find((x) => a?.matches?.(`textarea[${x}]`));
-  if (!attr || !el.contains(a)) return null;
-  const sel = `textarea[${attr}="${CSS.escape(a.getAttribute(attr))}"]`, at = [a.selectionStart, a.selectionEnd], top = a.scrollTop;
-  return () => { const b = el.querySelector(sel); if (b) { b.focus({ preventScroll: true }); b.setSelectionRange(...at); b.scrollTop = top; } };
-}
-
 /** A whole file for file-level viewers: one section per node in file order, each with its comments, nothing collapsed. */
 export function renderFile(app, el, pids) {
   const rerender = () => renderFile(app, el, pids);

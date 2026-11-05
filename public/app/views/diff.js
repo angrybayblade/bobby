@@ -7,6 +7,7 @@ import { bubble, fileCount, fileStamp, fileState, toggleFile } from "../comments
 import { BANDS, esc, glide } from "../core.js";
 import { injectCss } from "./flow.js";
 import { layered } from "./layered.js";
+import { stacked } from "../keepplace.js";
 import { nudge } from "../onstage.js";
 import { keyName } from "../keys.js";
 
@@ -356,12 +357,7 @@ export default {
       const cols = new Map();
       for (const v of views.values()) (cols.get(v.x) ?? cols.set(v.x, []).get(v.x)).push(v);
       for (const col of cols.values()) {
-        let floor = -Infinity;
-        for (const v of col.sort((a, b) => a.y0 - b.y0)) {
-          const y = Math.max(v.y0, floor);
-          floor = y + v.h + GY;
-          if (y !== v.y) { v.y = y; v.el.style.transform = `translate(${v.x}px, ${y}px)`; }
-        }
+        for (const [v, y] of stacked(col, GY)) if (y !== v.y) { v.y = y; v.el.style.transform = `translate(${v.x}px, ${y}px)`; }
       }
     }
 
