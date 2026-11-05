@@ -7,6 +7,7 @@ The CLI is the public release: it needs `git`, and `gh` signed in for PRs (Bobby
 
 ## After 0.1.0
 
+- Authored review graphs and the hub: an author's agent writes a code-free graph, uploads it, and reviewers open the PR in its order. Drafts: [specs/review-graph-v2.md](specs/review-graph-v2.md), [specs/hub.md](specs/hub.md).
 - macOS code signing and notarization, and publishing to npm.
 - Generated files: one detector, so the Generated switch also covers `dist/`, `build/`, `vendor/`, `.min.js` and `.map` (now only on the Low-signal page, from `src/diff.ts`).
 - Highlighting a slice that starts inside a multi-line string, template literal or Python docstring (block comments are handled).
