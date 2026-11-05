@@ -11,7 +11,7 @@ There's no bundler or dev server. Edit `public/` and reload the page; restart th
 
 ## Releasing
 
-For **0.1.0**, first remove the release-candidate compatibility guards (`git grep -n 'TODO(0.1.0)'`). Then bump `version` in `package.json`, move `CHANGELOG.md`'s **Unreleased** entries under the new version, commit, then tag and push the tag:
+Bump `version` in `package.json`, move `CHANGELOG.md`'s **Unreleased** entries under the new version, commit, then tag and push the tag:
 
 ```sh
 git tag 0.2.0 && git push origin 0.2.0      # 0.2.0-rc0 makes a pre-release
