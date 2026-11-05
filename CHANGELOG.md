@@ -4,6 +4,10 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+## 0.1.0-rc20 (2026-11-05)
+
+The last check before 0.1.0: GitHub failures say what to do, `bobby doctor` shows what's set up, and in Diff the arrows follow the dependency graph, with Shift + arrows for your history. Writing a draft no longer moves things around, and selecting lines scrolls when you reach the edge.
+
 - **GitHub failures say what to do:** a private repo you can't see, an organization's single sign-on, an expired sign-in or a typo'd PR now get one sentence naming the account in use and the command that fixes it.
 - **`bobby doctor`:** what Bobby relies on and how each stands, with what to do about each problem, ready to paste into a bug report.
 - **In Diff, the arrows follow the graph again:** ← and → move along the dependencies between files, and Shift + ← / → go back and forth through where you've been. A key you'd bound to the old Shift + arrow actions needs binding again.
