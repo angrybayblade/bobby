@@ -1,39 +1,18 @@
 # Before 0.1.0
 
-The CLI is the public release: it needs `git`, `gh` (logged in) and SSH access to GitHub. A hosted Bobby comes later.
+The CLI is the public release: it needs `git`, and `gh` signed in for PRs (Bobby offers to set `gh` up). A hosted Bobby comes later.
 
-## Setup and onboarding
-
-- [x] Clone over HTTPS with gh's sign-in (as the fetch does), not with `gh repo clone`, which followed gh's `git_protocol`
-      into the user's SSH setup; SSH only if HTTPS fails and the user allows it.
-- [ ] Check the requirements up front, not halfway through a review: `git`, `gh` installed, `gh auth status`, and
-      `ssh -T git@github.com`. Each failure names the one command that fixes it.
-- [ ] Home page: a setup card in place of the PR lists while something's missing (signed in as whom, what to run),
-      with "Check again".
-- [ ] Translate gh and git failures into one sentence naming the account in use: logged out, SSO not authorized for
-      the org, a private repo's "Repository not found", SSH key refused.
-- [ ] `bobby doctor`: git, gh, the account, per-org SSO, SSH, Claude login, language servers; something to paste into
-      a bug report.
-- [ ] Ask only when it's needed: a local branch review needs no GitHub; the Claude tree is optional ("works without it").
-- [ ] install.sh: offer to install gh and run `gh auth login`.
-- [ ] README and getting-started: the requirements above, stated once.
-
-## Review UI
-
-- [x] Conversation view: description, timeline, threads with replies, reviewers, CI, mergeability.
-- [x] Conversation: resolve and unresolve threads; reactions; edit or delete your own comments.
-- [ ] Generated files: one detector, so the Generated switch also covers `dist/`, `build/`, `vendor/`, `.min.js` and
-      `.map` (now only on the Low-signal page, from `src/diff.ts`).
-- [ ] Highlighting a slice that starts inside a multi-line string, template literal or Python docstring (block
-      comments are handled).
-
-## Release
-
-- [ ] Remove the release-candidate compatibility guards (`git grep -n 'TODO(0.1.0)'`), then follow
-      [Releasing](docs/contributing.md#releasing).
+- [ ] Turn on private vulnerability reporting for the repo, which `SECURITY.md` points to.
+- [ ] Release candidate: tag it, then on a machine with no `gh` or Claude, and on Windows, try the install script, first-run setup, a private PR and `bobby update`.
+- [ ] Decide what the `bobby.review-graph/v1` format promises in a stable release, and say so in `SPEC.md`.
+- [ ] Follow [Releasing](docs/contributing.md#releasing).
 
 ## After 0.1.0
 
+- macOS code signing and notarization, and publishing to npm.
+- Generated files: one detector, so the Generated switch also covers `dist/`, `build/`, `vendor/`, `.min.js` and `.map` (now only on the Low-signal page, from `src/diff.ts`).
+- Highlighting a slice that starts inside a multi-line string, template literal or Python docstring (block comments are handled).
+- `install.sh`: offer to install `gh` and run `gh auth login` (Bobby's page does this on first run).
 - PR actions from Bobby: merge (once checks pass, with GitHub's merge methods), request reviewers, mark ready for review, labels.
 - Whole-stack review: a stack's PRs in one review at `/s/<owner>/<repo>/<stack>`, entered from the stack bar, beside
   the per-PR review rather than in its place. One graph merged from each layer's own (each still diffed against the
