@@ -2,9 +2,7 @@
 
 The CLI is the public release: it needs `git`, and `gh` signed in for PRs (Bobby offers to set `gh` up). A hosted Bobby comes later.
 
-- [ ] Turn on private vulnerability reporting for the repo, which `SECURITY.md` points to.
 - [ ] Release candidate: tag it, then on a machine with no `gh` or Claude, and on Windows, try the install script, first-run setup, a private PR and `bobby update`.
-- [ ] Decide what the `bobby.review-graph/v1` format promises in a stable release, and say so in `SPEC.md`.
 - [ ] Follow [Releasing](docs/contributing.md#releasing).
 
 ## After 0.1.0

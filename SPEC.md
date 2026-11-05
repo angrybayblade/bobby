@@ -6,6 +6,8 @@
 - Views render a graph. This repo ships four: Flow, Outline, Lens and Diff. (Conversation and Map read the PR's conversation and Claude's behaviour map from the server instead.)
 - Neither side knows about the other, so any extractor works with any view.
 
+**This format may still change until Bobby reaches 1.0.** Stable releases before then can change it without a new version in its name, so a tool that generates or reads these files should expect to follow along.
+
 The machine-readable schema is in [`schema/review-graph.v1.schema.json`](schema/review-graph.v1.schema.json).
 
 ```sh
