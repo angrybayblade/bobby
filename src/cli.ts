@@ -13,6 +13,7 @@ import { resolve, reviewId, start, type ReviewOptions } from "./review.ts";
 import { noteRecent, recentOf } from "./recents.ts";
 import { openCommand, runningApp } from "./running.ts";
 import { ensureApp, serveStdio } from "./bridge.ts";
+import { doctor } from "./doctor.ts";
 import { type App, startServer, type Session } from "./server.ts";
 import pkg from "../package.json" with { type: "json" };
 import * as log from "./log.ts";
@@ -65,6 +66,8 @@ const USAGE = `bobby: review a PR one focused page at a time
   bobby clean [--repos]              remove caches and exported trees (and with --repos, the clones
                                      in ~/.bobby/repos); your reviews' progress stays
   bobby logs [n]                     the log's last n lines (default 80) and where it is: for a bug report
+  bobby doctor                       what Bobby relies on and how each stands, with what to do about
+                                     each problem: for you, or to paste into a bug report
   bobby start                        start Bobby in the background (if it isn't running), for bobby <pr>
                                      to hand reviews to
   bobby stop                         stop the Bobby running here (as one bobby start or bobby mcp started)
@@ -91,7 +94,7 @@ const USAGE = `bobby: review a PR one focused page at a time
   --ssh          if cloning over HTTPS (with gh's sign-in) fails, try SSH without asking
   -v, --version  print the version`;
 
-const [cmd, arg] = ["extract", "open", "lsp", "clean", "home", "update", "logs", "mcp", "stop", "start"].includes(positionals[0]) ? [positionals[0], positionals[1]] : ["review", positionals[0]];
+const [cmd, arg] = ["extract", "open", "lsp", "clean", "home", "update", "logs", "doctor", "mcp", "stop", "start"].includes(positionals[0]) ? [positionals[0], positionals[1]] : ["review", positionals[0]];
 if (cmd !== "logs" && !values.version && !values.help) log.started(pkg.version, process.argv.slice(2));
 // bobby logs: where the log is, and its last lines, to paste into a bug report
 if (cmd === "logs") {
@@ -139,6 +142,7 @@ if (cmd === "stop") {
   console.log(holder() ? `Asked Bobby (pid ${other.pid}) to stop, but it's still running.` : `✓ stopped the Bobby on port ${other.port}`);
   process.exit(holder() ? 1 : 0);
 }
+if (cmd === "doctor") process.exit(await doctor(pkg.version));
 if (cmd === "update") {
   await selfUpdate(arg, (m) => log.info(m));
   const other = holder(); // it holds the old binary in memory

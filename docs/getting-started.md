@@ -126,6 +126,7 @@ bobby open <graph.json> [--repo dir]  # open the UI on an existing graph file
 bobby lsp                             # the language servers behind the inspector, by language
 bobby lsp install <language>          # install one (typescript, python), or say how (go, rust, cpp)
 bobby logs [n]                        # the log's last n lines (default 80), and where the whole log is
+bobby doctor                          # what Bobby relies on and how each stands, with what to do about each problem
 bobby start                           # start Bobby in the background, if it isn't running, for bobby <pr> to hand reviews to
 bobby stop                            # stop the Bobby running here (as one bobby start or bobby mcp started)
 bobby mcp                             # an MCP server for your agents: see below
@@ -214,6 +215,8 @@ Bobby tidies up once a day on its own: cached files for commits not opened in a 
 The fetch also writes refs under `refs/bobby/<n>/` in the clone. They're harmless; remove them with `git for-each-ref --format='%(refname)' refs/bobby | xargs -n1 git update-ref -d`.
 
 ## Reporting a problem
+
+`bobby doctor` lists what Bobby relies on (`git`, `gh`, your GitHub account and which organizations are waiting on single sign-on, Claude, the language servers) and how each stands, with what to do about each problem. It changes nothing, tries SSH only if you've allowed cloning over it, and exits non-zero if something a PR review needs is missing. Its report leaves out your Claude email and shortens your home folder, so it's safe to paste into a bug report, though it does name your GitHub account.
 
 `bobby logs` prints the end of Bobby's log and where the whole of it is (`~/.bobby/logs/bobby.log`). Attach it, or those lines, to a bug report: each run starts with Bobby's version, platform and command, and failures come with what git or gh said and a stack trace. GitHub and Anthropic tokens are blanked out before anything is written, but the log does name your repos, branches and PR titles, so read it before you share it. `BOBBY_DEBUG=1` adds detail (what Claude started with) to the terminal and the log.
 
