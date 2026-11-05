@@ -5,7 +5,8 @@ import { existsSync } from "node:fs";
 import type { PrInfo } from "./types.ts";
 import type { Discussion, GDiscussion, GOutdated, PendingReview, Reaction } from "./graph.ts";
 import { home } from "./state.ts";
-import { ghBin } from "./github.ts";
+import { classify, explain, namesAccount } from "./explain.ts";
+import { ghBin, ghStatus } from "./github.ts";
 
 // Programs found on a PATH. Searching PATH on every spawn is most of a spawn's cost; one not found isn't kept, so it's
 // seen once it's installed.
@@ -48,7 +49,12 @@ export async function run(
   if (timedOut) { const s = Math.round(opts.timeoutMs! / 1000); log.toFile("warn", `${said.join(" ")}: no answer in ${s} s`); throw new Error(`${said.slice(0, 2).join(" ")} gave no answer in ${s >= 120 ? `${Math.round(s / 60)} min` : `${s} s`}`); }
   if (code !== 0 && !opts.allowFail) {
     log.toFile("warn", `${said.join(" ").slice(0, 400)} failed (${code})${opts.cwd ? ` in ${opts.cwd}` : ""}`, (err.trim() || out.trim()).slice(-2000));
-    throw new Error(`${said.slice(0, 3).join(" ")} failed (${code}): ${err.trim() || out.trim()}`);
+    const text = err.trim() || out.trim(), kind = said[0] === "gh" || said[0] === "git" ? classify(text) : null;
+    if (kind) {
+      const envToken = process.env.GH_TOKEN ? "GH_TOKEN" : process.env.GITHUB_TOKEN ? "GITHUB_TOKEN" : undefined;
+      throw new Error(explain(kind, text, { envToken, login: namesAccount(kind) ? (await ghStatus()).login : undefined }));
+    }
+    throw new Error(`${said.slice(0, 3).join(" ")} failed (${code}): ${text}`);
   }
   return out;
 }
