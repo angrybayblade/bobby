@@ -6,7 +6,7 @@ const $ = (q) => document.querySelector(q);
 export const MOD = /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl";
 const MAX = 80; // rows drawn at once; the rest is a few more letters away
 
-let app, items = [], rows = [], active = 0;
+let app, items = [], rows = [], active = 0, typed = () => [], opened = 0;
 const recent = []; // item ids, most recent first, for this tab
 
 export const isOpen = () => !$("#overlay").hidden && !!$("#overlay > .palette");
@@ -14,35 +14,49 @@ export function close() { $("#overlay").hidden = true; }
 
 /**
  * Opens the palette. Each command is { id, title, sub?, keys?: string[], run }; cores, files and pages are added
- * from the graph, so it searches whatever the walk currently shows.
+ * from the graph, so it searches whatever the walk currently shows. Optionally, `o.later` is a promise of more items,
+ * or several (other PRs: they need the server), added when they come, less any it already has; `o.typed(q)` gives items for what's typed (a PR's link).
+ * An item with `pin` is listed before anything's typed; one with `href` opens there in a new tab on ⌘/Ctrl+Enter.
  */
-export function open(a, commands) {
+export function open(a, commands, o = {}) {
   app = a;
+  typed = o.typed ?? (() => []);
   items = [...commands.map((c) => ({ group: "command", ...c })), ...cores(), ...files(), ...pages()];
-  const o = $("#overlay");
-  o.innerHTML = `<div class="modal palette" role="dialog" aria-modal="true" aria-label="Command palette">
-    <input type="text" placeholder="Search commands, cores, files, pages…" aria-label="Search" aria-controls="plist" autocomplete="off" spellcheck="false">
+  const ov = $("#overlay"), me = ++opened;
+  ov.innerHTML = `<div class="modal palette" role="dialog" aria-modal="true" aria-label="Command palette">
+    <input type="text" placeholder="Search commands, cores, files, pages, PRs…" aria-label="Search" aria-controls="plist" autocomplete="off" spellcheck="false">
     <div class="plist" id="plist" role="listbox"></div>
-    <div class="pfoot"><span><kbd>↑</kbd> <kbd>↓</kbd> choose</span><span><kbd>enter</kbd> run</span><span><kbd>esc</kbd> close</span></div>
+    <div class="pfoot"><span><kbd>↑</kbd> <kbd>↓</kbd> choose</span><span><kbd>enter</kbd> run</span><span><kbd>${MOD}</kbd> <kbd>enter</kbd> PR in a new tab</span><span><kbd>esc</kbd> close</span></div>
   </div>`;
-  o.hidden = false;
-  const input = o.querySelector("input"), list = o.querySelector(".plist");
+  ov.hidden = false;
+  const input = ov.querySelector("input"), list = ov.querySelector(".plist");
   input.addEventListener("input", () => { active = 0; draw(input.value); });
   input.addEventListener("keydown", (ev) => {
     const d = ev.key === "ArrowDown" || (ev.ctrlKey && ev.key === "n") ? 1 : ev.key === "ArrowUp" || (ev.ctrlKey && ev.key === "p") ? -1 : 0;
     if (d) { ev.preventDefault(); return select(active + d); }
-    if (ev.key === "Enter") { ev.preventDefault(); return run(rows[active]); }
+    if (ev.key === "Enter") { ev.preventDefault(); return run(rows[active], ev.metaKey || ev.ctrlKey); }
     if (ev.key === "Escape") { ev.preventDefault(); close(); }
   });
   list.addEventListener("mousemove", (ev) => { const r = ev.target.closest("[data-pi]"); if (r && Number(r.dataset.pi) !== active) select(Number(r.dataset.pi)); });
-  list.addEventListener("click", (ev) => { const r = ev.target.closest("[data-pi]"); if (r) run(rows[Number(r.dataset.pi)]); });
+  list.addEventListener("click", (ev) => { const r = ev.target.closest("[data-pi]"); if (r) run(rows[Number(r.dataset.pi)], ev.metaKey || ev.ctrlKey); });
   active = 0;
   draw("");
   input.focus();
+  // more items on their way, maybe in several batches: added in place, keeping the row you're on
+  for (const p of [o.later ?? []].flat()) p.then((got) => {
+    const more = (got ?? []).filter((m) => !items.some((it) => it.id === m.id));
+    if (me !== opened || !isOpen() || !more.length) return;
+    const on = rows[active]?.id;
+    items = [...items, ...more];
+    draw(input.value);
+    const at = rows.findIndex((r) => r.id === on);
+    if (at >= 0 && at !== active) select(at);
+  }, () => {});
 }
 
-function run(it) {
+function run(it, tab = false) {
   if (!it) return;
+  if (tab && it.href) return void window.open(it.href, "_blank", "noopener"); // the palette stays: open several
   recent.splice(0, recent.length, it.id, ...recent.filter((x) => x !== it.id).slice(0, 7));
   close();
   it.run();
@@ -125,19 +139,22 @@ function score(words, it) {
   }
   return { s: s + GROUP_WEIGHT[it.group], th, sh };
 }
-const GROUP_WEIGHT = { command: 12, core: 8, file: 4, page: 0 };
+const GROUP_WEIGHT = { command: 12, core: 8, pr: 6, file: 4, page: 0 };
 
 const marked = (text, hits) => text.split("").map((ch, i) => (hits?.has(i) ? `<mark>${esc(ch)}</mark>` : esc(ch))).join("");
 
 function draw(q) {
   const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (!words.length) {
-    // Nothing typed: what you ran last, then every command and core. Files and pages wait for a query.
+    // Nothing typed: what you ran last, the other reviews open in this Bobby, then every command and core. Files,
+    // pages and other PRs wait for a query.
     const byId = new Map(items.map((it) => [it.id, it]));
     const last = recent.map((id) => byId.get(id)).filter(Boolean);
-    rows = [...last, ...items.filter((it) => (it.group === "command" || it.group === "core") && !last.includes(it))].map((it) => ({ ...it, m: null }));
+    rows = [...last, ...items.filter((it) => (it.pin || it.group === "command" || it.group === "core") && !last.includes(it)).sort((a, b) => !!b.pin - !!a.pin)].map((it) => ({ ...it, m: null }));
   } else {
-    rows = items.map((it, i) => ({ ...it, i, m: score(words, it) })).filter((it) => it.m).sort((a, b) => b.m.s - a.m.s || a.i - b.i);
+    // a PR's link or number, typed: opening it comes first
+    rows = [...typed(q).filter((t) => !items.some((it) => it.id === t.same)).map((it) => ({ ...it, m: null })),
+      ...items.map((it, i) => ({ ...it, i, m: score(words, it) })).filter((it) => it.m).sort((a, b) => b.m.s - a.m.s || a.i - b.i)];
   }
   const total = rows.length;
   rows = rows.slice(0, MAX);
