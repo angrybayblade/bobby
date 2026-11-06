@@ -12,6 +12,7 @@ import { offerGh } from "./gh-setup.js";
 import * as palette from "./palette.js";
 import * as tour from "./tour.js";
 import { goTo, openStack } from "./stack.js";
+import { openReview, prItems, typedItem } from "./prs.js";
 import { openCommits } from "./commits.js";
 import { ACTIONS, actionFor, keyHtml, keyOfEvent, keysOf, keyText } from "./keys.js";
 import allViews from "./views/index.js";
@@ -427,6 +428,7 @@ function commands() {
     ...ACTIONS.filter((a) => a.id !== "switchTree" || (app.claudeReady && app.graph.generator.tree !== "claude"))
       .filter((a) => !a.id.startsWith("view:") || views.some((v) => `view:${v.id}` === a.id && v.id !== currentId)) // only views this review has
       .map((a) => ({ id: `key:${a.id}`, title: a.title, keys: keysOf(app.settings, a.id).slice(0, 1).flatMap((k) => keyText(k).split(" ")), run: () => runAction(a.id, { learn: false }) })),
+    { id: "home", title: "Home", sub: "your PRs and recent reviews", run: () => (location.href = "/") },
     { id: "keys", title: "Customize keyboard shortcuts", sub: "bind any action to the keys you like", run: () => chrome.keysEditor() },
     { id: "tour", title: "Take the tour", sub: "how the walk, the views and the keys fit together", run: () => tour.start() },
     { id: "gh", title: "Set up GitHub CLI", sub: "install gh and sign in to GitHub, for PRs and posting reviews", run: () => offerGh({ force: true }) },
@@ -442,12 +444,25 @@ function commands() {
   ];
 }
 
+// ---- other PRs in the palette: the reviews you've opened (from the server at once), then GitHub's lists (gh, cached
+// for a minute), and any PR typed by link or number
+function otherPrs() {
+  const here = decodeURIComponent(reviewBase.slice(3)), repo = app.graph.pr.provider === "local" ? null : `${app.graph.pr.owner}/${app.graph.pr.repo}`;
+  const opening = (it) => ({ ...it, run: () => openReview(it.open, { toast: chrome.toast, setupGh: (arg) => offerGh({ force: true, then: arg }) }) });
+  const get = (u) => fetch(u).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const home = get("/api/home");
+  return {
+    later: [home.then((h) => prItems(h, null, here).map(opening)), Promise.all([home, get("/api/home/prs")]).then(([h, l]) => prItems(h, l, here).map(opening))],
+    typed: (q) => typedItem(q, repo, here).map(opening),
+  };
+}
+
 document.addEventListener("keydown", (ev) => {
   if ((ev.metaKey || ev.ctrlKey) && !ev.altKey && !ev.shiftKey && ev.key.toLowerCase() === "k") {
     if (palette.isOpen()) { ev.preventDefault(); return palette.close(); }
     if (chrome.isOpen() || ev.target.matches?.("textarea, [contenteditable]")) return; // never over a modal or a half-written comment
     ev.preventDefault();
-    return palette.open(app, commands());
+    return palette.open(app, commands(), otherPrs());
   }
   if (chrome.isOpen() && ev.key === "Escape" && !ev.metaKey && !ev.ctrlKey && !ev.altKey) { ev.preventDefault(); return chrome.close(); } // from its text box too
   if (ev.ctrlKey && !ev.metaKey && !ev.altKey && !ev.shiftKey && !typing(ev.target) && !chrome.isOpen() && !inspectorOpen()) { // ctrl+ a key: the views

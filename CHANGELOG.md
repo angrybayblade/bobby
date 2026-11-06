@@ -4,6 +4,8 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- **Switch PRs from the palette:** ⌘K lists the other reviews open in this Bobby first, and searches the ones you've opened and GitHub's lists. Paste a PR link, or type `#123`, to open any other; ⌘↵ opens it in a new tab.
+
 ## 0.1.0-rc20 (2026-11-05)
 
 The last check before 0.1.0: GitHub failures say what to do, `bobby doctor` shows what's set up, and in Diff the arrows follow the dependency graph, with Shift + arrows for your history. Writing a draft no longer moves things around, and selecting lines scrolls when you reach the edge.

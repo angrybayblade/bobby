@@ -67,11 +67,13 @@ The breadcrumb bar shows where you are (`repo #n › core › page`) and the cur
 | `Q` | Review with Claude: its prompt, what it's doing, or its findings once it's done (the sparkles in the top bar) |
 | `l` | Layout for every file, and Map's before and after: inline or split (old beside new). Also the **Inline / Split** switch under the header; a file's own button switches just that file. |
 | `?` | All keys |
-| `⌘K` / `Ctrl+K` | Command palette: search every command, core, file and page by name, then `enter` to run or jump. Each command shows its key, so it's also a way to learn them. |
+| `⌘K` / `Ctrl+K` | Command palette: search every command, core, file, page and PR by name, then `enter` to run or jump. Each command shows its key, so it's also a way to learn them. |
 
 "Next" always follows the same walk, so switching views never changes what comes next.
 
 ### Your own keys
+
+**Other PRs from the palette.** With nothing typed, the palette lists the other reviews open in this Bobby first, so switching between them is ⌘K and `enter`. Type to search the reviews you've opened and the PRs on the home page's lists (review requested, yours, and the ones involving you) by number, title, repo or author. Paste a PR's link, or type `owner/repo#123`, or `#123` for this repo, to open any other. `enter` opens it in this tab, and `⌘↵` / `Ctrl+↵` in a new one, leaving the palette open. **Home** goes back to the home page.
 
 Every key above is a default. To change one, press `?`, then **Customize keys** (or **Keyboard shortcuts…** in settings, or search "keyboard shortcuts" with ⌘K). Each action lists its keys: **+** binds another (press it; `esc` cancels), **✕** removes one, and **reset** puts back the defaults. A key already bound to another action moves to this one, and the editor says which action lost it. Key hints, the key sheet, the palette, the tour and Bobby's messages all show your keys. Esc still closes what's open first, whatever you bind it to; ⌘-click and ⌘K aren't rebindable.
 
