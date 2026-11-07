@@ -1092,9 +1092,13 @@ function bind(app, el, rerender) {
       selectRange(app, el, app.page.anchor, { ...ds });
     }
   });
-  // ⌘/ctrl(+shift)-click on code inspects; the browser would act on the press first (shift extends the text selection
-  // from wherever it was), before the click reaches the inspector, so that's cancelled here, on the press.
-  el.addEventListener("mousedown", (ev) => { if ((ev.metaKey || ev.ctrlKey) && ev.button === 0 && ev.target.closest(".ln[data-key] code")) ev.preventDefault(); });
+  // ⌘/ctrl(+shift)-click on code inspects, and shift-click selects lines up to the anchor; the browser would act on the
+  // press first (shift extends the text selection from wherever it was), so that's cancelled here, on the press.
+  el.addEventListener("mousedown", (ev) => {
+    if (ev.button !== 0) return;
+    if ((ev.metaKey || ev.ctrlKey) && ev.target.closest(".ln[data-key] code")) ev.preventDefault();
+    else if (ev.shiftKey && app.page.anchor && ev.target.closest(".ln[data-key]")) ev.preventDefault();
+  });
   // While the button is down on the code, the selection's popover stays away (it would sit on what you're dragging
   // over); it comes back on release, once the click that ends the press has made the selection.
   el.addEventListener("mousedown", (ev) => {

@@ -5,6 +5,7 @@ What changed in each release, newest first. Each release's full notes, with inst
 ## Unreleased
 
 - **Fix: back from a page opened elsewhere, Diff lost the file.** Open code in Diff from the Map or the code viewer (**Show in diff**), press `esc`, and the canvas came back where it last was, with the file off to the side. It now frames the file.
+- **Fix: shift-click painted the code blue.** Selecting lines by shift-clicking also stretched the browser's text selection over everything in between. Only the lines are selected now.
 
 ## 0.1.0-rc21 (2026-11-06)
 
