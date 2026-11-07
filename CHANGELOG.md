@@ -4,6 +4,10 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+## 0.1.0-rc21 (2026-11-06)
+
+Switch between PRs from the palette, and a fix for files that showed only some of their changes.
+
 - **Fix: parts of a file went missing.** A hunk with a phrase like "auto-generated" or "DO NOT EDIT" anywhere in it was taken for generated code and hidden, so a file could show only some of its changes (+1 −0 where GitHub had +33 −22). Only a generator's comment in a file's first lines counts now, and it hides the whole file.
 - **Switch PRs from the palette:** ⌘K lists the other reviews open in this Bobby first, and searches the ones you've opened and GitHub's lists. Paste a PR link, or type `#123`, to open any other; ⌘↵ opens it in a new tab.
 
