@@ -4,6 +4,8 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- **Fix: back from a page opened elsewhere, Diff lost the file.** Open code in Diff from the Map or the code viewer (**Show in diff**), press `esc`, and the canvas came back where it last was, with the file off to the side. It now frames the file.
+
 ## 0.1.0-rc21 (2026-11-06)
 
 Switch between PRs from the palette, and a fix for files that showed only some of their changes.

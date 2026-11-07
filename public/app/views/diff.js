@@ -651,6 +651,13 @@ export default {
       pan = { x: 0, y: 0 };
       apply();
     }
+    /** Whether the camera as it stands shows the middle of this file's viewer. */
+    function onStage(act) {
+      const v = act && views.get(act.path);
+      if (!v) return false;
+      const s = cam.s, cx = (v.x + W / 2) * s + cam.tx + pan.x, cy = (v.y + Math.min(v.h, 400) / 2) * s + cam.ty + pan.y;
+      return cx > 0 && cx < stage.clientWidth && cy > 0 && cy < stage.clientHeight;
+    }
     // The focus moved (arrows, j/k, a click): keep the zoom and pan to the viewer. At the Core level it's
     // centred; at the Overview the camera only moves if the viewer isn't already on screen.
     function track() {
@@ -803,7 +810,10 @@ export default {
       if (reason === "comments") refresh(); // only the files whose comments or notes changed
       restyle();
       if (reason === "focus" && !selfFocus) { reveal(true); track(); setTimeout(follow, glide() === "smooth" ? 350 : 0); } // after the smooth scroll settles
-      if (reason === "level" && app.level === 1 && beforePage) { cam = beforePage.cam; pan = beforePage.pan; beforePage = null; apply(); }
+      if (reason === "level" && app.level === 1 && beforePage) { // the canvas as you left it, unless it never showed this file (a page opened from another view)
+        cam = beforePage.cam; pan = beforePage.pan; beforePage = null;
+        if (onStage(activeFile())) apply(); else frame();
+      }
       else if (reason === "resize" && M && Math.abs(capH() - builtCap) > 4) { // the stage changed shape: re-measure the viewers
         for (const v of views.values()) v.el.style.height = "";
         layout(); builtCap = capH(); if (filled) pin(views.get(filled.path)); beforePage = null; frame();
