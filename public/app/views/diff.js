@@ -505,7 +505,10 @@ export default {
         marker: l.dir === "down" ? "marker-end" : "marker-start",
         ...curve(v, anchor(v, l.from, p(v)).y, l.to, anchor(l.to, l.pid, p(l.to)).y),
       }));
-      if (app.level !== 2 && app.settings.edges !== "focus") shapes.unshift(...background(p, new Set(ls.flatMap((l) => [`${l.from}|${l.pid}`, `${l.pid}|${l.from}`]))));
+      // In a file the background is hidden (.engaged), so its lines stay as they are instead of being measured every
+      // frame (every relationship's two ends: most of a redraw on a large PR); letting go of the file redraws them.
+      const bgOn = app.level !== 2 && app.settings.edges !== "focus", bgHeld = bgOn && engaged;
+      if (bgOn && !bgHeld) shapes.unshift(...background(p, new Set(ls.flatMap((l) => [`${l.from}|${l.pid}`, `${l.pid}|${l.from}`]))));
       // write
       const rel = new Set(ls.map((l) => l.pid));
       for (const pid of new Set([...relShown, ...rel])) for (const s of world.querySelectorAll(`.sec[data-pid="${pid}"]`)) s.classList.toggle("rel", rel.has(pid));
@@ -547,7 +550,7 @@ export default {
       }
       const gone = (k, e) => { e.path.remove(); e.hit?.remove(); e.lbl?.remove(); if (drawn.get(k) === e) drawn.delete(k); };
       for (const [k, e] of drawn) {
-        if (keep.has(k) || e.out) continue;
+        if (keep.has(k) || e.out || (e.bg && bgHeld)) continue;
         if (!e.bg) { gone(k, e); continue; }
         e.path.classList.add("out"); e.hit?.classList.add("out");
         e.out = setTimeout(() => gone(k, e), 260);
