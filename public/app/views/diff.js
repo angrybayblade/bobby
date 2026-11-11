@@ -34,7 +34,9 @@ const CSS = `
 /* Off screen, a viewer's code isn't drawn or laid out until it comes near (it keeps its size: the viewer's height is set).
    ⌘F, focus and the edges' reads still reach it. */
 .dv .world .fv:not(.measuring) > .fvb { content-visibility: auto; contain-intrinsic-size: auto 300px; }
-.dv.engaged .world .fv:not(.w-focus):not(.active):not(.measuring) > .fvb { content-visibility: hidden; background: var(--bg); } /* hidden code has no height: measured shown */
+.dv.engaged .world .fv:not(.w-focus):not(.active):not(.measuring) > .fvb { content-visibility: hidden; overflow: hidden; background: var(--bg); } /* hidden code has no height: measured shown */
+/* overflow: hidden, as nothing scrolls it by hand there: a scroller you can scroll is a compositor layer of its own, and a
+   hundred of them made every frame of a camera move re-assign layers (~45ms a frame on a 130-file PR). Code still scrolls it. */
 .dv.engaged .fv.w-semi { opacity: .85; }
 .dv.engaged .fv.w-none { opacity: .6; }
 .dv.engaged svg.edges .bg { display: none; }
