@@ -291,6 +291,7 @@ export default {
         v.el.querySelector(".fvh").innerHTML = header(v.f);
         app.renderFile(v.body, v.f.sections.map((s) => s.pid));
         fileSigs.set(path, fileSig(path));
+        relStale = true;
       }
       if (changed.length) remeasure(changed, tops);
       return changed;
@@ -491,7 +492,7 @@ export default {
       return out;
     }
     const drawn = new Map(); // key → { path, lbl, d, … } currently on the page
-    let relShown = new Set();
+    let relShown = new Set(), relStale = false; // stale: a viewer re-rendered, so its sections lost their marks
     function draw() {
       const fg = world.querySelector("svg.edges g.fg"), bgl = world.querySelector("svg.edges g.bg");
       if (!fg) return;
@@ -511,8 +512,10 @@ export default {
       if (bgOn && !bgHeld) shapes.unshift(...background(p, new Set(ls.flatMap((l) => [`${l.from}|${l.pid}`, `${l.pid}|${l.from}`]))));
       // write
       const rel = new Set(ls.map((l) => l.pid));
-      for (const pid of new Set([...relShown, ...rel])) for (const s of world.querySelectorAll(`.sec[data-pid="${pid}"]`)) s.classList.toggle("rel", rel.has(pid));
-      relShown = rel;
+      if (relStale || rel.size !== relShown.size || [...rel].some((pid) => !relShown.has(pid))) { // searching the canvas for them is costly
+        for (const pid of new Set([...relShown, ...rel])) for (const s of world.querySelectorAll(`.sec[data-pid="${pid}"]`)) s.classList.toggle("rel", rel.has(pid));
+        relShown = rel; relStale = false;
+      }
       const near = new Set(engaged && v ? [v, ...ls.map((l) => l.to)] : []);
       // At the core level, changed files outside the current core sit back with the untouched ones.
       const core = app.level === 1 ? app.get(app.focus)?.core : null;
