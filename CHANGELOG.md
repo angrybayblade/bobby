@@ -6,6 +6,7 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 - **Fix: back from a page opened elsewhere, Diff lost the file.** Open code in Diff from the Map or the code viewer (**Show in diff**), press `esc`, and the canvas came back where it last was, with the file off to the side. It now frames the file.
 - **Fix: shift-click painted the code blue.** Selecting lines by shift-clicking also stretched the browser's text selection over everything in between. Only the lines are selected now.
+- **Diff moves smoothly on large PRs:** on a PR with a hundred-odd files, moving between files and pages dropped a quarter of its frames, and zooming between the overview and a core froze for nearly half a second. Both now run without stalls. Files you're not reading no longer show a scrollbar; click into one to scroll it.
 
 ## 0.1.0-rc21 (2026-11-06)
 
