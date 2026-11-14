@@ -10,7 +10,7 @@ import { selfUpdate, tidyUpdate, watchReleases } from "./updates.ts";
 import { hold, holder, home, loadSettings, loadState, saveSettings } from "./state.ts";
 import { allow, SERVERS, serverById, startServers, stopServers } from "./servers.ts";
 import { resolve, reviewId, start, type ReviewOptions } from "./review.ts";
-import { noteRecent, recentOf } from "./recents.ts";
+import { noteRecent, prLists, recentOf } from "./recents.ts";
 import { openCommand, runningApp } from "./running.ts";
 import { ensureApp, serveStdio } from "./bridge.ts";
 import { doctor } from "./doctor.ts";
@@ -297,6 +297,7 @@ if (cmd === "open") {
   });
   if (id) path = `/r/${id}`;
 }
+if (path === "/") void prLists({}); // the home page's first ask, and GitHub takes seconds: start it before the page asks
 await serve(app, path);
 
 // A review no page has asked about for 15 minutes (an open page polls every 10 s) is unloaded: its language servers,
