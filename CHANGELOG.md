@@ -4,6 +4,8 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- **The home page shows GitHub's lists straight away:** Review requested, My PRs and All waited 3–4 seconds on GitHub every time Bobby started. They now open on the lists from last time, and GitHub's fresh answer replaces them a few seconds later. A refresh keeps them on screen too, instead of going back to "Asking GitHub…".
+
 ## 0.1.0-rc22 (2026-11-11)
 
 Diff stays smooth on large PRs, and two fixes: back from a page opened elsewhere frames the file, and shift-click no longer selects the code as text.

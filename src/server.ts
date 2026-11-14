@@ -16,7 +16,7 @@ import { type Inspector, insideRepo, inspectSyntax, referencesSyntax, type Uses 
 import { declineServer, inspectorFor, installServer, recheckServer, type ServerInfo, serverInfoFor } from "./servers.ts";
 import { Repo } from "./resolve.ts";
 import { refreshDiscussion, type Update } from "./watch.ts";
-import { approvedOf, loadRecents, noteRecent, prLists } from "./recents.ts";
+import { approvedOf, lastPrLists, loadRecents, noteRecent, prLists } from "./recents.ts";
 import { type Conversation, conversation } from "./conversation.ts";
 import { type Stack, defineStack, markRestacks, retarget, savedBelow, stackOf } from "./stack.ts";
 import { idFromPath } from "./review.ts";
@@ -231,8 +231,11 @@ export function startServer(app: App, port: number, { hostname = "127.0.0.1", al
         return json({ settings: loadSettings(), me: await whoAmI(), release: app.release ?? null, version: pkg.version, recents, ...(app.waiting ? { waiting: app.waiting.arg } : {}) });
       }
       if (p === "/api/home/prs") {
-        const q = (k: string) => url.searchParams.get(k) ?? undefined;
-        return json(await prLists({ repo: q("repo"), author: q("author"), q: q("q") }, url.searchParams.has("fresh")));
+        const q = (k: string) => url.searchParams.get(k) ?? undefined, f = { repo: q("repo"), author: q("author"), q: q("q") };
+        // ?stale: last time's lists will do for now, if GitHub hasn't answered yet (asking again starts here; the page then waits for it)
+        const last = url.searchParams.has("stale") ? await lastPrLists(f) : null;
+        if (last) { void prLists(f); return json({ ...last, stale: true }); }
+        return json(await prLists(f, url.searchParams.has("fresh")));
       }
       if (req.method === "POST" && p === "/api/open") {
         const { arg, repo, cwd, base, refresh, noLlm, noLsp, ssh, sshAlways } = (await req.json().catch(() => ({}))) as { arg?: string; repo?: string; cwd?: string; base?: string; refresh?: boolean; noLlm?: boolean; noLsp?: boolean; ssh?: boolean; sshAlways?: boolean };

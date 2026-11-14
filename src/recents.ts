@@ -61,12 +61,23 @@ export function approvedOf(decision: string | null | undefined, verdicts: string
   return verdicts.includes("APPROVED") && !verdicts.includes("CHANGES_REQUESTED");
 }
 
-const lists = new Map<string, { at: number; value: Promise<PrLists> }>();
+type Filters = { repo?: string; author?: string; q?: string };
+const filtersOf = (f: Filters) => [f.repo && `repo:${f.repo.replace(/^https:\/\/github\.com\//, "").replace(/\/$/, "")}`, f.author && `author:${f.author.replace(/^@/, "")}`, f.q && f.q.replace(/[^\w\s.#/-]/g, " ")]
+  .filter(Boolean).join(" ");
+const lists = new Map<string, { at: number; value: Promise<PrLists>; done?: boolean }>();
+// The unfiltered lists, as GitHub last gave them: the home page opens on them while it asks again (asking takes seconds)
+const lastPath = () => join(home(), "cache", "pr-lists.json");
+/** The lists GitHub gave last time, from an earlier run too, for when the page would rather not wait: only unfiltered,
+ *  and only while the ones asked for aren't in yet. Null when there's nothing to show sooner. */
+export async function lastPrLists(f: Filters): Promise<(PrLists & { at: number }) | null> {
+  const key = filtersOf(f), hit = lists.get(key);
+  if (key || hit?.done) return null;
+  const file = Bun.file(lastPath());
+  return (await file.exists()) ? ((await file.json().catch(() => null)) as (PrLists & { at: number }) | null) : null;
+}
 /** Open PRs: waiting on your review, yours, and all that involve you; each narrowed by repo, author and text. Cached a minute. */
-export function prLists(f: { repo?: string; author?: string; q?: string }, fresh = false): Promise<PrLists> {
-  const filters = [f.repo && `repo:${f.repo.replace(/^https:\/\/github\.com\//, "").replace(/\/$/, "")}`, f.author && `author:${f.author.replace(/^@/, "")}`, f.q && f.q.replace(/[^\w\s.#/-]/g, " ")]
-    .filter(Boolean).join(" ");
-  const key = filters;
+export function prLists(f: Filters, fresh = false): Promise<PrLists> {
+  const filters = filtersOf(f), key = filters;
   const hit = lists.get(key);
   if (hit && !fresh && Date.now() - hit.at < 60_000) return hit.value;
   const search = (scope: string) => `search(query: ${JSON.stringify(`is:pr is:open archived:false ${scope} ${filters} sort:updated-desc`.replace(/\s+/g, " "))}, type: ISSUE, first: 50) { nodes { ...pr } }`;
@@ -82,11 +93,15 @@ export function prLists(f: { repo?: string; author?: string; q?: string }, fresh
     .then((out) => {
       const d = (JSON.parse(out) as { data: Record<"review" | "mine" | "all", { nodes: Raw[] }> }).data;
       const of = (k: "review" | "mine" | "all") => d[k].nodes.filter((x) => x?.url).map(listed); // an issue matches as {}
-      return { review: of("review"), mine: of("mine"), all: of("all") };
+      const got = { review: of("review"), mine: of("mine"), all: of("all") };
+      if (!key) void Bun.write(lastPath(), JSON.stringify({ ...got, at: Date.now() })).catch(() => {});
+      return got;
     })
     .catch((e) => { lists.delete(key); return { review: [], mine: [], all: [], error: String((e as Error).message ?? e) }; });
+  const entry: { at: number; value: Promise<PrLists>; done?: boolean } = { at: Date.now(), value };
+  void value.then(() => { entry.done = true; });
   lists.delete(key); // to the back: the oldest is first
-  lists.set(key, { at: Date.now(), value });
+  lists.set(key, entry);
   if (lists.size > 20) lists.delete(lists.keys().next().value!); // each search typed is a key
   return value;
 }

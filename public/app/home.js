@@ -72,6 +72,7 @@ const box = () => $("[name=q]");
 
 // ---- the lists
 let recents = home.recents ?? [], lists = { review: [], mine: [], all: [] }, loadingLists = true, listError = "";
+let listsFor = null; // the filters the lists shown were asked with: asking again for the same keeps them up meanwhile
 // the box searches unless it holds a PR to open
 const filters = () => ({ repo: $("[name=repo]").value, author: $("[name=author]").value, q: asLink(box().value) ? "" : box().value.trim() });
 /** The repo and author pickers: what's in your lists, keeping what's chosen. */
@@ -119,7 +120,8 @@ function render() {
   const listed = new Map([...lists.review, ...lists.mine, ...lists.all].map((x) => [`${x.owner}/${x.repo}/${x.number}`, x]));
   const rs = recents.map((r, i) => [r, i]).filter(([r]) => matches(r, f));
   const section = (title, body, n) => `<section><h2>${title}${n != null ? `<span class="n">${n}</span>` : ""}</h2>${body}</section>`;
-  const gh = (title, items, empty) => section(title, loadingLists ? `<div class="none">Asking GitHub…</div>` : listError ? `<div class="none">Couldn't list PRs: ${esc(listError)}</div>` : items.length ? items.map((x) => prRow(x, mine)).join("") : `<div class="none">${empty}</div>`, loadingLists || listError ? null : items.length);
+  const asking = loadingLists && listsFor !== JSON.stringify(f);
+  const gh = (title, items, empty) => section(title, asking ? `<div class="none">Asking GitHub…</div>` : listError ? `<div class="none">Couldn't list PRs: ${esc(listError)}</div>` : items.length ? items.map((x) => prRow(x, mine)).join("") : `<div class="none">${empty}</div>`, asking || listError ? null : items.length);
   $(".lists").innerHTML = [
     section("Recents", rs.length ? rs.map(([r, i]) => recentRow(r, i, listed)).join("") : `<div class="none">${recents.length ? "None match the filters." : "Reviews you open show here, with how far you got."}</div>`, rs.length || null),
     gh("Review requested", lists.review, "Nothing waiting on your review."),
@@ -129,14 +131,18 @@ function render() {
   select(Math.min(sel, rows().length - 1));
   fillPickers();
 }
-async function loadLists(fresh = false) {
-  const f = filters(), q = new URLSearchParams(Object.entries(f).filter(([, v]) => v));
+/** Asks GitHub for the lists. stale: last time's will do while GitHub answers (it takes seconds), as the page opens. */
+async function loadLists(fresh = false, stale = false) {
+  const f = filters(), key = JSON.stringify(f), q = new URLSearchParams(Object.entries(f).filter(([, v]) => v));
   if (fresh) q.set("fresh", "1");
+  if (stale) q.set("stale", "1");
   loadingLists = true; $(".reload").classList.add("spin"); render();
   const got = await json(`/api/home/prs?${q}`).catch((e) => ({ error: e.message }));
-  if (JSON.stringify(filters()) !== JSON.stringify(f)) return; // the filters changed meanwhile: a newer ask is on its way
-  loadingLists = false; listError = got.error ?? ""; $(".reload").classList.remove("spin");
+  if (JSON.stringify(filters()) !== key) return; // the filters changed meanwhile: a newer ask is on its way
+  listError = got.error ?? ""; listsFor = key;
   lists = { review: got.review ?? [], mine: got.mine ?? [], all: got.all ?? [] };
+  if (got.stale) { render(); return loadLists(); } // last time's: up now, and the reload spins until GitHub's answer
+  loadingLists = false; $(".reload").classList.remove("spin");
   render();
 }
 
@@ -268,7 +274,7 @@ setInterval(() => loadLists(), 180_000);
 
 render();
 asked = JSON.stringify(filters());
-loadLists();
+loadLists(false, true);
 
 // GitHub's CLI, then Claude Code: each offered the first time it isn't set up, GitHub's first (Bobby needs it for PRs);
 // the header keeps a way back to each while it isn't. A PR asked for before gh was set up (?open=) opens once it is.
