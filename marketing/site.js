@@ -5,7 +5,6 @@
 // and the app carries s1…sN (every step reached) for the layout to move with.
 const story = document.querySelector("[data-story]");
 const app = document.querySelector("[data-app]");
-const frame = document.querySelector(".frame");
 const viewport = document.querySelector(".viewport");
 const caps = [...document.querySelectorAll("[data-cap]")];
 const STEPS = caps.length;
@@ -203,19 +202,11 @@ function zoom() {
 /** Every piece of the story, in the page and in Bobby's shadow root. */
 const pieces = (sel) => [...app.querySelectorAll(sel), ...shadows.flatMap((s) => [...s.querySelectorAll(sel)])];
 
-// ---- the app scaled to fit what's left of the stage
-// A tall, narrow stage (a phone held upright) would shrink the whole app to a quarter of its size: there it's drawn up
-// to twice as big, cropped to the stage's width, and pans to the part each step is about (its caption's data-focus,
-// in design pixels across).
+// ---- the app scaled to fit what's left of the stage (index.html's fitStage, which also ran before the first paint);
+// cropped, on a phone, it pans to the part each step is about (its caption's data-focus, in design pixels across)
 let crop = 0; // the design width shown when cropped, else 0
 function fit() {
-  const w = viewport.clientWidth, h = viewport.clientHeight;
-  const whole = Math.min(w / W, h / H, 1);
-  const scale = Math.max(0.15, h / H > (w / W) * 1.3 ? Math.min(h / H, (w / W) * 2, 1) : whole);
-  crop = scale > whole ? w / scale : 0;
-  frame.style.setProperty("--scale", scale);
-  frame.style.setProperty("--frame-w", crop ? `${w}px` : "");
-  app.style.setProperty("--scale", scale);
+  crop = window.fitStage();
   pan(Math.max(0, step), false);
 }
 function pan(n, animate = true) {
