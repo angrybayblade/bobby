@@ -335,8 +335,8 @@ document.addEventListener("click", (ev) => {
   const t = ev.target.closest("[data-goto]");
   if (!t) return;
   ev.preventDefault();
-  const g = t.dataset.goto;
-  go(g === "next" ? step + 1 : g === "prev" ? step - 1 : Number(g));
+  const g = t.dataset.goto; // next, prev, a step's number, or its slug (install): a number would go stale as steps are added
+  go(g === "next" ? step + 1 : g === "prev" ? step - 1 : /^\d+$/.test(g) ? Number(g) : stepOf(`#${g}`));
 });
 // j / k, as in Bobby (and the arrows)
 document.addEventListener("keydown", (ev) => {
