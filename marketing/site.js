@@ -56,7 +56,8 @@ const shadows = [];
     .bl[data-fly-to]:not(.shown) :is(.fdir, .frow, .fhd input) { opacity: 0; transition: opacity .2s var(--ease); }
     .bl[data-zoom-from] { transition: opacity .55s var(--ease), transform 1.1s var(--move); }
     .bl[data-zoom-from]:not(.shown) { transform: var(--zoom-in, scale(.4)); }
-    @media (prefers-reduced-motion: reduce) { .bl, .bl .later { transition: none !important; } .bl.arrive { animation: none; } }`);
+    @media (prefers-reduced-motion: reduce) { .bl, .bl .later { transition: none !important; } .bl.arrive { animation: none; } }
+    .root.still, .root.still * { transition: none !important; animation: none !important; } /* the step the page opens on, as in styles.css */`);
   for (const host of document.querySelectorAll("[data-bobby]")) {
     const shadow = host.attachShadow({ mode: "open" });
     shadow.adoptedStyleSheets = [sheet];
@@ -271,11 +272,12 @@ const hint = document.querySelector(".scroll-hint");
 let hintTimer = setTimeout(() => { if (step === 0) hint?.classList.add("on"); }, 4000);
 function show(n) {
   if (n === step) return;
+  const still = reduceMotion || step < 0; // the step the page opens on (a shared link's, too) is drawn as it is, not arrived at
   if (n !== 0 && step >= 0) { clearTimeout(hintTimer); hint?.classList.remove("on"); }
   const forward = n > step;
   if (step >= 0 && !reduceMotion) swaps(n);
   // back out of the canvas onto GitHub's list: the canvas stays until its files have landed
-  const unmorph = !forward && step === MORPH && n === MORPH - 1 && !reduceMotion;
+  const unmorph = !forward && step === MORPH && n === MORPH - 1 && !still;
   app.classList.toggle("unmorph", unmorph);
   layerOf(".bl[data-zoom]")?.classList.toggle("unmorph", unmorph);
   step = n;
@@ -286,15 +288,15 @@ function show(n) {
   for (const el of pieces("[data-in]")) {
     const at = Number(el.dataset.in), was = el.classList.contains("shown");
     el.classList.toggle("shown", n >= at);
-    if (forward && !was && n === at && !reduceMotion && !el.classList.contains("swap") && el.dataset.zoom == null && el.dataset.zoomFrom == null && el.dataset.flyTo == null) { // new here: let it settle in
+    if (forward && !was && n === at && !still && !el.classList.contains("swap") && el.dataset.zoom == null && el.dataset.zoomFrom == null && el.dataset.flyTo == null) { // new here: let it settle in
       el.classList.remove("arrive"); void el.offsetWidth; el.classList.add("arrive");
     }
   }
-  if (forward && n === MORPH && !reduceMotion) morph("in");
+  if (forward && n === MORPH && !still) morph("in");
   else if (unmorph) morph("back");
   else if (n >= MORPH) morph("home");
   placeDock(n);
-  pan(n, !reduceMotion);
+  pan(n, !still);
   caps.forEach((c, i) => c.classList.toggle("on", i === n));
   if (urlFollows) history.replaceState(history.state, "", caps[n].dataset.slug ? `#${caps[n].dataset.slug}` : location.pathname + location.search);
   document.dispatchEvent(new CustomEvent("story:step", { detail: n }));
@@ -358,7 +360,13 @@ layout();
 fit();
 const asked = stepOf(location.hash);
 if (asked > 0) scrollTo({ top: stepTop(asked), behavior: "instant" }); // a shared step: straight there
-onScroll();
+{ // and drawn there at once: the pieces it shows don't transition in (one style pass with transitions off)
+  const roots = [document.documentElement, ...shadows.map((s) => s.querySelector(".root"))];
+  for (const r of roots) r.classList.add("still");
+  onScroll();
+  void app.offsetWidth;
+  for (const r of roots) r.classList.remove("still");
+}
 urlFollows = true;
 
 // ---- copy the install command
