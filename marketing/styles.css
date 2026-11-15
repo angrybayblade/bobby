@@ -1,5 +1,9 @@
 /* Bobby marketing: one stage where GitHub's PR page turns into a Bobby review, a piece per scroll step.
    The app is drawn at a fixed design size (1440 × 900, the size Bobby is captured at) and scaled to fit (site.js). */
+/* Inter and JetBrains Mono (both SIL OFL 1.1: assets/fonts/*-OFL.txt), Latin only, from Google Fonts' own files: served
+   from here and preloaded by each page, they're ready by the first paint instead of swapping in after it */
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("./assets/fonts/inter-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "JetBrains Mono"; font-style: normal; font-weight: 100 800; font-display: swap; src: url("./assets/fonts/jetbrains-mono-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 :root {
   --bg: #f6f2ea; --surface: #fffcf6; --raised: #efe9de; --line: #ddd4c5; --line-soft: #e9e2d6;
   --text: #2b261e; --muted: #6e6556; --faint: #a1978a;
