@@ -259,5 +259,6 @@ html.snapping .site-foot { scroll-snap-align: end; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0s !important; animation: none !important; }
 }
+.frame.waiting .app { visibility: hidden; } /* a link to a later step, until site.js has drawn the app there */
 /* the step a page opens on is drawn as it is, not arrived at (site.js, for one style pass) */
 .still, .still *, .still *::before, .still *::after { transition: none !important; animation: none !important; }

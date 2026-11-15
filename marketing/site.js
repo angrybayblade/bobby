@@ -364,6 +364,7 @@ if (asked > 0) scrollTo({ top: stepTop(asked), behavior: "instant" }); // a shar
   const roots = [document.documentElement, ...shadows.map((s) => s.querySelector(".root"))];
   for (const r of roots) r.classList.add("still");
   onScroll();
+  app.parentElement.classList.remove("waiting"); // index.html's, for a link to a later step: drawn there now
   void app.offsetWidth;
   for (const r of roots) r.classList.remove("still");
 }

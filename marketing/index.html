@@ -26,9 +26,9 @@
   <link rel="preload" href="./assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="./assets/fonts/jetbrains-mono-latin.woff2" as="font" type="font/woff2" crossorigin />
   <script>{ let t; try { t = localStorage.getItem("bobby-theme"); } catch {} document.documentElement.dataset.theme = t || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); }</script>
-  <link rel="stylesheet" href="./styles.css?v=48" />
+  <link rel="stylesheet" href="./styles.css?v=49" />
   <script src="./bobby.js?v=46" defer></script>
-  <script src="./site.js?v=51" defer></script>
+  <script src="./site.js?v=52" defer></script>
   <script src="./theme.js?v=45" defer></script>
   <script src="./buddy.js?v=45" defer></script>
 </head>
@@ -348,9 +348,15 @@
         return crop;
       };
       fitStage();
-      // and the step dots, the first one on, so the stage is whole from the first paint
-      document.querySelector(".steps .dots").innerHTML = [...document.querySelectorAll("[data-cap]")]
-        .map((_, i) => `<button type="button" data-goto="${i}" aria-label="Step ${i + 1}"${i ? "" : ' class="on"'}></button>`).join("");
+      // and the step dots, so the stage is whole from the first paint. A link to a later step (#lens) shows its caption
+      // at once, and the app only once site.js has drawn it there: Bobby's pieces come with its captures.
+      {
+        const caps = [...document.querySelectorAll("[data-cap]")];
+        const at = Math.max(0, caps.findIndex((c) => c.dataset.slug && `#${c.dataset.slug}` === decodeURIComponent(location.hash)));
+        if (at) { caps[0].classList.remove("on"); caps[at].classList.add("on"); document.querySelector(".frame").classList.add("waiting"); }
+        document.querySelector(".steps .dots").innerHTML = caps
+          .map((_, i) => `<button type="button" data-goto="${i}" aria-label="Step ${i + 1}"${i === at ? ' class="on"' : i < at ? ' class="done"' : ""}></button>`).join("");
+      }
     </script>
   </main>
 
