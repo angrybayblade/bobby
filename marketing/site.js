@@ -224,9 +224,7 @@ new ResizeObserver(() => {
 }).observe(viewport);
 
 // ---- the scroller: one stretch per step
-const dotsEl = document.querySelector(".steps .dots");
-dotsEl.innerHTML = caps.map((_, i) => `<button type="button" data-goto="${i}" aria-label="Step ${i + 1}"></button>`).join("");
-const dots = [...dotsEl.children];
+const dots = [...document.querySelectorAll(".steps .dots > button")]; // drawn by index.html, before the first paint
 const travel = () => story.offsetHeight - innerHeight;
 /** Where step i sits: the middle of its stretch. */
 const stepTop = (i) => story.offsetTop + Math.round((travel() * (i + 0.5)) / STEPS);

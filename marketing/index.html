@@ -28,7 +28,7 @@
   <script>{ let t; try { t = localStorage.getItem("bobby-theme"); } catch {} document.documentElement.dataset.theme = t || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); }</script>
   <link rel="stylesheet" href="./styles.css?v=45" />
   <script src="./bobby.js?v=46" defer></script>
-  <script src="./site.js?v=49" defer></script>
+  <script src="./site.js?v=50" defer></script>
   <script src="./theme.js?v=45" defer></script>
   <script src="./buddy.js?v=45" defer></script>
 </head>
@@ -348,6 +348,9 @@
         return crop;
       };
       fitStage();
+      // and the step dots, the first one on, so the stage is whole from the first paint
+      document.querySelector(".steps .dots").innerHTML = [...document.querySelectorAll("[data-cap]")]
+        .map((_, i) => `<button type="button" data-goto="${i}" aria-label="Step ${i + 1}"${i ? "" : ' class="on"'}></button>`).join("");
     </script>
   </main>
 
