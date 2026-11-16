@@ -5,8 +5,8 @@
 | Tool | Why |
 |---|---|
 | `git` | Fetches the PR and computes the diff locally. |
-| [`gh`](https://cli.github.com), signed in | Reads PR metadata and review comments, clones repos, posts your review. Bobby offers to install it and sign you in the first time it runs without it: see [Setting up GitHub](#setting-up-github). Without it, Bobby reviews local branches only. |
-| `claude` (Claude Code CLI), optional | Builds the smarter change tree. It uses your Claude Code login, so no API key is needed. Without it, or with `--no-llm`, you get the static tree. Bobby offers to install it and sign you in the first time it runs: see [Setting up Claude](#setting-up-claude). |
+| [`gh`](https://cli.github.com), signed in | Reads PR metadata and review comments, clones repos, posts your review. Bobby installs it and signs you in on its first launch: see [The first launch](#the-first-launch). Without it, Bobby reviews local branches only. |
+| `claude` (Claude Code CLI), optional | Builds the smarter change tree. It uses your Claude Code login, so no API key is needed. Without it, or with `--no-llm`, you get the static tree. Bobby installs it and signs you in on its first launch: see [The first launch](#the-first-launch). |
 | `node` 18+, optional | Runs the TypeScript and Python language servers behind the inspector. Bobby installs them itself, after asking; without Node it runs them on Bun, where a large project takes minutes rather than seconds to load. |
 | `gopls`, optional | The Go language server: `go install golang.org/x/tools/gopls@latest`. Bobby finds it on PATH or in `$(go env GOPATH)/bin`. |
 | `rust-analyzer`, optional | The Rust language server: `rustup component add rust-analyzer rust-src`. It needs `cargo`, and Bobby finds it on PATH. |
@@ -50,9 +50,19 @@ Release binaries aren't code-signed. On macOS, if Gatekeeper blocks a downloaded
 
 The binary is 62–86 MB, depending on the platform (27–41 MB to download), because it carries the Bun runtime and the tree-sitter grammars. The UI's files are embedded in it, so it runs with nothing beside it.
 
+## The first launch
+
+The first time you run Bobby (`bobby`, `bobby <pr-url>`, any of them), its page opens on **Welcome to Bobby**, which sets up the two tools it works through, one after the other: GitHub's CLI, then Claude Code. Each is installed and signed in from that page, or skipped. Then **Start reviewing** takes you where you were going: the PR you asked for, the branch you're on, or the home page. Until you've pressed it, every Bobby page sends you back there.
+
+- **Skipping GitHub** leaves Bobby to review local branches only. **Skipping Claude** leaves you the static tree, with no questions, reviews or Map.
+- Either can be set up later from **Settings**, the command palette (**Set up GitHub CLI**, **Set up Claude Code**), or **Set up GitHub** and **Set up Claude** on the home page.
+- With both already set up (signed in already, a `GH_TOKEN`, an `ANTHROPIC_API_KEY`), there's nothing to do, and the page never shows.
+
+Once it's done, it's done: `settings.json` keeps `onboarded`. If you sign out of either later, Bobby offers to set it up again when it needs it.
+
 ## Setting up GitHub
 
-Bobby reads PRs and posts your reviews through GitHub's CLI, `gh`, signed in as you. The first time Bobby runs without it (not installed, or not signed in), its page offers to set it up, before Claude; **Not now** asks again next time, **Don't ask again** doesn't. `bobby <pr-url>` without it opens the page to set it up, then opens the PR. You can always start it from **Settings › GitHub CLI…**, the command palette (**Set up GitHub CLI**), or **Set up GitHub** on the home page.
+Bobby reads PRs and posts your reviews through GitHub's CLI, `gh`, signed in as you. It's the first step of [the first launch](#the-first-launch), and you can start it again from **Settings › GitHub CLI…**, the command palette (**Set up GitHub CLI**), or **Set up GitHub** on the home page.
 
 1. **Install.** Bobby downloads `gh`'s latest release for your OS and CPU from [GitHub](https://github.com/cli/cli/releases/latest), checks it against the release's checksums, and puts it in `~/.local/bin`: no sudo or package manager. Bobby finds it there even if your shell's PATH doesn't have it.
 2. **Sign in.** Bobby runs `gh auth login --web` and shows its one-time code. **Copy it and open GitHub** opens github.com/login/device in a new tab; enter the code, and authorize GitHub CLI. Bobby notices on its own, and opens the PR you asked for. This works the same when Bobby runs on a [remote machine](#on-a-remote-machine).
@@ -61,7 +71,7 @@ Bobby reads PRs and posts your reviews through GitHub's CLI, `gh`, signed in as 
 
 ## Setting up Claude
 
-Installing Bobby doesn't need Claude Code. The first time Bobby runs without it (not installed, or not signed in), its page offers to set it up; **Not now** asks again next time, **Don't ask again** doesn't. You can always start it from **Settings › Claude Code…**, the command palette (**Set up Claude Code**), or **Set up Claude** on the home page.
+Installing Bobby doesn't need Claude Code. It's the second step of [the first launch](#the-first-launch), and you can skip it; start it again from **Settings › Claude Code…**, the command palette (**Set up Claude Code**), or **Set up Claude** on the home page.
 
 1. **Install.** Bobby runs Anthropic's installer (`curl -fsSL https://claude.ai/install.sh | bash`; on Windows, `irm https://claude.ai/install.ps1 | iex`), which puts `claude` in `~/.local/bin`. Bobby finds it there even if your shell's PATH doesn't have it yet.
 2. **Sign in.** Bobby runs `claude auth login` and shows its sign-in link. Open it (a new tab), sign in with your Claude account and authorize Claude Code; the page then shows a code. Paste it into Bobby and press **Sign in**. A code works once, for a few minutes: if it's refused, get a new link. This works the same when Bobby runs on a [remote machine](#on-a-remote-machine), as nothing needs to reach it.

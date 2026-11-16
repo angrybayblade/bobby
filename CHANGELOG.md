@@ -4,6 +4,8 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- **A setup page on the first launch:** the first time you run Bobby, its page opens on **Welcome to Bobby**, which installs GitHub's CLI and Claude Code and signs you in to each (or lets you skip either), then opens the PR, branch or home page you asked for. Until then, every page leads there. It replaces the dialogs that offered each setup over the home page or a review, where the tour's own key, `enter`, could start the Claude Code install by mistake.
+- **Fix: the "what leaves your machine" link in Claude's setup went nowhere.** It pointed at the site's old address; it's now usebobby.app.
 - **The home page shows GitHub's lists straight away:** Review requested, My PRs and All waited 3–4 seconds on GitHub every time Bobby started. They now open on the lists from last time, and GitHub's fresh answer replaces them a few seconds later. A refresh keeps them on screen too, instead of going back to "Asking GitHub…".
 
 ## 0.1.0-rc22 (2026-11-11)
