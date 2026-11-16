@@ -1,5 +1,6 @@
 // Housekeeping: what Bobby keeps under ~/.bobby that nothing will read again. At most once a day, in the background.
-// Your reviews' state (marks, drafts, notes) is never pruned, nor are the repos Bobby cloned: `bobby clean` does those.
+// Your reviews' state (marks, drafts, notes) is never pruned, nor are the repos Bobby cloned: `bobby clean --stale`
+// (purge.ts) does those, for reviews you're done with, and `bobby clean --repos` every clone.
 import { existsSync, lstatSync, readdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { LanguageServer } from "./langserver.ts";
@@ -26,7 +27,12 @@ export function prune(servers: LanguageServer[], force = false): number {
   // exports a stopped Bobby left half done
   const current = new Set(servers.map((s) => s.installDir).filter(Boolean));
   for (const d of ls(join(root, "servers"))) if (orphan(d) || (!d.endsWith(".tmp") && !current.has(d.split("/").pop()) && age(d) > DAY)) n += rm(d);
-  for (const repo of ls(join(root, "trees"))) for (const t of ls(repo)) if (orphan(t)) n += rm(t);
+  // exported trees not used in a month (a running Bobby marks the ones it uses: langserver.ts keepTree); each is
+  // exported again if its review is opened
+  for (const repo of ls(join(root, "trees"))) {
+    for (const t of ls(repo)) if (orphan(t) || (!t.endsWith(".tmp") && age(join(t, ".bobby-tree")) > STALE)) n += rm(t);
+    if (!ls(repo).length) n += rm(repo);
+  }
   // locks of Bobbys no longer running, and unreadable state set aside a month ago
   for (const f of ls(join(root, "state"))) {
     if (f.endsWith(".lock")) { try { if (!alive(JSON.parse(readFileSync(f, "utf8")).pid)) n += rm(f); } catch { n += rm(f); } }
