@@ -30,6 +30,8 @@ const clean = (b: string) => b.replace(/[^\w.-]+/g, "-");
 const slug = (pr: PrKey) => pr.branch
   ? `${pr.owner}_${pr.repo}_branch_${clean(pr.branch)}${clean(pr.branch) === pr.branch ? "" : `-${createHash("sha1").update(pr.branch).digest("hex").slice(0, 6)}`}`
   : `${pr.owner}_${pr.repo}_${pr.number}${pr.commit ? `_c${pr.commit.sha.slice(0, 12)}${pr.commit.from ? `-${pr.commit.from.slice(0, 7)}` : ""}` : ""}`; // one commit: a review of its own
+/** A review's name on disk: its state file, and the start of its cache files' names (purge.ts finds them by it). */
+export const reviewSlug = (pr: PrKey) => slug(pr);
 const legacySlug = (pr: PrKey) => (pr.branch ? `${pr.owner}_${pr.repo}_branch_${clean(pr.branch)}` : slug(pr)); // before the hash
 
 /** A JSON file, or null if there's none. One that won't parse is set aside as .corrupt-<time> (and said so), never

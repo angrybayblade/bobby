@@ -47,6 +47,9 @@ const { values, positionals } = parseArgs({
     ssh: { type: "boolean", default: false },
     "agent-tools": { type: "string", default: process.env.BOBBY_AGENT_TOOLS },
     repos: { type: "boolean", default: false },
+    stale: { type: "boolean", default: false },
+    days: { type: "string", default: "30" },
+    yes: { type: "boolean", short: "y", default: false },
     help: { type: "boolean", short: "h", default: false },
     version: { type: "boolean", short: "v", default: false },
   },
@@ -66,6 +69,9 @@ const USAGE = `bobby: review a PR one focused page at a time
   bobby update [version]             install the newest release (or that one) in place of this one
   bobby clean [--repos]              remove caches and exported trees (and with --repos, the clones
                                      in ~/.bobby/repos); your reviews' progress stays
+  bobby clean --stale [--days n]     remove what Bobby keeps for reviews you're done with: PRs merged or
+                                     closed, or not opened in n days (default 30), and clones no review
+                                     uses any more; keeps any with unsent drafts or notes. Asks first
   bobby logs [n]                     the log's last n lines (default 80) and where it is: for a bug report
   bobby doctor                       what Bobby relies on and how each stands, with what to do about
                                      each problem: for you, or to paste into a bug report
@@ -143,6 +149,15 @@ if (cmd === "stop") {
   console.log(holder() ? `Asked Bobby (pid ${other.pid}) to stop, but it's still running.` : `✓ stopped the Bobby on port ${other.port}`);
   process.exit(holder() ? 1 : 0);
 }
+/** Asks yes or no in the terminal; --yes answers yes. With no terminal to ask in and no --yes: no, and says how. */
+async function confirm(question: string): Promise<boolean> {
+  if (values.yes) return true;
+  if (!process.stdin.isTTY) { console.log(`  Nothing removed: run it again with --yes to go ahead without being asked.`); return false; }
+  process.stdout.write(`${question} [y/N] `);
+  const answer = await new Promise<string>((done) => process.stdin.once("data", (d) => { process.stdin.pause(); done(String(d).trim().toLowerCase()); }));
+  return answer === "y" || answer === "yes";
+}
+const mb = (b: number) => (b < 1e6 ? `${Math.max(1, Math.round(b / 1e3))} KB` : b < 1e9 ? `${(b / 1e6).toFixed(b < 1e7 ? 1 : 0)} MB` : `${(b / 1e9).toFixed(1)} GB`);
 if (cmd === "doctor") process.exit(await doctor(pkg.version));
 if (cmd === "update") {
   await selfUpdate(arg, (m) => log.info(m));
@@ -151,9 +166,33 @@ if (cmd === "update") {
   process.exit(0);
 }
 tidyUpdate();
+if (cmd === "clean" && values.stale) {
+  const days = Number(values.days);
+  if (!Number.isInteger(days) || days < 0) fail(`--days takes a whole number of days, got "${values.days}"`);
+  if (holder()) fail("Bobby is running: stop it first (ctrl-c in its terminal, or bobby stop), so nothing it has open is removed under it");
+  const { closedPrs, pathsOf, planStale, purge, reviewsOnDisk } = await import("./purge.ts");
+  const reviews = await reviewsOnDisk();
+  const prs = reviews.filter((r) => r.number !== undefined).map((r) => ({ owner: r.owner, repo: r.repo, number: r.number! }));
+  const closed = prs.length ? await closedPrs(prs) : new Set<string>();
+  if (!closed) console.log(`  (GitHub couldn't say which PRs are merged or closed, so only reviews not opened in ${days} days count)`);
+  const plan = planStale(reviews, { days, closed: closed ?? undefined });
+  const paths = pathsOf(plan, reviews), total = paths.reduce((n, p) => n + p.bytes, 0);
+  for (const r of plan.remove) console.log(`  - ${r.label}: ${r.why}`);
+  for (const r of plan.kept) console.log(`  · keeping ${r.label}: ${r.why}`);
+  const clones = paths.filter((p) => p.what === "clones");
+  for (const c of clones) console.log(`  - the clone of ${c.path.split(/[\\/]/).slice(-2).join("/")}: no review left uses it`);
+  if (!paths.length) { console.log(plan.kept.length ? "✓ nothing else is stale" : "✓ nothing is stale"); process.exit(0); }
+  const by = (what: string) => paths.filter((p) => p.what === what);
+  const parts = ["clones", "trees", "cache", "state"].map((w) => [w, by(w)] as const).filter(([, ps]) => ps.length)
+    .map(([w, ps]) => `${w === "clones" ? `${ps.length} clone${ps.length === 1 ? "" : "s"}` : w} ${mb(ps.reduce((n, p) => n + p.bytes, 0))}`);
+  console.log(`\n  ${plan.remove.length} review${plan.remove.length === 1 ? "" : "s"}${clones.length ? ` and ${clones.length} unused clone${clones.length === 1 ? "" : "s"}` : ""}: ${parts.join(", ")}`);
+  if (!(await confirm(`  Remove them, freeing ${mb(total)}?`))) process.exit(1);
+  await purge(plan, paths);
+  console.log(`✓ freed ${mb(total)}`);
+  process.exit(0);
+}
 if (cmd === "clean") {
   const freed = clean(SERVERS, !!values.repos);
-  const mb = (b: number) => `${(b / 1e6).toFixed(b < 1e7 ? 1 : 0)} MB`;
   for (const [what, b] of freed) console.log(`  removed ${what}: ${mb(b)}`);
   console.log(freed.length ? `✓ freed ${mb(freed.reduce((n, [, b]) => n + b, 0))}${values.repos ? "" : `; the clones in ${home()}/repos stay (--repos removes them too)`}` : "✓ nothing to remove");
   process.exit(0);
