@@ -204,6 +204,8 @@ bobby <pr-url> --no-open --host 0.0.0.0 --allow-host bobby.dev.internal   # any 
 
 Bobby only answers at names it knows, so a website can't reach it by pointing its own name at the machine (DNS rebinding): `localhost` and `127.0.0.1` at any port, plus each `--allow-host`. Opened at any other name, it says which to allow. `--allow-host '*'` takes any name, which gives that protection up; use it only on a network nothing else can reach. Bobby warns at startup whenever it listens beyond loopback.
 
+**On an [exe.dev](https://exe.dev) VM**, exe.dev's HTTPS proxy is the third way: it asks for your exe.dev login before anything reaches Bobby. [`skills/exe_dev`](https://github.com/angrybayblade/bobby/blob/main/skills/exe_dev/SKILL.md) is a skill that walks your agent (or you) through it: installing Bobby there, running it as a service, keeping the VM's proxy private, and opening it at `https://<vm>.exe.xyz:4173/`.
+
 ## What it writes to disk
 
 Everything lives under `~/.bobby/`. If you used Bobby when it was called prfocus, `~/.prfocus` is moved there on the first run, progress and clones included:
