@@ -170,6 +170,9 @@ bobby doctor                          # what Bobby relies on and how each stands
 bobby start                           # start Bobby in the background, if it isn't running, for bobby &lt;pr&gt; to hand reviews to
 bobby stop                            # stop the Bobby running here (as one bobby start or bobby mcp started)
 bobby mcp                             # an MCP server for your agents: see below
+bobby clean [--repos]                 # remove caches and exported trees (and every clone, with --repos)
+bobby clean --stale [--days n]        # remove what's kept for reviews you're done with: see Cleaning up
+bobby uninstall [--keep-data]         # remove Bobby: see Uninstalling
 </code></pre>
 <p><code>extract</code> waits for Claude's tree (unless <code>--no-llm</code>) and writes it, falling back to the static tree if Claude fails. With <code>--lsp</code>, it also waits for the installed language servers' definitions. <code>open</code> views any <code>bobby.review-graph/v1</code> file, whoever produced it. With <code>--repo</code>, it can also load more context around hunks, and start the language server.</p>
 <h2 id="flags"><a class="anchor" href="#flags" aria-hidden="true">#</a>Flags</h2>
@@ -227,14 +230,26 @@ bobby &lt;pr-url&gt; --no-open --host 0.0.0.0 --allow-host bobby.dev.internal   
 <tr><td><code>state/&lt;owner&gt;_&lt;repo&gt;_branch_&lt;branch&gt;.json</code>, <code>cache/…_branch_&lt;branch&gt;_&lt;sha12&gt;_&lt;base7&gt;.*</code></td><td>The same for a local review. <code>&lt;owner&gt;_&lt;repo&gt;</code> comes from a GitHub <code>origin</code>, else <code>local_&lt;folder&gt;</code>.</td></tr>
 <tr><td><code>cache/…_&lt;sha12&gt;.defs.&lt;server&gt;.&lt;version&gt;.json</code></td><td>A language server's definitions for one head commit.</td></tr>
 <tr><td><code>servers/typescript-&lt;versions&gt;/</code>, <code>servers/pyright-&lt;version&gt;/</code></td><td>The TypeScript and Python language servers, installed when you agree (about 24 MB and 35 MB from npm).</td></tr>
-<tr><td><code>trees/&lt;owner&gt;_&lt;repo&gt;/&lt;sha12&gt;/</code></td><td>A PR's head commit as plain files (the languages Bobby has servers for), for the language servers. The three most recent per repo are kept.</td></tr>
+<tr><td><code>trees/&lt;owner&gt;_&lt;repo&gt;/&lt;sha12&gt;/</code></td><td>A PR's head commit as plain files (the languages Bobby has servers for), for the language servers. The three most recent per repo are kept, and none unused for a month.</td></tr>
 <tr><td><code>settings.json</code></td><td>UI preferences, shared by every PR.</td></tr>
 <tr><td><code>logs/bobby.log</code></td><td>What Bobby did and what went wrong (failed git and gh commands with their output, API errors, the page's errors), with times and levels; the same lines as the terminal shows, and more. Rotated at 5 MB (<code>bobby.1.log</code>). Tokens are blanked out.</td></tr>
 </tbody>
 </table></div>
 <p>Deleting <code>cache/</code>, <code>servers/</code> or <code>trees/</code> is always safe. Deleting a <code>state/</code> file forgets your progress on that PR.</p>
-<p>Bobby tidies up once a day on its own: cached files for commits not opened in a month, avatars a month old, other versions of the language servers it installed, and what a stopped Bobby left half done. <code>bobby clean</code> removes <code>cache/</code> and <code>trees/</code> at once, and <code>bobby clean --repos</code> the clones in <code>repos/</code> too; neither touches <code>state/</code> or <code>settings.json</code>.</p>
+<h3 id="cleaning-up"><a class="anchor" href="#cleaning-up" aria-hidden="true">#</a>Cleaning up</h3>
+<p>Bobby tidies up once a day on its own: cached files for commits not opened in a month, exported trees not used in a month, avatars a month old, other versions of the language servers it installed, and what a stopped Bobby left half done. It never removes your reviews' progress or its clones on its own. For those:</p>
+<ul>
+<li><strong><code>bobby clean --stale</code></strong> removes what Bobby keeps for reviews you're done with: those whose PR is merged or closed (it asks GitHub), and those you haven't opened in 30 days (<code>--days n</code> to change that). For each one it removes the progress, the cached files, the exported trees and the entry in recents. It also removes each clone in <code>repos/</code> that no review left uses. A review that still has unsent drafts or private notes is kept, whatever its age, and the list says so. It shows what it will remove and how much that frees, then asks first (<code>--yes</code> skips the question). Run it with Bobby stopped.</li>
+<li><strong><code>bobby clean</code></strong> removes <code>cache/</code> and <code>trees/</code> at once, and <strong><code>bobby clean --repos</code></strong> every clone in <code>repos/</code> too. Neither touches <code>state/</code> or <code>settings.json</code>.</li>
+</ul>
+<p>Everything removed is made again if you open that review: the clone, the trees and the cache, though not your progress.</p>
 <p>The fetch also writes refs under <code>refs/bobby/&lt;n&gt;/</code> in the clone. They're harmless; remove them with <code>git for-each-ref --format='%(refname)' refs/bobby | xargs -n1 git update-ref -d</code>.</p>
+<h2 id="uninstalling"><a class="anchor" href="#uninstalling" aria-hidden="true">#</a>Uninstalling</h2>
+<pre><code class="language-sh">bobby uninstall               # removes ~/.bobby and the bobby binary, after asking
+bobby uninstall --keep-data   # the same, but keeps your reviews' progress, settings and recents in ~/.bobby
+</code></pre>
+<p>It stops a Bobby that's running, lists what it removes with its size, and asks first (<code>--yes</code> skips the question). It leaves GitHub's CLI and Claude Code where they are, with their sign-ins, since you may use them yourself; it says where they are and how to remove them too. Running from a checkout of the source, it removes <code>~/.bobby</code> and leaves the checkout to you. On Windows, delete <code>bobby.exe</code> yourself afterwards: a running program can't delete itself there.</p>
+<p>Without the command (an older Bobby), it's <code>bobby stop</code>, then <code>rm &quot;$(command -v bobby)&quot;</code> and <code>rm -rf ~/.bobby</code>.</p>
 <h2 id="reporting-a-problem"><a class="anchor" href="#reporting-a-problem" aria-hidden="true">#</a>Reporting a problem</h2>
 <p><code>bobby doctor</code> lists what Bobby relies on (<code>git</code>, <code>gh</code>, your GitHub account and which organizations are waiting on single sign-on, Claude, the language servers) and how each stands, with what to do about each problem. It changes nothing, tries SSH only if you've allowed cloning over it, and exits non-zero if something a PR review needs is missing. Its report leaves out your Claude email and shortens your home folder, so it's safe to paste into a bug report, though it does name your GitHub account.</p>
 <p><code>bobby logs</code> prints the end of Bobby's log and where the whole of it is (<code>~/.bobby/logs/bobby.log</code>). Attach it, or those lines, to a bug report: each run starts with Bobby's version, platform and command, and failures come with what git or gh said and a stack trace. GitHub and Anthropic tokens are blanked out before anything is written, but the log does name your repos, branches and PR titles, so read it before you share it. <code>BOBBY_DEBUG=1</code> adds detail (what Claude started with) to the terminal and the log.</p>
@@ -261,6 +276,7 @@ bobby &lt;pr-url&gt; --no-open --host 0.0.0.0 --allow-host bobby.dev.internal   
       <a href="#open-reviews-from-your-agent">Open reviews from your agent</a>
       <a href="#on-a-remote-machine">On a remote machine</a>
       <a href="#what-it-writes-to-disk">What it writes to disk</a>
+      <a href="#uninstalling">Uninstalling</a>
       <a href="#reporting-a-problem">Reporting a problem</a>
     </aside>
   </div>

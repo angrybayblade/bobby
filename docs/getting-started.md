@@ -140,6 +140,9 @@ bobby doctor                          # what Bobby relies on and how each stands
 bobby start                           # start Bobby in the background, if it isn't running, for bobby <pr> to hand reviews to
 bobby stop                            # stop the Bobby running here (as one bobby start or bobby mcp started)
 bobby mcp                             # an MCP server for your agents: see below
+bobby clean [--repos]                 # remove caches and exported trees (and every clone, with --repos)
+bobby clean --stale [--days n]        # remove what's kept for reviews you're done with: see Cleaning up
+bobby uninstall [--keep-data]         # remove Bobby: see Uninstalling
 ```
 
 `extract` waits for Claude's tree (unless `--no-llm`) and writes it, falling back to the static tree if Claude fails. With `--lsp`, it also waits for the installed language servers' definitions. `open` views any `bobby.review-graph/v1` file, whoever produced it. With `--repo`, it can also load more context around hunks, and start the language server.
@@ -214,15 +217,33 @@ Everything lives under `~/.bobby/`. If you used Bobby when it was called prfocus
 | `state/<owner>_<repo>_branch_<branch>.json`, `cache/…_branch_<branch>_<sha12>_<base7>.*` | The same for a local review. `<owner>_<repo>` comes from a GitHub `origin`, else `local_<folder>`. |
 | `cache/…_<sha12>.defs.<server>.<version>.json` | A language server's definitions for one head commit. |
 | `servers/typescript-<versions>/`, `servers/pyright-<version>/` | The TypeScript and Python language servers, installed when you agree (about 24 MB and 35 MB from npm). |
-| `trees/<owner>_<repo>/<sha12>/` | A PR's head commit as plain files (the languages Bobby has servers for), for the language servers. The three most recent per repo are kept. |
+| `trees/<owner>_<repo>/<sha12>/` | A PR's head commit as plain files (the languages Bobby has servers for), for the language servers. The three most recent per repo are kept, and none unused for a month. |
 | `settings.json` | UI preferences, shared by every PR. |
 | `logs/bobby.log` | What Bobby did and what went wrong (failed git and gh commands with their output, API errors, the page's errors), with times and levels; the same lines as the terminal shows, and more. Rotated at 5 MB (`bobby.1.log`). Tokens are blanked out. |
 
 Deleting `cache/`, `servers/` or `trees/` is always safe. Deleting a `state/` file forgets your progress on that PR.
 
-Bobby tidies up once a day on its own: cached files for commits not opened in a month, avatars a month old, other versions of the language servers it installed, and what a stopped Bobby left half done. `bobby clean` removes `cache/` and `trees/` at once, and `bobby clean --repos` the clones in `repos/` too; neither touches `state/` or `settings.json`.
+### Cleaning up
+
+Bobby tidies up once a day on its own: cached files for commits not opened in a month, exported trees not used in a month, avatars a month old, other versions of the language servers it installed, and what a stopped Bobby left half done. It never removes your reviews' progress or its clones on its own. For those:
+
+- **`bobby clean --stale`** removes what Bobby keeps for reviews you're done with: those whose PR is merged or closed (it asks GitHub), and those you haven't opened in 30 days (`--days n` to change that). For each one it removes the progress, the cached files, the exported trees and the entry in recents. It also removes each clone in `repos/` that no review left uses. A review that still has unsent drafts or private notes is kept, whatever its age, and the list says so. It shows what it will remove and how much that frees, then asks first (`--yes` skips the question). Run it with Bobby stopped.
+- **`bobby clean`** removes `cache/` and `trees/` at once, and **`bobby clean --repos`** every clone in `repos/` too. Neither touches `state/` or `settings.json`.
+
+Everything removed is made again if you open that review: the clone, the trees and the cache, though not your progress.
 
 The fetch also writes refs under `refs/bobby/<n>/` in the clone. They're harmless; remove them with `git for-each-ref --format='%(refname)' refs/bobby | xargs -n1 git update-ref -d`.
+
+## Uninstalling
+
+```sh
+bobby uninstall               # removes ~/.bobby and the bobby binary, after asking
+bobby uninstall --keep-data   # the same, but keeps your reviews' progress, settings and recents in ~/.bobby
+```
+
+It stops a Bobby that's running, lists what it removes with its size, and asks first (`--yes` skips the question). It leaves GitHub's CLI and Claude Code where they are, with their sign-ins, since you may use them yourself; it says where they are and how to remove them too. Running from a checkout of the source, it removes `~/.bobby` and leaves the checkout to you. On Windows, delete `bobby.exe` yourself afterwards: a running program can't delete itself there.
+
+Without the command (an older Bobby), it's `bobby stop`, then `rm "$(command -v bobby)"` and `rm -rf ~/.bobby`.
 
 ## Reporting a problem
 
