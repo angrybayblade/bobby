@@ -50,7 +50,7 @@ function body() {
     <p>Anthropic's installer is running. It takes about a minute.</p><pre class="cs-log">${esc(st.log || "Starting…")}</pre>`;
   if (!st.installed) return `<h2 id="cs-h">Set up Claude Code?</h2>
     <p>Bobby works without it. With it, Bobby also asks Claude to organise each PR: the change in a few cores, foundations first, what each relies on and affects, and a question to look into for each.</p>
-    <p>It runs here, with your own Claude account; the PR's code goes to Anthropic to do it (<a href="https://bobby.viraj.computer/docs/privacy.html" target="_blank" rel="noopener">what leaves your machine</a>). Bobby installs it with Anthropic's installer:</p>
+    <p>It runs here, with your own Claude account; the PR's code goes to Anthropic to do it (<a href="https://usebobby.app/docs/privacy.html" target="_blank" rel="noopener">what leaves your machine</a>). Bobby installs it with Anthropic's installer:</p>
     <code class="cs-cmd">${esc(st.install)}</code>${err}
     <div class="row"><button class="btn primary" data-cs="install">Install Claude Code</button>${later}</div>`;
   if (!st.loggedIn && st.url && st.step !== "idle") return `<h2 id="cs-h">Sign in to Claude</h2>
