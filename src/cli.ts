@@ -4,6 +4,7 @@ import { readFileSync, statSync, writeFileSync } from "node:fs";
 import { resolve as resolvePath } from "node:path";
 import { git, parsePrArg, reviewComments, run } from "./git.ts";
 import { ghStatus } from "./github.ts";
+import { needsOnboarding } from "./onboarding.ts";
 import { GRAPH_SCHEMA, LEGACY_SCHEMAS, type ReviewGraph, setDiscussion } from "./graph.ts";
 import { clean, prune } from "./prune.ts";
 import { selfUpdate, tidyUpdate, watchReleases } from "./updates.ts";
@@ -351,5 +352,6 @@ async function serve(app: App, path: string) {
   hold(server.port!);
   watchReleases((r) => { app.release = r; log.info(`  ▸ Bobby ${r.version} is out (you have ${pkg.version}). Update: ${r.how} (${r.url})`); });
   log.info(`\n  ▶ ${url}\n`);
+  if (await needsOnboarding()) log.info("  First launch: the page sets up GitHub's CLI and Claude Code with you, then carries on\n");
   if (!values["no-open"]) await run(openCommand(url), { allowFail: true }).catch(() => console.log("  (open that link in your browser)"));
 }

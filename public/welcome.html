@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Set up Bobby</title>
+  <link rel="icon" href="/bobby.svg" type="image/svg+xml" />
+  <script src="/app/look.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" />
+  <link rel="stylesheet" href="/app/theme.css" />
+  <style>
+    /* The first launch's setup (welcome.js): one column, a step per tool, the open one with its setup drawn in it. */
+    body.welcome { display: block; overflow: auto; height: auto; min-height: 100%; }
+    .welcome .wrap { max-width: 640px; margin: 0 auto; padding: 56px 24px 80px; }
+    .welcome header { display: flex; align-items: center; gap: 12px; }
+    .welcome header b { font-size: 17px; }
+    .welcome h1 { margin: 28px 0 8px; font-size: 26px; line-height: 1.25; letter-spacing: -.01em; }
+    .welcome .lede { margin: 0 0 28px; color: var(--muted); }
+    .welcome ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+    .welcome .step { border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+    .welcome .step > .head { display: flex; align-items: center; gap: 12px; padding: 14px 18px; }
+    .welcome .step .n { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font: 600 12.5px var(--font-ui); border: 1px solid var(--line); color: var(--muted); }
+    .welcome .step .t { flex: 1; min-width: 0; }
+    .welcome .step .t b { display: block; font-size: 15px; }
+    .welcome .step .t span { display: block; color: var(--muted); font-size: 13px; }
+    .welcome .step .tag { flex: none; font-size: 12px; color: var(--faint); }
+    .welcome .step.on { border-color: var(--muted); }
+    .welcome .step.on .n { background: var(--signal); border-color: var(--signal); color: var(--signal-ink); }
+    .welcome .step.done .n, .welcome .step.skipped .n { color: var(--ok); border-color: var(--ok); }
+    .welcome .step.skipped .n { color: var(--faint); border-color: var(--line); }
+    .welcome .step .body { padding: 0 18px 18px 54px; }
+    .welcome .step .body:empty, .welcome .step:not(.on) .body { display: none; }
+    .welcome .csetup.inline h2 { margin: 0 0 4px; font-size: 14px; }
+    .welcome .csetup.inline p { margin: 0 0 10px; color: var(--muted); font-size: 14px; }
+    .welcome .csetup.inline .row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+    .welcome .csetup .cs-ok { color: var(--text); }
+    .welcome .finish { margin-top: 24px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .welcome .finish .btn { height: 38px; padding: 0 18px; font-weight: 600; }
+    .welcome .finish .btn.primary { background: var(--signal); border-color: var(--signal); color: var(--signal-ink); }
+    .welcome .finish .btn:disabled { opacity: .45; cursor: default; }
+    .welcome .finish small { color: var(--faint); font-size: 12.5px; }
+    .welcome .err { color: var(--risk); font-size: 13px; }
+    @media (max-width: 520px) { .welcome .wrap { padding-top: 28px; } .welcome .step .body { padding-left: 18px; } }
+  </style>
+</head>
+<body class="welcome">
+  <div class="wrap">
+    <header><img src="/bobby.svg" alt="" width="26" height="26"><b>bobby</b></header>
+    <h1>Welcome to Bobby</h1>
+    <p class="lede">Two things to set up, once. Bobby installs each for you, with no sudo, and you sign in with your own accounts.</p>
+    <ol>
+      <li class="step" data-step="gh">
+        <div class="head"><span class="n">1</span><span class="t"><b>GitHub</b><span>Reads PRs and posts your reviews, through GitHub's CLI, <code>gh</code></span></span><span class="tag"></span></div>
+        <div class="body"></div>
+      </li>
+      <li class="step" data-step="claude">
+        <div class="head"><span class="n">2</span><span class="t"><b>Claude Code</b><span>Organises each PR into a few core changes, and answers your questions</span></span><span class="tag"></span></div>
+        <div class="body"></div>
+      </li>
+    </ol>
+    <div class="finish">
+      <button class="btn primary" data-go disabled>Start reviewing</button>
+      <small data-note></small>
+    </div>
+    <p class="err" data-err hidden></p>
+  </div>
+  <script type="module" src="/app/welcome.js"></script>
+</body>
+</html>

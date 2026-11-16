@@ -101,7 +101,8 @@ function bootCard({ title, steps = [], elapsed, error }) {
   </div></div>`;
   view.querySelector("[data-reload]")?.addEventListener("click", () => location.reload());
 }
-const fresh = !Object.keys(session.settings).length; // nothing saved yet: a first launch
+// nothing saved yet but the first launch's setup (welcome.js): a first launch, so the tour
+const fresh = Object.keys(session.settings).every((k) => ["onboarded", "gh", "claude"].includes(k));
 const app = createApp({ graph, session });
 app.claudeReady = graph.generator.tree === "claude";
 app.renderPage = (el, pid) => { app.pageEl = el; renderPage(app, el, pid ?? app.focus); };

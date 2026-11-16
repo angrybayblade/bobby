@@ -20,6 +20,7 @@ import { approvedOf, lastPrLists, loadRecents, noteRecent, prLists } from "./rec
 import { type Conversation, conversation } from "./conversation.ts";
 import { type Stack, defineStack, markRestacks, retarget, savedBelow, stackOf } from "./stack.ts";
 import { idFromPath } from "./review.ts";
+import { finishOnboarding, needsOnboarding } from "./onboarding.ts";
 import { layerOnto, type StackContext, stackContext } from "./stackctx.ts";
 import { type ReviewEvent, submitReview } from "./submit.ts";
 import * as log from "./log.ts";
@@ -201,7 +202,7 @@ export function startServer(app: App, port: number, { hostname = "127.0.0.1", al
       // /api/… is its API, and anything else is the page, at a view and what it's on (/diff/src/api/x.ts is a page).
       if (p.startsWith("/r/")) {
         const seg = p.slice(3).split("/"), rest = `/${seg.slice(3).join("/")}`;
-        if (!rest.startsWith("/api/")) return staticFile("/index.html");
+        if (!rest.startsWith("/api/")) return (await toWelcome(url)) ?? staticFile("/index.html");
         const id = idFromPath(seg.slice(0, 3)), s = app.reviews.get(id);
         if (s) return rest === "/api/open" ? json({ id }) : reviewApi(s, app, req, url, rest);
         // Not open. Only the page's POST opens it (guard checks its Origin): a GET from any other site (an <img>, a
@@ -222,7 +223,9 @@ export function startServer(app: App, port: number, { hostname = "127.0.0.1", al
         const known = (await loadRecents()).some((x) => x.id === id);
         return json({ closed: true, known, settings: loadSettings(), error: `No review ${id} is open. Open it from the home page, or with bobby <PR URL>.` }, 404);
       }
-      if (!p.startsWith("/api/")) return staticFile(p === "/" ? "/home.html" : p);
+      if (p === "/") return (await toWelcome(url)) ?? staticFile("/home.html");
+      if (p === "/welcome") return staticFile("/welcome.html"); // the first launch's setup (onboarding.ts)
+      if (!p.startsWith("/api/")) return staticFile(p);
       // A GitHub avatar, fetched once and kept a week in ~/.bobby/cache/avatars. Only GitHub's own avatar hosts.
       if (p === "/api/avatar") return avatar(url.searchParams.get("u") ?? "");
       // The home page: what you've opened (and which are open now), and the GitHub lists, filtered.
@@ -256,6 +259,8 @@ export function startServer(app: App, port: number, { hostname = "127.0.0.1", al
           return json({ error: String((e as Error).message ?? e), ...(setup ? { setup: "gh" } : (e as { askSsh?: boolean }).askSsh ? { ask: "ssh" } : {}) }, 400);
         }
       }
+      // The first launch's setup is done (or skipped): pages stop sending you to it
+      if (req.method === "POST" && p === "/api/onboarding/done") { finishOnboarding(); return json({ ok: true }); }
       // Setting up GitHub's CLI (github.ts): where it stands, install it, sign in with a one-time code on github.com
       if (p === "/api/gh" || p.startsWith("/api/gh/")) return ghApi(req, p);
       // Setting up Claude Code (claude.ts): where it stands, install it, sign in by pasting the code from its sign-in page
@@ -271,6 +276,13 @@ export function startServer(app: App, port: number, { hostname = "127.0.0.1", al
       return json({ error: "not found" }, 404);
     }),
   });
+}
+
+/** A page, on the first launch: the setup page first (onboarding.ts), which sends you on here once it's done. The
+ *  browser keeps the address's #fragment through the redirect, and the setup page passes it on. */
+async function toWelcome(url: URL): Promise<Response | null> {
+  if (!(await needsOnboarding())) return null;
+  return new Response(null, { status: 302, headers: { location: `/welcome?next=${encodeURIComponent(url.pathname + url.search)}`, "cache-control": "no-store" } });
 }
 
 const pageLogs: number[] = []; // when the page last logged, for its limit
