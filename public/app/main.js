@@ -491,6 +491,6 @@ window.bobby = app; // handy for debugging and tests
 // first, once whatever else opens on arrival (the tour, welcome back) is closed.
 {
   let tries = 0;
-  const offer = () => (chrome.isOpen() && tries++ < 150 ? setTimeout(offer, 2000) : offerGh().then(() => offerClaude()));
+  const offer = () => ((chrome.isOpen() || tour.isOpen()) && tries++ < 150 ? setTimeout(offer, 2000) : offerGh().then(() => offerClaude()));
   setTimeout(offer, 1500);
 }
