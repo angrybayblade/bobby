@@ -50,6 +50,7 @@ const { values, positionals } = parseArgs({
     stale: { type: "boolean", default: false },
     days: { type: "string", default: "30" },
     yes: { type: "boolean", short: "y", default: false },
+    "keep-data": { type: "boolean", default: false },
     help: { type: "boolean", short: "h", default: false },
     version: { type: "boolean", short: "v", default: false },
   },
@@ -72,6 +73,8 @@ const USAGE = `bobby: review a PR one focused page at a time
   bobby clean --stale [--days n]     remove what Bobby keeps for reviews you're done with: PRs merged or
                                      closed, or not opened in n days (default 30), and clones no review
                                      uses any more; keeps any with unsent drafts or notes. Asks first
+  bobby uninstall [--keep-data]      remove Bobby: ~/.bobby and this binary (with --keep-data, your
+                                     reviews' progress and settings stay). Asks first; gh and claude stay
   bobby logs [n]                     the log's last n lines (default 80) and where it is: for a bug report
   bobby doctor                       what Bobby relies on and how each stands, with what to do about
                                      each problem: for you, or to paste into a bug report
@@ -101,8 +104,8 @@ const USAGE = `bobby: review a PR one focused page at a time
   --ssh          if cloning over HTTPS (with gh's sign-in) fails, try SSH without asking
   -v, --version  print the version`;
 
-const [cmd, arg] = ["extract", "open", "lsp", "clean", "home", "update", "logs", "doctor", "mcp", "stop", "start"].includes(positionals[0]) ? [positionals[0], positionals[1]] : ["review", positionals[0]];
-if (cmd !== "logs" && !values.version && !values.help) log.started(pkg.version, process.argv.slice(2));
+const [cmd, arg] = ["extract", "open", "lsp", "clean", "uninstall", "home", "update", "logs", "doctor", "mcp", "stop", "start"].includes(positionals[0]) ? [positionals[0], positionals[1]] : ["review", positionals[0]];
+if (cmd !== "logs" && cmd !== "uninstall" && !values.version && !values.help) log.started(pkg.version, process.argv.slice(2));
 // bobby logs: where the log is, and its last lines, to paste into a bug report
 if (cmd === "logs") {
   const f = Bun.file(log.logPath());
@@ -141,13 +144,18 @@ if (cmd === "start") {
   process.exit(0);
 }
 // bobby stop: the Bobby app running here, as one an agent started in the background (bobby mcp), with no terminal to stop
-if (cmd === "stop") {
+/** Stops the Bobby app running here, if one is: whether none is running now. */
+async function stopRunning(): Promise<boolean> {
   const other = holder();
-  if (!other) { console.log("No Bobby is running."); process.exit(0); }
+  if (!other) return true;
   process.kill(other.pid, "SIGTERM");
   for (let i = 0; i < 50 && holder(); i++) await Bun.sleep(100);
   console.log(holder() ? `Asked Bobby (pid ${other.pid}) to stop, but it's still running.` : `✓ stopped the Bobby on port ${other.port}`);
-  process.exit(holder() ? 1 : 0);
+  return !holder();
+}
+if (cmd === "stop") {
+  if (!holder()) { console.log("No Bobby is running."); process.exit(0); }
+  process.exit((await stopRunning()) ? 0 : 1);
 }
 /** Asks yes or no in the terminal; --yes answers yes. With no terminal to ask in and no --yes: no, and says how. */
 async function confirm(question: string): Promise<boolean> {
@@ -158,6 +166,36 @@ async function confirm(question: string): Promise<boolean> {
   return answer === "y" || answer === "yes";
 }
 const mb = (b: number) => (b < 1e6 ? `${Math.max(1, Math.round(b / 1e3))} KB` : b < 1e9 ? `${(b / 1e6).toFixed(b < 1e7 ? 1 : 0)} MB` : `${(b / 1e9).toFixed(1)} GB`);
+// bobby uninstall: Bobby's folder and its binary. gh and Claude Code, which Bobby may have installed, are yours too:
+// they stay, with their sign-ins, and it says how to remove them.
+if (cmd === "uninstall") {
+  const { existsSync, readdirSync, realpathSync, rmSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const { homedir } = await import("node:os");
+  const { isBinary } = await import("./updates.ts");
+  const root = home(), keep = new Set(values["keep-data"] ? ["state", "settings.json", "recents.json"] : []);
+  const data = readdirSync(root).filter((n) => !keep.has(n)).map((n) => join(root, n));
+  const bin = isBinary() ? realpathSync(process.execPath) : null;
+  const { sizeOf } = await import("./prune.ts");
+  console.log(`  This removes:\n    ${values["keep-data"] ? `${root}, except your reviews' progress and settings` : root} (${mb(data.reduce((n, p) => n + sizeOf(p), 0))})`);
+  console.log(bin ? `    ${bin}, this binary` : "    (not the program: this Bobby runs from a checkout of the source; delete that folder yourself)");
+  if (holder()) console.log("    and stops the Bobby running now");
+  if (!(await confirm("  Remove Bobby?"))) process.exit(1);
+  if (!(await stopRunning())) fail("Bobby is still running: stop it (ctrl-c in its terminal), then run bobby uninstall again");
+  for (const p of data) rmSync(p, { recursive: true, force: true });
+  if (!values["keep-data"]) rmSync(root, { recursive: true, force: true });
+  let binLeft = "";
+  if (bin) {
+    if (process.platform === "win32") binLeft = `  Delete ${bin} yourself: Windows doesn't let a running program delete itself.`;
+    else try { rmSync(bin, { force: true }); } catch (e) { binLeft = `  Couldn't remove ${bin} (${(e as Error).message}): delete it with the rights to that folder.`; }
+  }
+  console.log(`✓ Bobby is removed${values["keep-data"] ? `; your reviews and settings stay in ${root}` : ""}`);
+  if (binLeft) console.log(binLeft);
+  const local = join(homedir(), ".local", "bin"), tools = ["gh", "claude"].filter((t) => existsSync(join(local, t)));
+  if (tools.length) console.log(`  Still here, as they may be yours too: ${tools.map((t) => join(local, t)).join(", ")}. To remove them as well:${tools.includes("gh") ? `\n    gh auth logout && rm ${join(local, "gh")}` : ""}${tools.includes("claude") ? `\n    claude auth logout && rm ${join(local, "claude")}` : ""}`);
+  console.log("  If you added Bobby's folder to your PATH in your shell's startup file (~/.zshrc, ~/.bashrc), that line can go too.");
+  process.exit(0);
+}
 if (cmd === "doctor") process.exit(await doctor(pkg.version));
 if (cmd === "update") {
   await selfUpdate(arg, (m) => log.info(m));
