@@ -4,6 +4,10 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+## 0.1.0-rc25 (2026-11-17)
+
+The first launch opens in GitHub's colours, and the exe.dev prompt has a page of its own.
+
 - **The first launch opens in GitHub's colours:** the setup page, and any page before you've picked a style, used Bobby's warm palette, which is for the website. They now open as the app does by default, in GitHub's colours, light or dark as your system is.
 - **The exe.dev prompt has a page of its own:** [Bobby on exe.dev](docs/exe_dev.md), with what it does and what to do when it doesn't work.
 
