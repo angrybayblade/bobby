@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { idFromPath, reviewId } from "../src/review.ts";
-import { hostAllowed } from "../src/server.ts";
+import { hostAllowed, originAllowed } from "../src/server.ts";
 
 test("answers at loopback names on any port: Bobby's own, or an SSH tunnel's", () => {
   for (const h of ["127.0.0.1:4173", "localhost:4173", "localhost:9000", "LOCALHOST:9000", "[::1]:4173", "localhost"]) expect(hostAllowed(h)).toBe(true);
@@ -20,6 +20,16 @@ test("an allowed name takes any port; with a port, only that one; * takes anythi
   expect(hostAllowed("bobby.vm.internal:4173", ["bobby.vm.internal:8080"])).toBe(false);
   expect(hostAllowed("other.vm.internal:4173", ["bobby.vm.internal"])).toBe(false);
   expect(hostAllowed("34.120.1.9:4173", ["*"])).toBe(true);
+});
+
+test("a change comes from Bobby's page at its Host, or at a name allowed by name, behind a proxy that rewrites Host", () => {
+  expect(originAllowed("http://127.0.0.1:4173", "127.0.0.1:4173")).toBe(true);
+  expect(originAllowed("https://evil.example", "127.0.0.1:4173")).toBe(false);
+  expect(originAllowed("https://vm.exe.xyz", "localhost:8000", ["vm.exe.xyz"])).toBe(true);
+  expect(originAllowed("https://vm.exe.xyz:4173", "vm.exe.xyz:4173", ["vm.exe.xyz:8000"])).toBe(true); // its Host
+  expect(originAllowed("https://vm.exe.xyz:4173", "localhost:8000", ["vm.exe.xyz:8000"])).toBe(false);
+  expect(originAllowed("https://other.exe.xyz", "localhost:8000", ["vm.exe.xyz"])).toBe(false);
+  expect(originAllowed("https://evil.example", "localhost:8000", ["*"])).toBe(false); // * opens Host, not Origin
 });
 
 test("a review's address leads back to its id, for a branch of any depth or spelling", () => {

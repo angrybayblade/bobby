@@ -142,6 +142,16 @@ export function hostAllowed(host: string, allow: string[] = []): boolean {
   return allow.some((a) => (a = a.toLowerCase()) === "*" || a === host || a === name);
 }
 
+/** Whether a change may come from a page at this Origin: Bobby's own page, at the Host it was opened at, or at a name you
+ *  allowed by name (not *). A proxy in front of Bobby, as exe.dev's, may send it another Host than the browser's
+ *  address; the browser's Origin still says where the page is, and another website can't claim yours. */
+export function originAllowed(origin: string, host: string, allow: string[] = []): boolean {
+  const at = origin.toLowerCase().replace(/^https?:\/\//, "");
+  if (at === host.toLowerCase()) return true;
+  const name = at.replace(/:\d+$/, "");
+  return allow.some((a) => (a = a.toLowerCase()) !== "*" && (a === at || a === name));
+}
+
 /** Only Bobby's own page may use the server. A website you have open could otherwise post a review as you (a no-cors
  *  POST needs no preflight), and one that rebinds its name to 127.0.0.1 could read your code. So: the Host must be one
  *  Bobby answers at (defeats DNS rebinding), a request that changes something must come from the page at that same
@@ -152,7 +162,7 @@ function guard(req: Request, allow: string[]): Response | null {
   if (!hostAllowed(host, allow)) return new Response(`Bobby only answers its own page (unexpected Host "${host}"). Opening it at another name, as on a remote machine? Start Bobby with --allow-host ${host.replace(/:\d+$/, "") || "<name>"}`, { status: 403 });
   if (req.method === "GET" || req.method === "HEAD") return null;
   const origin = req.headers.get("origin");
-  if (origin && origin.toLowerCase().replace(/^https?:\/\//, "") !== host) return new Response("Bobby only answers its own page (foreign Origin).", { status: 403 });
+  if (origin && !originAllowed(origin, host, allow)) return new Response("Bobby only answers its own page (foreign Origin).", { status: 403 });
   if (req.method === "POST" && !(req.headers.get("content-type") ?? "").toLowerCase().startsWith("application/json"))
     return new Response("Bobby only takes JSON.", { status: 415 });
   return null;
