@@ -23,11 +23,11 @@ export const TOOLS: Tool[] = [
 ];
 
 /** The running Bobby app's address: the one already up, or one started now, in the background, on the home page. */
-export async function ensureApp(): Promise<string> {
+export async function ensureApp(listen: string[] = []): Promise<string> {
   const up = await runningApp();
   if (up) return up;
   const self = isBinary() ? [process.execPath] : [process.execPath, Bun.main]; // the compiled binary, or bun and cli.ts
-  spawn(self[0], [...self.slice(1), "home", "--no-open"], { detached: true, stdio: "ignore", env: process.env }).unref();
+  spawn(self[0], [...self.slice(1), "home", "--no-open", ...listen], { detached: true, stdio: "ignore", env: process.env }).unref();
   for (const until = Date.now() + 30_000; Date.now() < until;) {
     await Bun.sleep(300);
     const url = await runningApp();
@@ -64,7 +64,7 @@ export async function runTool(name: string, a: Record<string, unknown>, o: { app
 
 /** Serves MCP over stdio, one JSON-RPC message a line, until stdin closes. Nothing else may reach stdout. */
 export async function serveStdio(cwd = process.cwd()) {
-  const o = { app: ensureApp, cwd };
+  const o = { app: () => ensureApp(), cwd };
   const reply = async (line: string) => {
     let body;
     try { body = JSON.parse(line); } catch { return write({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } }); }

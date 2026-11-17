@@ -79,7 +79,7 @@ const USAGE = `bobby: review a PR one focused page at a time
   bobby doctor                       what Bobby relies on and how each stands, with what to do about
                                      each problem: for you, or to paste into a bug report
   bobby start                        start Bobby in the background (if it isn't running), for bobby <pr>
-                                     to hand reviews to
+                                     to hand reviews to; takes --port, --host and --allow-host
   bobby stop                         stop the Bobby running here (as one bobby start or bobby mcp started)
   bobby mcp                          an MCP server (stdio) for your agents, to open reviews in the Bobby
                                      running here, or one it starts: claude mcp add bobby -- bobby mcp
@@ -139,7 +139,9 @@ if (cmd === "lsp") process.exit(await lspCommand(arg, positionals[2]));
 // bobby start: a Bobby app running here, started in the background (on the home page) if none is; then bobby <pr> hands
 // its review to it and returns at once. For agents and scripts, which can't hold a terminal open.
 if (cmd === "start") {
-  const was = await runningApp(), url = was ?? (await ensureApp());
+  // where it listens and the names it answers at, as bobby home takes them: --host 0.0.0.0 --allow-host <vm's name>
+  const listen = ["--port", values.port!, "--host", values.host!, ...(values["allow-host"] ?? []).flatMap((h) => ["--allow-host", h])];
+  const was = await runningApp(), url = was ?? (await ensureApp(listen));
   console.log(`${was ? "Bobby is already running" : "✓ started Bobby in the background"}\n\n  ▶ ${url}/\n`);
   process.exit(0);
 }
