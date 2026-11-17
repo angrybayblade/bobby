@@ -4,6 +4,10 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- **Bobby on an exe.dev VM, at the machine's address:** getting-started has a prompt to give your agent, which sets Bobby up at `https://<vm>.exe.xyz/`, behind exe.dev's login. It replaces the exe.dev skill.
+- **`bobby start` takes `--port`, `--host` and `--allow-host`,** so a Bobby started in the background can listen on a VM's address.
+- **Fix: behind a proxy that changes the Host it passes on, Bobby's buttons did nothing.** A change is now taken from Bobby's page at any name you allowed with `--allow-host`, whatever Host the proxy sends.
+
 ## 0.1.0-rc23 (2026-11-16)
 
 A setup page on the first launch installs and signs in to GitHub's CLI and Claude Code, `bobby uninstall` and `bobby clean --stale` free the disk, and the home page shows GitHub's lists straight away.
