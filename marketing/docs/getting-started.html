@@ -216,7 +216,26 @@ bobby &lt;pr-url&gt; --no-open              # and open http://localhost:4173 on 
 bobby &lt;pr-url&gt; --no-open --host 0.0.0.0 --allow-host bobby.dev.internal   # any port; bobby.dev.internal:8443 for only that one
 </code></pre>
 <p>Bobby only answers at names it knows, so a website can't reach it by pointing its own name at the machine (DNS rebinding): <code>localhost</code> and <code>127.0.0.1</code> at any port, plus each <code>--allow-host</code>. Opened at any other name, it says which to allow. <code>--allow-host '*'</code> takes any name, which gives that protection up; use it only on a network nothing else can reach. Bobby warns at startup whenever it listens beyond loopback.</p>
-<p><strong>On an <a href="https://exe.dev">exe.dev</a> VM</strong>, exe.dev's HTTPS proxy is the third way: it asks for your exe.dev login before anything reaches Bobby. <a href="https://github.com/angrybayblade/bobby/blob/main/skills/exe_dev/SKILL.md"><code>skills/exe_dev</code></a> is a skill that walks your agent (or you) through it: installing Bobby there, running it as a service, keeping the VM's proxy private, and opening it at <code>https://&lt;vm&gt;.exe.xyz:4173/</code>.</p>
+<p><strong>On an <a href="https://exe.dev">exe.dev</a> VM</strong>, open Bobby at the machine's own address, <code>https://&lt;vm&gt;.exe.xyz/</code>. exe.dev's proxy adds HTTPS and asks for your exe.dev login before anything reaches Bobby. Give your agent this prompt, on the VM or on a machine that can <code>ssh</code> to it, with your VM's name in place of <code>&lt;vm&gt;</code>:</p>
+<pre><code class="language-text">Set up Bobby, a PR reviewer, on my exe.dev VM &lt;vm&gt;, so I can open it at https://&lt;vm&gt;.exe.xyz/.
+
+1. On the VM, install it: curl -fsSL https://raw.githubusercontent.com/angrybayblade/bobby/main/install.sh | bash
+   It goes in ~/.local/bin, which isn't on PATH outside a login shell: call it as ~/.local/bin/bobby.
+2. On the VM, start it in the background, listening on every interface and answering at the
+   machine's address:
+   ~/.local/bin/bobby start --host 0.0.0.0 --port 4173 --allow-host &lt;vm&gt;.exe.xyz
+3. Point the VM's address at Bobby's port: ssh exe.dev share port &lt;vm&gt; 4173
+   That runs from a machine with my exe.dev SSH key, not from the VM. If you can't run it, ask me to.
+   Don't make the VM public (share set-public): exe.dev's login keeps Bobby to me.
+4. Check it from the VM: curl -s -o /dev/null -w &quot;%{http_code}\n&quot; -H &quot;Host: &lt;vm&gt;.exe.xyz&quot; http://127.0.0.1:4173/
+   302 or 200 is right; 403 means the --allow-host name is wrong.
+5. Give me https://&lt;vm&gt;.exe.xyz/. Don't sign in to GitHub or Claude for me: Bobby's first page
+   walks me through both.
+
+To open a PR in it for me: ~/.local/bin/bobby &lt;github PR URL&gt; --no-open, then give me the same path
+at https://&lt;vm&gt;.exe.xyz/. If the VM restarts, run step 2 again.
+</code></pre>
+<p>Once you've pressed something on Bobby's page, <code>bobby logs</code> on the VM shows any refused request (<code>→ 403</code>) and why.</p>
 <h2 id="what-it-writes-to-disk"><a class="anchor" href="#what-it-writes-to-disk" aria-hidden="true">#</a>What it writes to disk</h2>
 <p>Everything lives under <code>~/.bobby/</code>. If you used Bobby when it was called prfocus, <code>~/.prfocus</code> is moved there on the first run, progress and clones included:</p>
 <div class="table"><table>
