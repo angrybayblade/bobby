@@ -3,6 +3,7 @@
 ## User manual
 
 - [Getting started](getting-started.md): requirements, install, setting up GitHub and Claude, commands, flags, running on a remote machine, and what's written to disk
+- [Bobby on exe.dev](exe_dev.md): a prompt for your agent that sets Bobby up on an exe.dev VM, at the machine's own address
 - [Reviewing a PR](reviewing.md): the walk, zoom levels, keys, marks, comments and threads (reply, resolve, edit), submitting, focus aids
 - [Views](views.md): Conversation, Flow, Outline, Lens and Diff, and how to drive each one
 - [Settings](settings.md): every setting and the design choices behind the UI

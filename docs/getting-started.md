@@ -204,29 +204,7 @@ bobby <pr-url> --no-open --host 0.0.0.0 --allow-host bobby.dev.internal   # any 
 
 Bobby only answers at names it knows, so a website can't reach it by pointing its own name at the machine (DNS rebinding): `localhost` and `127.0.0.1` at any port, plus each `--allow-host`. Opened at any other name, it says which to allow. `--allow-host '*'` takes any name, which gives that protection up; use it only on a network nothing else can reach. Bobby warns at startup whenever it listens beyond loopback.
 
-**On an [exe.dev](https://exe.dev) VM**, open Bobby at the machine's own address, `https://<vm>.exe.xyz/`. exe.dev's proxy adds HTTPS and asks for your exe.dev login before anything reaches Bobby. Give your agent this prompt, on the VM or on a machine that can `ssh` to it, with your VM's name in place of `<vm>`:
-
-```text
-Set up Bobby, a PR reviewer, on my exe.dev VM <vm>, so I can open it at https://<vm>.exe.xyz/.
-
-1. On the VM, install it: curl -fsSL https://raw.githubusercontent.com/angrybayblade/bobby/main/install.sh | bash
-   It goes in ~/.local/bin, which isn't on PATH outside a login shell: call it as ~/.local/bin/bobby.
-2. On the VM, start it in the background, listening on every interface and answering at the
-   machine's address:
-   ~/.local/bin/bobby start --host 0.0.0.0 --port 4173 --allow-host <vm>.exe.xyz
-3. Point the VM's address at Bobby's port: ssh exe.dev share port <vm> 4173
-   That runs from a machine with my exe.dev SSH key, not from the VM. If you can't run it, ask me to.
-   Don't make the VM public (share set-public): exe.dev's login keeps Bobby to me.
-4. Check it from the VM: curl -s -o /dev/null -w "%{http_code}\n" -H "Host: <vm>.exe.xyz" http://127.0.0.1:4173/
-   302 or 200 is right; 403 means the --allow-host name is wrong.
-5. Give me https://<vm>.exe.xyz/. Don't sign in to GitHub or Claude for me: Bobby's first page
-   walks me through both.
-
-To open a PR in it for me: ~/.local/bin/bobby <github PR URL> --no-open, then give me the same path
-at https://<vm>.exe.xyz/. If the VM restarts, run step 2 again.
-```
-
-Once you've pressed something on Bobby's page, `bobby logs` on the VM shows any refused request (`→ 403`) and why.
+**On an [exe.dev](https://exe.dev) VM**, open Bobby at the machine's own address, `https://<vm>.exe.xyz/`, behind exe.dev's login: [Bobby on exe.dev](exe_dev.md) has a prompt that sets it up for you.
 
 ## What it writes to disk
 

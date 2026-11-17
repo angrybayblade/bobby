@@ -16,6 +16,7 @@ const GROUPS: { title: string; pages: { slug: string; src: string; label: string
     title: "User manual",
     pages: [
       { slug: "getting-started", src: "docs/getting-started.md", label: "Getting started" },
+      { slug: "exe-dev", src: "docs/exe_dev.md", label: "Bobby on exe.dev" },
       { slug: "reviewing", src: "docs/reviewing.md", label: "Reviewing a PR" },
       { slug: "views", src: "docs/views.md", label: "Views" },
       { slug: "settings", src: "docs/settings.md", label: "Settings" },
