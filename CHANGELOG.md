@@ -4,12 +4,16 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
-- **`bobby uninstall`:** removes Bobby: `~/.bobby` and the binary, after showing what and how much, and asking. `--keep-data` keeps your reviews' progress and settings. GitHub's CLI and Claude Code stay, with how to remove them too.
-- **`bobby clean --stale`:** removes what Bobby keeps for reviews you're done with: PRs merged or closed, or not opened in 30 days (`--days`), with their progress, cache, exported trees and clones no review uses any more. Reviews with unsent drafts or notes are kept. It lists everything first and asks.
-- **Exported trees no longer pile up:** the daily tidy-up removes copies of commits not used in a month.
+## 0.1.0-rc23 (2026-11-16)
+
+A setup page on the first launch installs and signs in to GitHub's CLI and Claude Code, `bobby uninstall` and `bobby clean --stale` free the disk, and the home page shows GitHub's lists straight away.
+
 - **A setup page on the first launch:** the first time you run Bobby, its page opens on **Welcome to Bobby**, which installs GitHub's CLI and Claude Code and signs you in to each (or lets you skip either), then opens the PR, branch or home page you asked for. Until then, every page leads there. It replaces the dialogs that offered each setup over the home page or a review, where the tour's own key, `enter`, could start the Claude Code install by mistake.
 - **Fix: the "what leaves your machine" link in Claude's setup went nowhere.** It pointed at the site's old address; it's now usebobby.app.
 - **The home page shows GitHub's lists straight away:** Review requested, My PRs and All waited 3–4 seconds on GitHub every time Bobby started. They now open on the lists from last time, and GitHub's fresh answer replaces them a few seconds later. A refresh keeps them on screen too, instead of going back to "Asking GitHub…".
+- **`bobby uninstall`:** removes Bobby: `~/.bobby` and the binary, after showing what and how much, and asking. `--keep-data` keeps your reviews' progress and settings. GitHub's CLI and Claude Code stay, with how to remove them too.
+- **`bobby clean --stale`:** removes what Bobby keeps for reviews you're done with: PRs merged or closed, or not opened in 30 days (`--days`), with their progress, cache, exported trees and clones no review uses any more. Reviews with unsent drafts or notes are kept. It lists everything first and asks.
+- **Exported trees no longer pile up:** the daily tidy-up removes copies of commits not used in a month.
 
 ## 0.1.0-rc22 (2026-11-11)
 
