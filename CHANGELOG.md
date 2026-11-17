@@ -4,6 +4,10 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+## 0.1.0-rc24 (2026-11-16)
+
+Bobby on an exe.dev VM at the machine's own address, with a prompt that sets it up.
+
 - **Bobby on an exe.dev VM, at the machine's address:** getting-started has a prompt to give your agent, which sets Bobby up at `https://<vm>.exe.xyz/`, behind exe.dev's login. It replaces the exe.dev skill.
 - **`bobby start` takes `--port`, `--host` and `--allow-host`,** so a Bobby started in the background can listen on a VM's address.
 - **Fix: behind a proxy that changes the Host it passes on, Bobby's buttons did nothing.** A change is now taken from Bobby's page at any name you allowed with `--allow-host`, whatever Host the proxy sends.
