@@ -4,6 +4,8 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- **The exe.dev prompt has a page of its own:** [Bobby on exe.dev](docs/exe_dev.md), with what it does and what to do when it doesn't work.
+
 ## 0.1.0-rc24 (2026-11-16)
 
 Bobby on an exe.dev VM at the machine's own address, with a prompt that sets it up.
