@@ -4,6 +4,10 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+## 0.1.0-rc26 (2026-11-19)
+
+Reviews open a third faster on your machine, and in half the time on a remote Bobby.
+
 - **Reviews open faster:** a review's page starts a third sooner on your machine (about 310 ms, from 455, on a 30-file PR), and in half the time on a remote Bobby, as on a VM (about 0.7 s, from 1.3 s over a 40 ms link).
   - The page no longer waits for Google Fonts before it starts. Fonts are asked for only by a style or reading font that uses one; GitHub's style in the system font, the default, asks for none.
   - The review's data is asked for while the page's scripts load, and the scripts are all asked for at once.
