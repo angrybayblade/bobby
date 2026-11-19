@@ -58,7 +58,7 @@ scripts/check.sh         typecheck + syntax check (the build gate)
 .githooks/               commit-msg and pre-commit hooks
 ```
 
-There's no bundler and no framework. `src/` runs under Bun as TypeScript; `public/` is served as-is. The only runtime dependency in the browser is highlight.js from cdnjs, plus Google Fonts.
+There's no bundler and no framework. `src/` runs under Bun as TypeScript; `public/` is served as-is. The only runtime dependency in the browser is highlight.js from cdnjs, plus Google Fonts for the styles and reading fonts that use a web font (`look.js` asks for them, and never holds the page up for the answer).
 
 ## One run, end to end
 

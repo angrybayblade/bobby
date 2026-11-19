@@ -9,6 +9,24 @@
   r.dataset.palette = ["warm", "silverpoint"].includes(l.palette) ? l.palette : "github";
   r.dataset.theme = l.theme === "system" || !l.theme ? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark") : l.theme;
   r.dataset.motion = l.motion === "system" || !l.motion ? (matchMedia("(prefers-reduced-motion: reduce)").matches ? "off" : "on") : l.motion;
+  /** The web fonts a look uses, asked of Google Fonts only then, and without holding the page up for the answer: a
+   *  stylesheet in the page's head stops everything behind it until it's back (200 ms, or far longer offline), and
+   *  GitHub's style in the system's font, the default, uses none. Called again when your settings change. */
+  window.bobbyFonts = (look) => {
+    const own = ["warm", "silverpoint"].includes(look.palette), font = look.font;
+    const families = [
+      font === "hyper" && "Atkinson+Hyperlegible:wght@400;700",
+      (own || font === "hyper") && "Inter:wght@400;500;600;700",
+      (own || font === "mono") && "JetBrains+Mono:wght@400;600",
+      font === "serif" && "Literata:opsz,wght@7..72,400;7..72,600",
+    ].filter(Boolean);
+    for (const f of families) {
+      const href = `https://fonts.googleapis.com/css2?family=${f}&display=swap`;
+      if (document.head.querySelector(`link[href="${href}"]`)) continue;
+      document.head.append(Object.assign(document.createElement("link"), { rel: "stylesheet", href }));
+    }
+  };
+  window.bobbyFonts(l);
 }
 // An avatar that can't load: hidden (data-av), or gone (data-av="remove"). Load errors don't bubble, so they're caught
 // on the way down; one that failed before it was put on the page (built apart, then added) is caught as it's added.

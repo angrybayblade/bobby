@@ -22,7 +22,11 @@ root.dataset.theme = (s.theme ?? "system") === "system" ? (matchMedia("(prefers-
 root.dataset.palette = ["warm", "silverpoint"].includes(s.palette) ? s.palette : "github";
 root.dataset.motion = (s.motion ?? "system") === "system" ? (matchMedia("(prefers-reduced-motion: reduce)").matches ? "off" : "on") : s.motion;
 root.style.setProperty("--size", `${s.size ?? 15}px`);
-try { localStorage.setItem("bobby.look", JSON.stringify({ theme: s.theme ?? "system", palette: s.palette ?? "github", motion: s.motion ?? "system" })); } catch { /* private window */ }
+{
+  const look = { theme: s.theme ?? "system", palette: s.palette ?? "github", motion: s.motion ?? "system", font: s.font ?? "sans" };
+  try { localStorage.setItem("bobby.look", JSON.stringify(look)); } catch { /* private window */ }
+  window.bobbyFonts(look); // the fonts your style uses (look.js), if they've changed since this browser last saw it
+}
 $(".ver").textContent = home.version ? `v${home.version}` : "";
 if (home.release) $(".release").innerHTML = `<a class="pill signal" href="${esc(home.release.url)}" target="_blank" rel="noopener" title="Update with: ${esc(home.release.how ?? "")}">Update · ${esc(home.release.version)}</a>`;
 if (home.error) $(".err").textContent = `Couldn't reach Bobby: ${home.error}`;

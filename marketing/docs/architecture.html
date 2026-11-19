@@ -112,7 +112,7 @@ schema/                  JSON Schema for review-graph v1
 scripts/check.sh         typecheck + syntax check (the build gate)
 .githooks/               commit-msg and pre-commit hooks
 </code></pre>
-<p>There's no bundler and no framework. <code>src/</code> runs under Bun as TypeScript; <code>public/</code> is served as-is. The only runtime dependency in the browser is highlight.js from cdnjs, plus Google Fonts.</p>
+<p>There's no bundler and no framework. <code>src/</code> runs under Bun as TypeScript; <code>public/</code> is served as-is. The only runtime dependency in the browser is highlight.js from cdnjs, plus Google Fonts for the styles and reading fonts that use a web font (<code>look.js</code> asks for them, and never holds the page up for the answer).</p>
 <h2 id="one-run-end-to-end"><a class="anchor" href="#one-run-end-to-end" aria-hidden="true">#</a>One run, end to end</h2>
 <ol>
 <li><strong>Resolve</strong> (<code>git.ts › resolvePr</code>). <code>gh pr view</code> gives metadata, including the head commit. A local clone is found or made.</li>

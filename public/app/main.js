@@ -73,7 +73,9 @@ function look(s) {
   root.dataset.palette = ["warm", "silverpoint"].includes(s.palette) ? s.palette : "github";
   root.dataset.motion = (s.motion ?? "system") === "system" ? (matchMedia("(prefers-reduced-motion: reduce)").matches ? "off" : "on") : s.motion;
   if (s.size) root.style.setProperty("--size", `${s.size}px`);
-  try { localStorage.setItem("bobby.look", JSON.stringify({ theme: s.theme ?? "system", palette: s.palette ?? "github", motion: s.motion ?? "system" })); } catch { /* private window */ }
+  const saved = { theme: s.theme ?? "system", palette: s.palette ?? "github", motion: s.motion ?? "system", font: s.font ?? "sans" };
+  try { localStorage.setItem("bobby.look", JSON.stringify(saved)); } catch { /* private window */ }
+  window.bobbyFonts(saved);
 }
 /** While a review builds: the top bar with the way home and what it is, and a card of the steps so far; or why it failed. */
 function bootCard({ title, steps = [], elapsed, error }) {
@@ -124,7 +126,8 @@ const FONTS = {
 const media = (q) => window.matchMedia(q).matches;
 function applySettings() {
   const s = app.settings, root = document.documentElement;
-  try { localStorage.setItem("bobby.look", JSON.stringify({ theme: s.theme, palette: s.palette, motion: s.motion })); } catch { /* private window */ }
+  try { localStorage.setItem("bobby.look", JSON.stringify({ theme: s.theme, palette: s.palette, motion: s.motion, font: s.font })); } catch { /* private window */ }
+  window.bobbyFonts(s); // the fonts this style and reading font use (look.js), once each
   root.dataset.theme = s.theme === "system" ? (media("(prefers-color-scheme: light)") ? "light" : "dark") : s.theme;
   root.dataset.files = s.fileTreeSide === "left" ? "left" : "right";
   root.dataset.palette = ["warm", "silverpoint"].includes(s.palette) ? s.palette : "github";
