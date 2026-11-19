@@ -326,6 +326,33 @@ function safe(res: Response): Response {
   }
 }
 
+/** For a Bobby opened from another machine (a VM's address, a proxy in front of it): answers go compressed, and aren't
+ *  sent again while the browser's copy is still right (ETag). A review's graph is over a megabyte of JSON and the page
+ *  some forty files, all asked for on every load. On this machine neither saves anything, so answers go as they are. */
+const PACKS = /^(text\/|application\/(json|javascript)|image\/svg)/;
+const zipped = new Map<string, Uint8Array>(); // by ETag: the page's files and the graph are asked for again and again
+export async function packed(req: Request, res: Response): Promise<Response> {
+  const host = (req.headers.get("host") ?? "").toLowerCase().replace(/:\d+$/, "");
+  const here = ["127.0.0.1", "localhost", "[::1]"].includes(host) && !req.headers.has("x-forwarded-host"); // a proxy may send its own Host
+  if (here || req.method !== "GET" || res.status !== 200 || res.headers.has("content-encoding") || !PACKS.test(res.headers.get("content-type") ?? "")) return res;
+  const body = new Uint8Array(await res.arrayBuffer()), etag = `"${Bun.hash(body).toString(36)}"`;
+  const headers = new Headers(res.headers);
+  headers.set("etag", etag);
+  headers.set("vary", "accept-encoding");
+  if (!headers.has("cache-control")) headers.set("cache-control", "no-cache"); // kept, and checked with Bobby before each use
+  if (req.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers });
+  if (body.length < 1024 || !/\bgzip\b/.test(req.headers.get("accept-encoding") ?? "")) return new Response(body, { headers });
+  let gz = zipped.get(etag);
+  if (!gz) {
+    gz = Bun.gzipSync(body);
+    if (zipped.size >= 128) zipped.delete(zipped.keys().next().value!);
+    zipped.set(etag, gz);
+  }
+  headers.set("content-encoding", "gzip");
+  headers.delete("content-length");
+  return new Response(gz, { headers });
+}
+
 async function logged(req: Request, answer: () => Promise<Response>): Promise<Response> {
   const { pathname } = new URL(req.url);
   try {
@@ -334,7 +361,7 @@ async function logged(req: Request, answer: () => Promise<Response>): Promise<Re
       const said = await res.clone().json().then((j: { error?: string }) => j.error ?? "", () => "");
       (res.status >= 500 ? log.error : log.warn)(`  ${req.method} ${pathname} → ${res.status}${said ? `: ${said}` : ""}`);
     }
-    return safe(res);
+    return safe(pathname.startsWith("/mcp/") ? res : await packed(req, res));
   } catch (e) {
     log.error(`  ${req.method} ${pathname} failed: ${(e as Error)?.message ?? e}`, (e as Error)?.stack);
     return safe(json({ ok: false, error: String((e as Error)?.message ?? e) }, 500));
