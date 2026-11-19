@@ -9,6 +9,9 @@ export function embed(files: Record<string, [string, string]>) {
 }
 export const embeddedAsset = (path: string) => embedded?.get(path) ?? null;
 
+// import … from "./x.js", import "./x.js", export … from "./x.js": what a module loads before it runs. Not import("./x.js"),
+// which loads when it's reached, if ever.
+const STATIC_IMPORT = /^[ \t]*(?:import\s*(?:[\w$*\s,]*(?:\{[^}]*\})?\s*from\s*)?|export\s*(?:\*(?:\s*as\s+[\w$]+)?|\{[^}]*\})\s*from\s*)["'](\.{0,2}\/[^"'\n]+\.js)["']/gm;
 /** A page with every module its script imports named in its head (modulepreload), so the browser asks for them all at
  *  once, not each as the one that imports it arrives: four round trips of imports for a review's page, which on a
  *  remote Bobby is most of opening it. `read` gives a file under public/ as text, or null. */
@@ -20,7 +23,7 @@ export function withPreloads(html: string, read: (path: string) => string | null
     const src = read(path);
     if (seen.has(path) || src === null) continue;
     seen.add(path);
-    for (const m of src.matchAll(/^\s*(?:import|export)\s[^"';]*?["'](\.{0,2}\/[^"']+\.js)["']/gm)) queue.push(new URL(m[1], `http://x/${path}`).pathname.slice(1));
+    for (const m of src.matchAll(STATIC_IMPORT)) queue.push(new URL(m[1], `http://x/${path}`).pathname.slice(1));
   }
   seen.delete(entry); // the page asks for that one itself
   return html.replace("</head>", `${[...seen].map((p) => `  <link rel="modulepreload" href="/${p}" />\n`).join("")}</head>`);
