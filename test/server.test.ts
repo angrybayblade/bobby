@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { idFromPath, reviewId } from "../src/review.ts";
+import { withPreloads } from "../src/assets.ts";
 import { hostAllowed, originAllowed } from "../src/server.ts";
 
 test("answers at loopback names on any port: Bobby's own, or an SSH tunnel's", () => {
@@ -43,4 +44,20 @@ test("a review's address leads back to its id, for a branch of any depth or spel
     const id = reviewId({ provider: "github", owner: "o", repo: "r", number: 7, ...pr });
     expect(idFromPath(new URL(`http://bobby/r/${id}`).pathname.slice(3).split("/"))).toBe(id);
   }
+});
+
+test("a page names every module its script imports, however deep, once each", () => {
+  const files: Record<string, string> = {
+    "app/main.js": `import { a } from "./a.js";\nimport * as v from "./views/index.js";\nconst lazy = () => import("./lazy.js");`,
+    "app/a.js": `import "./b.js";\nexport { c } from "./views/c.js";`,
+    "app/b.js": `import { a } from "./a.js"; // a cycle`,
+    "app/views/index.js": `import c from "./c.js";\nimport { a } from "../a.js";`,
+    "app/views/c.js": `export default 1;`,
+    "app/lazy.js": ``,
+  };
+  const html = `<head>\n  <script src="/app/look.js"></script>\n</head><body><script type="module" src="/app/main.js"></script></body>`;
+  const out = withPreloads(html, (p) => files[p] ?? null);
+  expect([...out.matchAll(/modulepreload" href="([^"]+)"/g)].map((m) => m[1]).sort()).toEqual(["/app/a.js", "/app/b.js", "/app/views/c.js", "/app/views/index.js"]);
+  expect(withPreloads(out, (p) => files[p] ?? null)).toBe(out);
+  expect(withPreloads("<head></head>", () => null)).toBe("<head></head>");
 });

@@ -1,5 +1,6 @@
 import { join, normalize } from "node:path";
-import { embeddedAsset } from "./assets.ts";
+import { embeddedAsset, withPreloads } from "./assets.ts";
+import { readFileSync } from "node:fs";
 import { cancelLogin, claudeStatus, dismiss, INSTALL_TEXT, installClaude, startLogin, submitCode } from "./claude.ts";
 import { fileLines, fileLinesMany, forgetUnknownMe, git, parsePrArg, prCommits, reactionsOf, run, whoAmI } from "./git.ts";
 import { type AgentJob, draftOf, runAgentReview } from "./agent.ts";
@@ -190,10 +191,20 @@ async function staticFile(p: string): Promise<Response> {
   const rel = normalize(p.slice(1));
   if (rel.startsWith("..")) return new Response("Not found", { status: 404 });
   const asset = embeddedAsset(rel.split("\\").join("/"));
-  if (asset) return new Response(asset.body, { headers: { "content-type": asset.type } });
+  if (asset) {
+    if (!rel.endsWith(".html")) return new Response(asset.body, { headers: { "content-type": asset.type } });
+    const page = pages.get(rel) ?? withPreloads(new TextDecoder().decode(asset.body), (path) => { const a = embeddedAsset(path); return a ? new TextDecoder().decode(a.body) : null; });
+    pages.set(rel, page); // embedded files never change: worked out once
+    return new Response(page, { headers: { "content-type": asset.type } });
+  }
   const file = Bun.file(join(PUBLIC, rel));
-  return (await file.exists()) ? new Response(file) : new Response("Not found", { status: 404 });
+  if (!(await file.exists())) return new Response("Not found", { status: 404 });
+  if (!rel.endsWith(".html")) return new Response(file);
+  // from source, files change under a running server: worked out on every request
+  const page = withPreloads(await file.text(), (path) => { try { return readFileSync(join(PUBLIC, path), "utf8"); } catch { return null; } });
+  return new Response(page, { headers: { "content-type": file.type } });
 }
+const pages = new Map<string, string>(); // an embedded page, with its preloads
 
 /** hostname: the address to listen on (127.0.0.1 unless you're opening Bobby from elsewhere); allow: the other names
  *  its page may be opened at (hostAllowed). */
