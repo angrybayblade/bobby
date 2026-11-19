@@ -28,6 +28,13 @@
   };
   window.bobbyFonts(l);
 }
+// A review's page: its graph and session are asked for now, while its scripts are still on their way, not after the last
+// of them has run. main.js takes the answers (and asks again itself if the review turns out not to be open yet).
+{
+  const review = location.pathname.match(/^\/r\/[^/]+\/[^/]+\/[^/]+/)?.[0];
+  if (review) window.bobbyBoot = { graph: fetch(`${review}/api/graph`), session: fetch(`${review}/api/session`) };
+  window.bobbyBoot?.session.catch(() => {}); // read only if the graph came: never an unhandled rejection
+}
 // An avatar that can't load: hidden (data-av), or gone (data-av="remove"). Load errors don't bubble, so they're caught
 // on the way down; one that failed before it was put on the page (built apart, then added) is caught as it's added.
 const failed = (img) => { if (img.dataset.av === "remove") img.remove(); else img.style.visibility = "hidden"; };

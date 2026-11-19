@@ -21,8 +21,12 @@ import allViews from "./views/index.js";
 // show them, in your theme, until it's ready; one that failed, or a server gone, says why and stops.
 let merged = false; // the graph came with the language servers' definitions in it
 const [graph, session] = await (async () => {
+  let early = window.bobbyBoot; // look.js asked already, before this module and its imports had loaded
+  delete window.bobbyBoot;
   for (;;) {
-    const r = await fetch(`${reviewBase}/api/graph`).catch(() => null);
+    const mine = early;
+    early = null;
+    const r = await (mine?.graph ?? fetch(`${reviewBase}/api/graph`)).catch(() => null);
     const g = r && (await r.json().catch(() => null));
     if (!r || !g) throw new Error("Bobby isn't answering. Is it still running in your terminal?");
     if (g.closed) { // not open: open it, by itself if you've opened it before or came here from Bobby, else once you say so
@@ -44,7 +48,8 @@ const [graph, session] = await (async () => {
     if (!r.ok) throw new Error(g.error ?? `${r.status} ${r.statusText}`);
     document.body.classList.remove("booting");
     merged = r.headers.get("x-bobby-definitions") === "servers";
-    return [g, await api("/api/session")];
+    const s = await mine?.session.then((x) => (x.ok ? x.json() : null)).catch(() => null); // asked alongside that graph
+    return [g, s ?? (await api("/api/session"))];
   }
 })().catch((e) => {
   bootCard({ title: "", steps: [], error: e.message });
