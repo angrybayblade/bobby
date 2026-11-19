@@ -349,10 +349,20 @@ export default {
     // Measure every viewer in one layout: all writes, then all reads, then all writes. Interleaving them forced a full
     // layout per file. At natural size with its code shown (.measuring lifts the text clamp and the engaged hiding), so
     // a viewer's height never depends on the zoom it was built at or on whether you were in a file.
+    // A viewer holding more lines of code than fit under the cap is as tall as the cap, whatever else is in it: it isn't
+    // measured, so its code isn't laid out until it's on screen (content-visibility), which was most of opening a large PR.
     function measure(vs) {
-      for (const v of vs) { v.el.style.height = ""; v.el.classList.add("measuring"); }
-      const maxH = capH();
-      for (const v of vs) v.h = Math.min(maxH, v.el.offsetHeight);
+      const maxH = capH(), rows = new Map(vs.map((v) => [v, v.body.querySelectorAll(app.settings.diffLayout === "split" ? ".srow" : ".ln").length]));
+      let rowH = 0; // a line of code's height: from the viewer with the fewest lines, measured first and alone
+      const probe = vs.reduce((a, v) => (rows.get(v) && (!a || rows.get(v) < rows.get(a)) ? v : a), null);
+      if (probe && vs.length > 1) {
+        probe.el.style.height = ""; probe.el.classList.add("measuring");
+        rowH = probe.body.querySelector(".ln").offsetHeight;
+      }
+      const tall = (v) => rowH > 0 && rows.get(v) * rowH >= maxH * 1.2; // with room for a row that's shorter than the probe's
+      const rest = vs.filter((v) => !tall(v));
+      for (const v of rest) { v.el.style.height = ""; v.el.classList.add("measuring"); }
+      for (const v of vs) v.h = tall(v) ? maxH : Math.min(maxH, v.el.offsetHeight);
       for (const v of vs) { v.el.style.height = `${v.h}px`; v.el.classList.remove("measuring"); }
     }
     // A viewer that changed size stays where it is, and so does the graph: laying it out again would move the file you're
