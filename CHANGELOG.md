@@ -4,6 +4,12 @@ What changed in each release, newest first. Each release's full notes, with inst
 
 ## Unreleased
 
+- **Reviews open faster:** a review's page starts a third sooner on your machine (about 310 ms, from 455, on a 30-file PR), and in half the time on a remote Bobby, as on a VM (about 0.7 s, from 1.3 s over a 40 ms link).
+  - The page no longer waits for Google Fonts before it starts. Fonts are asked for only by a style or reading font that uses one; GitHub's style in the system font, the default, asks for none.
+  - The review's data is asked for while the page's scripts load, and the scripts are all asked for at once.
+  - Diff doesn't lay out the code of files that are certainly taller than their frame until they're on screen.
+  - Opened from another machine, answers are compressed (a review's data: 137 KB, from 841 KB) and not sent again while the browser's copy is right: a reload transfers 23 KB, from 1.6 MB.
+
 ## 0.1.0-rc25 (2026-11-17)
 
 The first launch opens in GitHub's colours, and the exe.dev prompt has a page of its own.
